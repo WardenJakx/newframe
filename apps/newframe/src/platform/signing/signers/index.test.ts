@@ -245,7 +245,7 @@ it('unlocks only the vault and publishes post-create vault state on success or f
   })
   let failureMessage = ''
   signers.createFromPrivateKey('invalid', 'password', (error) => {
-    failureMessage = error?.message || ''
+    failureMessage = error?.message ?? ''
   })
   expect(failureMessage).toBe('Invalid private key')
   expect(deps.vault.acquireKey.mock.calls as unknown).toEqual([['password']])

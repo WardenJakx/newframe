@@ -51,7 +51,7 @@ export function startCommand(
         } else {
           reject(
             new Error(
-              `${label} exited with ${signal || `code ${code ?? 'unknown'}`}${
+              `${label} exited with ${signal ?? `code ${code ?? 'unknown'}`}${
                 output() ? `\n\n${tail(output())}` : ''
               }`
             )

@@ -34,8 +34,8 @@ abstract class HotSigner extends Signer {
   ) {
     super()
     this.status = 'ok'
-    this.id = signer?.id || ''
-    this.addresses = signer?.addresses || []
+    this.id = signer?.id ?? ''
+    this.addresses = signer?.addresses ?? []
     this.network = signer?.network
   }
 
@@ -144,7 +144,7 @@ abstract class HotSigner extends Signer {
       index,
       (error, verified) => {
         if (error || !verified) {
-          const failure = error || new Error('Unable to verify address')
+          const failure = error ?? new Error('Unable to verify address')
           this.emit('lockApp')
           log.error('HotSigner verifyAddress: Unable to verify address', failure)
           cb(failure, undefined)

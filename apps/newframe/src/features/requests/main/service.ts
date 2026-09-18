@@ -589,7 +589,7 @@ export function createRequestService(ports: RequestServicePorts) {
         data?: { chain?: Chain; newChain?: Chain }
       } | null
       const homeCommand = command.homeCommandId === currentHomeCommand?.id ? currentHomeCommand : undefined
-      const chain = request?.chain || homeCommand?.data?.newChain || homeCommand?.data?.chain
+      const chain = request?.chain ?? homeCommand?.data?.newChain ?? homeCommand?.data?.chain
       if (!chain) {
         return false
       }

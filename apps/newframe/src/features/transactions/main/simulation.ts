@@ -263,7 +263,7 @@ function walkTrace(trace: TraceCall | undefined, visit: (call: TraceCall) => voi
   }
 
   visit(trace)
-  ;(trace.calls || []).forEach((call) => walkTrace(call, visit))
+  ;(trace.calls ?? []).forEach((call) => walkTrace(call, visit))
 }
 
 function parseTrace(trace: TraceCall): ParsedTrace {
@@ -275,12 +275,12 @@ function parseTrace(trace: TraceCall): ParsedTrace {
     const from = normalizeAddress(call.from)
     const to = normalizeAddress(call.to)
     const value = safeBigInt(call.value)
-    if (VALUE_TRANSFER_TYPES.has(call.type?.toUpperCase() || '') && from && to && value > 0n) {
+    if (VALUE_TRANSFER_TYPES.has(call.type?.toUpperCase() ?? '') && from && to && value > 0n) {
       nativeTransfers.push({ from, to, amount: value })
     }
-    ;(call.logs || []).forEach((event) => {
-      const topics = event.topics || []
-      if (topics.length !== 3 || !/^0x[0-9a-f]{64}$/i.test(event.data || '')) {
+    ;(call.logs ?? []).forEach((event) => {
+      const topics = event.topics ?? []
+      if (topics.length !== 3 || !/^0x[0-9a-f]{64}$/i.test(event.data ?? '')) {
         return
       }
       const topic = topics[0]?.toLowerCase()
@@ -333,7 +333,7 @@ function tokenDeltasFromTransfers(transfers: TokenTransfer[], account: string) {
   const deltas = new Map<string, bigint>()
 
   transfers.forEach((transfer) => {
-    const current = deltas.get(transfer.token) || 0n
+    const current = deltas.get(transfer.token) ?? 0n
     let next = current
 
     if (sameAddress(transfer.from, accountAddress)) {
@@ -364,8 +364,8 @@ function tokenFromRequest(
     }
   }
 
-  const matchingAction = (req.recognizedActions || []).find((action: any) => {
-    const contract = action?.data?.contract?.address || action?.data?.contract
+  const matchingAction = (req.recognizedActions ?? []).find((action: any) => {
+    const contract = action?.data?.contract?.address ?? action?.data?.contract
     return sameAddress(contract, address)
   }) as any
 
@@ -375,8 +375,8 @@ function tokenFromRequest(
       chainId,
       decimals: matchingAction.data.decimals,
       logoURI: matchingAction.data.logoURI,
-      name: matchingAction.data.name || matchingAction.data.symbol || 'Token',
-      symbol: matchingAction.data.symbol || 'Token'
+      name: matchingAction.data.name ?? matchingAction.data.symbol ?? 'Token',
+      symbol: matchingAction.data.symbol ?? 'Token'
     }
   }
 }
@@ -452,7 +452,7 @@ function nativeEffect(delta: bigint, nativeCurrency: NativeCurrencyLike): Transa
     label: direction === 'out' ? 'Asset out' : 'Asset in',
     amount: toHexQuantity(abs(delta)),
     decimals: nativeCurrency.decimals ?? 18,
-    symbol: nativeCurrency.symbol || 'ETH',
+    symbol: nativeCurrency.symbol ?? 'ETH',
     detail: 'Simulated balance change',
     assetAddress: NATIVE_CURRENCY,
     ...(persistedImageSource(nativeCurrency.image)
@@ -474,7 +474,7 @@ async function tokenEffects(
       .filter(([, delta]) => delta !== 0n)
       .map(async ([address, delta]): Promise<TransactionEffect> => {
         const metadataPromise =
-          metadataByAddress.get(address) || resolveTokenMetadata(req, address, chainId, projection, provider)
+          metadataByAddress.get(address) ?? resolveTokenMetadata(req, address, chainId, projection, provider)
         metadataByAddress.set(address, metadataPromise)
         const metadata = await metadataPromise
         const direction = delta < 0n ? 'out' : 'in'
@@ -511,7 +511,7 @@ async function approvalEffects(
       .filter((approval) => sameAddress(approval.owner, account))
       .map(async (approval, index) => {
         const metadataPromise =
-          metadataByAddress.get(approval.token) ||
+          metadataByAddress.get(approval.token) ??
           resolveTokenMetadata(req, approval.token, chainId, projection, provider)
         metadataByAddress.set(approval.token, metadataPromise)
         const metadata = await metadataPromise
@@ -535,11 +535,11 @@ async function approvalEffects(
 function createTraceCall(req: TransactionRequest) {
   const data = req.data || {}
   const call = {
-    from: data.from || req.account,
+    from: data.from ?? req.account,
     to: data.to,
-    gas: data.gasLimit || data.gas,
-    value: data.value || '0x0',
-    data: data.data || '0x'
+    gas: data.gasLimit ?? data.gas,
+    value: data.value ?? '0x0',
+    data: data.data ?? '0x'
   } as Record<string, string | undefined>
 
   return Object.fromEntries(Object.entries(call).filter(([, value]) => value !== undefined && value !== ''))
@@ -668,7 +668,7 @@ export async function simulateTransactionEffects(
     return {
       status: 'error',
       source: 'debug_traceCall',
-      error: trace.error || trace.revertReason,
+      error: trace.error ?? trace.revertReason,
       updatedAt: Date.now()
     }
   }

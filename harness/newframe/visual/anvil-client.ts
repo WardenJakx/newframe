@@ -22,7 +22,7 @@ export class AnvilClient {
     const payload = (await response.json()) as { result?: string; error?: { message?: string } }
 
     if (!response.ok || payload.error || !payload.result) {
-      throw new Error(payload.error?.message || `Anvil balance request failed with ${response.status}`)
+      throw new Error(payload.error?.message ?? `Anvil balance request failed with ${response.status}`)
     }
 
     return BigInt(payload.result)
@@ -38,7 +38,7 @@ export class AnvilClient {
       const payload = (await response.json()) as { error?: { message?: string } }
 
       if (!response.ok || payload.error) {
-        throw new Error(payload.error?.message || `Anvil mine request failed with ${response.status}`)
+        throw new Error(payload.error?.message ?? `Anvil mine request failed with ${response.status}`)
       }
     }
   }

@@ -19,7 +19,7 @@ export function tokenForId(catalog: TokenCatalog, tokenId: string) {
 }
 
 export function tokensForAccount(catalog: TokenCatalog, account: string) {
-  const accountIds = catalog.accountTokenIds[account.toLowerCase()] || []
+  const accountIds = catalog.accountTokenIds[account.toLowerCase()] ?? []
   const ids = new Set([
     ...Object.values(catalog.byId)
       .filter((token) => token.custom || token.curated)
@@ -50,10 +50,10 @@ export function tokenFromBalance(
       custom: false,
       curated: true,
       decimals: nativeCurrency.decimals ?? 18,
-      logoURI: nativeCurrency.icon || '',
-      name: nativeCurrency.name || '',
+      logoURI: nativeCurrency.icon ?? '',
+      name: nativeCurrency.name ?? '',
       sources: ['bundled'],
-      symbol: nativeCurrency.symbol || '',
+      symbol: nativeCurrency.symbol ?? '',
       updatedAt: 0
     }
   }

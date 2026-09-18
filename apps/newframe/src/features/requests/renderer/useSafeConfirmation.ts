@@ -127,7 +127,7 @@ export function useSafeConfirmation({
 
   return {
     status,
-    message: activeState?.error || operation?.error?.message || activeState?.result?.message,
+    message: activeState?.error ?? operation?.error?.message ?? activeState?.result?.message,
     onSign: () => {
       const selected = current.current.identity
       if (
@@ -161,7 +161,7 @@ export function useSafeConfirmation({
               submitting: false,
               operationId: result.ok ? operationId : undefined,
               result: result.ok ? previous.result : undefined,
-              error: result.ok ? undefined : result.message || 'Could not start Safe confirmation.',
+              error: result.ok ? undefined : (result.message ?? 'Could not start Safe confirmation.'),
               revision: previous.revision + 1
             }))
           },

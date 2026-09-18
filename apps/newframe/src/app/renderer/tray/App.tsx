@@ -166,7 +166,7 @@ const requestOverlayRecipe = cva({
 
 export function Panel(props: PanelProps) {
   const [accountSelectorOpen, setAccountSelectorOpen] = useState(false)
-  const biometricRuntime = props.biometricRuntime || DEFAULT_BIOMETRIC_RUNTIME
+  const biometricRuntime = props.biometricRuntime ?? DEFAULT_BIOMETRIC_RUNTIME
   const [state, setPanelState] = useState<PanelState>({
     password: '',
     unlockError: '',
@@ -219,7 +219,7 @@ export function Panel(props: PanelProps) {
         password
       })
       if (!result.ok) {
-        throw new Error(result.message || 'Could not unlock Newframe')
+        throw new Error(result.message ?? 'Could not unlock Newframe')
       }
     } catch (error) {
       setState({ submission: null, unlockError: errorMessage(error) })
@@ -255,14 +255,14 @@ export function Panel(props: PanelProps) {
           secret
         })
         if (!result.ok) {
-          throw new Error(result.message || 'Could not unlock Newframe')
+          throw new Error(result.message ?? 'Could not unlock Newframe')
         }
       } else if (biometrics.method === 'native') {
         const operationId = crypto.randomUUID()
         setState({ submission: { operationId, method: 'native' } })
         const result = await props.security.unlock({ operationId, method: 'native' })
         if (!result.ok) {
-          throw new Error(result.message || 'Could not unlock Newframe')
+          throw new Error(result.message ?? 'Could not unlock Newframe')
         }
       } else {
         throw new Error('Biometric unlock is not configured')
@@ -288,7 +288,7 @@ export function Panel(props: PanelProps) {
       try {
         const status = await props.security.status({})
         if (!status.ok) {
-          throw new Error(status.message || 'Could not read biometric configuration')
+          throw new Error(status.message ?? 'Could not read biometric configuration')
         }
 
         const biometrics: BiometricsState = status.biometrics

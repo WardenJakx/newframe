@@ -60,7 +60,7 @@ export default class SideTrayManager {
       .filter((frameId) => instanceIds.includes(frameId))
       .forEach((frameId) => {
         const sideTray = this.sideTrays[frameId]
-        const route = frames[frameId].route || ''
+        const route = frames[frameId].route ?? ''
 
         if (sideTray && !sideTray.isDestroyed() && sideTray.contentRoute !== route) {
           sideTrayHost.load(sideTray, frames[frameId])

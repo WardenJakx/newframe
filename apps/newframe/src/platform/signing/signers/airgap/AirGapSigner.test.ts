@@ -59,7 +59,7 @@ it('rejects responses for another UUID or signing key without consuming the requ
   fixture.signer.signTransaction(
     0,
     data,
-    (error, result) => results.push(error || result),
+    (error, result) => results.push(error ?? result),
     fixture.owner.context
   )
   const reference = fixture.reference()
@@ -89,7 +89,7 @@ for (const change of ['abort', 'window', 'close'] as const) {
     fixture.signer.signTransaction(
       0,
       data,
-      (error, result) => results.push(error || result),
+      (error, result) => results.push(error ?? result),
       fixture.owner.context
     )
     const reference = fixture.reference()

@@ -53,7 +53,7 @@ export function isFlashChainSupported(chainId: number, runtime: FlashRuntime = {
 }
 
 export function getFlashChainSlug(chainId: number) {
-  return getFlashChainConfig(chainId)?.slug || ''
+  return getFlashChainConfig(chainId)?.slug ?? ''
 }
 
 export function getFlashChainIdFromSlug(slug: string) {
@@ -62,7 +62,7 @@ export function getFlashChainIdFromSlug(slug: string) {
 
 export function getFlashDefaultChainId(runtime: FlashRuntime = {}, availableChainIds?: readonly number[]) {
   const supported = getFlashSupportedChainIds(runtime)
-  const available = (availableChainIds || [])
+  const available = (availableChainIds ?? [])
     .map(Number)
     .filter((chainId) => Number.isInteger(chainId) && supported.includes(chainId))
 
@@ -71,8 +71,8 @@ export function getFlashDefaultChainId(runtime: FlashRuntime = {}, availableChai
   }
 
   return (
-    available[0] ||
-    (flashProfile(runtime) === 'dev' ? FLASH_ANVIL_CHAIN_ID : supported[0]) ||
+    available[0] ??
+    (flashProfile(runtime) === 'dev' ? FLASH_ANVIL_CHAIN_ID : supported[0]) ??
     FLASH_ANVIL_CHAIN_ID
   )
 }

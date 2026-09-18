@@ -27,7 +27,7 @@ export async function assertInsideViewport(locator: Locator, runtime: VisualHarn
 }
 
 export async function requireAccounts(context: VisualHarnessContext) {
-  context.accounts ||= context.driver.findHarnessAccounts(await context.driver.getAppState())
+  context.accounts ??= context.driver.findHarnessAccounts(await context.driver.getAppState())
   return context.accounts
 }
 

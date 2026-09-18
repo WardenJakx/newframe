@@ -158,7 +158,7 @@ export const OrderRecordSchema = z
     message: 'Order chain must be defined by its assets',
     path: ['chainId']
   })
-  .refine((order) => Boolean(order.provider || order.source), {
+  .refine((order) => Boolean(order.provider ?? order.source), {
     message: 'Order record requires provider or source',
     path: ['source']
   })

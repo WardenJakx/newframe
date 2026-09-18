@@ -73,7 +73,7 @@ export function useAccountsController(input: {
       dispatch({
         type: 'move.failed',
         accountId: state.move.accountId,
-        error: moveError(operation.error?.code || '')
+        error: moveError(operation.error?.code ?? '')
       })
       return
     }

@@ -46,7 +46,7 @@ export function createSafeSimulationRpc(
     let abort: (() => void) | undefined
     return callbacks
       .run<unknown>((done) => {
-        abort = () => done(signal?.reason || new Error('Safe simulation cancelled'))
+        abort = () => done(signal?.reason ?? new Error('Safe simulation cancelled'))
         if (signal?.aborted) {
           return abort()
         }

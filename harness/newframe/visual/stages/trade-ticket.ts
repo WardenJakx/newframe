@@ -33,10 +33,10 @@ export const tradeTicketStage: VisualStage = {
     const targetAsset = await tradePage.getByRole('button', { name: /Select target asset/i }).textContent()
     const contraAsset = await tradePage.getByRole('button', { name: /Select contra asset/i }).textContent()
     if (!targetAsset?.includes('WETH')) {
-      driver.fail(`Default Trade target should be WETH; found ${targetAsset || 'nothing'}`)
+      driver.fail(`Default Trade target should be WETH; found ${targetAsset ?? 'nothing'}`)
     }
     if (!contraAsset?.includes('USDC')) {
-      driver.fail(`Default Trade contra should be USDC; found ${contraAsset || 'nothing'}`)
+      driver.fail(`Default Trade contra should be USDC; found ${contraAsset ?? 'nothing'}`)
     }
     await driver.assertTradeBalanceDirectionColor(tradePage)
     await driver.screenshot(tradePage, '10a-trade-market-open.png')

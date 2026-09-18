@@ -22,7 +22,7 @@ function ProviderRequest(props: ProviderRequestProps) {
   const notice = props.req.notice
   const originName = props.originName
   return (
-    <Surface key={props.req.id || props.req.handlerId} padding='large' radius='card' tone='transparent'>
+    <Surface key={props.req.id ?? props.req.handlerId} padding='large' radius='card' tone='transparent'>
       {notice ? (
         <RequestStatusNotice notice={notice} status={status} />
       ) : (

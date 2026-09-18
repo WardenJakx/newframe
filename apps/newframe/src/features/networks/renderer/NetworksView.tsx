@@ -83,7 +83,7 @@ export function NetworksView(props: NetworksViewProps) {
       const kebabOpen = props.kebabChainId === chain.chainId
       const rpcValue = props.getRpcDraft(chain.chainId)
       const primary = chain.connection?.primary
-      let primaryLabel = primary?.current || 'Default'
+      let primaryLabel = primary?.current ?? 'Default'
       if (primary?.current === 'custom') {
         primaryLabel = 'Custom'
       } else if (primary?.current === 'chainlist') {

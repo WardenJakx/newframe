@@ -88,7 +88,7 @@ class RingSigner extends HotSigner {
     super(signer, vault)
     this.type = 'ring'
     this.model = 'keyring'
-    this.encryptedKeys = signer?.encryptedKeys || []
+    this.encryptedKeys = signer?.encryptedKeys ?? []
   }
 
   protected override persistedSecret() {

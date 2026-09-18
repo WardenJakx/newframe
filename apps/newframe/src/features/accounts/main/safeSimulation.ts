@@ -255,7 +255,7 @@ export async function simulateSafeProposal(
       return {
         status: 'error',
         failure: 'revert',
-        error: result.revertReason || result.error || 'Safe execution reverted',
+        error: result.revertReason ?? result.error ?? 'Safe execution reverted',
         effects: [],
         ...context
       }

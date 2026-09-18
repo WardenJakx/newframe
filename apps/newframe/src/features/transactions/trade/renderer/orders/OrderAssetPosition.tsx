@@ -27,8 +27,8 @@ const assetPositionRecipe = cva({
 })
 
 function orderAssetIdentity(asset?: OrderAsset) {
-  const chainId = Number(asset?.chainId || 0)
-  const address = String(asset?.address || '')
+  const chainId = Number(asset?.chainId ?? 0)
+  const address = String(asset?.address ?? '')
     .trim()
     .toLowerCase()
   const isNative =
@@ -37,7 +37,7 @@ function orderAssetIdentity(asset?: OrderAsset) {
   const tokenId = String(
     chainId && catalogAddress
       ? `${chainId}:${catalogAddress}`
-      : asset?.id || `${chainId}:${orderAssetSymbol(asset)}`
+      : (asset?.id ?? `${chainId}:${orderAssetSymbol(asset)}`)
   )
 
   return { chainId, isNative, tokenId }
@@ -66,7 +66,7 @@ export function OrderAssetIcon({
     <ChainTokenIcon
       chainId={chainId}
       imageCapability={imageCapability}
-      logoURI={imageSource || resolvedImage}
+      logoURI={imageSource ?? resolvedImage}
       networks={networks}
       networksMeta={networksMeta}
       size='md'
@@ -87,16 +87,14 @@ export function resolveOrderAssetImageSource({
 }) {
   const { chainId, isNative, tokenId } = orderAssetIdentity(asset)
   const canonicalImage = tokens ? tokenImageSource(tokenForId(tokens, tokenId)) : ''
-  const nativeCurrency = networksMeta[chainId]?.nativeCurrency || {}
+  const nativeCurrency = networksMeta[chainId]?.nativeCurrency ?? {}
   const nativeImage = isNative ? persistedImageSource(nativeCurrency.image) : ''
 
   return (
-    canonicalImage ||
-    nativeImage ||
-    (isNative ? nativeCurrency.icon : '') ||
-    asset?.logoURI ||
-    asset?.logoUrl ||
-    asset?.icon ||
+    (canonicalImage || nativeImage || (isNative ? nativeCurrency.icon : '')) ??
+    asset?.logoURI ??
+    asset?.logoUrl ??
+    asset?.icon ??
     ''
   )
 }
@@ -144,7 +142,7 @@ export function OrderAssetPosition({
         {amountLabel}
       </Text>
       <Text align={align} tone='muted' variant='caption' truncate>
-        {notional || '—'}
+        {notional ?? '—'}
       </Text>
     </div>
   )

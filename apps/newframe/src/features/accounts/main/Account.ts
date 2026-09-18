@@ -82,7 +82,7 @@ class FrameAccount {
     profileActive = true
   ) {
     const { lastSignerType, name, ensName, created, address, options = {} } = params
-    const formattedAddress = address?.toLowerCase() || '0x'
+    const formattedAddress = address?.toLowerCase() ?? '0x'
     this.accounts = accounts // Parent Accounts Module
     this.id = formattedAddress // Account ID
     this.address = formattedAddress
@@ -94,8 +94,8 @@ class FrameAccount {
         address: this.address,
         name,
         ensName,
-        created: created || `new:${this.runtime.now()}`,
-        lastSignerType: lastSignerType || options.type || '',
+        created: created ?? `new:${this.runtime.now()}`,
+        lastSignerType: lastSignerType ?? options.type ?? '',
         signer: '',
         signerStatus: '',
         agentEnabled: false,
@@ -115,7 +115,7 @@ class FrameAccount {
 
           this.patch({
             signer,
-            lastSignerType: signerType || this.lastSignerType,
+            lastSignerType: signerType ?? this.lastSignerType,
             signerStatus: updatedSigner.status
           })
 
@@ -166,7 +166,7 @@ class FrameAccount {
   }
 
   get signerStatus() {
-    return this.state.signerStatus || ''
+    return this.state.signerStatus ?? ''
   }
 
   get agentEnabled() {
@@ -289,9 +289,9 @@ class FrameAccount {
       .filter(
         (req) =>
           req.mode !== RequestMode.Monitor &&
-          !['confirmed', 'declined', 'error', 'success'].includes(req.status || '')
+          !['confirmed', 'declined', 'error', 'success'].includes(req.status ?? '')
       )
-      .sort((a, b) => (a.created || 0) - (b.created || 0))[0]
+      .sort((a, b) => (a.created ?? 0) - (b.created ?? 0))[0]
 
     if (wasCurrentRequest && nextRequest) {
       if (isTransactionRequest(nextRequest)) {
@@ -413,7 +413,7 @@ class FrameAccount {
     if (
       !to ||
       !chainId ||
-      !['approve(address,uint256)', 'transfer(address,uint256)'].includes(signature || '')
+      !['approve(address,uint256)', 'transfer(address,uint256)'].includes(signature ?? '')
     ) {
       return
     }
@@ -595,7 +595,7 @@ class FrameAccount {
   addRequest(req: any) {
     const add = (r: AccountRequest) => {
       const actionHandlers = new Map<string, Action<unknown>>()
-      ;(req.recognizedActions || []).forEach((action: any) => {
+      ;(req.recognizedActions ?? []).forEach((action: any) => {
         if (typeof action.update === 'function') {
           actionHandlers.set(action.id, action)
         }

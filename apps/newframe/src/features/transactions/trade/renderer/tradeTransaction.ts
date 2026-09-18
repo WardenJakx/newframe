@@ -79,8 +79,8 @@ export function formatTradeNotional(value?: string | number | null) {
 export function getEstimatedTradePriceImpact(
   quote?: Pick<FlashQuote, 'inputNotional' | 'outputNotional' | 'from' | 'to'> | null
 ) {
-  const inputNotional = Number(quote?.inputNotional || quote?.from?.notional)
-  const outputNotional = Number(quote?.outputNotional || quote?.to?.notional)
+  const inputNotional = Number(quote?.inputNotional ?? quote?.from?.notional)
+  const outputNotional = Number(quote?.outputNotional ?? quote?.to?.notional)
   if (!Number.isFinite(inputNotional) || inputNotional <= 0 || !Number.isFinite(outputNotional)) {
     return null
   }
@@ -155,7 +155,7 @@ function getMarketTradeOptionalFields({ quickTrade, slippage }: { quickTrade: bo
 }
 
 function cleanOptionalAmount(value?: string) {
-  const clean = cleanTradeAmount(value || '')
+  const clean = cleanTradeAmount(value ?? '')
 
   return tradeAmountNumber(clean) ? clean : ''
 }
@@ -165,7 +165,7 @@ export function getTradeDurationSeconds(fields: TradeOrderFields) {
 }
 
 function cleanTwapBucketCount(value?: string) {
-  const clean = cleanTradeAmount(value || '')
+  const clean = cleanTradeAmount(value ?? '')
   if (!clean) {
     return undefined
   }
@@ -175,13 +175,13 @@ function cleanTwapBucketCount(value?: string) {
 }
 
 function cleanExpireTime(value?: string) {
-  const timestamp = Date.parse(String(value || ''))
+  const timestamp = Date.parse(String(value ?? ''))
 
   return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : ''
 }
 
 function cleanStartTime(value?: string) {
-  if (!String(value || '').trim()) {
+  if (!String(value ?? '').trim()) {
     return ''
   }
 
@@ -236,7 +236,7 @@ export function getTradeValidationError({
     targetAsset &&
     contraAsset &&
     getFlashAssetPairChains({
-      side: side || 'sell',
+      side: side ?? 'sell',
       targetAsset,
       contraAsset
     }).isCrossChain &&
@@ -250,7 +250,7 @@ export function getTradeValidationError({
   }
 
   if (orderType === FLASH_MARKET_ORDER_TYPE) {
-    const cleanSlippage = cleanTradeAmount(slippage || '')
+    const cleanSlippage = cleanTradeAmount(slippage ?? '')
     const maxSlippage = Number(cleanSlippage)
     if (cleanSlippage && (!Number.isFinite(maxSlippage) || maxSlippage < 0 || maxSlippage > 100)) {
       return 'Max slippage must be between 0% and 100%.'
@@ -265,7 +265,7 @@ export function getTradeValidationError({
     if (!cleanOptionalAmount(triggerNotionalPrice)) {
       return 'Enter a trigger price.'
     }
-    if (cleanTradeAmount(limitNotionalPrice || '') && !cleanOptionalAmount(limitNotionalPrice)) {
+    if (cleanTradeAmount(limitNotionalPrice ?? '') && !cleanOptionalAmount(limitNotionalPrice)) {
       return 'Enter a valid limit price or leave it blank for a market order.'
     }
     if (orderType === FLASH_STOP_ORDER_TYPE && side !== 'buy') {
@@ -285,23 +285,23 @@ export function getTradeValidationError({
       return 'TWAP duration must be between 5 minutes and 30 days.'
     }
 
-    const cleanBuckets = cleanTradeAmount(twapBucketCount || '')
+    const cleanBuckets = cleanTradeAmount(twapBucketCount ?? '')
     if (cleanBuckets && cleanTwapBucketCount(cleanBuckets) === undefined) {
       return 'Segments must be 2 to 2560, or left automatic.'
     }
 
-    if (cleanTradeAmount(limitNotionalPrice || '') && !cleanOptionalAmount(limitNotionalPrice)) {
+    if (cleanTradeAmount(limitNotionalPrice ?? '') && !cleanOptionalAmount(limitNotionalPrice)) {
       return 'Enter a valid TWAP limit price or leave it blank for market execution.'
     }
 
-    if (String(startTime || '').trim()) {
+    if (String(startTime ?? '').trim()) {
       const timestamp = Date.parse(String(startTime))
       if (!Number.isFinite(timestamp) || timestamp <= Date.now()) {
         return 'Choose a future TWAP start time or leave it blank to start immediately.'
       }
     }
 
-    const cleanMaxImpact = cleanTradeAmount(maxPriceImpact || '')
+    const cleanMaxImpact = cleanTradeAmount(maxPriceImpact ?? '')
     const maxImpact = Number(cleanMaxImpact)
     if (cleanMaxImpact && (!Number.isFinite(maxImpact) || maxImpact < 0 || maxImpact > 100)) {
       return 'Max price impact must be between 0% and 100%.'
@@ -309,7 +309,7 @@ export function getTradeValidationError({
   }
 
   if (orderSupportsTimeInForce(orderType) && timeInForce === 'gtt') {
-    const timestamp = Date.parse(String(expireTime || ''))
+    const timestamp = Date.parse(String(expireTime ?? ''))
     if (!Number.isFinite(timestamp) || timestamp <= Date.now()) {
       return 'Choose a future expiry time.'
     }
@@ -396,7 +396,7 @@ function getOrderFields(orderType: FlashOrderType, fields: TradeOrderFields): No
     if (buckets !== undefined) {
       result.twapBucketCount = buckets
     }
-    const maxPriceImpact = cleanTradeAmount(fields.maxPriceImpact || '')
+    const maxPriceImpact = cleanTradeAmount(fields.maxPriceImpact ?? '')
     if (maxPriceImpact) {
       result.maxPriceImpact = maxPriceImpact
     }
@@ -573,7 +573,7 @@ export function getFlashBalanceEntries(
       id: assetId,
       assetId,
       symbol: asset.symbol,
-      balance: balance?.balance || '0'
+      balance: balance?.balance ?? '0'
     }
   })
 }

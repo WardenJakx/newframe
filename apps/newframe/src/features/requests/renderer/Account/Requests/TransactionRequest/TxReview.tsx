@@ -84,8 +84,8 @@ const FEE_RATE_OPTIONS = [
 ] as const
 
 const displayStatus = (req: TransactionRequestView) => {
-  const notice = (req.notice || '').toLowerCase()
-  const status = (req.status || 'ready to sign').toLowerCase()
+  const notice = (req.notice ?? '').toLowerCase()
+  const status = (req.status ?? 'ready to sign').toLowerCase()
 
   if (status === 'pending' && notice === 'see signer') {
     return 'waiting for device signature'
@@ -192,7 +192,7 @@ function TxFeeSummary(props: TxFeeSummaryProps) {
   const maxFeeSourceValue = chainUsesOptimismFees(chain.id)
     ? getOptimismFee(maxFeePerGas, maxGas, req.chainData?.optimism)
     : executionFee
-  const displayedFee = paidFee || maxFeeSourceValue || executionFee
+  const displayedFee = paidFee ?? maxFeeSourceValue ?? executionFee
   const fee = displayValueData(displayedFee, {
     currencyRate: nativeCurrencyRate,
     isTestnet
@@ -201,9 +201,9 @@ function TxFeeSummary(props: TxFeeSummaryProps) {
   const gasDisplay = displayValueData(maxFeePerGas).gwei()
   const shouldWarn = feeUSD.value > FEE_WARNING_THRESHOLD_USD
   const selectedRate =
-    (!req.status && !req.locked ? props.feeLevel : undefined) ||
-    (req.feesUpdatedByUser ? 'custom' : props.gasPrice?.selected || 'fast')
-  const selectedRateLabel = FEE_RATE_OPTIONS.find((option) => option.id === selectedRate)?.label || 'Fast'
+    (!req.status && !req.locked ? props.feeLevel : undefined) ??
+    (req.feesUpdatedByUser ? 'custom' : (props.gasPrice?.selected ?? 'fast'))
+  const selectedRateLabel = FEE_RATE_OPTIONS.find((option) => option.id === selectedRate)?.label ?? 'Fast'
   const canAdjustFee = !paidFee && !req.status && !req.locked
 
   return (
@@ -281,9 +281,9 @@ function TxReviewView(props: TxReviewProps) {
   const chainId = parseInt(req.data.chainId, 16)
   const chain = { type: 'ethereum' as const, id: chainId }
   const { network, networkMetadata: meta } = props
-  const nativeCurrency = meta.nativeCurrency || { symbol: '?', icon: undefined }
+  const nativeCurrency = meta.nativeCurrency ?? { symbol: '?', icon: undefined }
   const symbol = nativeCurrency.symbol || '?'
-  const chainName = network.name || `Chain ${chainId}`
+  const chainName = network.name ?? `Chain ${chainId}`
   const originName = props.originName || req.origin
   const to = req.data.to ? getAddress(req.data.to) : ''
   const calldata = req.data.data
@@ -319,7 +319,7 @@ function TxReviewView(props: TxReviewProps) {
     effectsEmptyText = undefined
   }
   const notice =
-    req.notice && req.notice.toLowerCase() !== (req.status || '').toLowerCase() ? req.notice : undefined
+    req.notice && req.notice.toLowerCase() !== (req.status ?? '').toLowerCase() ? req.notice : undefined
   const recipient = transferRecipient(req)
   const actionId = req.recognizedActions?.find((action) =>
     ['erc20:transfer', 'erc20:approve', 'erc20:revoke'].includes(action.id)
@@ -338,12 +338,12 @@ function TxReviewView(props: TxReviewProps) {
     Number.isInteger(tokenDecimals) &&
     tokenDecimals >= 0 &&
     tokenDecimals <= 255
-  const tokenSymbol = token?.symbol || req.tokenData?.symbol
+  const tokenSymbol = token?.symbol ?? req.tokenData?.symbol
   const tokenAmount = toBigInt(amount)
   let amountText = 'Amount unavailable'
   if (tokenAmount !== undefined) {
     amountText = knownDecimals
-      ? `${formatUnits(tokenAmount, tokenDecimals)} ${tokenSymbol || 'tokens'}`
+      ? `${formatUnits(tokenAmount, tokenDecimals)} ${tokenSymbol ?? 'tokens'}`
       : `${tokenAmount.toString()} raw units`
   }
   const addressValue = (address: string, nickname?: string) => (
@@ -351,11 +351,11 @@ function TxReviewView(props: TxReviewProps) {
       address={address}
       clipboard={props.capabilities.external}
       accountType={props.identities[address.toLowerCase()]?.accountType}
-      nickname={nickname || props.identities[address.toLowerCase()]?.nickname || shortAddress(address)}
+      nickname={nickname ?? props.identities[address.toLowerCase()]?.nickname ?? shortAddress(address)}
       showFullAddress
     />
   )
-  const contractName = token?.name || tokenSymbol || req.decodedData?.contractName || req.recipient
+  const contractName = token?.name ?? tokenSymbol ?? req.decodedData?.contractName ?? req.recipient
   const spender = token?.spender ?? (isApproval ? { address: req.decodedData?.args[0]?.value } : undefined)
   let details: TransactionInformationDetailRow[]
   if (nativeTransfer) {
@@ -375,15 +375,15 @@ function TxReviewView(props: TxReviewProps) {
         value: counterparty
       },
       { label: 'Amount', value: amountText },
-      { label: 'Token contract', value: addressValue(token?.contract?.address || to, contractName) }
+      { label: 'Token contract', value: addressValue(token?.contract?.address ?? to, contractName) }
     ]
   } else {
     details = [
       { label: 'On contract', value: addressValue(to, contractName) },
       ...(req.decodedData?.args.map((arg, index) => ({
-        label: `${arg.name || `Argument ${index + 1}`}${arg.type ? ` (${arg.type})` : ''}`,
+        label: `${arg.name ?? `Argument ${index + 1}`}${arg.type ? ` (${arg.type})` : ''}`,
         value: arg.type === 'address' ? addressValue(arg.value) : arg.value
-      })) || []),
+      })) ?? []),
       ...(!req.decodedData && calldata && calldata !== '0x'
         ? [{ label: 'Selector', value: calldata.slice(0, 10) }]
         : [])
@@ -427,7 +427,7 @@ function TxReviewView(props: TxReviewProps) {
         simulationStatus === 'error' || simulationStatus === 'unavailable' ? (
           <div role='alert'>
             <Text variant='caption' tone='danger'>
-              {req.simulation?.error || 'Simulation unavailable'}
+              {req.simulation?.error ?? 'Simulation unavailable'}
             </Text>
           </div>
         ) : undefined
@@ -467,7 +467,7 @@ export default function TxReviewWithState(props: TxReviewWithStateProps) {
   const nativeCurrencyRate = useAssetRate({
     chainId,
     address: NATIVE_CURRENCY,
-    nativeTicker: networkMetadata.nativeCurrency?.symbol || '?'
+    nativeTicker: networkMetadata.nativeCurrency?.symbol ?? '?'
   })
   const { open, feeLevel, selectFeeLevel } = useRequestView()
   return (

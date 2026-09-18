@@ -184,7 +184,7 @@ function displayQuote(record: PrivateQuoteRecord): FlashQuoteDisplay {
 }
 
 function quoteExpiry(quote: FlashQuote, now: number) {
-  const parsed = Date.parse(String(quote.expiresAt || ''))
+  const parsed = Date.parse(String(quote.expiresAt ?? ''))
   return Number.isFinite(parsed) ? parsed : now + defaultQuoteLifetimeMs
 }
 
@@ -360,7 +360,7 @@ export function createTradeService(ports: TradeServicePorts) {
         principal
       )
       if (!result.ok) {
-        throw new TradeFailure('provider_error', result.message || 'Transaction failed.')
+        throw new TradeFailure('provider_error', result.message ?? 'Transaction failed.')
       }
       validatedQuote(owner, command.quoteId, record)
       if (disposed) {
@@ -416,7 +416,7 @@ export function createTradeService(ports: TradeServicePorts) {
         validatedQuote(owner, command.quoteId, record)
         const result = await ports.signatures.signTypedData({ chainId, typedData }, principal)
         if (!result.ok) {
-          throw new TradeFailure('provider_error', result.message || 'Permit signature was not returned.')
+          throw new TradeFailure('provider_error', result.message ?? 'Permit signature was not returned.')
         }
         permitSignature = result.signature
         validatedQuote(owner, command.quoteId, record)
@@ -440,7 +440,7 @@ export function createTradeService(ports: TradeServicePorts) {
       if (!signatureResult.ok) {
         throw new TradeFailure(
           'provider_error',
-          signatureResult.message || 'Order signature was not returned.'
+          signatureResult.message ?? 'Order signature was not returned.'
         )
       }
       validatedQuote(owner, command.quoteId, record)
@@ -530,7 +530,7 @@ export function createTradeService(ports: TradeServicePorts) {
     if (!order) {
       throw new TradeFailure('order_not_found', 'Order was not found.')
     }
-    const orderAddress = order.accountAddress || order.account || order.address || ''
+    const orderAddress = order.accountAddress ?? order.account ?? order.address ?? ''
     if (!isAddress(orderAddress) || orderAddress.toLowerCase() !== account.address.toLowerCase()) {
       throw new TradeFailure('account_changed', 'Order account changed.')
     }
@@ -570,7 +570,7 @@ export function createTradeService(ports: TradeServicePorts) {
         principal
       )
       if (!signature.ok) {
-        throw new TradeFailure('provider_error', signature.message || 'Cancel signature was not returned.')
+        throw new TradeFailure('provider_error', signature.message ?? 'Cancel signature was not returned.')
       }
       validatedCancel(command.orderId, initial.account.id)
       if (disposed) {
@@ -614,7 +614,7 @@ export function createTradeService(ports: TradeServicePorts) {
       if (activeExecution()) {
         return { ok: false, error: 'quote_failed', message: 'Trade confirmation is in progress.' }
       }
-      const generation = (quoteGenerations.get(ownerScope) || 0) + 1
+      const generation = (quoteGenerations.get(ownerScope) ?? 0) + 1
       quoteGenerations.set(ownerScope, generation)
       try {
         const { account, snapshot } = currentAccount()
@@ -646,9 +646,9 @@ export function createTradeService(ports: TradeServicePorts) {
         const rawQuote = flashObject(result.quote.raw)
         const flashPayload = flashObject(result.flash)
         const providerQuoteId = String(
-          result.quote.id || flashPayload.quoteId || rawQuote.quoteId || ''
+          result.quote.id ?? flashPayload.quoteId ?? rawQuote.quoteId ?? ''
         ).trim()
-        const bridgeQuoteId = String(flashPayload.bridgeQuoteId || rawQuote.bridgeQuoteId || '').trim()
+        const bridgeQuoteId = String(flashPayload.bridgeQuoteId ?? rawQuote.bridgeQuoteId ?? '').trim()
         if (!providerQuoteId && !bridgeQuoteId) {
           throw new TradeFailure('quote_invalid', 'Flash quote did not return a quote id.')
         }

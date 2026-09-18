@@ -36,7 +36,7 @@ const endpointMap = {
 async function parseResponse<T>(response: Response): Promise<T | undefined> {
   if (
     response?.status === 200 &&
-    (response?.headers.get('content-type') || '').toLowerCase().includes('json')
+    (response?.headers.get('content-type') ?? '').toLowerCase().includes('json')
   ) {
     return response.json() as Promise<T>
   }
@@ -87,7 +87,7 @@ export async function fetchEtherscanContract(
       return {
         abi: source.ABI,
         name: source.ContractName,
-        source: endpoint.match(sourceCapture)?.groups?.source || ''
+        source: endpoint.match(sourceCapture)?.groups?.source ?? ''
       }
     }
   } catch (e) {

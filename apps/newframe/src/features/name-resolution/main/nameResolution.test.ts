@@ -71,7 +71,7 @@ function mockNameRequests({
 
       if (parsed.name === 'computeId') {
         const name = parsed.args[0] as string
-        const tokenId = tokenIds.get(name) || BigInt(tokenIds.size + 1)
+        const tokenId = tokenIds.get(name) ?? BigInt(tokenIds.size + 1)
 
         tokenIds.set(name, tokenId)
         tokenNames.set(tokenId, name)
@@ -81,7 +81,7 @@ function mockNameRequests({
 
       if (parsed.name === 'resolve') {
         const name = tokenNames.get(parsed.args[0] as bigint)
-        const address = (name && gnsRecords[name]) || ZeroAddress
+        const address = (name && gnsRecords[name]) ?? ZeroAddress
 
         return gnsInterface.encodeFunctionResult('resolve', [address])
       }

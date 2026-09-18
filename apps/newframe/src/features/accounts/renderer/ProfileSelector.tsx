@@ -129,7 +129,7 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
   const submissionRef = React.useRef<ProfileSubmission | null>(null)
   const movableAccountsRequestRef = React.useRef('')
   const [error, setError] = React.useState('')
-  const activeProfile = profiles.find((profile) => profile.id === currentProfile) || profiles[0]
+  const activeProfile = profiles.find((profile) => profile.id === currentProfile) ?? profiles[0]
   const managedProfile = profiles.find((profile) => profile.id === managedProfileId)
   const trackedOperation = useWalletSelector((state) =>
     submission ? selectOperationById(state, submission.operationId) : undefined
@@ -142,7 +142,7 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
   const submitting = trackedOperation?.status === 'pending'
   const operationFailure =
     trackedOperation?.status === 'failed'
-      ? errorMessage(trackedOperation.error?.code || '', 'Profile operation failed. Try again.')
+      ? errorMessage(trackedOperation.error?.code ?? '', 'Profile operation failed. Try again.')
       : ''
   let submissionMatchesState = false
   if (submission?.type === 'profile.select') {

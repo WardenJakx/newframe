@@ -19,11 +19,11 @@ type ContractArtifact = {
   abi?: InterfaceAbi
 }
 
-const harnessOriginUrl = process.env.NEWFRAME_ORIGIN || 'http://newframe-contracts.local'
-const harnessAccountAddress = process.env.HARNESS_ACCOUNT || '0x35f9179059a691d8beecf82fe112f7277e018588'
-const usdcAddress = process.env.USDC_ADDRESS || '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
-const testContractAddress = process.env.TEST_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000001337'
-const usdcFlowMemo = process.env.USDC_FLOW_MEMO || 'Newframe USDC integration flow'
+const harnessOriginUrl = process.env.NEWFRAME_ORIGIN ?? 'http://newframe-contracts.local'
+const harnessAccountAddress = process.env.HARNESS_ACCOUNT ?? '0x35f9179059a691d8beecf82fe112f7277e018588'
+const usdcAddress = process.env.USDC_ADDRESS ?? '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
+const testContractAddress = process.env.TEST_CONTRACT_ADDRESS ?? '0x0000000000000000000000000000000000001337'
+const usdcFlowMemo = process.env.USDC_FLOW_MEMO ?? 'Newframe USDC integration flow'
 
 function usdcFlowAmount() {
   const value = process.env.USDC_FLOW_AMOUNT
@@ -102,7 +102,7 @@ export const usdcIntegrationStage: VisualStage = {
     const { anvil, driver, runtime, services, tray } = context
     const { harness } = await requireAccounts(context)
     await driver.waitForState(
-      (state) => String(state.main?.currentAccount || '').toLowerCase() === harness.id,
+      (state) => String(state.main?.currentAccount ?? '').toLowerCase() === harness.id,
       5_000,
       'Harness account was not selected before USDC integration'
     )

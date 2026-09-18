@@ -68,7 +68,7 @@ const normalizeRpcError = (error: any) => {
     return { message: error, code: -1 }
   }
   if (error instanceof Error) {
-    return { message: error.message, code: (error as any).code || -1, data: (error as any).data }
+    return { message: error.message, code: (error as any).code ?? -1, data: (error as any).data }
   }
   return error
 }
@@ -402,11 +402,11 @@ class ChainConnection extends EventEmitter {
   send(payload: any, res: (response: any) => void) {
     if (this.primary.provider && this.primary.connected) {
       sendRpcPayload(this.primary.provider, payload)
-        .then((result) => res({ id: payload.id, jsonrpc: payload.jsonrpc || '2.0', result }))
+        .then((result) => res({ id: payload.id, jsonrpc: payload.jsonrpc ?? '2.0', result }))
         .catch((err: unknown) => resError(err, payload, res))
     } else if (this.secondary.provider && this.secondary.connected) {
       sendRpcPayload(this.secondary.provider, payload)
-        .then((result) => res({ id: payload.id, jsonrpc: payload.jsonrpc || '2.0', result }))
+        .then((result) => res({ id: payload.id, jsonrpc: payload.jsonrpc ?? '2.0', result }))
         .catch((err: unknown) => resError(err, payload, res))
     } else {
       resError('Not connected to Ethereum network', payload, res)
@@ -455,7 +455,7 @@ class ChainConnection extends EventEmitter {
 
       this.store.getState().setGasPrices(this.type, chainId, {
         ...gas,
-        custom: customLevel || gas.fast
+        custom: customLevel ?? gas.fast
       })
     }
 

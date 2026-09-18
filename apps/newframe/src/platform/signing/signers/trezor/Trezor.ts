@@ -107,7 +107,7 @@ export default class Trezor extends Signer {
 
     return {
       ...summary,
-      capabilities: this.device?.features?.capabilities || []
+      capabilities: this.device?.features?.capabilities ?? []
     }
   }
 
@@ -345,11 +345,11 @@ export default class Trezor extends Signer {
     const txJson = tx.toJSON()
 
     const unsignedTx = {
-      nonce: this.normalize(txJson.nonce || ''),
-      gasLimit: this.normalize(txJson.gasLimit || ''),
-      to: this.normalize(txJson.to || ''),
-      value: this.normalize(txJson.value || ''),
-      data: this.normalize(txJson.data || ''),
+      nonce: this.normalize(txJson.nonce ?? ''),
+      gasLimit: this.normalize(txJson.gasLimit ?? ''),
+      to: this.normalize(txJson.to ?? ''),
+      value: this.normalize(txJson.value ?? ''),
+      data: this.normalize(txJson.data ?? ''),
       chainId: hexToInt(chainId)
     }
 

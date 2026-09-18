@@ -103,7 +103,7 @@ export function useTradeController({ assetId, capability, chainId }: TradeContro
     target: INITIAL_TOKEN_SELECTOR_ROWS,
     contra: INITIAL_TOKEN_SELECTOR_ROWS
   })
-  const accountAddress = currentAccount?.address || ''
+  const accountAddress = currentAccount?.address ?? ''
   const inputAmount = getTradeInputAmount(state)
   const quoteRequest = useTradeQuoteRequest({
     accountAddress,
@@ -182,7 +182,7 @@ export function useTradeController({ assetId, capability, chainId }: TradeContro
       const balance = tradeBalanceIndex.get(getTradeAssetKey(asset))
 
       return (
-        balance?.logoURI ||
+        balance?.logoURI ??
         (asset.isNative ? persistedImageSource(networksMeta[asset.chainId]?.nativeCurrency?.image) : '')
       )
     },
@@ -225,7 +225,7 @@ export function useTradeController({ assetId, capability, chainId }: TradeContro
       })
       const balance = tradeBalanceIndex.get(getTradeAssetKey(asset))
       const displayBalance = balance ? createDisplayBalance(balance).displayBalance : '0'
-      const rawBalance = toBigInt(balance?.balance || 0) || 0n
+      const rawBalance = toBigInt(balance?.balance ?? 0) ?? 0n
       const numericBalance = Number(formatUnits(rawBalance, asset.decimals))
       const numericAmount = Number(String(amount || '').replace(/,/g, ''))
       const balancePercent =
@@ -292,8 +292,8 @@ export function useTradeController({ assetId, capability, chainId }: TradeContro
   }
 
   const spentAsset = getTradeSpentAsset(state)
-  const baseSteps = state.quote?.steps || buildVisualTradeSteps(spentAsset, false)
-  const phase = operation?.phase || ''
+  const baseSteps = state.quote?.steps ?? buildVisualTradeSteps(spentAsset, false)
+  const phase = operation?.phase ?? ''
   const completed = new Set(['wrap', 'approve', 'sign', 'submit'].slice(0, completedStepCount[phase] || 0))
   if (operation?.status === 'succeeded') {
     completed.add('submit')
@@ -327,9 +327,9 @@ export function useTradeController({ assetId, capability, chainId }: TradeContro
   } else if (execution.state.phase === 'submitting') {
     actionLabel = 'Submitting'
   } else if (nextAction === 'wrap') {
-    actionLabel = state.quote?.actions?.wrap?.label || 'Wrap'
+    actionLabel = state.quote?.actions?.wrap?.label ?? 'Wrap'
   } else if (nextAction === 'approve') {
-    actionLabel = state.quote?.actions?.approval?.label || 'Approve'
+    actionLabel = state.quote?.actions?.approval?.label ?? 'Approve'
   }
   const quote = state.quote
   const estimatedImpact = getEstimatedTradePriceImpact(quote)
@@ -390,7 +390,7 @@ export function useTradeController({ assetId, capability, chainId }: TradeContro
     onBalancePercentChange: (field, percentValue) => {
       const asset = field === 'target' ? state.targetAsset : state.contraAsset
       const balance = tradeBalanceIndex.get(getTradeAssetKey(asset))
-      const rawBalance = toBigInt(balance?.balance || 0) || 0n
+      const rawBalance = toBigInt(balance?.balance ?? 0) ?? 0n
       const percent = Math.min(100, Math.max(0, Number.isFinite(percentValue) ? percentValue : 0))
       const basisPoints = BigInt(Math.round(percent * 100))
       const amount = (rawBalance * basisPoints) / 10_000n

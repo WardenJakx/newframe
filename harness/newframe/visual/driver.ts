@@ -214,7 +214,7 @@ export class NewframeDriver {
       this.fail(`Unsupported side tray route: ${route}`)
     }
 
-    const assetId = parsed.searchParams.get('assetId') || undefined
+    const assetId = parsed.searchParams.get('assetId') ?? undefined
     const chainIdValue = parsed.searchParams.get('chainId')
     const chainId = chainIdValue ? Number(chainIdValue) : undefined
     await this.executeCommand(this.tray, { type: 'sidetray.open', feature, assetId, chainId })
@@ -291,10 +291,10 @@ export class NewframeDriver {
       return undefined
     }
 
-    const accountId = crumb.data?.accountId || ''
-    const requestId = crumb.data?.requestId || ''
+    const accountId = crumb.data?.accountId ?? ''
+    const requestId = crumb.data?.requestId ?? ''
     const request = state.main?.accounts?.[accountId]?.requests?.[requestId]
-    const handlerId = request?.handlerId || requestId
+    const handlerId = request?.handlerId ?? requestId
 
     return request ? { ...request, accountId, handlerId } : undefined
   }
@@ -309,7 +309,7 @@ export class NewframeDriver {
         if (excludeIds.has(request.handlerId)) {
           return false
         }
-        return !finalRequestStatuses.has(String(request.status || '').toLowerCase())
+        return !finalRequestStatuses.has(String(request.status ?? '').toLowerCase())
       },
       timeoutMs,
       `Timed out waiting for current ${type} request`
@@ -325,13 +325,13 @@ export class NewframeDriver {
   async waitForRequestStatus(handlerId: string, timeoutMs = 15_000) {
     await this.waitForState(
       (state) => {
-        const accounts = Object.values(state.main?.accounts || {})
+        const accounts = Object.values(state.main?.accounts ?? {})
         const request = accounts.map((account) => account.requests?.[handlerId]).find(Boolean)
         if (!request) {
           return true
         }
-        const status = String(request.status || '').toLowerCase()
-        return Boolean(request.notice || request.tx?.hash || (status && status !== 'pending'))
+        const status = String(request.status ?? '').toLowerCase()
+        return Boolean(request.notice ?? request.tx?.hash ?? (status && status !== 'pending'))
       },
       timeoutMs,
       `Timed out waiting for request ${handlerId} to submit`
@@ -339,7 +339,7 @@ export class NewframeDriver {
   }
 
   findHarnessAccounts(state: AppState): HarnessAccounts {
-    const accounts = Object.values(state.main?.accounts || {}) as AccountInfo[]
+    const accounts = Object.values(state.main?.accounts ?? {}) as AccountInfo[]
     const harness = accounts.find((account) => {
       return [account.id, account.address].some(
         (value) => String(value || '').toLowerCase() === harnessAccountAddress
@@ -347,7 +347,7 @@ export class NewframeDriver {
     })
     const vitalik = accounts.find((account) => {
       return [account.ensName, account.name].some(
-        (value) => String(value || '').toLowerCase() === 'vitalik.eth'
+        (value) => String(value ?? '').toLowerCase() === 'vitalik.eth'
       )
     })
 
@@ -378,7 +378,7 @@ export class NewframeDriver {
     await dialog.waitFor({ state: 'visible' })
     await dialog.getByRole('textbox', { name: 'Search accounts' }).fill(searchValue)
 
-    const displayName = account.ensName || account.name || ''
+    const displayName = account.ensName ?? account.name ?? ''
     const shortAddress = `${account.address.slice(0, 5)}…${account.address.slice(-4)}`
     const escapedName = (displayName || shortAddress).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     const row = dialog.getByRole('button', { name: new RegExp(escapedName, 'i') }).first()
@@ -409,14 +409,14 @@ export class NewframeDriver {
 
   async waitForSelectedAccount(account: AccountInfo, timeoutMs = 5_000) {
     await this.waitForState(
-      (state) => String(state.main?.currentAccount || '').toLowerCase() === account.id.toLowerCase(),
+      (state) => String(state.main?.currentAccount ?? '').toLowerCase() === account.id.toLowerCase(),
       timeoutMs,
       `Expected selected account to be ${account.id}`
     )
   }
 
   async setSelectedAccount(account: AccountInfo) {
-    const selected = String((await this.getAppState()).main?.currentAccount || '').toLowerCase()
+    const selected = String((await this.getAppState()).main?.currentAccount ?? '').toLowerCase()
     if (selected !== account.id.toLowerCase()) {
       await this.executeCommand(this.tray, { type: 'account.select', accountId: account.id })
     }
@@ -437,11 +437,11 @@ export class NewframeDriver {
   }
 
   nativeAnvilBalance(state: AppState, address: string) {
-    const balances = state.main?.balances?.[address.toLowerCase()] || []
+    const balances = state.main?.balances?.[address.toLowerCase()] ?? []
     return balances.find((balance) => {
       return (
         Number(balance.chainId) === anvilChainId &&
-        String(balance.address || '').toLowerCase() === nativeCurrencyAddress
+        String(balance.address ?? '').toLowerCase() === nativeCurrencyAddress
       )
     })
   }
@@ -469,7 +469,7 @@ export class NewframeDriver {
     )
     const operation = state.operations?.[operationId]?.operation
     if (operation?.status === 'failed') {
-      this.fail(operation.error?.message || 'Portfolio refresh failed')
+      this.fail(operation.error?.message ?? 'Portfolio refresh failed')
     }
   }
 
@@ -592,7 +592,7 @@ export class NewframeDriver {
       const slider = document.querySelector<HTMLInputElement>(
         'input[type="range"][aria-label$=" amount percentage"]'
       )
-      const tone = slider?.dataset.tone || ''
+      const tone = slider?.dataset.tone ?? ''
       let side = ''
       if (tone === 'special') {
         side = 'buy'
@@ -628,11 +628,11 @@ export class NewframeDriver {
 
   async waitForFlashOrder(predicate: (order: FlashOrder) => boolean, timeoutMs: number, message: string) {
     const state = await this.waitForState(
-      (candidate) => Object.values(candidate.main?.orders || {}).some(predicate),
+      (candidate) => Object.values(candidate.main?.orders ?? {}).some(predicate),
       timeoutMs,
       message
     )
-    return Object.values(state.main?.orders || {}).find(predicate) as FlashOrder
+    return Object.values(state.main?.orders ?? {}).find(predicate) as FlashOrder
   }
 
   async assertFlashOrderVisible(orderId: string) {

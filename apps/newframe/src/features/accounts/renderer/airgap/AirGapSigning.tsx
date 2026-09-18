@@ -29,7 +29,7 @@ export function AirGapSigning({
       return {
         live: !state.appLock.locked && pending?.requestId === requestId && pending.sessionId === sessionId,
         active: state.tray.open && !state.appLock.locked,
-        progress: pending?.progress || 0
+        progress: pending?.progress ?? 0
       }
     })
   )
@@ -70,7 +70,7 @@ export function AirGapSigning({
           return
         }
         if (!result.ok) {
-          throw new Error(result.message || 'Signing QR unavailable. Retry or cancel.')
+          throw new Error(result.message ?? 'Signing QR unavailable. Retry or cancel.')
         }
         if (!result.frames.length) {
           throw new Error('Signing QR unavailable. Retry or cancel.')
@@ -170,7 +170,7 @@ export function AirGapSigning({
                 }
                 const result = await capability.inputSignerSession({ signerId, requestId, sessionId, frame })
                 if (!result.ok) {
-                  throw new Error(result.message || 'Invalid signature QR. Retry or cancel.')
+                  throw new Error(result.message ?? 'Invalid signature QR. Retry or cancel.')
                 }
               }}
             />

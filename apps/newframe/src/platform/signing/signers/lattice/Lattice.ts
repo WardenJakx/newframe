@@ -192,7 +192,7 @@ export default class Lattice extends Signer {
     const { derivation, retries } = opts
 
     try {
-      this.derivation = derivation || this.derivation
+      this.derivation = derivation ?? this.derivation
 
       const connection = this.connection as Client
 
@@ -368,8 +368,8 @@ export default class Lattice extends Signer {
       value,
       data,
       chainId,
-      nonce: hexToInt(txJson.nonce || ''),
-      gasLimit: hexToInt(txJson.gasLimit || ''),
+      nonce: hexToInt(txJson.nonce ?? ''),
+      gasLimit: hexToInt(txJson.gasLimit ?? ''),
       useEIP155: true,
       signerPath: this.getPath(index)
     }

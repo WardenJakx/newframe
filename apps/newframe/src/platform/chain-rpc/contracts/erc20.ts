@@ -21,7 +21,7 @@ function createEip1193Wrapper(chainId: number, provider: Erc20ProviderPort) {
       new Promise((resolve, reject) => {
         const wrappedPayload = {
           method: request.method,
-          params: request.params || [],
+          params: request.params ?? [],
           id: 1,
           jsonrpc: '2.0',
           _origin: 'newframe-internal',
@@ -30,7 +30,7 @@ function createEip1193Wrapper(chainId: number, provider: Erc20ProviderPort) {
 
         provider.sendAsync(wrappedPayload, (error: any, response: any) => {
           if (error || response?.error) {
-            return reject(error || response.error)
+            return reject(error ?? response.error)
           }
           resolve(response?.result)
         })
@@ -103,7 +103,7 @@ export default class Erc20Contract {
         .then((supply: bigint) => supply.toString())
         .catch(() => '') // totalSupply is mandatory on the ERC20 interface
     ])
-    const decimals = Number(calls[0] || 0)
+    const decimals = Number(calls[0] ?? 0)
 
     return {
       decimals: Number.isFinite(decimals) ? decimals : 0,

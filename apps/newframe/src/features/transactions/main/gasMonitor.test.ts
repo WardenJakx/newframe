@@ -50,7 +50,7 @@ describe('#getFeeHistory', () => {
 
     requestHandlers = {
       eth_feeHistory: mock((params) => {
-        const numBlocks = parseInt(params[0] || '0x', 16)
+        const numBlocks = parseInt(params[0] ?? '0x', 16)
 
         return {
           // base fees include the requested number of blocks plus the next block
@@ -81,7 +81,7 @@ function fillEmptySlots(arr: any, targetLength: any, value: any) {
   let i = 0
 
   while (i < targetLength) {
-    target[i] = target[i] || value
+    target[i] = target[i] ?? value
     i += 1
   }
 

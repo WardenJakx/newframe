@@ -23,7 +23,7 @@ export interface ImageService {
 
 function httpsImageUrl(value: unknown) {
   try {
-    const url = new URL(String(value || '').trim())
+    const url = new URL(String(value ?? '').trim())
     return url.protocol === 'https:' ? url.toString() : ''
   } catch {
     return ''

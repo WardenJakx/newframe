@@ -43,7 +43,7 @@ export function AssetDetailsView({
   onTrade: () => void
 }) {
   const chain = networks[asset.chainId] || {}
-  const price = Number(asset?.rate?.usdRate || 0)
+  const price = Number(asset?.rate?.usdRate ?? 0)
   const nativeAsset = isNativeCurrency(asset.address)
   const detailRow = (label: string, value: React.ReactNode, monospace = false) => (
     <DetailRow code={monospace} label={label} value={value} />
@@ -117,7 +117,7 @@ export function AssetDetailsView({
                   {asset.symbol}
                 </Text>
                 <Text tone='secondary' truncate variant='supporting'>
-                  {chain.name || `Chain ${asset.chainId}`}
+                  {chain.name ?? `Chain ${asset.chainId}`}
                 </Text>
               </Stack>
             </Stack>
@@ -135,7 +135,7 @@ export function AssetDetailsView({
                   size='large'
                 />
                 <Text truncate variant='label'>
-                  {chain.name || `Chain ${asset.chainId}`}
+                  {chain.name ?? `Chain ${asset.chainId}`}
                 </Text>
               </Stack>
             )}

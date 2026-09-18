@@ -23,7 +23,7 @@ type RequestItemProps = {
 }
 
 const getElapsedTime = (req: RequestItemRequestView) => {
-  const elapsed = Date.now() - (req.created || 0)
+  const elapsed = Date.now() - (req.created ?? 0)
   const secs = Math.floor(elapsed / 1000)
   const mins = Math.floor(secs / 60)
   const hrs = Math.floor(mins / 60)
@@ -44,10 +44,10 @@ const getElapsedTime = (req: RequestItemRequestView) => {
 }
 
 function requestTone(status?: string) {
-  if (['sent', 'sending', 'verifying', 'confirming', 'confirmed'].includes(status || '')) {
+  if (['sent', 'sending', 'verifying', 'confirming', 'confirmed'].includes(status ?? '')) {
     return 'success' as const
   }
-  if (['error', 'declined'].includes(status || '')) {
+  if (['error', 'declined'].includes(status ?? '')) {
     return 'danger' as const
   }
   return 'accent' as const
@@ -77,10 +77,10 @@ export default function RequestItem({
     return () => clearInterval(timer)
   }, [req])
 
-  const status = (req.status || 'pending').toLowerCase()
-  const notice = (req.notice || '').toLowerCase()
+  const status = (req.status ?? 'pending').toLowerCase()
+  const notice = (req.notice ?? '').toLowerCase()
   const tone = requestTone(req.status)
-  const inactive = ['error', 'declined', 'confirmed'].includes(req.status || '')
+  const inactive = ['error', 'declined', 'confirmed'].includes(req.status ?? '')
   let state: 'failed' | 'completed' | 'pending' = 'pending'
   if (inactive) {
     state = tone === 'danger' ? 'failed' : 'completed'

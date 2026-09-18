@@ -56,13 +56,13 @@ function activityRequestLike(activity: ActivityRecord) {
   return {
     ...activity,
     type: 'transaction',
-    data: activity.data || {},
-    recognizedActions: activity.recognizedActions || [],
+    data: activity.data ?? {},
+    recognizedActions: activity.recognizedActions ?? [],
     status: requestStatusFromActivity(activity.status),
     notice: transactionStatusLabel(activity.status),
     tx: {
       hash: activity.hash,
-      confirmations: activity.confirmations || 0,
+      confirmations: activity.confirmations ?? 0,
       receipt: activity.receipt
     }
   }
@@ -114,7 +114,7 @@ export function activityBalanceChangeLabel(
     const token = change.assetAddress ? tokenForAddress?.(change.assetAddress) : undefined
     const decimals = Number.isInteger(token?.decimals) ? token?.decimals : change.decimals
     const amount = Number.isInteger(decimals) ? formatUnits(toBigInt(change.amount) ?? 0n, decimals) : '?'
-    return `${sign}${amount} ${token?.symbol || change.symbol || '?'}`
+    return `${sign}${amount} ${(token?.symbol ?? change.symbol) || '?'}`
   })
   const remaining = changes.length - labels.length
 
@@ -127,22 +127,22 @@ export function activityGasLabel(activity: ActivityRecord, nativeSymbol = 'ETH')
 }
 
 export function activityAssetEffect(activity: ActivityRecord, nativeSymbol = 'ETH') {
-  const actionIds = (activity.recognizedActions || []).map((action) => action.id)
+  const actionIds = (activity.recognizedActions ?? []).map((action) => action.id)
   const recognizedAssetAction = actionIds.some(
     (id) => typeof id === 'string' && ['erc20:transfer', 'erc20:approve', 'erc20:revoke'].includes(id)
   )
-  const decodedAssetAction = ['approve', 'transfer'].includes(activity.decodedData?.method || '')
+  const decodedAssetAction = ['approve', 'transfer'].includes(activity.decodedData?.method ?? '')
   const nativeTransfer =
     activity.classification === 'NATIVE_TRANSFER' ||
-    (activity.display?.title || '').startsWith(`Send ${nativeSymbol}`)
-  const titleMatch = /^(Send|Approve|Revoke)\s+(.+?)(?:\s+allowance)?$/.exec(activity.display?.title || '')
-  const token = activity.tokenData || {}
+    (activity.display?.title ?? '').startsWith(`Send ${nativeSymbol}`)
+  const titleMatch = /^(Send|Approve|Revoke)\s+(.+?)(?:\s+allowance)?$/.exec(activity.display?.title ?? '')
+  const token = activity.tokenData ?? {}
   const withAssetMetadata = (effect: ActivityBalanceChange): ActivityBalanceChange => ({
     ...effect,
     ...(effect.kind !== 'native' && (effect.assetAddress || token.address || activity.data?.to)
-      ? { assetAddress: effect.assetAddress || token.address || activity.data?.to }
+      ? { assetAddress: effect.assetAddress ?? token.address ?? activity.data?.to }
       : {}),
-    ...(effect.logoURI || token.logoURI ? { logoURI: effect.logoURI || token.logoURI } : {})
+    ...(effect.logoURI || token.logoURI ? { logoURI: effect.logoURI ?? token.logoURI } : {})
   })
 
   const balanceEffect = activityBalanceChanges(activity, nativeSymbol).find(
@@ -174,7 +174,7 @@ export function activityAssetEffect(activity: ActivityRecord, nativeSymbol = 'ET
   }
 
   const [, action, displaySymbol] = titleMatch
-  const symbol = token.symbol || displaySymbol
+  const symbol = token.symbol ?? displaySymbol
   const isNative = action === 'Send' && symbol === nativeSymbol
   let kind: 'allowance' | 'erc20' | 'native' = 'allowance'
   if (isNative) {
@@ -187,10 +187,10 @@ export function activityAssetEffect(activity: ActivityRecord, nativeSymbol = 'ET
     id: 'activity-display-asset',
     kind,
     direction: action === 'Send' ? 'out' : 'neutral',
-    label: activity.display?.title || 'Asset',
+    label: activity.display?.title ?? 'Asset',
     symbol,
     ...(!isNative && (token.address || activity.data?.to)
-      ? { assetAddress: token.address || activity.data?.to }
+      ? { assetAddress: token.address ?? activity.data?.to }
       : {}),
     ...(token.logoURI ? { logoURI: token.logoURI } : {})
   }
@@ -213,7 +213,7 @@ export function createActivityRows({
   return Object.values(activity)
     .map(projectActivityRecord)
     .filter((record): record is ActivityViewRecord => {
-      const recordAddress = String(record.account || record.address || '').toLowerCase()
+      const recordAddress = String(record.account ?? record.address ?? '').toLowerCase()
       const chainId = Number(record.chainId)
       const chain = networks[chainId]
       return (

@@ -46,7 +46,7 @@ export function createInitialSendState(assetId?: string | null): SendWorkflowSta
     recipient: null,
     recipientInput: '',
     recipientOpen: true,
-    selectedAssetKey: assetId || '',
+    selectedAssetKey: assetId ?? '',
     tokenOpen: false,
     tokenRowsVisible: INITIAL_SEND_TOKEN_ROWS
   }

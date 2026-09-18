@@ -57,7 +57,7 @@ async function fetchTokenBalances(address: Address, tokens: Token[]) {
 
 async function chainBalanceScan(address: string, chains?: number[]) {
   try {
-    const availableChains = chains || (await getChains())
+    const availableChains = chains ?? (await getChains())
     const chainBalances = await balances.getCurrencyBalances(address, availableChains)
 
     sendToMainProcess({ type: 'chainBalances', balances: chainBalances, address })

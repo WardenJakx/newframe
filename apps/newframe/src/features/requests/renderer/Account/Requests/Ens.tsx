@@ -61,7 +61,7 @@ const EnsOverview = ({ type, data, identities = {} }: EnsOverviewProps) => {
       <Stack align='center' gap='xsmall'>
         {line('Registering ENS Name')}
         {line(data.name, true)}
-        {line(formatDuration(data.duration || 0))}
+        {line(formatDuration(data.duration ?? 0))}
       </Stack>
     )
   }
@@ -71,14 +71,14 @@ const EnsOverview = ({ type, data, identities = {} }: EnsOverviewProps) => {
       <Stack align='center' gap='xsmall'>
         {line('Renewing ENS Name')}
         {line(data.name, true)}
-        {line(formatDuration(data.duration || 0))}
+        {line(formatDuration(data.duration ?? 0))}
       </Stack>
     )
   }
 
   if (type === 'transfer') {
     const { name, tokenId, from, to } = data
-    const display = name || tokenId
+    const display = name ?? tokenId
 
     return (
       <Stack align='center' gap='xsmall'>

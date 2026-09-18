@@ -9,8 +9,8 @@ export function selectSendAsset(
   selectedAssetKey?: string | null
 ): BalanceSummary | null {
   return (
-    balances.find((balance) => toCanonicalAssetId(balance) === selectedAssetKey) ||
-    resolveSendAssetFromRouteAssetId(selectedAssetKey, balances) ||
+    (balances.find((balance) => toCanonicalAssetId(balance) === selectedAssetKey) ??
+      resolveSendAssetFromRouteAssetId(selectedAssetKey, balances)) ||
     balances[0] ||
     null
   )
@@ -52,7 +52,7 @@ export function projectSendSubmission({
   }
 
   return {
-    error: operation?.status === 'failed' ? operation.error?.message || '' : '',
+    error: operation?.status === 'failed' ? (operation.error?.message ?? '') : '',
     status,
     submitting
   }

@@ -15,7 +15,7 @@ function erc20TransferRecipient(calldata?: string) {
 }
 
 function tokenTransferRecipients(activity: SendActivity) {
-  const recognizedRecipients = (activity.recognizedActions || []).flatMap((action) => {
+  const recognizedRecipients = (activity.recognizedActions ?? []).flatMap((action) => {
     const recipient = normalizeAddress(action.data?.recipient?.address)
     return action.id === 'erc20:transfer' && recipient ? [recipient] : []
   })
@@ -47,7 +47,7 @@ export function hasSentToAddress({
     const recordSender =
       typeof record.data?.from === 'string'
         ? normalizeAddress(record.data.from)
-        : normalizeAddress(record.account || record.address)
+        : normalizeAddress(record.account ?? record.address)
     if (recordSender !== sender) {
       return false
     }

@@ -231,7 +231,7 @@ const PermitRequest = ({ capabilities, req, originName, favicon, step, chainData
     }
   }
 
-  return <div key={req.id || req.handlerId}>{renderStep()}</div>
+  return <div key={req.id ?? req.handlerId}>{renderStep()}</div>
 }
 
 export default PermitRequest

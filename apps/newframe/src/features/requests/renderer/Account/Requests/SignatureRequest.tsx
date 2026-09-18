@@ -62,7 +62,7 @@ export default function MessageToSign({
 }: MessageToSignProps) {
   const message = req.data.decodedMessage
   const signIn = useMemo(() => parseSignInMessage(message), [message])
-  const requester = originName || req.origin
+  const requester = originName ?? req.origin
   const requesterAuthority = authority(requester)
   const domainMismatch = signIn && (!requesterAuthority || requesterAuthority !== authority(signIn.domain))
   const addressMismatch = signIn && signingAddress.toLowerCase() !== signIn.address.toLowerCase()

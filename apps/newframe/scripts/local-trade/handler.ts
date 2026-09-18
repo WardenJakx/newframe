@@ -72,10 +72,10 @@ interface LocalOrderRecord {
   updatedAt: string
 }
 
-const ANVIL_RPC_URL = process.env.ANVIL_RPC_URL || process.env.FLASH_ANVIL_RPC_URL || 'http://127.0.0.1:8545'
+const ANVIL_RPC_URL = process.env.ANVIL_RPC_URL ?? process.env.FLASH_ANVIL_RPC_URL ?? 'http://127.0.0.1:8545'
 const GAS_PAYER_PRIVATE_KEY =
-  process.env.FLASH_ANVIL_GAS_PAYER_PRIVATE_KEY ||
-  process.env.ANVIL_DEPLOYER_PRIVATE_KEY ||
+  process.env.FLASH_ANVIL_GAS_PAYER_PRIVATE_KEY ??
+  process.env.ANVIL_DEPLOYER_PRIVATE_KEY ??
   '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
 const MARKET_FILL_DELAY_MS = 3_000
 const LOCAL_CHAIN_SLUG = 'anvil'
@@ -393,7 +393,7 @@ function checksumAddress(address: string, label: string) {
 }
 
 function localAssetFromAddress(chain: unknown, address: unknown, label: string) {
-  const chainSlug = String(chain || LOCAL_CHAIN_SLUG)
+  const chainSlug = String(chain ?? LOCAL_CHAIN_SLUG)
     .trim()
     .toLowerCase()
   const chainId = getFlashChainIdFromSlug(chainSlug)
@@ -401,7 +401,7 @@ function localAssetFromAddress(chain: unknown, address: unknown, label: string) 
     throw new Error(`Unsupported local Flash ${label} chain`)
   }
 
-  const normalized = String(address || '')
+  const normalized = String(address ?? '')
     .trim()
     .toLowerCase()
   const asset = getFlashAssetsForChain(chainId).find((candidate) => {
@@ -424,7 +424,7 @@ function localSide(side: unknown): FlashTradeSide {
 }
 
 function localOrderType(orderType: unknown): FlashOrderType {
-  const value = String(orderType || FLASH_MARKET_ORDER_TYPE)
+  const value = String(orderType ?? FLASH_MARKET_ORDER_TYPE)
   const supported = [
     FLASH_MARKET_ORDER_TYPE,
     FLASH_LIMIT_ORDER_TYPE,
@@ -444,8 +444,8 @@ function localOrderType(orderType: unknown): FlashOrderType {
 
 function settlementSpentAsset(spentAsset: FlashAsset) {
   return spentAsset.isNative
-    ? getFlashAssetsForChain(spentAsset.chainId).find((asset) => asset.symbol === FLASH_WETH_ASSET.symbol) ||
-        spentAsset
+    ? (getFlashAssetsForChain(spentAsset.chainId).find((asset) => asset.symbol === FLASH_WETH_ASSET.symbol) ??
+        spentAsset)
     : spentAsset
 }
 
@@ -691,7 +691,7 @@ function localBridgeQuoteId({
 }
 
 async function buildQuote(body: Record<string, any>) {
-  const accountAddress = checksumAddress(String(body.funderAddress || ''), 'funder')
+  const accountAddress = checksumAddress(String(body.funderAddress ?? ''), 'funder')
   const recipientAddress = body.recipientAddress
     ? checksumAddress(String(body.recipientAddress), 'recipient')
     : accountAddress
@@ -707,7 +707,7 @@ async function buildQuote(body: Record<string, any>) {
     validationError('Local Flash cross-chain trades support market orders only')
   }
   const orderParameters = validateOrderParameters(body, orderType, side)
-  const qty = cleanFlashDecimal(body.qty || body.inputAmount)
+  const qty = cleanFlashDecimal(body.qty ?? body.inputAmount)
   const amount = positiveFlashNumber(qty)
 
   if (!amount) {
@@ -750,7 +750,7 @@ async function buildQuote(body: Record<string, any>) {
     spentAsset
   })
   const expiresAt =
-    orderParameters.expireTime ||
+    orderParameters.expireTime ??
     new Date(
       (orderType === FLASH_TWAP_ORDER_TYPE && orderParameters.startTime
         ? Date.parse(orderParameters.startTime)
@@ -816,7 +816,7 @@ async function buildQuote(body: Record<string, any>) {
     fees: { estimatedFeeNotional },
     wrap,
     evm: {
-      approveTx: approvalAction?.tx || null,
+      approveTx: approvalAction?.tx ?? null,
       permitTypedData: null,
       orderTypedData: JSON.stringify(typedData)
     },
@@ -881,15 +881,15 @@ function orderResponse(order: LocalOrderRecord) {
         ? {
             targetAmount,
             contraAmount,
-            averagePrice: order.quote.rate || null,
+            averagePrice: order.quote.rate ?? null,
             averageNotionalPrice: null
           }
         : null,
-    limitNotionalPrice: localParameters.limitNotionalPrice || null,
-    trigger: Array.isArray(localParameters.triggers) ? localParameters.triggers[0] || null : null,
+    limitNotionalPrice: localParameters.limitNotionalPrice ?? null,
+    trigger: Array.isArray(localParameters.triggers) ? (localParameters.triggers[0] ?? null) : null,
     brackets: null,
-    maxPriceImpact: localParameters.maxPriceImpact || null,
-    twapBucketCount: localParameters.twapBucketCount || null,
+    maxPriceImpact: localParameters.maxPriceImpact ?? null,
+    twapBucketCount: localParameters.twapBucketCount ?? null,
     placedAt: order.createdAt,
     acceptedAt: order.createdAt,
     closedAt: order.open ? null : order.updatedAt,
@@ -898,19 +898,19 @@ function orderResponse(order: LocalOrderRecord) {
     inputAmount: order.quote.inputAmount,
     outputAmount: order.quote.outputAmount,
     estimatedOutputAmount: order.quote.outputAmount,
-    filledOutputAmount: order.filledOutputAmount || null,
-    fillTransactionHash: order.fillTransactionHash || null
+    filledOutputAmount: order.filledOutputAmount ?? null,
+    fillTransactionHash: order.fillTransactionHash ?? null
   }
 }
 
 function validateSubmitBody(quoteRecord: LocalQuoteRecord, body: Record<string, any>) {
   const quoteBody = quoteRecord.body
   const quoteResponse = quoteRecord.response
-  const wrappedAsset = String(objectRecord(quoteResponse.wrap).wrappedAsset || '')
+  const wrappedAsset = String(objectRecord(quoteResponse.wrap).wrappedAsset ?? '')
   const expectedTargetAsset =
-    wrappedAsset && quoteBody.side === 'sell' ? wrappedAsset : String(quoteResponse.targetAsset || '')
+    wrappedAsset && quoteBody.side === 'sell' ? wrappedAsset : String(quoteResponse.targetAsset ?? '')
   const expectedContraAsset =
-    wrappedAsset && quoteBody.side === 'buy' ? wrappedAsset : String(quoteResponse.contraAsset || '')
+    wrappedAsset && quoteBody.side === 'buy' ? wrappedAsset : String(quoteResponse.contraAsset ?? '')
   const expectedFields: Record<string, unknown> = {
     targetChain: quoteBody.targetChain,
     contraChain: quoteBody.contraChain,
@@ -930,12 +930,12 @@ function validateSubmitBody(quoteRecord: LocalQuoteRecord, body: Record<string, 
     triggers: quoteBody.triggers
   }
 
-  const expectedQuoteId = String(quoteResponse.quoteId || '')
-  const expectedBridgeQuoteId = String(quoteResponse.bridgeQuoteId || '')
-  if (String(body.quoteId || '') !== expectedQuoteId) {
+  const expectedQuoteId = String(quoteResponse.quoteId ?? '')
+  const expectedBridgeQuoteId = String(quoteResponse.bridgeQuoteId ?? '')
+  if (String(body.quoteId ?? '') !== expectedQuoteId) {
     validationError('Local Flash submit quoteId must match the quote response')
   }
-  if (String(body.bridgeQuoteId || '') !== expectedBridgeQuoteId) {
+  if (String(body.bridgeQuoteId ?? '') !== expectedBridgeQuoteId) {
     validationError('Local Flash submit bridgeQuoteId must match the quote response')
   }
 
@@ -974,10 +974,10 @@ function storeOrder(quoteRecord: LocalQuoteRecord, body: Record<string, any>) {
   const chains = getFlashAssetPairChains(quoteRecord.quote)
   const order: LocalOrderRecord = {
     accountAddress: checksumAddress(
-      String(quoteRecord.body.funderAddress || body.funderAddress || ''),
+      String(quoteRecord.body.funderAddress ?? body.funderAddress ?? ''),
       'funder'
     ),
-    bridgeQuoteId: String(quoteRecord.response.bridgeQuoteId || '') || undefined,
+    bridgeQuoteId: String(quoteRecord.response.bridgeQuoteId ?? '') || undefined,
     cancellable: orderType !== FLASH_MARKET_ORDER_TYPE || chains.isCrossChain,
     chain: getFlashChainSlug(chains.spentChainId),
     createdAt: now,
@@ -987,7 +987,7 @@ function storeOrder(quoteRecord: LocalQuoteRecord, body: Record<string, any>) {
     orderId,
     orderType,
     quote: quoteRecord.quote,
-    quoteId: quoteRecord.quote.id || '',
+    quoteId: quoteRecord.quote.id ?? '',
     rawError: null,
     side: quoteRecord.quote.side,
     status: 'accepted',
@@ -1073,7 +1073,7 @@ function parseOrderRoute(pathname: string) {
 }
 
 function filterOrders(url: URL) {
-  const funder = String(url.searchParams.get('funderAddress') || '')
+  const funder = String(url.searchParams.get('funderAddress') ?? '')
     .trim()
     .toLowerCase()
   if (!funder) {
@@ -1081,7 +1081,7 @@ function filterOrders(url: URL) {
   }
 
   const statuses = new Set(
-    String(url.searchParams.get('statuses') || '')
+    String(url.searchParams.get('statuses') ?? '')
       .split(',')
       .map((status) =>
         status
@@ -1092,7 +1092,7 @@ function filterOrders(url: URL) {
       )
       .filter(Boolean)
   )
-  const pageSize = Math.min(200, Math.max(1, Number(url.searchParams.get('pageSize') || 50)))
+  const pageSize = Math.min(200, Math.max(1, Number(url.searchParams.get('pageSize') ?? 50)))
 
   return Array.from(orders.values())
     .filter((order) => {
@@ -1134,7 +1134,7 @@ export async function handleLocalTradeRequest(req: Request) {
 
     if (req.method === 'POST' && url.pathname === '/v1/order') {
       const body = await readJson(req)
-      const quoteReference = String(body.quoteId || body.bridgeQuoteId || '')
+      const quoteReference = String(body.quoteId ?? body.bridgeQuoteId ?? '')
       const quoteRecord = quotes.get(quoteReference)
 
       if (!quoteRecord) {
@@ -1160,7 +1160,7 @@ export async function handleLocalTradeRequest(req: Request) {
 
     if (orderRoute && req.method === 'GET' && !orderRoute.action) {
       const order = orders.get(orderRoute.orderId)
-      const funderAddress = String(url.searchParams.get('funderAddress') || '')
+      const funderAddress = String(url.searchParams.get('funderAddress') ?? '')
         .trim()
         .toLowerCase()
 

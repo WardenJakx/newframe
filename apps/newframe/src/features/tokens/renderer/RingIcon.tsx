@@ -90,7 +90,7 @@ const Glyph = ({ svgName, alt = '', svgSize = 16, img, small }: IconProps) => {
 export default function RingIcon({ color, svgName, svgSize, img, small, block, noRing, alt }: RingIconProps) {
   const styles = ringRecipe({ block, noRing, small })
   return (
-    <span className={styles.root} style={{ '--ring-color': color || 'currentColor' } as CSSProperties}>
+    <span className={styles.root} style={{ '--ring-color': color ?? 'currentColor' } as CSSProperties}>
       <span className={styles.inner}>
         <Glyph svgName={svgName} svgSize={svgSize} img={img} alt={alt} small={small} />
       </span>

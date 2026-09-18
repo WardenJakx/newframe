@@ -72,7 +72,7 @@ export const DisplayValue = (props: DisplayValueProps) => {
 
   const rendered: RenderedValue =
     value === MAX_HEX ? { displayValue: 'Unlimited' } : data[type]({ displayDecimals })
-  const approximationSymbol = rendered.approximationSymbol || ''
+  const approximationSymbol = rendered.approximationSymbol ?? ''
   const displayUnit = rendered.displayUnit
   const { displayValue } = rendered
 

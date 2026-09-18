@@ -33,7 +33,7 @@ export function AddressAvatar({
   accountType?: string
   size?: 'sm' | 'md'
 }) {
-  const normalized = address?.trim().toLowerCase() || ''
+  const normalized = address?.trim().toLowerCase() ?? ''
   const type = accountType?.toLowerCase()
   const knownType =
     type && ['ring', 'seed', 'address', 'ledger', 'trezor', 'lattice', 'safe', 'airgap'].includes(type)

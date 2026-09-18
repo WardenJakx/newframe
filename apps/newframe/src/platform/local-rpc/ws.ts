@@ -140,7 +140,7 @@ export function createWebSocketRpcTransport({
     socket.frameExtension = origins.parseFrameExtension(req)
     socket.companionInternal = Boolean(
       socket.frameExtension &&
-      new URL(req.url || '/', 'http://127.0.0.1').searchParams.get('scope') === 'internal'
+      new URL(req.url ?? '/', 'http://127.0.0.1').searchParams.get('scope') === 'internal'
     )
 
     const respond = (payload: RPCResponsePayload) => {
@@ -247,7 +247,7 @@ export function createWebSocketRpcTransport({
               log.info(
                 `<- res | ${socket.frameExtension ? 'ext' : 'ws'} | ${origin} | ${
                   payload.method
-                } | <- | ${JSON.stringify(response.result || response.error)}`
+                } | <- | ${JSON.stringify(response.result ?? response.error)}`
               )
             }
           },

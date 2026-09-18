@@ -54,8 +54,8 @@ export function OrderDetailsView({
   tokens: OrderTokenCatalog
 }) {
   const side = normalizeOrderSide(order.side)
-  const spentAsset = order.spentAsset || (side === 'buy' ? order.contraAsset : order.targetAsset)
-  const receiveAsset = order.receiveAsset || (side === 'buy' ? order.targetAsset : order.contraAsset)
+  const spentAsset = order.spentAsset ?? (side === 'buy' ? order.contraAsset : order.targetAsset)
+  const receiveAsset = order.receiveAsset ?? (side === 'buy' ? order.targetAsset : order.contraAsset)
   const spentChainId = Number(spentAsset?.chainId)
   const receiveChainId = Number(receiveAsset?.chainId)
   const isCrossChain = spentChainId !== receiveChainId
@@ -82,7 +82,7 @@ export function OrderDetailsView({
       <Stack align='center' direction='row' gap='xsmall' justify='end'>
         <ChainIcon chainId={chainId} networks={networks} networksMeta={networksMeta} size='large' />
         <Text truncate variant='supporting'>
-          {chain.name || `Chain ${chainId}`}
+          {chain.name ?? `Chain ${chainId}`}
         </Text>
       </Stack>
     )
@@ -124,8 +124,8 @@ export function OrderDetailsView({
           </Stack>
         </Stack>
         <Stack gap='none'>
-          {detailRow('Order ID', order.orderId || orderId, true)}
-          {detailRow('Provider', order.provider || order.source)}
+          {detailRow('Order ID', order.orderId ?? orderId, true)}
+          {detailRow('Provider', order.provider ?? order.source)}
           {detailRow('Environment', order.environment)}
           {detailRow('Profile', order.profile)}
           {order.accountAddress
@@ -155,7 +155,7 @@ export function OrderDetailsView({
           {detailRow('Created', orderDateTime(order.createdAt))}
           {detailRow('Updated', orderDateTime(order.updatedAt))}
           {detailRow('Terminal', orderDateTime(order.terminalAt))}
-          {detailRow('Fill hash', order.fillHash || order.fillTransactionHash, true)}
+          {detailRow('Fill hash', order.fillHash ?? order.fillTransactionHash, true)}
         </Stack>
         {rawStatusPayload ? (
           <Surface padding='small' radius='small' tone='subtle'>

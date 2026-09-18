@@ -38,7 +38,7 @@ export function useSendController({
   const { accounts, activity, balanceSummaries, currentAccount, networks, networksMeta, operations } =
     useSideTraySelector(selector)
   const [state, dispatch] = React.useReducer(sendReducer, assetId, createInitialSendState)
-  const previousAccountIdRef = React.useRef(currentAccount?.id || '')
+  const previousAccountIdRef = React.useRef(currentAccount?.id ?? '')
   const [submission, setSubmission] = React.useState<ActiveSubmission | null>(null)
   const submissionRef = React.useRef(submission)
   const setActiveSubmission = React.useCallback((next: ActiveSubmission | null) => {
@@ -56,19 +56,19 @@ export function useSendController({
   )
 
   React.useEffect(() => {
-    const accountId = currentAccount?.id || ''
+    const accountId = currentAccount?.id ?? ''
     if (previousAccountIdRef.current === accountId) {
       return
     }
 
     previousAccountIdRef.current = accountId
     const retainedAsset =
-      balanceSummaries.find((balance) => toCanonicalAssetId(balance) === state.selectedAssetKey) ||
-      resolveSendAssetFromRouteAssetId(assetId, balanceSummaries) ||
+      (balanceSummaries.find((balance) => toCanonicalAssetId(balance) === state.selectedAssetKey) ??
+        resolveSendAssetFromRouteAssetId(assetId, balanceSummaries)) ||
       balanceSummaries[0] ||
       null
     queueMicrotask(() => {
-      if ((currentAccount?.id || '') !== accountId) {
+      if ((currentAccount?.id ?? '') !== accountId) {
         return
       }
       setActiveSubmission(null)
@@ -85,10 +85,10 @@ export function useSendController({
   )
 
   const handleSubmit = React.useCallback(async () => {
-    const submittingAccountId = currentAccount?.id || ''
+    const submittingAccountId = currentAccount?.id ?? ''
     const amount = getAmountBaseUnits(state.amount, asset)
-    const balance = asset ? toBigInt(asset.balance) || 0n : 0n
-    const recipient = state.recipient?.address || state.recipientInput.trim()
+    const balance = asset ? (toBigInt(asset.balance) ?? 0n) : 0n
+    const recipient = state.recipient?.address ?? state.recipientInput.trim()
     const error = validateSendDraft({
       account: currentAccount,
       amount,
@@ -115,7 +115,7 @@ export function useSendController({
         return
       }
       setActiveSubmission(null)
-      dispatch({ type: 'validationFailed', error: response.message || 'Transaction failed.' })
+      dispatch({ type: 'validationFailed', error: response.message ?? 'Transaction failed.' })
     } catch {
       if (submissionRef.current?.operationId !== operationId) {
         return
@@ -211,7 +211,7 @@ export function useSendController({
       }
       dispatch({
         type: 'setMaxAmount',
-        amount: formatUnits(toBigInt(asset.balance) || 0n, asset.decimals)
+        amount: formatUnits(toBigInt(asset.balance) ?? 0n, asset.decimals)
       })
     },
     onShowMoreTokens: () => dispatch({ type: 'showMoreTokens' }),

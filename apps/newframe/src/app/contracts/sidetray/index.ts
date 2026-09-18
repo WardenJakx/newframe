@@ -108,7 +108,7 @@ export function resolveSendAssetFromRouteAssetId<
     }
   }
 
-  return sendableAssets[0] || null
+  return sendableAssets[0] ?? null
 }
 
 export function resolveFlashAssetFromRouteAssetId(
@@ -130,7 +130,7 @@ export function resolveFlashAssetFromRouteAssetId(
         canonicalAssetAddress(asset.isNative ? SIDE_TRAY_NATIVE_ASSET_ADDRESS : asset.address) ===
           routeAsset.address
       )
-    }) || FLASH_WETH_ASSET
+    }) ?? FLASH_WETH_ASSET
   )
 }
 

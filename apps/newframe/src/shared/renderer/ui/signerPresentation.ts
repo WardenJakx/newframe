@@ -15,7 +15,7 @@ const LABELS: Record<string, string> = {
 export const signerIconName = (type = ''): IconName =>
   (({ address: 'eye', ledger: 'ledger', trezor: 'trezor', lattice: 'lattice', safe: 'safe', airgap: 'qr' })[
     type.toLowerCase()
-  ] as IconName) || 'flame'
+  ] as IconName) ?? 'flame'
 
 export const signerTypeLabel = (type = '', fallback = 'Account') =>
   LABELS[type.toLowerCase()] || type || fallback

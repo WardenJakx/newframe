@@ -149,8 +149,8 @@ export function RequestCommand(props: RequestCommandProps) {
 
   function submittedCommand(req: TransactionRequest) {
     const chain = { type: 'ethereum' as const, id: parseInt(req.data.chainId, 16) }
-    const displayNotice = (req.notice || '').toLowerCase()
-    let displayStatus = (req.status || 'pending').toLowerCase()
+    const displayNotice = (req.notice ?? '').toLowerCase()
+    let displayStatus = (req.status ?? 'pending').toLowerCase()
     if (displayStatus === 'pending' && displayNotice === 'see signer') {
       displayStatus = 'waiting for device signature'
     } else if (displayStatus === 'verifying') {
@@ -257,7 +257,7 @@ export function RequestCommand(props: RequestCommandProps) {
           {displayStatus}
         </Text>
         {hashActions()}
-        {isCancelableRequest(req.status || '') ? (
+        {isCancelableRequest(req.status ?? '') ? (
           <Button
             appearance='ghost'
             onPress={() => declineRequest(props.capabilities.review, req)}
@@ -283,7 +283,7 @@ export function RequestCommand(props: RequestCommandProps) {
           .then(
             (result) => {
               if (!result.ok) {
-                setApprovalError(result.message || 'Could not approve request')
+                setApprovalError(result.message ?? 'Could not approve request')
               }
             },
             () => setApprovalError('Could not approve request')
@@ -425,7 +425,7 @@ export default function RequestCommandContainer(props: Omit<RequestCommandProps,
   const request = props.req as TransactionRequest | SignatureRequest
   const chainId = request.type === 'transaction' ? parseInt(request.data.chainId || '0', 16) : 0
   const signingAccount = useAccountIdentity(request.account)
-  const accountId = signingAccount?.id || request.account
+  const accountId = signingAccount?.id ?? request.account
   const { step, adjustments, feeNoticeDismissed, dismissFeeNotice } = useRequestView()
   const selector = useMemo(
     () =>

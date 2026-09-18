@@ -243,7 +243,7 @@ function resolvePath(path: string | undefined, context: FormatContext, base: unk
 }
 
 function normalizePath(path?: string) {
-  return (path || '').replace(/^#\./, '').replace(/^\./, '')
+  return (path ?? '').replace(/^#\./, '').replace(/^\./, '')
 }
 
 function normalizeComparableValue(value: unknown) {
@@ -271,7 +271,7 @@ function getVisibility(rule: VisibleRule | undefined, value: unknown) {
     return { visible: false, valid: true }
   }
 
-  const required = rule.mustMatch || rule.mustBe
+  const required = rule.mustMatch ?? rule.mustBe
   if (required) {
     return { visible: false, valid: required.some((expected) => matchesPrimitive(value, expected)) }
   }
@@ -308,7 +308,7 @@ function getTokenMetadata(context: FormatContext) {
 
   return {
     decimals: typeof token.decimals === 'number' ? token.decimals : undefined,
-    symbol: token.ticker || token.symbol || token.name
+    symbol: token.ticker ?? token.symbol ?? token.name
   }
 }
 
@@ -377,7 +377,7 @@ function formatFieldValue(field: Field, value: unknown, context: FormatContext) 
     const metadata = getTokenMetadata(context)
 
     if (threshold !== null && amount !== null && amount >= threshold) {
-      return `${field.params?.message || 'Unlimited'}${metadata?.symbol ? ` ${metadata.symbol}` : ''}`
+      return `${field.params?.message ?? 'Unlimited'}${metadata?.symbol ? ` ${metadata.symbol}` : ''}`
     }
 
     if (amount !== null && metadata?.decimals !== undefined) {
@@ -402,7 +402,7 @@ function formatFieldValue(field: Field, value: unknown, context: FormatContext) 
     return formatUnit(value, field)
   }
   if (field.format === 'enum') {
-    return getEnumValue(value, field, context) || valueToText(value)
+    return getEnumValue(value, field, context) ?? valueToText(value)
   }
   if (typeof value === 'string' && isAddress(value)) {
     return getAddress(value)
@@ -436,7 +436,7 @@ function fieldToRows(
       if (!rows) {
         return null
       }
-      const nestedRows = fieldsToRows(resolvedField.fields || [], context, item, formattedByPath)
+      const nestedRows = fieldsToRows(resolvedField.fields ?? [], context, item, formattedByPath)
       if (!nestedRows) {
         return null
       }
@@ -457,7 +457,7 @@ function fieldToRows(
 
   return [
     {
-      label: resolvedField.label || resolvedField.path || '',
+      label: resolvedField.label ?? resolvedField.path ?? '',
       value: formattedValue,
       path: resolvedField.path,
       format: resolvedField.format
@@ -520,7 +520,7 @@ function getTypedMessageFormatMatch(
   typedData: TypedData,
   descriptor: Erc7730Descriptor
 ): FormatMatch | undefined {
-  const formats = descriptor.display?.formats || {}
+  const formats = descriptor.display?.formats ?? {}
   const primaryType = String(typedData.primaryType)
   let encodeType: string | undefined
   let encodeTypeHash: string | undefined
@@ -627,7 +627,7 @@ export function formatErc7730TypedData(
     }
   }
   const formattedByPath = new Map<string, string>()
-  const rows = fieldsToRows(match.format.fields || [], context, match.values, formattedByPath)
+  const rows = fieldsToRows(match.format.fields ?? [], context, match.values, formattedByPath)
   if (!rows) {
     return undefined
   }
@@ -765,7 +765,7 @@ function selectIndexEntry(entries: Eip712IndexEntry[], encodeTypeHash: string) {
       (entry) =>
         !entry.encodeTypeHashes?.length ||
         entry.encodeTypeHashes.some((hash) => hash.toLowerCase() === encodeTypeHash)
-    ) || entries[0]
+    ) ?? entries[0]
   )
 }
 
