@@ -340,7 +340,7 @@ test('publishes real owner signatures over HTTP and retrieves the retained bytes
     threshold: 2,
     pageSize: 1
   })
-  const server = Bun.serve({ port: 0, hostname: '127.0.0.1', fetch: handler.fetch })
+  const server = Bun.serve({ port: 0, hostname: '127.0.0.1', fetch: (request) => handler.fetch(request) })
   servers.push(server)
   const client = createSafeClient({ request: fetch, networks: { 31337: `${server.url}api` } })
   const configuration = await client.configuration(31337, safe)

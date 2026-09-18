@@ -27,7 +27,7 @@ export function createProductionSecurityAdapters(
 ): Omit<SecurityServicePorts, 'operations' | 'store'> & { dispose(): void } {
   const callbacks = createOneResultCallbackBoundary()
   return {
-    dispose: callbacks.dispose,
+    dispose: () => callbacks.dispose(),
     authentication: {
       lock: async () => {
         await callbacks.run<true>((done) => external.signers.lockApp((error) => done(error, true)))

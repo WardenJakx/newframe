@@ -52,7 +52,7 @@ beforeEach(() => {
     projectRendererState
   })
   stateStream.registerHandlers(ipc)
-  connectState = stateStream.connectState
+  connectState = (event) => stateStream.connectState(event)
 })
 
 afterEach(() => {

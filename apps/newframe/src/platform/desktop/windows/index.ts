@@ -131,7 +131,13 @@ function initWindow(id: string, opts: Electron.BrowserWindowConstructorOptions, 
   if (!rendererAuthorization) {
     throw new Error('Renderer authorization must be configured before creating application windows')
   }
-  const window = createWindow(id, rendererAuthorization.registerRenderer, opts)
+  const authorization = rendererAuthorization
+  const window = createWindow(
+    id,
+    (webContents, clientType, entrypoint) =>
+      authorization.registerRenderer(webContents, clientType, entrypoint),
+    opts
+  )
   windows[id] = window
   const removeRendererReady = rendererReady
     ? onTrayRendererReady(window.webContents, rendererReady)
@@ -411,7 +417,10 @@ const initialize = () => {
     if (!rendererAuthorization) {
       throw new Error('Renderer authorization must be configured before starting application windows')
     }
-    sideTrayManager.start(rendererAuthorization.registerRenderer)
+    const authorization = rendererAuthorization
+    sideTrayManager.start((webContents, clientType, entrypoint) =>
+      authorization.registerRenderer(webContents, clientType, entrypoint)
+    )
     sideTrayManagerStarted = true
   }
 

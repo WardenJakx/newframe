@@ -281,7 +281,7 @@ const accountMainRecipe = cva({ base: { minHeight: 0, flex: 1, overflow: 'hidden
 interface AccountViewProps {
   accountViewIcon?: ReactNode
   accountViewTitle?: string
-  back(): void
+  back: () => void
   children: ReactNode
 }
 

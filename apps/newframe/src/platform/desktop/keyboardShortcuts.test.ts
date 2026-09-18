@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
 
-import { globalShortcut } from 'electron'
+import { electronMock } from '../../../test/support/electron.mock'
 
 let registerShortcut: any
+const { register, unregister } = electronMock.globalShortcut
 
 describe('registerShortcut', () => {
   const shortcut = {
@@ -20,12 +21,12 @@ describe('registerShortcut', () => {
   it('should unregister an existing shortcut', () => {
     registerShortcut(shortcut, () => {})
 
-    expect(globalShortcut.unregister).toHaveBeenCalledWith('Alt+/')
-    expect(globalShortcut.unregister).toHaveBeenCalledTimes(1)
+    expect(unregister).toHaveBeenCalledWith('Alt+/')
+    expect(unregister).toHaveBeenCalledTimes(1)
   })
 
   it('should register the new shortcut', () => {
-    ;(globalShortcut.register as any).mockImplementationOnce((accelerator: any, handlerFn: any) =>
+    register.mockImplementationOnce((accelerator: string, handlerFn: (accelerator: string) => void) =>
       handlerFn(accelerator)
     )
 
@@ -36,8 +37,8 @@ describe('registerShortcut', () => {
       }
       registerShortcut(shortcut, handlerFn)
 
-      expect(globalShortcut.register).toHaveBeenCalledWith('Alt+/', expect.any(Function))
-      expect(globalShortcut.register).toHaveBeenCalledTimes(1)
+      expect(register).toHaveBeenCalledWith('Alt+/', expect.any(Function))
+      expect(register).toHaveBeenCalledTimes(1)
     })
   })
 })

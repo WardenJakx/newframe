@@ -48,7 +48,7 @@ export function createProductionAccountOnboardingAdapters(
 } {
   const callbacks = createOneResultCallbackBoundary()
   return {
-    dispose: callbacks.dispose,
+    dispose: () => callbacks.dispose(),
     hardware: {
       configureLattice(deviceId, deviceName) {
         external.store.getState().updateLattice(deviceId, {
