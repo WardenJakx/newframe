@@ -150,7 +150,7 @@ createRoot(document.getElementById('preview')).render(<Preview />)
       ]
     })
     if (!result.success) {
-      throw new Error(`Preview build failed:\n${result.logs.join('\n')}`)
+      throw new Error(`Preview build failed:\n${result.logs.map((log) => log.message).join('\n')}`)
     }
     stopped.signal.throwIfAborted()
     const outputs = new Map(result.outputs.map((output) => [`/${relative(outdir, output.path)}`, output]))

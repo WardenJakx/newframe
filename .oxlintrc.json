@@ -234,7 +234,7 @@
         "no-implied-eval": "off",
         "typescript/no-implied-eval": "error",
         "typescript/no-misused-spread": "error",
-        "typescript/no-base-to-string": "warn",
+        "typescript/no-base-to-string": "error",
         "typescript/use-unknown-in-catch-callback-variable": "error",
         "typescript/consistent-type-imports": [
           "error",
@@ -348,7 +348,7 @@
         "no-implied-eval": "off",
         "typescript/no-implied-eval": "error",
         "typescript/no-misused-spread": "error",
-        "typescript/no-base-to-string": "warn",
+        "typescript/no-base-to-string": "error",
         "typescript/use-unknown-in-catch-callback-variable": "error",
         "typescript/consistent-type-imports": [
           "error",
