@@ -2,10 +2,16 @@ import { describe, expect, it } from 'bun:test'
 
 import { intToHex } from '@ethereumjs/util'
 
-import { createGasCalculator as createGasCalculatorTyped } from './gas'
+import { createGasCalculator as createGasCalculatorTyped, type Block } from './gas'
 
 // real function under test, exercised with partial fee history fixtures
-const createGasCalculator = createGasCalculatorTyped as any
+type FeeHistoryBlock = Omit<Block, 'gasUsedRatio'> & { gasUsedRatio?: number }
+const createGasCalculator = (chainId?: string | number) => {
+  const calculator = createGasCalculatorTyped(String(chainId ?? ''))
+  return {
+    calculateGas: async (blocks: FeeHistoryBlock[]) => calculator.calculateGas(blocks as Block[])
+  }
+}
 import { gweiToHex } from '../../../../test/support/util'
 
 describe('#createGasCalculator', () => {

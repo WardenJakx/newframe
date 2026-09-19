@@ -42,7 +42,6 @@ describe('#createBalance', () => {
 
 describe('#sortByTotalValue', () => {
   const mockBalance = (totalValue: number, balance = 0, decimals = 0) => ({
-    address: '0x1111111111111111111111111111111111111111',
     totalValue,
     chainId: 1,
     decimals,

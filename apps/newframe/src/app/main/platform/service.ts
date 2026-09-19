@@ -118,7 +118,7 @@ export function createPlatformService(ports: PlatformServicePorts) {
           command.feature === 'trade' ? command.chainId : undefined
         )
       })!
-      const exists = state.main.frames[frame.id]
+      const exists = (state.main.frames as Record<string, unknown>)[frame.id]
       state.setSideTray(frame)
       if (exists) {
         ports.windows.refocusSideTray(frame.id)

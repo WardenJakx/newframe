@@ -48,6 +48,22 @@ type LatticeSigningOptions = {
   data: SigningPayload | LatticeUnsignedTransaction
 }
 
+interface LatticeUnsignedTransaction {
+  chainId: string
+  currency?: 'BTC' | 'ETH' | 'ETH_MSG'
+  data?: string
+  gasLimit: number
+  gasPrice?: number
+  maxFeePerGas?: number
+  maxPriorityFeePerGas?: number
+  nonce: number
+  signerPath: number[]
+  to?: string
+  type?: number
+  useEIP155: boolean
+  value?: string
+}
+
 type LatticeResponseError = {
   name: 'LatticeResponseError'
   responseCode: number
@@ -354,7 +370,12 @@ export default class Lattice extends Signer {
         const unsignedTx = this.createTransaction(index, rawTx.type, latticeTx.chainId, tx)
         const signingOptions = await this.createTransactionSigningOptions(tx, unsignedTx)
 
-        const sig = await requestSignature(connection, signingOptions)
+        const signedTx = await connection.sign(signingOptions as Parameters<Client['sign']>[0])
+        const sig = signedTx?.sig as LatticeSignature | undefined
+
+        if (sig?.v === undefined) {
+          throw new Error('Lattice returned an incomplete signature')
+        }
 
         return {
           v: sig.v.toString(16),
@@ -423,15 +444,13 @@ export default class Lattice extends Signer {
       unsignedTx.type = type
     }
 
-    if ('gasPrice' in txJson && txJson.gasPrice !== undefined) {
-      unsignedTx.gasPrice = hexToInt(txJson.gasPrice)
-    }
-    if ('maxFeePerGas' in txJson && txJson.maxFeePerGas !== undefined) {
-      unsignedTx.maxFeePerGas = hexToInt(txJson.maxFeePerGas)
-    }
-    if ('maxPriorityFeePerGas' in txJson && txJson.maxPriorityFeePerGas !== undefined) {
-      unsignedTx.maxPriorityFeePerGas = hexToInt(txJson.maxPriorityFeePerGas)
-    }
+    const optionalFields = ['gasPrice', 'maxFeePerGas', 'maxPriorityFeePerGas'] as const
+
+    optionalFields.forEach((field) => {
+      if (field in txJson) {
+        unsignedTx[field] = hexToInt(txJson[field] ?? '')
+      }
+    })
 
     return unsignedTx
   }
@@ -439,7 +458,7 @@ export default class Lattice extends Signer {
   private async createTransactionSigningOptions(
     tx: TypedTransaction,
     unsignedTx: LatticeUnsignedTransaction
-  ): Promise<LatticeSigningOptions> {
+  ) {
     const fwVersion = (this.connection as Client).getFwVersion()
 
     if (fwVersion && (fwVersion.major > 0 || fwVersion.minor >= 15)) {

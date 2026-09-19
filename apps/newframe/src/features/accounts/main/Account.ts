@@ -55,6 +55,11 @@ interface AccountOptions {
   options?: SignerOptions
 }
 
+interface PanelNavigationEntry {
+  data?: { id?: string; requestId?: string }
+  view?: string
+}
+
 class FrameAccount {
   readonly id: Address
   readonly address: Address
@@ -279,7 +284,7 @@ class FrameAccount {
   clearRequest(handlerId: string) {
     log.info(`clearRequest(${handlerId}) for account ${this.id}`)
 
-    const panelNav = (this.store.getState().windows.panel.nav || []) as any[]
+    const panelNav = (this.store.getState().windows.panel.nav || []) as PanelNavigationEntry[]
     const wasCurrentRequest =
       panelNav[0]?.view === 'requestView' && panelNav[0]?.data?.requestId === handlerId
 
@@ -594,10 +599,11 @@ class FrameAccount {
     }
   }
 
-  addRequest(req: any) {
+  addRequest(value: unknown, _response?: unknown) {
+    const req = value as AccountRequest & { recognizedActions?: Action<unknown>[] }
     const add = (r: AccountRequest) => {
       const actionHandlers = new Map<string, Action<unknown>>()
-      ;(req.recognizedActions ?? []).forEach((action: any) => {
+      ;(req.recognizedActions ?? []).forEach((action) => {
         if (typeof action.update === 'function') {
           actionHandlers.set(action.id, action)
         }
@@ -622,10 +628,7 @@ class FrameAccount {
       const accountOpen = this.store.getState().main.currentAccount === account
 
       // Does the current panel nav include a 'requestView'
-      const panelNav = (this.store.getState().windows.panel.nav || []) as Array<{
-        view?: unknown
-        data?: { id?: unknown }
-      }>
+      const panelNav = (this.store.getState().windows.panel.nav || []) as PanelNavigationEntry[]
       const inExpandedRequestsView =
         panelNav[0]?.view === 'expandedModule' && panelNav[0]?.data?.id === 'requests'
       const inRequestView = panelNav.map((crumb) => crumb.view).includes('requestView')
@@ -738,9 +741,9 @@ class FrameAccount {
           _origin: 'newframe-internal',
           params: []
         },
-        (response: any) => {
+        (response: RPCResponsePayload) => {
           this.creationBlockLookupPending = false
-          if (response.result) {
+          if (typeof response.result === 'string' && response.result) {
             if (this.store.getState().main.accounts[this.id]) {
               this.patch({ created: `${parseInt(response.result, 16)}:${createdSuffix}` })
             }

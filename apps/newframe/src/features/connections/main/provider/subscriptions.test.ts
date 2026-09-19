@@ -8,7 +8,7 @@ import { hasSubscriptionPermission, SubscriptionType } from './subscriptions'
 const address = '0x1111111111111111111111111111111111111111'
 
 beforeEach(() => {
-  store.setState((state: any) => {
+  store.setState((state) => {
     state.main.permissions = {}
   })
 })
@@ -43,9 +43,9 @@ describe('subscription permissions', () => {
       originId: uuid(origin, uuid.DNS),
       capabilities: []
     }
-    store.setState((state: any) => {
+    store.setState((state) => {
       state.main.permissions[address] = {
-        permission: { origin, provider: true }
+        permission: { origin, provider: true, handlerId: 'test-handler' }
       }
     })
 

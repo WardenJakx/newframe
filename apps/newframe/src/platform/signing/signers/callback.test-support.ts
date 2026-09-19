@@ -1,15 +1,7 @@
 import { expect } from 'bun:test'
 
-import { GasFeesSource, type TransactionData } from '../../../features/transactions/domain/index.ts'
-
-interface HotSignerContract {
-  addresses: string[]
-  close(): void
-  exportPrivateKey(index: number, done: Callback<string>): void
-  signMessage(index: number, message: string, done: Callback<string>): void
-  signTransaction(index: number, transaction: TransactionData, done: Callback<string>): void
-  verifyAddress(index: number, address: string, display: boolean, done: Callback<boolean>): void
-}
+import { GasFeesSource } from '../../../features/transactions/domain'
+import type HotSigner from './hot/HotSigner'
 
 export function callbackResult<T>(start: (done: Callback<T>) => void): Promise<T> {
   return new Promise((resolve, reject) =>
@@ -17,8 +9,8 @@ export function callbackResult<T>(start: (done: Callback<T>) => void): Promise<T
   )
 }
 
-export async function exerciseHotSignerContract(signer: HotSignerContract, vault: { lock(): void }) {
-  const signature = await callbackResult<string>((done) => {
+export async function exerciseHotSignerContract(signer: HotSigner, vault: { lock(): void }) {
+  const signature = await callbackResult<string>((done) =>
     signer.signMessage(0, '0x' + Buffer.from('test').toString('hex'), done)
   })
   expect(signature).toHaveLength(132)
@@ -42,15 +34,11 @@ export async function exerciseHotSignerContract(signer: HotSignerContract, vault
   expect(transaction).toStartWith('0x')
   expect(transaction.length).toBeGreaterThan(2)
   expect(
-    await callbackResult<boolean>((done) => {
-      signer.verifyAddress(0, signer.addresses[0], false, done)
-    })
+    await callbackResult<boolean>((done) => signer.verifyAddress(0, signer.addresses[0], false, done))
   ).toBeTrue()
-  expect(
-    callbackResult<boolean>((done) => {
-      signer.verifyAddress(0, '0xabcdef', false, done)
-    })
-  ).rejects.toThrow('Unable to verify address')
+  expect(callbackResult<boolean>((done) => signer.verifyAddress(0, '0xabcdef', false, done))).rejects.toThrow(
+    'Unable to verify address'
+  )
 
   const exported = await callbackResult<string>((done) => {
     signer.exportPrivateKey(0, done)

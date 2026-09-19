@@ -9,6 +9,7 @@ import log from 'electron-log'
 import { shallow } from 'zustand/vanilla/shallow'
 
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
+import type { GasFees } from '../../../platform/state-store/state/index.js'
 import {
   createJsonRpcProvider,
   listenForProviderClose,
@@ -29,7 +30,24 @@ export interface Chain {
 
 type Priority = 'primary' | 'secondary'
 
-const selectConnectionSettings = (chain: any) => {
+type StoredConnection = {
+  connected: boolean
+  current: string
+  custom: string
+  on: boolean
+  status: string
+}
+
+type StoredChainSettings = {
+  connection: {
+    network?: string
+    primary: StoredConnection
+    secondary: StoredConnection
+  }
+  on: boolean
+}
+
+const selectConnectionSettings = (chain: StoredChainSettings | null | undefined) => {
   if (!chain) {
     return null
   }
@@ -63,17 +81,23 @@ interface ConnectionState {
 // and ethereumjs/common to determine the state of various EIPs
 const legacyChains = [250, 4002]
 
-const normalizeRpcError = (error: any) => {
+const normalizeRpcError = (error: unknown): EVMError => {
   if (typeof error === 'string') {
     return { message: error, code: -1 }
   }
   if (error instanceof Error) {
-    return { message: error.message, code: (error as any).code ?? -1, data: (error as any).data }
+    const details = error as Error & { code?: unknown; data?: unknown }
+    const normalized = {
+      message: error.message,
+      code: typeof details.code === 'number' ? details.code : -1,
+      data: details.data
+    }
+    return normalized
   }
-  return error as unknown
+  return error as EVMError
 }
 
-const resError = (error: any, payload: any, res: (response: any) => void) =>
+const resError = (error: unknown, payload: JSONRPCRequestPayload, res: RPCRequestCallback) =>
   res({
     id: payload.id,
     jsonrpc: payload.jsonrpc,
@@ -303,7 +327,7 @@ class ChainConnection extends EventEmitter {
     }
   }
 
-  connect(chain: any) {
+  connect(chain: StoredChainSettings) {
     const connection = chain.connection
 
     log.info(this.type + ':' + this.chainId + "'s connection has been updated")
@@ -399,7 +423,7 @@ class ChainConnection extends EventEmitter {
     }
   }
 
-  send(payload: any, res: (response: any) => void) {
+  send(payload: JSONRPCRequestPayload, res: RPCRequestCallback) {
     if (this.primary.provider && this.primary.connected) {
       sendRpcPayload(this.primary.provider, payload)
         .then((result) => res({ id: payload.id, jsonrpc: payload.jsonrpc ?? '2.0', result }))
@@ -432,7 +456,7 @@ class ChainConnection extends EventEmitter {
     const chainId = parseInt(this.chainId)
     const gasMonitor = new GasMonitor(provider)
     const allowEip1559 = !legacyChains.includes(chainId)
-    let feeMarket: any = null
+    let feeMarket: GasFees | null = null
 
     if (allowEip1559) {
       try {
@@ -445,7 +469,8 @@ class ChainConnection extends EventEmitter {
     }
 
     if (feeMarket) {
-      const gasPrice = parseInt(feeMarket.maxBaseFeePerGas) + parseInt(feeMarket.maxPriorityFeePerGas)
+      const gasPrice =
+        parseInt(feeMarket.maxBaseFeePerGas ?? '') + parseInt(feeMarket.maxPriorityFeePerGas ?? '')
 
       this.store.getState().setGasPrices(this.type, chainId, { fast: addHexPrefix(gasPrice.toString(16)) })
       this.store.getState().setGasDefault(this.type, chainId, 'fast')
