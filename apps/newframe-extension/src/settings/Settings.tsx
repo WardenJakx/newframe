@@ -3,7 +3,7 @@ import { useStore } from 'zustand'
 
 import { frameStateStore, type FrameState } from '../frameState'
 import { SettingsView } from './SettingsView'
-import { isSupportedTab, refreshCurrentChain, toggleMetaMaskSetting } from './tabSettings'
+import { isSupportedTab, refreshCurrentChain, switchOriginChain, toggleMetaMaskSetting } from './tabSettings'
 
 export function Settings({ tab, mmAppear }: { tab?: chrome.tabs.Tab; mmAppear: boolean }) {
   const settings = useStore(frameStateStore)
@@ -53,11 +53,7 @@ export function Settings({ tab, mmAppear }: { tab?: chrome.tabs.Tab; mmAppear: b
         if (!tab || !chain || chain.connected === false) {
           return
         }
-        void chrome.runtime.sendMessage({
-          tab,
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: chain.chainId }]
-        })
+        void switchOriginChain(tab, chain.chainId).catch(console.error)
       }}
     />
   )
