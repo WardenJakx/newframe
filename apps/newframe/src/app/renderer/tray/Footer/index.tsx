@@ -209,6 +209,7 @@ export function Footer({ capabilities, notify, shared, step, onContinue }: Foote
             accountType: accountDisplayType(signingAccount)
           }}
           clipboard={capabilities.external}
+          label={req.signingCapability?.type === 'safe' ? 'Safe account' : undefined}
         >
           {content}
         </RequestSigningFooter>

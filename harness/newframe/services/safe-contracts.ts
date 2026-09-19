@@ -1,3 +1,4 @@
+import fallbackHandlerArtifact from '@safe-global/safe-smart-account/build/artifacts/contracts/handler/CompatibilityFallbackHandler.sol/CompatibilityFallbackHandler.json' with { type: 'json' }
 import factoryArtifact from '@safe-global/safe-smart-account/build/artifacts/contracts/proxies/SafeProxyFactory.sol/SafeProxyFactory.json' with { type: 'json' }
 import safeArtifact from '@safe-global/safe-smart-account/build/artifacts/contracts/SafeL2.sol/SafeL2.json' with { type: 'json' }
 import {
@@ -16,6 +17,7 @@ export type SafeSeedManifest = {
   safe: string
   singleton: string
   factory: string
+  fallbackHandler: string
   owners: string[]
   threshold: number
   nonce: string
@@ -30,7 +32,9 @@ export async function seedSafe(
 ): Promise<SafeSeedManifest> {
   const owners = [getAddress(harnessOwner), getAddress('0x70997970C51812dc3A010C7d01b50e0d17dc79C8')]
   const threshold = 2
-  async function deploy(artifact: typeof safeArtifact) {
+  async function deploy(
+    artifact: typeof safeArtifact | typeof factoryArtifact | typeof fallbackHandlerArtifact
+  ) {
     const contract = await new ContractFactory(artifact.abi, artifact.bytecode, signer).deploy()
     const receipt = await contract.deploymentTransaction()!.wait(1)
     if (receipt?.status !== 1 || !receipt.contractAddress) {
@@ -40,13 +44,14 @@ export async function seedSafe(
   }
   const singleton = await deploy(safeArtifact)
   const factory = await deploy(factoryArtifact)
+  const fallbackHandler = await deploy(fallbackHandlerArtifact)
   const abi = new Interface(safeArtifact.abi)
   const initializer = abi.encodeFunctionData('setup', [
     owners,
     threshold,
     ZeroAddress,
     '0x',
-    ZeroAddress,
+    fallbackHandler,
     ZeroAddress,
     0,
     ZeroAddress
@@ -83,7 +88,7 @@ export async function seedSafe(
     contract.getThreshold() as Promise<bigint>,
     contract.nonce() as Promise<bigint>,
     contract.VERSION() as Promise<string>,
-    Promise.all([singleton, factory, safe].map((address) => provider.getCode(address)))
+    Promise.all([singleton, factory, fallbackHandler, safe].map((address) => provider.getCode(address)))
   ])
   if (
     codes.some((code) => code === '0x') ||
@@ -94,5 +99,15 @@ export async function seedSafe(
   ) {
     throw new Error('Safe seed verification failed')
   }
-  return { chainId, safe, singleton, factory, owners, threshold, nonce: nonce.toString(), version }
+  return {
+    chainId,
+    safe,
+    singleton,
+    factory,
+    fallbackHandler,
+    owners,
+    threshold,
+    nonce: nonce.toString(),
+    version
+  }
 }

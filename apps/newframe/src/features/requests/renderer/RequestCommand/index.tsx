@@ -12,12 +12,19 @@ import type { WalletRendererState } from '../../../../platform/state-sync/contra
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
 import StatusGlyph from '../../../../shared/renderer/ui/StatusGlyph'
 import type { TransactionApprovalAdjustments } from '../../../transactions/domain/approval'
-import type { SignatureRequest, TransactionRequest } from '../../contract/requests'
+import type {
+  SafeMessageProgress,
+  SignatureRequest,
+  SigningCapability,
+  TransactionRequest
+} from '../../contract/requests'
 import { isCancelableRequest, isSignatureRequest } from '../../domain'
 import { useAccountIdentity } from '../Account/Requests/state'
 import type { RequestRendererCapabilities, RequestReviewCapability } from '../requestCapabilities'
 import { useRequestView, type RequestViewStep } from '../requestView'
 import { RequestActions } from '../ui/RequestActions'
+import { SafeOwnerSelector } from '../ui/SafeOwnerSelector'
+import { SigningAccount } from '../ui/SigningAccount'
 import TxApproval from './TxApproval'
 
 type RequestReference = { handlerId: string }
@@ -27,7 +34,7 @@ interface RequestCommandSharedState {
   appLocked: boolean
   chain: { explorer?: string; isTestnet?: boolean }
   explorerWarningMuted: boolean
-  signerAttached: boolean
+  transactionSignerAttached: boolean
   step: RequestViewStep
 }
 
@@ -38,6 +45,8 @@ export type RequestCommandRequest = {
   status?: string
   notice?: string
   mode?: string
+  signingCapability?: SigningCapability
+  safeMessageProgress?: SafeMessageProgress
 }
 
 export interface RequestCommandProps {
@@ -81,8 +90,11 @@ export type RequestCommandNotifier = (notification: RequestCommandNotification) 
 
 const EMPTY_CHAIN = {}
 
-export const approveRequest = (capability: Pick<RequestReviewCapability, 'approve'>, requestId: string) =>
-  void capability.approve({ requestId })
+export const approveRequest = (
+  capability: Pick<RequestReviewCapability, 'approve'>,
+  requestId: string,
+  ownerId?: string
+) => void capability.approve({ requestId, ...(ownerId ? { ownerId } : {}) })
 
 export const declineRequest = (capability: Pick<RequestReviewCapability, 'reject'>, req: RequestReference) =>
   void capability.reject({ requestId: req.handlerId })
@@ -97,9 +109,34 @@ export function RequestCommand(props: RequestCommandProps) {
   const [approvalError, setApprovalError] = useState('')
   const [noticeDismissed, setNoticeDismissed] = useState(false)
   const request = props.req as TransactionRequest | SignatureRequest
+  const [ownerSelection, setOwnerSelection] = useState<{ requestId: string; ownerId?: string }>({
+    requestId: request.handlerId
+  })
   const { notify } = props
   const notifiedSession = useRef('')
   const airgap = props.shared.airgapSigning
+  const safeCapability =
+    isSignatureRequest(request) && request.signingCapability?.type === 'safe'
+      ? request.signingCapability
+      : undefined
+  const safeProgress = isSignatureRequest(request) ? request.safeMessageProgress : undefined
+  const safeConfirmations = safeProgress?.confirmations
+  const safeConfirmed = new Set(safeConfirmations?.map((address) => address.toLowerCase()) ?? [])
+  const explicitOwnerId = ownerSelection.requestId === request.handlerId ? ownerSelection.ownerId : undefined
+  const explicitOwner = safeCapability?.candidates.find(
+    (candidate) => candidate.accountId === explicitOwnerId
+  )
+  const explicitOwnerEligible =
+    explicitOwner?.status === 'ready' &&
+    (!safeConfirmed.has(explicitOwner.address.toLowerCase()) || safeProgress?.status === 'failed')
+  const unconfirmedEligibleOwners =
+    safeCapability?.candidates.filter(
+      (candidate) => candidate.status === 'ready' && !safeConfirmed.has(candidate.address.toLowerCase())
+    ) ?? []
+  let selectedOwnerId = explicitOwnerEligible ? explicitOwnerId : undefined
+  if (!selectedOwnerId && unconfirmedEligibleOwners.length === 1) {
+    selectedOwnerId = unconfirmedEligibleOwners[0].accountId
+  }
   useEffect(() => {
     if (
       props.shared.appLocked ||
@@ -321,8 +358,8 @@ export function RequestCommand(props: RequestCommandProps) {
         ) : null}
         <RequestActions
           primary={{
-            disabled: !props.shared.signerAttached,
-            label: props.shared.signerAttached ? 'Sign' : 'No signer attached',
+            disabled: !props.shared.transactionSignerAttached,
+            label: props.shared.transactionSignerAttached ? 'Sign' : 'No signer attached',
             onPress: sign
           }}
           secondary={{
@@ -352,6 +389,89 @@ export function RequestCommand(props: RequestCommandProps) {
   }
 
   function signatureCommand(req: SignatureRequest) {
+    const capability = req.signingCapability
+    if (capability?.type === 'safe') {
+      const progress = req.safeMessageProgress
+      const confirmed = new Set(progress?.confirmations.map((address) => address.toLowerCase()) ?? [])
+      const retryPublication = progress?.status === 'failed'
+      const selectedOwner = capability.candidates.find((candidate) => candidate.accountId === selectedOwnerId)
+      const selectedConfirmed = selectedOwner ? confirmed.has(selectedOwner.address.toLowerCase()) : false
+      const selectedReady =
+        capability.status === 'ready' &&
+        selectedOwner?.status === 'ready' &&
+        (retryPublication || !selectedConfirmed)
+      let actionLabel = 'Choose an owner'
+      if (retryPublication) {
+        actionLabel = 'Retry publication'
+      } else if (selectedOwner) {
+        actionLabel = 'Sign as owner'
+      }
+
+      return (
+        <Stack gap='xsmall'>
+          <SigningAccount label='Owner signer'>
+            <SafeOwnerSelector
+              owners={capability.candidates}
+              label='Owner signer'
+              placeholder='Choose an owner'
+              emptyLabel='No available owner signer'
+              selectedOwnerId={selectedOwnerId}
+              onSelectOwner={(ownerId) => setOwnerSelection({ requestId: request.handlerId, ownerId })}
+              ownerDisabled={(owner) =>
+                owner.status !== 'ready' || (!retryPublication && confirmed.has(owner.address.toLowerCase()))
+              }
+            />
+          </SigningAccount>
+          <Text tone='secondary' variant='caption'>
+            {confirmed.size} / {capability.threshold} verified confirmations
+          </Text>
+          {progress?.message ? (
+            <div role={progress.status === 'failed' ? 'alert' : 'status'}>
+              <Text tone={progress.status === 'failed' ? 'danger' : 'secondary'} variant='caption'>
+                {progress.message}
+              </Text>
+            </div>
+          ) : null}
+          {approvalError ? (
+            <div role='alert'>
+              <Text tone='danger' variant='caption'>
+                {approvalError}
+              </Text>
+            </div>
+          ) : null}
+          <RequestActions
+            primary={{
+              disabled: !selectedReady,
+              label: actionLabel,
+              onPress: () => {
+                if (!selectedOwner) {
+                  return
+                }
+                setOwnerSelection({ requestId: request.handlerId, ownerId: selectedOwner.accountId })
+                setApprovalError('')
+                runWhenAppUnlocked(props.shared.appLocked, () => {
+                  void props.capabilities.review
+                    .approve({ requestId: req.handlerId, ownerId: selectedOwner.accountId })
+                    .then(
+                      (result) => {
+                        if (!result.ok) {
+                          setApprovalError(result.message ?? 'Could not approve request')
+                        }
+                      },
+                      () => setApprovalError('Could not approve request')
+                    )
+                })
+              }
+            }}
+            secondary={{
+              label: 'Decline',
+              onPress: () => declineRequest(props.capabilities.review, req)
+            }}
+          />
+        </Stack>
+      )
+    }
+
     if (req.notice) {
       const pending = req.status === 'pending'
       const failed = req.status === 'error' || req.status === 'declined'
@@ -391,8 +511,8 @@ export function RequestCommand(props: RequestCommandProps) {
     return (
       <RequestActions
         primary={{
-          disabled: !props.shared.signerAttached,
-          label: props.shared.signerAttached ? 'Sign' : 'No signer attached',
+          disabled: capability?.status !== 'ready',
+          label: capability?.status === 'ready' ? 'Sign' : 'No signer attached',
           onPress: () => {
             runWhenAppUnlocked(props.shared.appLocked, () =>
               approveRequest(props.capabilities.review, req.handlerId)
@@ -439,7 +559,7 @@ export default function RequestCommandContainer(props: Omit<RequestCommandProps,
           appLocked: state.appLock.locked,
           chain: (state.networks.ethereum as Partial<typeof state.networks.ethereum>)[chainId] ?? EMPTY_CHAIN,
           explorerWarningMuted: !!state.mute.explorerWarning,
-          signerAttached: Boolean(account?.signer && signers[account.signer])
+          transactionSignerAttached: Boolean(account?.signer && signers[account.signer])
         }
       },
     [accountId, chainId, request.handlerId]

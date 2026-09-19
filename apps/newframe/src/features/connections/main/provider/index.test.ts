@@ -1124,24 +1124,14 @@ describe('#send', () => {
     const message = 'hello, Ethereum!'
     const hexMessage = addHexPrefix(Buffer.from(message, 'utf-8').toString('hex'))
 
-    it('submits a request to sign a message', () => {
-      send({ method: 'eth_sign', params: [address, hexMessage] })
-
-      expect(accountRequests).toHaveLength(1)
-      expect(accountRequests[0].handlerId).toBeTruthy()
-      expect(accountRequests[0].payload.params[0]).toBe(address)
-      expect(accountRequests[0].payload.params[1]).toEqual(hexMessage)
-    })
-
-    it('releases its response handler when a sign request is rejected', async () => {
-      await expectQueuedRequestRejection((callback) =>
-        send({ method: 'eth_sign', params: [address, hexMessage] }, callback)
-      )
-    })
-
-    it('does not submit a request from an account other than the current one', async () => {
-      const params = ['0xa4581bfe76201f3aa147cce8e360140582260441', message]
-      expect((await sendResult({ method: 'eth_sign', params })).error).toBeTruthy()
+    it.each(['eth_sign', 'eth_signTransaction'])('rejects %s before request creation', async (method) => {
+      const response = await sendResult({ method, params: [address, hexMessage] })
+      expect(responseError(response)).toEqual({
+        code: 4200,
+        message: `${method} is not supported; use personal_sign or eth_sendTransaction`
+      })
+      expect(accountRequests).toHaveLength(0)
+      expect(requestContinuations.callbacks.size).toBe(0)
     })
   })
 

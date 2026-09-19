@@ -3,6 +3,7 @@ import { beforeEach, expect, it, mock } from 'bun:test'
 import { act, fireEvent, render, screen } from '../../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
 import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support'
+import type { SigningCandidate } from '../../contract/requests'
 import {
   createRequestRendererCapabilitiesFake as createRequestPortsFake,
   type RequestRendererCapabilitiesFake
@@ -13,7 +14,8 @@ import RequestCommandContainer, {
   approveRequest,
   declineRequest,
   runWhenAppUnlocked,
-  type RequestCommandNotifier
+  type RequestCommandNotifier,
+  type RequestCommandRequest
 } from './index'
 import TxApproval from './TxApproval'
 
@@ -37,7 +39,7 @@ const createProps = <const Request extends object>(
       appLocked,
       chain: {},
       explorerWarningMuted: false,
-      signerAttached,
+      transactionSignerAttached: signerAttached,
       step: 'confirm' as const
     }
   }
@@ -121,6 +123,11 @@ it.each([
   {
     type: 'sign',
     data: '0x1234',
+    signingCapability: {
+      type: 'direct',
+      status: 'unavailable',
+      candidates: [] as SigningCandidate[]
+    },
     approvalGate: { type: 'signer-compatibility', reason: 'no-signer' }
   }
 ] as const)('disables $type requests when no signer is attached', (request) => {
@@ -130,6 +137,149 @@ it.each([
 
   expect(screen.getByRole<HTMLButtonElement>('button', { name: 'No signer attached' }).disabled).toBe(true)
   expect(props.notify).not.toHaveBeenCalled()
+})
+
+it('uses the projected signature capability instead of a direct account signer attachment', () => {
+  const owner = safeOwner(1)
+  const req: RequestCommandRequest = {
+    type: 'sign',
+    handlerId: 'request-1',
+    signingCapability: { type: 'direct', status: 'ready', candidates: [owner] }
+  }
+  render(<RequestCommand {...createProps(false, req, false)} />)
+
+  expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Sign' }).disabled).toBe(false)
+})
+
+const safeOwner = (index: number, status: 'ready' | 'unavailable' = 'ready') => ({
+  accountId: `owner-${index}`,
+  name: `Owner ${index}`,
+  address: `0x${String(index).repeat(40)}`,
+  created: String(index),
+  signerType: 'seed',
+  signerAttached: true,
+  signerStatus: status === 'ready' ? 'ok' : 'Signer unavailable',
+  status
+})
+
+it('selects a projected Safe owner and sends its ID without replacing the Safe request account', async () => {
+  const req: RequestCommandRequest = {
+    type: 'sign',
+    handlerId: 'safe-request',
+    account: `0x${'a'.repeat(40)}`,
+    signingCapability: {
+      type: 'safe',
+      status: 'ready',
+      chainId: 1,
+      threshold: 2,
+      coordination: 'service',
+      candidates: [safeOwner(1), safeOwner(2)]
+    },
+    safeMessageProgress: {
+      status: 'collecting',
+      messageHash: `0x${'b'.repeat(64)}`,
+      threshold: 2,
+      confirmations: []
+    }
+  }
+  const { user } = render(<RequestCommand {...createProps(false, req, false)} />)
+
+  expect(screen.getByText('0 / 2 verified confirmations')).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Choose an owner' }).hasAttribute('disabled')).toBe(true)
+  await user.click(screen.getByRole('button', { name: 'Owner signer' }))
+  await user.click(screen.getByRole('option', { name: /Owner 2/ }))
+  await user.click(screen.getByRole('button', { name: 'Sign as owner' }))
+
+  expect(capabilities.review.approve).toHaveBeenCalledWith({
+    requestId: req.handlerId,
+    ownerId: 'owner-2'
+  })
+  expect(req.account).toBe(`0x${'a'.repeat(40)}`)
+})
+
+it('shows verified Safe progress and permits another projected owner while the RPC stays pending', async () => {
+  const first = safeOwner(1)
+  const second = safeOwner(2)
+  const req: RequestCommandRequest = {
+    type: 'signTypedData',
+    handlerId: 'safe-request',
+    account: `0x${'a'.repeat(40)}`,
+    status: 'pending',
+    notice: 'See signer',
+    signingCapability: {
+      type: 'safe',
+      status: 'ready',
+      chainId: 1,
+      threshold: 2,
+      coordination: 'service',
+      candidates: [first, second]
+    },
+    safeMessageProgress: {
+      status: 'collecting',
+      messageHash: `0x${'b'.repeat(64)}`,
+      threshold: 2,
+      confirmations: [first.address]
+    }
+  }
+  const { user } = render(<RequestCommand {...createProps(false, req, false)} />)
+
+  expect(screen.getByText('1 / 2 verified confirmations')).toBeTruthy()
+  expect(screen.queryByText('Waiting for signer')).toBeNull()
+  expect(screen.getByRole('button', { name: 'Owner signer' }).textContent).toContain('Owner 2')
+  await user.click(screen.getByRole('button', { name: 'Sign as owner' }))
+  expect(capabilities.review.approve).toHaveBeenCalledWith({
+    requestId: req.handlerId,
+    ownerId: second.accountId
+  })
+})
+
+it('shows a retryable Safe publication failure', async () => {
+  const owner = safeOwner(1)
+  const req: RequestCommandRequest = {
+    type: 'sign',
+    handlerId: 'safe-request',
+    account: `0x${'a'.repeat(40)}`,
+    signingCapability: {
+      type: 'safe',
+      status: 'ready',
+      chainId: 1,
+      threshold: 2,
+      coordination: 'service',
+      candidates: [owner]
+    },
+    safeMessageProgress: {
+      status: 'collecting',
+      messageHash: `0x${'b'.repeat(64)}`,
+      threshold: 2,
+      confirmations: []
+    }
+  }
+  const props = createProps(false, req, false)
+  const { rerender, user } = render(<RequestCommand {...props} />)
+
+  await user.click(screen.getByRole('button', { name: 'Sign as owner' }))
+  rerender(
+    <RequestCommand
+      {...props}
+      req={{
+        ...req,
+        safeMessageProgress: {
+          status: 'failed',
+          messageHash: `0x${'b'.repeat(64)}`,
+          threshold: 2,
+          confirmations: [owner.address],
+          message: 'Safe service publication failed. Try again.'
+        }
+      }}
+    />
+  )
+
+  expect(screen.getByRole('alert').textContent).toContain('publication failed')
+  await user.click(screen.getByRole('button', { name: 'Retry publication' }))
+  expect(capabilities.review.approve).toHaveBeenLastCalledWith({
+    requestId: req.handlerId,
+    ownerId: owner.accountId
+  })
 })
 
 it('uses renderer-generated idempotency keys for transaction replacement', () => {

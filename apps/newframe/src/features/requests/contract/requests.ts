@@ -162,6 +162,36 @@ export type RequestApprovalGate =
       currentSymbol: string
     }
 
+export type SigningCandidate = {
+  accountId: string
+  name: string
+  address: string
+  created: string
+  signerType: string
+  signerAttached: boolean
+  signerStatus: string
+  status: 'ready' | 'unavailable' | 'watch-only'
+}
+
+export type SigningCapability =
+  | { type: 'direct'; status: SigningCandidate['status']; candidates: SigningCandidate[] }
+  | {
+      type: 'safe'
+      status: 'ready' | 'unavailable'
+      chainId: number
+      threshold: number
+      coordination: 'service' | 'local-only'
+      candidates: SigningCandidate[]
+    }
+
+export type SafeMessageProgress = {
+  status: 'collecting' | 'complete' | 'failed' | 'cancelled'
+  messageHash: string
+  threshold: number
+  confirmations: string[]
+  message?: string
+}
+
 export type Identity = {
   address: Address
   ens: string
@@ -249,7 +279,13 @@ export interface TransactionRequest extends AccountRequest<'transaction'> {
   classification: TxClassification
 }
 
-interface SignRequest extends AccountRequest<'sign'> {
+interface SignatureRequestFields {
+  chainId: number
+  signingCapability?: SigningCapability
+  safeMessageProgress?: SafeMessageProgress
+}
+
+interface SignRequest extends AccountRequest<'sign'>, SignatureRequestFields {
   data: {
     decodedMessage: string
   }
@@ -267,7 +303,7 @@ export type SignTypedDataRequest = DefaultSignTypedDataRequest | PermitSignature
 
 export type SignatureRequest = SignTypedDataRequest | SignRequest
 
-interface DefaultSignTypedDataRequest extends AccountRequest<'signTypedData'> {
+interface DefaultSignTypedDataRequest extends AccountRequest<'signTypedData'>, SignatureRequestFields {
   typedMessage: TypedMessage
   digests?: Eip712Digests
   erc7730?: Erc7730Display
@@ -290,7 +326,7 @@ interface PermitData extends Omit<Permit, 'spender' | 'verifyingContract'> {
   verifyingContract: Identity
 }
 
-export interface PermitSignatureRequest extends AccountRequest<'signErc20Permit'> {
+export interface PermitSignatureRequest extends AccountRequest<'signErc20Permit'>, SignatureRequestFields {
   typedMessage: {
     data: EIP2612TypedData
     version: SignTypedDataVersion

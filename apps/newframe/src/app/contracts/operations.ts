@@ -634,6 +634,7 @@ const RequestApproveCommandSchema = z.union([
   z.strictObject({
     type: z.literal('request.approve'),
     requestId: OperationIdSchema,
+    ownerId: AddressSchema.optional(),
     adjustments: TransactionApprovalAdjustmentsSchema.optional()
   }),
   z.strictObject({

@@ -242,6 +242,7 @@ export const WalletRequestSchema = z
     origin: z.string().optional(),
     payload: z.unknown().optional(),
     account: z.string().optional(),
+    chainId: z.number().int().positive().optional(),
     status: z
       .enum([
         'pending',
@@ -254,6 +255,32 @@ export const WalletRequestSchema = z
         'error',
         'success'
       ])
+      .optional(),
+    signingCapability: z
+      .discriminatedUnion('type', [
+        z.strictObject({
+          type: z.literal('direct'),
+          status: z.enum(['ready', 'unavailable', 'watch-only']),
+          candidates: z.array(SafeOwnerAccountSchema)
+        }),
+        z.strictObject({
+          type: z.literal('safe'),
+          status: z.enum(['ready', 'unavailable']),
+          chainId: z.number().int().positive(),
+          threshold: z.number().int().nonnegative(),
+          coordination: z.enum(['service', 'local-only']),
+          candidates: z.array(SafeOwnerAccountSchema)
+        })
+      ])
+      .optional(),
+    safeMessageProgress: z
+      .strictObject({
+        status: z.enum(['collecting', 'complete', 'failed', 'cancelled']),
+        messageHash: z.string().regex(/^0x[0-9a-f]{64}$/i),
+        threshold: z.number().int().positive(),
+        confirmations: z.array(z.string()),
+        message: z.string().max(256).optional()
+      })
       .optional(),
     mode: z.enum(['normal', 'monitor']).optional(),
     notice: z.string().optional(),

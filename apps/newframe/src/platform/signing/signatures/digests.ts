@@ -1,5 +1,5 @@
-import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util'
-import { hexlify } from 'ethers'
+import { SignTypedDataVersion, typedSignatureHash, TypedDataUtils } from '@metamask/eth-sig-util'
+import { getBytes, hashMessage, hexlify, isHexString } from 'ethers'
 export { getCalldataDigest } from '../../../shared/domain/calldata.js'
 
 import type { TypedData, TypedMessage } from '../../../features/requests/contract/requests.js'
@@ -14,6 +14,26 @@ const eip712DigestVersions = [SignTypedDataVersion.V3, SignTypedDataVersion.V4]
 
 function toHex(bytes: Uint8Array) {
   return hexlify(bytes)
+}
+
+export type OriginalMessage = string | TypedMessage
+
+/** Returns the digest signed by an EOA before Safe wraps it in SafeMessage(bytes). */
+export function getOriginalMessageDigest(message: OriginalMessage): string {
+  if (typeof message === 'string') {
+    return hashMessage(isHexString(message) ? getBytes(message) : message)
+  }
+  const { data, version } = message
+  if (version === SignTypedDataVersion.V1) {
+    if (!Array.isArray(data)) {
+      throw new Error('Invalid V1 typed message')
+    }
+    return typedSignatureHash(data)
+  }
+  if (![SignTypedDataVersion.V3, SignTypedDataVersion.V4].includes(version) || Array.isArray(data)) {
+    throw new Error('Unsupported typed message version')
+  }
+  return toHex(TypedDataUtils.eip712Hash(data, version))
 }
 
 export function getEip712Digests(typedMessage: TypedMessage): Eip712Digests | undefined {

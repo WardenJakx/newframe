@@ -1,8 +1,22 @@
 import { isDeepStrictEqual } from 'node:util'
 
-import { formatUnits } from 'ethers'
+import {
+  Contract,
+  FetchRequest,
+  JsonRpcProvider,
+  formatUnits,
+  getBytes,
+  hashMessage,
+  hexlify,
+  toUtf8Bytes
+} from 'ethers'
 
+import { anvilChainId, anvilRpcUrl, newframeRpcUrl } from '../../core/config.ts'
+import { harnessOrigin } from '../driver.ts'
 import type { VisualStage } from '../types.ts'
+
+const EIP1271_MAGIC_VALUE = '0x1626ba7e'
+const EIP1271_SIGNATURE = 'function isValidSignature(bytes32 hash, bytes signature) view returns (bytes4)'
 
 export const safeWatchStage: VisualStage = {
   name: 'watch Safe and inspect proposal',
@@ -201,6 +215,50 @@ export const safeWatchStage: VisualStage = {
         .getByRole('dialog', { name: 'Requests' })
         .getByRole('button', { name: 'Back', exact: true })
         .click()
+
+      const rpcRequest = new FetchRequest(`${newframeRpcUrl}?chainId=${anvilChainId}`)
+      rpcRequest.setHeader('Origin', `http://${harnessOrigin}`)
+      const dappProvider = new JsonRpcProvider(rpcRequest, anvilChainId, {
+        batchMaxCount: 1,
+        pollingInterval: 250,
+        staticNetwork: true
+      })
+      const chainProvider = new JsonRpcProvider(anvilRpcUrl, anvilChainId, {
+        batchMaxCount: 1,
+        staticNetwork: true
+      })
+      try {
+        const message = hexlify(toUtf8Bytes('Newframe Safe EIP-1271 acceptance'))
+        const signaturePromise = dappProvider.send('personal_sign', [message, safeSeed.safe])
+        const signingRequest = await driver.waitForCurrentRequest('sign', new Set(), 15_000)
+        if (signingRequest.accountId.toLowerCase() !== id) {
+          runtime.fail('Safe message request was attached to a different account')
+        }
+        await tray.getByText('Safe account', { exact: true }).waitFor()
+        const ownerSelector = tray.getByRole('button', { name: 'Owner signer' })
+        await ownerSelector.waitFor()
+        if ((await ownerSelector.textContent())?.includes('Choose an owner')) {
+          runtime.fail('Safe message request did not auto-select its sole eligible owner')
+        }
+        await tray.getByText(`0 / ${safeSeed.threshold} verified confirmations`, { exact: true }).waitFor()
+        await runtime.screenshot(tray, '08g-safe-message-request.png')
+        await tray.getByRole('button', { name: 'Sign as owner', exact: true }).click()
+        const signature: unknown = await signaturePromise
+        if (typeof signature !== 'string' || !/^0x[0-9a-f]+$/i.test(signature)) {
+          runtime.fail('Safe personal_sign returned an invalid aggregate signature')
+        }
+        const safe = new Contract(safeSeed.safe, [EIP1271_SIGNATURE], chainProvider)
+        const validity: unknown = await safe.isValidSignature(hashMessage(getBytes(message)), signature)
+        if (typeof validity !== 'string' || validity !== EIP1271_MAGIC_VALUE) {
+          runtime.fail(`Safe EIP-1271 validation returned ${String(validity)}`)
+        }
+        runtime.evidence('safeMessageOwnerApproved', safeSeed.owners[0])
+        runtime.evidence('safeMessageEip1271', EIP1271_MAGIC_VALUE)
+      } finally {
+        dappProvider.destroy()
+        chainProvider.destroy()
+      }
+
       await tray.getByRole('button', { name: 'Accounts', exact: true }).click()
       await accounts.getByRole('textbox', { name: 'Search accounts' }).fill(id)
       const safeRow = accounts.getByRole('button', {

@@ -474,6 +474,14 @@ describe('typed operation dispatcher', () => {
       dispatcher.dispatchCommand(event, approve)
     ])
     expect(requests.approve).toHaveBeenCalledTimes(2)
+    const ownerId = '0x1111111111111111111111111111111111111111'
+    await dispatcher.dispatchCommand(event, { ...approve, ownerId })
+    expect(requests.approve).toHaveBeenLastCalledWith(
+      'request-1',
+      expect.objectContaining({ owner }),
+      undefined,
+      ownerId
+    )
   })
 })
 
