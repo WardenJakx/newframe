@@ -3,8 +3,11 @@ import { beforeEach, expect, it, mock } from 'bun:test'
 import { electronMock } from '../../../../../test/support/electron.mock.ts'
 import { downloadImage } from './download'
 
-const mockFetch = mock()
-const mockLookup = mock()
+type TestResponse = ReturnType<typeof createResponse> | ReturnType<typeof createRedirect>
+type LookupResult = Array<{ address: string; family: number }>
+
+const mockFetch = mock<(...args: Parameters<typeof fetch>) => Promise<TestResponse>>()
+const mockLookup = mock<(...args: unknown[]) => Promise<LookupResult>>()
 const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3])
 
 await mock.module('dns/promises', () => ({
@@ -41,7 +44,7 @@ function createRedirect(location: string, status = 302) {
 
 beforeEach(() => {
   mockFetch.mockReset()
-  electronMock.net.fetch.mockImplementation((...args: unknown[]) => mockFetch(...args))
+  electronMock.net.fetch.mockImplementation((...args: Parameters<typeof fetch>) => mockFetch(...args))
   mockLookup.mockReset()
   mockLookup.mockResolvedValue([{ address: '93.184.216.34', family: 4 }])
 })
@@ -53,7 +56,7 @@ it('downloads and returns a persistable base64 image payload', async () => {
 
   expect(image).toEqual({
     base64: png.toString('base64'),
-    contentHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+    contentHash: expect.stringMatching(/^[a-f0-9]{64}$/) as string,
     mimeType: 'image/png',
     sourceUrl: 'https://cdn.example/usdc.png'
   })
@@ -64,7 +67,7 @@ it('decodes and validates embedded Firefox favicon data', async () => {
 
   expect(await downloadImage(sourceUrl)).toEqual({
     base64: png.toString('base64'),
-    contentHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+    contentHash: expect.stringMatching(/^[a-f0-9]{64}$/) as string,
     mimeType: 'image/png',
     sourceUrl
   })

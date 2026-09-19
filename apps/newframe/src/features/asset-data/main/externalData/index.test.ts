@@ -1,18 +1,17 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, jest as timers, mock } from 'bun:test'
 
+import { DEFAULT_PROFILE_ID } from '../../../../app/contracts/state/main'
 import store from '../../../../platform/state-store'
 import createCanonicalStore from '../../../../platform/state-store/createCanonicalStore'
+import type { Account } from '../../../accounts/domain/state/account'
 
-type ExternalDataFactory = typeof import('./index').default
-type BalancesMock = ReturnType<typeof createBalancesMock>
-
-const mockBalancesFactory = mock((): BalancesMock => mockBalances)
+const mockBalancesFactory = mock(() => mockBalances)
 
 await mock.module('./balances', () => ({ default: mockBalancesFactory }))
 
-let dataManager: ReturnType<ExternalDataFactory>
-let externalData: ExternalDataFactory
-let mockBalances: BalancesMock
+let dataManager: ReturnType<typeof externalData>
+let externalData: typeof import('./index').default
+let mockBalances: ReturnType<typeof createBalancesMock>
 
 beforeAll(async () => {
   externalData = (await import('./index')).default
@@ -60,6 +59,22 @@ function createBalancesMock(start = mock(() => true)) {
   }
 }
 
+function accountState(address: string, lastSignerType: string): Account {
+  return {
+    id: address,
+    profileId: DEFAULT_PROFILE_ID,
+    address,
+    name: 'Test',
+    lastSignerType,
+    status: '',
+    signer: '',
+    signerStatus: '',
+    agentEnabled: false,
+    requests: {},
+    created: ''
+  }
+}
+
 function isolatedStore(
   appLock: { locked: boolean; vaultExists: boolean },
   address?: string,
@@ -81,7 +96,7 @@ function isolatedStore(
       signer: '',
       signerStatus: '',
       agentEnabled: false
-    } as unknown as Parameters<ReturnType<typeof isolated.getState>['upsertAccount']>[0])
+    })
     isolated.getState().setAccount({ id: address })
   }
   return isolated
@@ -208,10 +223,7 @@ describe('wallet lock lifecycle', () => {
     balances.setAddress.mockClear()
 
     scannerStore.setState((state) => {
-      state.main.accounts[normalAddress] = {
-        address: normalAddress,
-        lastSignerType: 'ledger'
-      } as unknown as (typeof state.main.accounts)[string]
+      state.main.accounts[normalAddress] = accountState(normalAddress, 'ledger')
       state.main.currentAccount = normalAddress
       const network = Object.values(state.main.networks.ethereum)[0]
       if (network) {
@@ -255,10 +267,7 @@ describe('address updates', () => {
 
   it('runs a targeted one-shot refresh when selecting a watch account', () => {
     store.setState((state) => {
-      state.main.accounts[address] = {
-        address,
-        lastSignerType: 'Address'
-      } as unknown as (typeof state.main.accounts)[string]
+      state.main.accounts[address] = accountState(address, 'Address')
       state.main.currentAccount = address
     })
 
@@ -270,10 +279,7 @@ describe('address updates', () => {
 
   it('allows a manual on-chain refresh for a watch account', () => {
     store.setState((state) => {
-      state.main.accounts[address] = {
-        address,
-        lastSignerType: 'Address'
-      } as unknown as (typeof state.main.accounts)[string]
+      state.main.accounts[address] = accountState(address, 'Address')
     })
 
     dataManager.refreshBalances(address)
@@ -320,7 +326,7 @@ it('keeps refresh state and lifecycle isolated across two production scanner ins
     signer: '',
     signerStatus: '',
     agentEnabled: false
-  } as unknown as Parameters<ReturnType<typeof firstStore.getState>['upsertAccount']>[0])
+  })
   secondStore.getState().upsertAccount({
     id: secondAddress,
     address: secondAddress,
@@ -329,7 +335,7 @@ it('keeps refresh state and lifecycle isolated across two production scanner ins
     signer: '',
     signerStatus: '',
     agentEnabled: false
-  } as unknown as Parameters<ReturnType<typeof secondStore.getState>['upsertAccount']>[0])
+  })
   firstStore.getState().setAccount({ id: firstAddress })
   secondStore.getState().setAccount({ id: secondAddress })
   timers.advanceTimersByTime(800)
@@ -358,10 +364,7 @@ it('cancels pending store-driven scans when closed', () => {
   mockBalances.setAddress.mockClear()
 
   store.setState((state) => {
-    state.main.accounts[address] = {
-      address,
-      lastSignerType: 'ledger'
-    } as unknown as (typeof state.main.accounts)[string]
+    state.main.accounts[address] = accountState(address, 'ledger')
     state.main.currentAccount = address
     const network = Object.values(state.main.networks.ethereum)[0]
     if (network) {

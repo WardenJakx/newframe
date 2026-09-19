@@ -4,8 +4,6 @@ import * as TrezorConnectModule from '@trezor/connect'
 import type { CommonParams, Device, DeviceEvent, Response, UiEvent } from '@trezor/connect'
 import log from 'electron-log'
 
-import type { TypedData } from '../../../../features/requests/contract/requests.js'
-
 const { DEVICE, DEVICE_EVENT, UI, UI_EVENT } = TrezorConnectModule
 const TrezorConnect =
   (
@@ -13,7 +11,7 @@ const TrezorConnect =
       default?: typeof TrezorConnectModule.default
     }
   ).default || TrezorConnectModule.default
-
+type TrezorTypedData = Parameters<typeof TrezorConnect.ethereumSignTypedData>[0]['data']
 type TrezorTransaction = Parameters<typeof TrezorConnect.ethereumSignTransaction>[0]['transaction']
 
 export class DeviceError extends Error {
@@ -109,7 +107,7 @@ class TrezorBridge extends EventEmitter {
     return result.signature
   }
 
-  async signTypedData(device: Device, path: string, data: TypedData) {
+  async signTypedData(device: Device, path: string, data: TrezorTypedData) {
     const result = await this.makeRequest(() =>
       TrezorConnect.ethereumSignTypedData({
         device,
@@ -125,7 +123,7 @@ class TrezorBridge extends EventEmitter {
   async signTypedHash(
     device: Device,
     path: string,
-    data: TypedData,
+    data: TrezorTypedData,
     domainSeparatorHash: string,
     messageHash: string
   ) {

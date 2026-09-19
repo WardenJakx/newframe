@@ -96,7 +96,7 @@ export default class Signer extends EventEmitter {
     }
   }
 
-  open(_device?: unknown) {
+  open(_device?: unknown): void | Promise<void> {
     log.warn(`Signer: ${this.type} did not implement an open method`)
   }
 

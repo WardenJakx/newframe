@@ -14,7 +14,7 @@ export function createProviderRequestAdapter(
 ): SideTrayTransactionPorts['provider'] & { dispose(): void } {
   const callbacks = createOneResultCallbackBoundary()
   return {
-    dispose: callbacks.dispose,
+    dispose: () => callbacks.dispose(),
     request(payload: RPCRequestPayload, principal: TrustedPrincipal, context) {
       return callbacks.run<RPCResponsePayload>((done) => {
         Promise.resolve(provider.send(payload, (response) => done(null, response), principal, context)).catch(
@@ -36,7 +36,7 @@ export function createRequestApprovalAdapter(
   ) => callbacks.run<string>((done) => approve(request, done, context))
 
   return {
-    dispose: callbacks.dispose,
+    dispose: () => callbacks.dispose(),
     approveSign: (request: AccountRequest, context?: SigningUiContext) =>
       run(request, provider.approveSign.bind(provider), context),
     approveSignTypedData: (request: SignTypedDataRequest, context?: SigningUiContext) =>

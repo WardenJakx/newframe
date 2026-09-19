@@ -29,7 +29,7 @@ const vault = {
     unlocked = false
   }
 }
-const readKeystore = () => JSON.parse(fs.readFileSync(FILE_PATH, 'utf8'))
+const readKeystore = (): unknown => JSON.parse(fs.readFileSync(FILE_PATH, 'utf8'))
 const createV1Keystore = (privateKey: Buffer, password: string) => {
   const salt = crypto.randomBytes(16)
   const iv = crypto.randomBytes(16)
@@ -129,13 +129,19 @@ describe('Ring signer', () => {
 
   test('opens only the targeted envelope and removes without decrypting peers', async () => {
     unlocked = true
-    await callbackResult((done) =>
+    await callbackResult((done) => {
       signer.addPrivateKey(crypto.randomBytes(32).toString('hex'), vaultKey, done)
-    )
+    })
     const first = signer.encryptedKeys[0]
     signer.encryptedKeys[0] = { ...first, authTag: '00'.repeat(16) }
-    expect(callbackResult((done) => signer.exportPrivateKey(1, done))).resolves.toMatch(/^0x[0-9a-f]{64}$/)
-    await callbackResult((done) => signer.removePrivateKey(1, vaultKey, done))
+    expect(
+      callbackResult((done) => {
+        signer.exportPrivateKey(1, done)
+      })
+    ).resolves.toMatch(/^0x[0-9a-f]{64}$/)
+    await callbackResult((done) => {
+      signer.removePrivateKey(1, vaultKey, done)
+    })
     expect(signer.encryptedKeys).toHaveLength(1)
     signer.encryptedKeys[0] = first
   })
@@ -153,7 +159,14 @@ describe('Ring signer', () => {
       )
     )
     const v3 = await callbackResult<Signer>((done) =>
-      hot.createFromKeystore(vault, { add: () => {}, exists: () => false }, readKeystore(), 'test', '', done)
+      hot.createFromKeystore(
+        vault,
+        { add: () => {}, exists: () => false },
+        readKeystore() as string | Record<string, unknown>,
+        'test',
+        '',
+        done
+      )
     )
     expect(v1.addresses[0]).toBe(v1.addresses[0].toLowerCase())
     expect(v3.addresses[0]).toBe(v3.addresses[0].toLowerCase())

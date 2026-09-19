@@ -1,10 +1,11 @@
 import type Signer from '../../../platform/signing/signers/Signer/index.js'
+import type { NavigationEntry } from '../../../platform/state-store/state/index.js'
 import type { Chain } from '../../networks/main/index.js'
 
 export interface AccountsRuntime {
   navigation: {
     back(windowId: string, steps?: number): void
-    forward(windowId: string, crumb: unknown): void
+    forward(windowId: string, crumb: NavigationEntry): void
   }
   now(): number
   notify(title: string, body: string, action: (event: Electron.Event) => void): void

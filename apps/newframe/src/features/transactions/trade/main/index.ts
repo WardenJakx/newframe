@@ -157,8 +157,14 @@ function stringValue(value: unknown, fallback = '') {
   if (value === undefined || value === null) {
     return fallback
   }
+  if (typeof value === 'string') {
+    return value
+  }
+  if (typeof value === 'number' || typeof value === 'bigint' || typeof value === 'boolean') {
+    return String(value)
+  }
 
-  return String(value)
+  return fallback
 }
 
 function formatFlashErrorPayload(payload: unknown, fallback: string) {
@@ -249,9 +255,15 @@ function statusPayload(orderId: string, status: FlashOrderStatus, raw?: unknown)
 }
 
 function normalizeStatus(status: unknown): FlashOrderStatus {
-  const rawStatus = String(status ?? '').trim()
-  const normalized = String(rawStatus || 'accepted')
-    .trim()
+  if (status === undefined || status === null) {
+    return 'accepted'
+  }
+  if (typeof status !== 'string') {
+    return 'terminated'
+  }
+
+  const rawStatus = status.trim()
+  const normalized = (rawStatus || 'accepted')
     .toLowerCase()
     .replace(/^order_status_/, '')
     .replace(/_/g, '-')
@@ -401,11 +413,12 @@ function optionalString(value: unknown) {
 }
 
 function optionalInteger(value: unknown, label: string, { max, min }: { max?: number; min?: number } = {}) {
-  if (value === undefined || value === null || String(value).trim() === '') {
+  if (value === undefined || value === null || (typeof value === 'string' && value.trim() === '')) {
     return undefined
   }
 
-  const parsed = Number(normalizeAmount(value as string | number))
+  const parsed =
+    typeof value === 'string' || typeof value === 'number' ? Number(normalizeAmount(value)) : Number.NaN
   if (
     !Number.isInteger(parsed) ||
     (min !== undefined && parsed < min) ||
@@ -608,7 +621,7 @@ function normalizeFees(rawFees: unknown, spentAsset: FlashAsset) {
   })
 }
 
-function parseTypedData(value: unknown) {
+function parseTypedData(value: unknown): unknown {
   if (typeof value !== 'string') {
     return value ?? null
   }
@@ -619,7 +632,7 @@ function parseTypedData(value: unknown) {
   }
 
   try {
-    const parsed = JSON.parse(clean)
+    const parsed: unknown = JSON.parse(clean)
 
     return parsed && typeof parsed === 'object' ? parsed : value
   } catch {
@@ -1288,7 +1301,7 @@ function normalizeOrderRecord(rawOrder: unknown, fallback?: FlashOrderRecord | n
     ...fallback,
     orderId,
     accountAddress: normalizeAddress(
-      stringValue(raw.accountAddress ?? raw.funderAddress ?? raw.account, fallback?.accountAddress)
+      stringValue(raw.accountAddress ?? raw.funderAddress ?? raw.account ?? fallback?.accountAddress)
     ),
     provider: 'flash',
     source: 'flash',

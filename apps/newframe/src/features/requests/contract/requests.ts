@@ -55,7 +55,7 @@ type Action<T> = {
 
 type ChainRequestData = {
   id: number
-  type: string
+  type: 'ethereum'
   name: string
   icon?: string
   symbol?: string

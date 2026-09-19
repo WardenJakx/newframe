@@ -362,9 +362,15 @@ describe('local trade service handler', () => {
       quoteId: mismatchedQuote.body.quoteId,
       evmOrderTypedData: mismatchedQuote.body.evm.orderTypedData
     })
+    const malformedQuoteReference = await post('/v1/order', {
+      ...submitBody,
+      quoteId: { invalid: true }
+    })
 
     expect(mismatched.status).toBe(400)
     expect(quoteOnlyField.status).toBe(400)
+    expect(malformedQuoteReference.status).toBe(404)
+    expect((await json(malformedQuoteReference)).message).toBe('Unknown local Flash quote: ')
   })
 
   it('mirrors official funder lookup and canonical cancellation requirements', async () => {
@@ -574,5 +580,27 @@ describe('local trade service handler', () => {
 
     expect(quote.status).toBe(500)
     expect(quoteBody.message).toContain('Unsupported local Flash target asset')
+  })
+
+  it('rejects object-valued chain, asset, and order type fields with domain errors', async () => {
+    for (const { overrides, message } of [
+      {
+        overrides: { targetChain: {} },
+        message: 'Unsupported local Flash target chain'
+      },
+      {
+        overrides: { targetAsset: {} },
+        message: 'Unsupported local Flash target asset'
+      },
+      {
+        overrides: { orderType: {} },
+        message: 'Unsupported local Flash order type'
+      }
+    ]) {
+      const result = await requestQuote(overrides)
+
+      expect(result.response.status).toBe(500)
+      expect(result.body.message).toBe(message)
+    }
   })
 })

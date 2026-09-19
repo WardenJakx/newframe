@@ -12,7 +12,6 @@ import {
   createBuiltInNetworkMetadata,
   createBuiltInNetworks
 } from '../../../features/networks/domain/chain/index.js'
-import type { Shortcut } from '../../../features/settings/domain/state/shortcuts.js'
 import { OperationRecordSchema } from '../../operations/operation.js'
 import { getMainRuntime } from '../../runtime/index.js'
 import { Derivation } from '../../signing/signers/Signer/derive.js'
@@ -72,21 +71,30 @@ type StatusNotification = z.infer<typeof StatusNotificationSchema>
 
 // TODO: remove pieces of this as they're added to the main state definition
 type M = Main & {
-  shortcuts: { summon: Shortcut; altSlash?: boolean } & Record<string, unknown>
+  shortcuts: Main['shortcuts'] & { altSlash?: boolean }
   lattice: Record<
     string,
-    { deviceName: string; tag: string; privKey: string; paired: boolean } & Record<string, unknown>
+    {
+      deviceId?: string
+      deviceName: string
+      tag: string
+      privKey: string
+      paired: boolean
+      baseUrl?: string
+      endpointMode?: 'default' | 'custom'
+    }
   >
   latticeSettings: {
     accountLimit: number
     derivation: Derivation
-    endpointMode: string
+    endpointMode: 'default' | 'custom'
     endpointCustom: string
   }
   ledger: { derivation: Derivation; liveAccountLimit: number }
   trezor: { derivation: Derivation }
   signers: Record<string, SignerSummary & Record<string, unknown>>
   frames: Record<string, Frame>
+  focusedFrame: string
 }
 
 const mainState: M = {
@@ -145,7 +153,8 @@ const mainState: M = {
   updater: { dontRemind: [], lastChecked: 0 },
   networks: { ethereum: createBuiltInNetworks() },
   networksMeta: { ethereum: createBuiltInNetworkMetadata() },
-  frames: {}
+  frames: {},
+  focusedFrame: ''
 }
 
 const initial = {
@@ -161,7 +170,6 @@ const initial = {
 export type NavigationEntry = {
   view: string
   data: Record<string, unknown>
-  position?: Record<string, string>
   [key: string]: unknown
 }
 type WindowState = {
@@ -170,16 +178,15 @@ type WindowState = {
   [key: string]: unknown
 }
 
-type HomeCommand = { id: number; view?: string; data: Record<string, unknown> }
-
-export type CanonicalState = Omit<typeof initial, 'main' | 'operations' | 'tray' | 'view' | 'windows'> & {
+export type CanonicalState = Omit<typeof initial, 'main' | 'operations' | 'view' | 'windows'> & {
   main: M
   operations: Record<string, OwnedOperation>
-  view: Omit<typeof initial.view, 'notifications'> & {
+  view: Omit<typeof initial.view, 'notifications' | 'notifyData' | 'badge'> & {
+    notifyData: unknown
+    badge: unknown
     notifications: Record<string, StatusNotification>
   }
-  windows: { panel: WindowState }
-  tray: Omit<typeof initial.tray, 'homeCommand'> & { homeCommand: HomeCommand | null }
+  windows: Record<string, WindowState> & { panel: WindowState }
 }
 
 export default function createInitialState(): CanonicalState {

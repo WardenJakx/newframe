@@ -12,7 +12,7 @@ export interface ApiServer {
 export interface ApiServerDependencies {
   http: HttpRpcTransport
   ws: WebSocketRpcTransport
-  createServer(handler: RequestListener): Server
+  createServer: (handler: RequestListener) => Server
   host?: string
   port?: number
 }

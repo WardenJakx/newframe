@@ -17,7 +17,7 @@ interface GasPrices {
 }
 
 interface RpcProvider {
-  send<T = unknown>(method: string, params: unknown[]): Promise<T>
+  send<T>(method: string, params: readonly unknown[]): Promise<T>
 }
 
 export default class GasMonitor {

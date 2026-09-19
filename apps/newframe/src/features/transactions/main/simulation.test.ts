@@ -277,22 +277,10 @@ describe('#simulateTransactionEffects', () => {
   it('sends the existing internal trace envelope and computes canonical profile-relative effects', async () => {
     const canonical = store()
     const profileId = canonical.getState().main.currentProfile
-    canonical
-      .getState()
-      .upsertAccount({ id: account.toLowerCase(), address: account } as unknown as Parameters<
-        ReturnType<typeof canonical.getState>['upsertAccount']
-      >[0])
-    canonical
-      .getState()
-      .upsertAccount({ id: testContract, address: testContract } as unknown as Parameters<
-        ReturnType<typeof canonical.getState>['upsertAccount']
-      >[0])
+    canonical.getState().upsertAccount({ id: account.toLowerCase(), address: account })
+    canonical.getState().upsertAccount({ id: testContract, address: testContract })
     canonical.getState().createProfile('other', 'Other')
-    canonical
-      .getState()
-      .upsertAccount({ id: other, address: other, profileId: 'other' } as unknown as Parameters<
-        ReturnType<typeof canonical.getState>['upsertAccount']
-      >[0])
+    canonical.getState().upsertAccount({ id: other, address: other, profileId: 'other' })
     const rpc = provider(trace({ logs: [event('Transfer', account, testContract, 25n)] }))
     const result = await simulateTransactionEffects(
       request(),

@@ -2,20 +2,17 @@ import { immer } from 'zustand/middleware/immer'
 import { createStore } from 'zustand/vanilla'
 
 import { createCanonicalActions, type CanonicalStore } from '../../src/platform/state-store/actions'
-import createInitialState from '../../src/platform/state-store/state'
+import createInitialState, { type CanonicalState } from '../../src/platform/state-store/state'
 
-type TestStateOverrides = Record<string, unknown> & {
-  main?: Record<string, unknown>
-  view?: Record<string, unknown>
-  windows?: Record<string, unknown> & {
-    panel?: Record<string, unknown>
+type TestInitialState = Partial<Omit<CanonicalState, 'main' | 'view' | 'windows'>> & {
+  main?: Partial<CanonicalState['main']>
+  view?: Partial<CanonicalState['view']>
+  windows?: Partial<CanonicalState['windows']> & {
+    panel?: Partial<CanonicalState['windows']['panel']>
   }
 }
 
-export function createTestStore(
-  initial: TestStateOverrides = {},
-  onChange?: (state: CanonicalStore) => void
-) {
+export function createTestStore(initial: TestInitialState = {}, onChange?: (state: CanonicalStore) => void) {
   const defaults = createInitialState()
   const data = {
     ...defaults,

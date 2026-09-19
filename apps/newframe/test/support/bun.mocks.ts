@@ -40,13 +40,7 @@ const defaultState = () => ({
             samples: [],
             price: {
               selected: 'standard',
-              levels: {
-                slow: '',
-                standard: '',
-                fast: '',
-                asap: '',
-                custom: ''
-              }
+              levels: { slow: '', standard: '', fast: '', asap: '', custom: '' }
             }
           },
           nativeCurrency: {
@@ -106,7 +100,7 @@ const createMockActions = (set: CanonicalSet, get: CanonicalGet) => {
   actionMocks = Object.fromEntries(
     Object.entries(actionImplementations).map(([name, action]) => [
       name,
-      mock((...args: never[]) => Reflect.apply(action, undefined, args))
+      mock((...args: never[]): unknown => Reflect.apply(action, undefined, args) as unknown)
     ])
   )
 

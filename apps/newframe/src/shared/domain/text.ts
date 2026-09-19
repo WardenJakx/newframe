@@ -1,5 +1,5 @@
 export function randomLetters(length: number) {
-  return [...Array(length)].map(() => String.fromCharCode(65 + Math.floor(Math.random() * 26))).join('')
+  return Array.from({ length }, () => String.fromCharCode(65 + Math.floor(Math.random() * 26))).join('')
 }
 
 export function capitalize(value: string) {

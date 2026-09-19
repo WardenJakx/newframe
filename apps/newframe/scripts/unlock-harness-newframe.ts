@@ -42,7 +42,15 @@ class CdpClient {
 
   private constructor(private socket: WebSocket) {
     socket.on('message', (data) => {
-      const message: unknown = JSON.parse(data.toString())
+      let buffer: Buffer
+      if (Array.isArray(data)) {
+        buffer = Buffer.concat(data)
+      } else if (Buffer.isBuffer(data)) {
+        buffer = data
+      } else {
+        buffer = Buffer.from(data)
+      }
+      const message: unknown = JSON.parse(buffer.toString('utf8'))
       if (!message || typeof message !== 'object' || !('id' in message) || typeof message.id !== 'number') {
         return
       }

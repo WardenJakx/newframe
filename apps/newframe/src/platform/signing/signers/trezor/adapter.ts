@@ -63,32 +63,36 @@ export default class TrezorSignerAdapter extends SignerAdapter {
       }
     })
 
-    this.bridge.on('trezor:connect', async (device: TrezorDevice) => {
-      const id = Trezor.generateId(device.path)
-      const trezor = this.knownSigners[id]?.signer || this.initTrezor(device.path)
+    this.bridge.on('trezor:connect', (device: TrezorDevice) => {
+      void (async () => {
+        const id = Trezor.generateId(device.path)
+        const trezor = this.knownSigners[id]?.signer || this.initTrezor(device.path)
 
-      trezor.derivation = this.store.getState().main.trezor.derivation
+        trezor.derivation = this.store.getState().main.trezor.derivation
 
-      try {
-        await trezor.open(device)
+        try {
+          await trezor.open(device)
 
-        const version = [trezor.appVersion.major, trezor.appVersion.minor, trezor.appVersion.patch].join('.')
-        log.info(`Trezor ${trezor.id} connected: ${trezor.model}, firmware v${version}`)
+          const version = [trezor.appVersion.major, trezor.appVersion.minor, trezor.appVersion.patch].join(
+            '.'
+          )
+          log.info(`Trezor ${trezor.id} connected: ${trezor.model}, firmware v${version}`)
 
-        // arbitrary delay to attempt to minimize message conflicts on first connection
-        if (!this.opened) {
-          return
-        }
-        const derivationTimeout = setTimeout(() => {
-          this.derivationTimeouts.delete(derivationTimeout)
-          if (this.opened) {
-            void trezor.deriveAddresses()
+          // arbitrary delay to attempt to minimize message conflicts on first connection
+          if (!this.opened) {
+            return
           }
-        }, 200)
-        this.derivationTimeouts.add(derivationTimeout)
-      } catch (e) {
-        log.error('could not open Trezor', e)
-      }
+          const derivationTimeout = setTimeout(() => {
+            this.derivationTimeouts.delete(derivationTimeout)
+            if (this.opened) {
+              void trezor.deriveAddresses()
+            }
+          }, 200)
+          this.derivationTimeouts.add(derivationTimeout)
+        } catch (e) {
+          log.error('could not open Trezor', e)
+        }
+      })()
     })
 
     this.bridge.on('trezor:disconnect', (device: TrezorDevice) => {

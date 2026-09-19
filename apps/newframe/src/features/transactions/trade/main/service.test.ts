@@ -154,6 +154,31 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
   expect(quoted.quoteId).not.toBe('quote-1')
   expect(quoted.quote).toMatchObject({ nextAction: 'approve', requiresPermit: true })
 
+  for (const response of [
+    {
+      quote: { ...quote(), id: { value: 'malformed-provider-id' } } as unknown as FlashQuote,
+      flash: { quoteId: 'lower-priority-provider-id' }
+    },
+    {
+      quote: {
+        ...quote(''),
+        raw: {
+          ...(quote('').raw as Record<string, unknown>),
+          bridgeQuoteId: 'lower-priority-bridge-id'
+        }
+      },
+      flash: { bridgeQuoteId: '' }
+    }
+  ]) {
+    flashQuote.mockImplementationOnce(async () => response)
+    const invalidQuote = await service.quote(request, owner)
+    expect(invalidQuote).toMatchObject({
+      ok: false,
+      error: 'quote_failed',
+      message: 'Flash quote did not return a quote id.'
+    })
+  }
+
   const operationId = 'trade-operation'
   expect(prepare(operationId, quoted.quoteId)).toBe(true)
   expect(prepare(operationId, quoted.quoteId)).toBe(true)
@@ -179,7 +204,7 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
     entityRefs: expect.arrayContaining([
       { type: 'transaction', id: `0x${'a'.repeat(64)}` },
       { type: 'order', id: 'order-1' }
-    ])
+    ]) as unknown
   })
 
   const cancel = { type: 'flash.order-cancel' as const, operationId: 'cancel-1', orderId: 'order-cancel' }
@@ -483,7 +508,7 @@ it('keeps cross-chain provider state private and validates both networks and the
     entityRefs: expect.arrayContaining([
       { type: 'chain', id: '1' },
       { type: 'chain', id: '8453' }
-    ])
+    ]) as unknown
   })
 
   const unavailable = await service.quote(request, owner)

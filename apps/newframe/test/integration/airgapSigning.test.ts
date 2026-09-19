@@ -99,8 +99,8 @@ function integrationFixture({
   chains.send = rpc.send.bind(rpc)
   const accounts = new Accounts(f.store, {
     chainRpc: {
-      send: rpc.send,
-      sendAsync: rpc.sendAsync,
+      send: (payload, callback) => rpc.send(payload, callback),
+      sendAsync: (payload, callback) => rpc.sendAsync(payload, callback),
       getL1GasCost: rpc.getL1GasCost,
       on() {
         return undefined
@@ -340,7 +340,7 @@ it('confirms an existing Safe proposal through the owner Account and verified QR
         pending: [proposal]
       }
     }
-  } as unknown as Parameters<ReturnType<typeof f.store.getState>['upsertAccount']>[0])
+  })
   f.store.setState((state) => {
     state.main.currentAccount = safe
     state.main.networks.ethereum[1].on = true

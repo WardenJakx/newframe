@@ -149,12 +149,12 @@ it('uses renderer-generated idempotency keys for transaction replacement', () =>
   expect(capabilities.transaction.replace).toHaveBeenNthCalledWith(1, {
     requestId: req.handlerId,
     replacement: 'cancel',
-    idempotencyKey: expect.stringMatching(/^[0-9a-f-]{36}$/)
+    idempotencyKey: expect.stringMatching(/^[0-9a-f-]{36}$/) as unknown
   })
   expect(capabilities.transaction.replace).toHaveBeenNthCalledWith(2, {
     requestId: req.handlerId,
     replacement: 'speed',
-    idempotencyKey: expect.stringMatching(/^[0-9a-f-]{36}$/)
+    idempotencyKey: expect.stringMatching(/^[0-9a-f-]{36}$/) as unknown
   })
 })
 

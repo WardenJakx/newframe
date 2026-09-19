@@ -16,6 +16,7 @@ import createCanonicalStore from './createCanonicalStore'
 import {
   CANONICAL_STATE_STORAGE_NAME,
   PERSISTENCE_VERSION,
+  PersistedCanonicalStateSchema,
   type PersistedCanonicalState
 } from './persist/schema'
 import { mergePersistedState, migratePersistedState, selectPersistedState } from './persistence'
@@ -610,6 +611,9 @@ describe('canonical persisted state contract', () => {
     const current = canonicalState()
     const persisted = selectPersistedState(current)
     const metadata = mutablePersisted(persisted).main.networksMeta.ethereum
+    current.main.networksMeta.ethereum[1].icon = {
+      toString: () => builtInChainIconUrl(1)
+    } as unknown as string
     metadata[1].gas.price.levels.custom = '0x2a'
     metadata[1].icon = 'frame-cache:icon:legacy'
     metadata[10].icon = 'data:image/png;base64,aWNvbg=='
@@ -633,7 +637,7 @@ describe('canonical persisted state contract', () => {
       }
     }).toEqual({
       mainnet: {
-        icon: builtInChainIconUrl(1),
+        icon: '',
         levels: {
           slow: '',
           standard: '',
@@ -737,7 +741,10 @@ it('retains Safe metadata through persistence and projects only the current prof
     safe
   })
   store.getState().createProfile('other', 'Other')
-  const persisted = JSON.parse(JSON.stringify(selectPersistedState(store.getState())))
+  const persisted = PersistedCanonicalStateSchema.parse(
+    JSON.parse(JSON.stringify(selectPersistedState(store.getState()))),
+    { reportInput: true }
+  )
   const merged = mergePersistedState(persisted, canonicalState())
   expect(merged.main.accounts[address].safe).toEqual(safe)
   const audience = { clientType: 'wallet-ui' as const, windowInstanceId: 'test' }

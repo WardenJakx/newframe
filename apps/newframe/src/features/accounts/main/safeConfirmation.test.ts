@@ -73,14 +73,14 @@ function setup() {
         pending: [proposal]
       }
     }
-  } as unknown as Parameters<ReturnType<typeof store.getState>['upsertAccount']>[0])
+  })
   store.getState().upsertAccount({
     id: ownerId,
     address: wallet.address,
     signer: 'seed',
     lastSignerType: 'Seed',
     created: 'owner:1'
-  } as unknown as Parameters<ReturnType<typeof store.getState>['upsertAccount']>[0])
+  })
   store.setState((state) => ({
     main: {
       ...state.main,
@@ -115,7 +115,7 @@ function setup() {
     })
   }
   const service = createSafeConfirmationService({ store, operations, accounts, client })
-  disposals.push(service.dispose)
+  disposals.push(() => service.dispose())
   let active = true
   const listeners = new Set<() => void>()
   const context: SigningUiContext = {
@@ -176,16 +176,16 @@ it('signs exact canonical fields for a future nonce without changing selected Sa
     expect.objectContaining({
       requestId: test.command.operationId,
       chainId: 1,
-      signal: expect.any(AbortSignal),
+      signal: expect.any(AbortSignal) as unknown,
       ui: test.context,
-      isActive: expect.any(Function)
+      isActive: expect.any(Function) as unknown
     })
   ])
   expect(test.client.confirm).toHaveBeenCalledWith(
     1,
     test.proposal.safeTxHash,
     test.signature,
-    expect.any(AbortSignal)
+    expect.any(AbortSignal) as unknown
   )
   expect(test.client.confirmations).toHaveBeenCalledTimes(2)
   expect(test.store.getState().main.currentAccount).toBe(safeAddress)

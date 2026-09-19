@@ -48,6 +48,8 @@ describe('tradeTransaction', () => {
 
   it('normalizes market and optional order payloads', () => {
     expect(cleanFlashDecimal(' 1,200.50 ')).toBe('1200.50')
+    expect(cleanFlashDecimal(1_200.5)).toBe('1200.5')
+    expect(cleanFlashDecimal({ value: '1200.50' })).toBe('')
     expect(market({ inputAmount: ' 1,200.50 ' })).toEqual({
       accountAddress: '0xsender',
       contraAsset: FLASH_USDC_ASSET,

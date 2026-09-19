@@ -102,19 +102,15 @@ describe('#fetchContract', () => {
 
   it('waits for a contract from sourcify even if etherscan returns first', async () => {
     timers.useFakeTimers()
-    const sourcifyResponse = new Promise((resolve) =>
+    const sourcifyResponse = new Promise<Awaited<ReturnType<typeof fetchSourcifyContract>>>((resolve) =>
       setTimeout(() => resolve(mockContractSource('sourcify')), 40)
     )
-    const etherscanResponse = new Promise((resolve) =>
+    const etherscanResponse = new Promise<Awaited<ReturnType<typeof fetchEtherscanContract>>>((resolve) =>
       setTimeout(() => resolve(mockContractSource('etherscan')), 20)
     )
 
-    ;(fetchSourcifyContract as Mock<typeof fetchSourcifyContract>).mockReturnValue(
-      sourcifyResponse as ReturnType<typeof fetchSourcifyContract>
-    )
-    ;(fetchEtherscanContract as Mock<typeof fetchEtherscanContract>).mockReturnValue(
-      etherscanResponse as ReturnType<typeof fetchEtherscanContract>
-    )
+    ;(fetchSourcifyContract as Mock<typeof fetchSourcifyContract>).mockReturnValue(sourcifyResponse)
+    ;(fetchEtherscanContract as Mock<typeof fetchEtherscanContract>).mockReturnValue(etherscanResponse)
 
     const contract = fetchContract('0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0', 1)
     timers.advanceTimersByTime(40)
@@ -228,7 +224,7 @@ describe('#decodeCallDataWithSelectorRegistry', () => {
   })
 })
 
-function mockContractSource(source: 'etherscan' | 'sourcify') {
+function mockContractSource(source: string) {
   return {
     abi: JSON.stringify(mockAbi),
     name: `mock ${source} abi`,

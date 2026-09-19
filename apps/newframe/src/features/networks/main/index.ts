@@ -211,7 +211,7 @@ class ChainConnection extends EventEmitter {
 
   private async connectProvider(priority: Priority, provider: EthersRpcProvider) {
     try {
-      const chainId = await provider.send('eth_chainId', [])
+      const chainId: unknown = await provider.send('eth_chainId', [])
 
       if (this[priority].provider !== provider) {
         return
@@ -337,10 +337,11 @@ class ChainConnection extends EventEmitter {
 
   connect(chain: StoredChainSettings) {
     const connection = chain.connection
+    const nextNetwork = typeof connection.network === 'string' ? connection.network : ''
 
     log.info(this.type + ':' + this.chainId + "'s connection has been updated")
 
-    if (this.network !== connection.network) {
+    if (this.network !== nextNetwork) {
       this.killProvider(this.primary.provider)
       this.primary.provider = null
       this.killProvider(this.secondary.provider)
@@ -349,8 +350,8 @@ class ChainConnection extends EventEmitter {
       this.secondary = { status: 'loading', network: '', type: '', connected: false }
       this.update('primary')
       this.update('secondary')
-      log.info('Network changed from ' + this.network + ' to ' + connection.network)
-      this.network = connection.network
+      log.info('Network changed from ' + this.network + ' to ' + nextNetwork)
+      this.network = nextNetwork
     }
 
     const currentPresets: Record<string, string> = {

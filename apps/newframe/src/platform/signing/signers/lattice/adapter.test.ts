@@ -138,7 +138,7 @@ it('applies endpoint, derivation, and account-limit settings without redundant w
   setSettings({ endpointMode: 'custom', endpointCustom: 'https://myendpoint.io' })
   await Promise.resolve()
   signer.connection = { baseUrl: 'https://customendpoint.io' }
-  setSettings({ endpointMode: 'standard' })
+  setSettings({ endpointMode: 'default' })
   await Promise.resolve()
   expect(signer.connect.mock.calls).toEqual([
     ['https://myendpoint.io', 'supersecretkey'],

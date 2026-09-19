@@ -48,15 +48,15 @@ export interface SendViewModel {
 }
 
 export interface SendViewEvents {
-  onAmountChange(amount: string): void
-  onClearRecipient(): void
-  onClose(): void
-  onRecipientInputChange(recipient: string): void
-  onSelectAsset(assetId: string): void
-  onSelectRecipient(recipient: SendAccountViewModel): void
-  onSetMax(): void
-  onShowMoreTokens(): void
-  onSubmit(): void
-  onTokenPickerOpenChange(open: boolean): void
-  onToggleRecipients(): void
+  onAmountChange: (amount: string) => void
+  onClearRecipient: () => void
+  onClose: () => void
+  onRecipientInputChange: (recipient: string) => void
+  onSelectAsset: (assetId: string) => void
+  onSelectRecipient: (recipient: SendAccountViewModel) => void
+  onSetMax: () => void
+  onShowMoreTokens: () => void
+  onSubmit: () => void
+  onTokenPickerOpenChange: (open: boolean) => void
+  onToggleRecipients: () => void
 }

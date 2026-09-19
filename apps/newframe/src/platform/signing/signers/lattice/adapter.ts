@@ -69,7 +69,7 @@ export default class LatticeAdapter extends SignerAdapter {
 
     this.unsubscribeSettings?.()
     this.unsubscribeSettings = this.store.subscribe(
-      (state) => state.main.latticeSettings,
+      (state) => state.main.latticeSettings as unknown,
       () => {
         const { baseUrl, derivation, accountLimit } = getGlobalLatticeSettings(this.store)
 
