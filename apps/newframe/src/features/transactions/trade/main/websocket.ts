@@ -116,7 +116,15 @@ export class FlashOrderStream {
       }
 
       try {
-        this.handleFrame(JSON.parse(message.toString()))
+        let buffer: Buffer
+        if (Array.isArray(message)) {
+          buffer = Buffer.concat(message)
+        } else if (Buffer.isBuffer(message)) {
+          buffer = message
+        } else {
+          buffer = Buffer.from(message)
+        }
+        this.handleFrame(JSON.parse(buffer.toString('utf8')))
       } catch (error) {
         this.options.onError?.(error)
       }

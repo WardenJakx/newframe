@@ -376,6 +376,8 @@ function DetailRow({
   if (value === undefined || value === null || value === '') {
     return null
   }
+  const buttonLabel =
+    actionLabel ?? (typeof value === 'string' || typeof value === 'number' ? `${label}: ${value}` : label)
   const content = (
     <Inline align='center' gap='small' justify='between'>
       <Text shrink={false} tone='secondary' variant='overline'>
@@ -385,13 +387,7 @@ function DetailRow({
     </Inline>
   )
   return onClick ? (
-    <Button
-      appearance='row'
-      label={actionLabel ?? `${label}: ${String(value)}`}
-      onPress={onClick}
-      size='medium'
-      width='full'
-    >
+    <Button appearance='row' label={buttonLabel} onPress={onClick} size='medium' width='full'>
       {content}
     </Button>
   ) : (
