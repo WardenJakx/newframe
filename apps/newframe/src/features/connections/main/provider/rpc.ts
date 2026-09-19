@@ -165,7 +165,6 @@ export function listenForProviderClose(provider: EthersRpcProvider, onClose: () 
 
   try {
     const socket = provider.websocket as CloseAwareSocket
-
     if (typeof socket.on === 'function') {
       socket.on('close', onClose)
     } else {

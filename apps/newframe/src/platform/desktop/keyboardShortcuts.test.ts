@@ -1,14 +1,13 @@
-import { beforeEach, describe, expect, it, type mock } from 'bun:test'
+import { beforeEach, describe, expect, it, type Mock } from 'bun:test'
 
 import { globalShortcut } from 'electron'
 
+import type { Shortcut } from '../../features/settings/domain/state/shortcuts'
+
 let registerShortcut: typeof import('./keyboardShortcuts').registerShortcut
-const globalShortcutRegisterMock = globalShortcut.register as unknown as ReturnType<
-  typeof mock<typeof globalShortcut.register>
->
 
 describe('registerShortcut', () => {
-  const shortcut: Parameters<typeof import('./keyboardShortcuts').registerShortcut>[0] = {
+  const shortcut: Shortcut = {
     shortcutKey: 'Slash',
     modifierKeys: ['Alt'],
     enabled: true,
@@ -28,10 +27,12 @@ describe('registerShortcut', () => {
   })
 
   it('should register the new shortcut', () => {
-    globalShortcutRegisterMock.mockImplementationOnce((_accelerator, handlerFn) => {
-      handlerFn()
-      return true
-    })
+    ;(globalShortcut.register as Mock<typeof globalShortcut.register>).mockImplementationOnce(
+      (_accelerator, handlerFn) => {
+        handlerFn()
+        return true
+      }
+    )
 
     return new Promise<void>((resolve) => {
       const handlerFn = (accelerator: string) => {

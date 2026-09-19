@@ -4,6 +4,9 @@ import { openTransportReplayer, RecordStore } from '@ledgerhq/hw-transport-mocke
 import log from 'electron-log'
 
 import { Derivation } from '../../Signer/derive'
+
+const statusCode = (error: unknown) =>
+  error && typeof error === 'object' && 'statusCode' in error ? error.statusCode : undefined
 import LedgerEthereumApp from './eth'
 
 // -------------------
@@ -133,7 +136,7 @@ describe('#signMessage', () => {
       await ethApp.signMessage('badpath', '0x68656c6c6f2c204672616d6521')
       throw new Error('signed message with invalid path!')
     } catch (e) {
-      expect((e as any).statusCode).toBe(27264)
+      expect(statusCode(e)).toBe(27264)
     }
   }, 100)
 
@@ -149,7 +152,7 @@ describe('#signMessage', () => {
       await ethApp.signMessage("44'/60'/1'/4", '0x68656c6c6f2c204672616d6521')
       throw new Error('signed rejected message!')
     } catch (e) {
-      expect((e as any).statusCode).toBe(27013)
+      expect(statusCode(e)).toBe(27013)
     }
   }, 100)
 })
@@ -229,7 +232,7 @@ describe('#signTypedData', () => {
       await ethApp.signTypedData('badpath', typedData)
       throw new Error('signed typed data with invalid path!')
     } catch (e) {
-      expect((e as any).statusCode).toBe(27264)
+      expect(statusCode(e)).toBe(27264)
     }
   }, 100)
 
@@ -245,7 +248,7 @@ describe('#signTypedData', () => {
       await ethApp.signTypedData("44'/60'/0'/0", typedData)
       throw new Error('signed rejected typed data!')
     } catch (e) {
-      expect((e as any).statusCode).toBe(27013)
+      expect(statusCode(e)).toBe(27013)
     }
   }, 100)
 })
@@ -331,7 +334,7 @@ describe('#signTransaction', () => {
       await ethApp.signTransaction("44'/60'/0'/0", eip1559Tx)
       throw new Error('signed rejected transaction!')
     } catch (e) {
-      expect((e as any).statusCode).toBe(27013)
+      expect(statusCode(e)).toBe(27013)
     }
   }, 100)
 })

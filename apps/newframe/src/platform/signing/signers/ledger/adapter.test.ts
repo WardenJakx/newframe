@@ -5,6 +5,7 @@ import log from 'electron-log'
 import { v5 as uuid } from 'uuid'
 
 import store from '../../../state-store'
+import type LedgerSignerAdapterType from './adapter'
 
 const ns = '3bbcee75-cecc-5b56-8031-b6641c1ed1f1'
 
@@ -63,7 +64,24 @@ const TransportNodeHidSingletonMock = {
   listen: mock(() => ({ unsubscribe: mock() }))
 }
 
-type ConnectedHid = { interface: number; product: string; usagePage: number; path: string }
+interface ConnectedHid {
+  interface: number
+  path: string
+  product: string
+  usagePage: number
+}
+
+type PublicAdapter = {
+  [Key in keyof LedgerSignerAdapterType]: LedgerSignerAdapterType[Key]
+}
+
+type TestAdapter = Omit<PublicAdapter, 'reload'> & {
+  disconnections: Array<{ device: LedgerMock; timeout: NodeJS.Timeout }>
+  handleDeviceChanges(): void
+  handleDisconnectedDevice(device: LedgerMock): void
+  knownSigners: Record<string, LedgerMock>
+  reload(device: LedgerMock): void
+}
 
 let connectedHids: ConnectedHid[] = []
 
@@ -86,18 +104,8 @@ function simulateLedgerDisconnection(path: string) {
   connectedHids.splice(hidIndex, 1)
 }
 
-type LedgerAdapter = InstanceType<typeof import('./adapter').default>
-type AdapterTestPort = Omit<LedgerAdapter, 'reload' | 'remove'> & {
-  disconnections: Array<{ device: LedgerMock; timeout: NodeJS.Timeout }>
-  handleDeviceChanges(): void
-  handleDisconnectedDevice(ledger: LedgerMock): void
-  knownSigners: Record<string, LedgerMock>
-  reload(ledger: LedgerMock): void
-  remove(ledger: LedgerMock): void
-}
-
-let LedgerSignerAdapter: typeof import('./adapter').default
-let adapter: AdapterTestPort
+let LedgerSignerAdapter: typeof LedgerSignerAdapterType
+let adapter: TestAdapter
 
 beforeAll(async () => {
   timers.useFakeTimers()
@@ -110,7 +118,7 @@ beforeEach(() => {
   connectedHids = []
   store.getState().clearHomeCommand()
 
-  adapter = new LedgerSignerAdapter(store) as unknown as AdapterTestPort
+  adapter = new LedgerSignerAdapter(store) as unknown as TestAdapter
   adapter.open()
 })
 

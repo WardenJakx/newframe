@@ -34,7 +34,7 @@ class MockConnection extends EventEmitter {
 
   destroy = this.close
 
-  send = (methodOrPayload: string | { method: string }, _params?: unknown) => {
+  send = (methodOrPayload: string | { method: string }, _params?: readonly unknown[]) => {
     return new Promise((resolve, reject) => {
       const method = typeof methodOrPayload === 'string' ? methodOrPayload : methodOrPayload.method
 
@@ -55,7 +55,7 @@ class MockConnection extends EventEmitter {
         })
       }
 
-      return reject(new Error('unknown method!'))
+      return reject('unknown method!')
     })
   }
 }
@@ -182,9 +182,9 @@ const state = {
 }
 
 await mock.module('../../connections/main/provider/connection', () => ({
-  createJsonRpcProvider: (target: any) => (mockConnections as any)[target].connection,
+  createJsonRpcProvider: (target: keyof typeof mockConnections) => mockConnections[target].connection,
   listenForProviderClose: mock(),
-  sendRpcPayload: (provider: MockConnection, payload: { method: string; params?: unknown }) =>
+  sendRpcPayload: (provider: MockConnection, payload: RPCRequestPayload) =>
     provider.send(payload.method, payload.params ?? [])
 }))
 await mock.module('../../../platform/state-store/state', () => () => state)
@@ -208,7 +208,7 @@ const mockConnections = {
   }
 }
 
-let chains: InstanceType<typeof import('./index').Chains>
+let chains: import('./index').Chains
 
 const resetChainState = () => {
   store.setState((current) => {
@@ -221,7 +221,7 @@ const waitForConnection = async () => {
   await Promise.resolve()
 }
 
-const connectChain = async (chain: (typeof mockConnections)[keyof typeof mockConnections]) => {
+const connectChain = async (chain: { id: string }) => {
   store.getState().toggleConnection('ethereum', Number(chain.id), 'primary', true)
   await waitForConnection()
 }
@@ -254,7 +254,7 @@ afterEach((done) => {
     return done()
   }
 
-  chains.once('close', ({ id }: any) => {
+  chains.once('close', ({ id }: { id: string }) => {
     if (id === activeConnection.id) {
       done()
     } else {

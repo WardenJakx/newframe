@@ -14,26 +14,25 @@ afterAll(() => {
 })
 
 describe('#getRawTx', () => {
-  const cases: Array<
-    [string, Record<string, string | undefined>, keyof ReturnType<typeof getRawTx>, string | undefined]
-  > = [
-    ['valid value', { value: '0x2540be400' }, 'value', '0x2540be400'],
-    ['leading-zero value', { value: '0x0a45c6' }, 'value', '0xa45c6'],
-    ['hex zero', { value: '0x0' }, 'value', '0x0'],
-    ['empty hex value', { value: '0x' }, 'value', '0x0'],
-    ['unprefixed zero', { value: '0' }, 'value', '0x0'],
-    ['missing value', { value: undefined }, 'value', '0x0'],
-    ['hex nonce', { nonce: '0x168' }, 'nonce', '0x168'],
-    ['integer nonce', { nonce: '360' }, 'nonce', '0x168'],
-    ['missing nonce', { nonce: undefined }, 'nonce', undefined]
-  ]
-  cases.forEach(([description, input, field, expected]) => {
+  ;(
+    [
+      ['valid value', { value: '0x2540be400' }, 'value', '0x2540be400'],
+      ['leading-zero value', { value: '0x0a45c6' }, 'value', '0xa45c6'],
+      ['hex zero', { value: '0x0' }, 'value', '0x0'],
+      ['empty hex value', { value: '0x' }, 'value', '0x0'],
+      ['unprefixed zero', { value: '0' }, 'value', '0x0'],
+      ['missing value', { value: undefined }, 'value', '0x0'],
+      ['hex nonce', { nonce: '0x168' }, 'nonce', '0x168'],
+      ['integer nonce', { nonce: '360' }, 'nonce', '0x168'],
+      ['missing nonce', { nonce: undefined }, 'nonce', undefined]
+    ] as const
+  ).forEach(([description, input, field, expected]) => {
     it(`normalizes ${description}`, () =>
-      expect(getRawTx(input as unknown as RPC.SendTransaction.TxParams)[field]).toBe(expected))
+      expect(getRawTx({ chainId: '0x1', ...input })[field]).toBe(expected))
   })
   ;['invalid', '-360', '3.60'].forEach((nonce) => {
     it(`rejects invalid nonce ${nonce}`, () => {
-      expect(() => getRawTx({ nonce } as RPC.SendTransaction.TxParams)).toThrow('Invalid nonce')
+      expect(() => getRawTx({ chainId: '0x1', nonce })).toThrow('Invalid nonce')
     })
   })
 })
@@ -68,14 +67,14 @@ describe('#getSignedAddress', () => {
       '0xa4ba512820eab7022d0c88b9335425b6235c184565c84fb9e451965844a185030baec17ac9565c666675525cae41e367c458c1fdf575a80f6a44197d3b48c0ba1c'
     const message = fromUtf8('Example `personal_sign` message')
 
-    getSignedAddress(signature, message, (err, verifiedAddress) => {
+    getSignedAddress(signature, message, (err, verifiedAddress = '') => {
       expect(err).toBeFalsy()
-      expect(verifiedAddress?.toLowerCase()).toBe('0x3a077715f7383ad97215d1a585778bce6a9aa8af')
+      expect(verifiedAddress.toLowerCase()).toBe('0x3a077715f7383ad97215d1a585778bce6a9aa8af')
     })
   })
 
   it('returns an error if no signature is provided', () => {
-    getSignedAddress(null as unknown as string, 'some message', (err) => {
+    getSignedAddress('', 'some message', (err) => {
       expect(err).toBeTruthy()
     })
   })

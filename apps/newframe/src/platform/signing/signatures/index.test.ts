@@ -50,7 +50,7 @@ describe('#identify', () => {
   })
 
   it('should not identify erc-20 permit signature requests with missing domain entries', () => {
-    delete (typedMessage.data.domain as { chainId?: number }).chainId
+    delete typedMessage.data.domain.chainId
 
     expect(signatureParser.identify(typedMessage)).toBe('signTypedData')
   })
@@ -62,7 +62,7 @@ describe('#identify', () => {
   })
 
   it('should successfully identfy empty types arrays', () => {
-    typedMessage.data.types = [] as unknown as typeof typedMessage.data.types
+    typedMessage.data.types = { EIP712Domain: [], Permit: [] }
 
     expect(signatureParser.identify(typedMessage)).toBe('signTypedData')
   })

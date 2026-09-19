@@ -1,12 +1,8 @@
-import { describe, expect, it, mock } from 'bun:test'
+import { describe, expect, it, mock, type Mock } from 'bun:test'
 
 import { app, dialog } from 'electron'
 
 import { showUnhandledExceptionDialog } from './dialog'
-
-const showMessageBoxSyncMock = dialog.showMessageBoxSync as unknown as ReturnType<
-  typeof mock<typeof dialog.showMessageBoxSync>
->
 
 await mock.module('./', () => ({
   browserWindows: () => ({ panel: 'mock tray browserwindow' })
@@ -36,7 +32,9 @@ describe('#showUnhandledExceptionDialog', () => {
   })
 
   it('will relaunch the app when the user clicks OK', () => {
-    showMessageBoxSyncMock.mockImplementation(() => 0)
+    ;(dialog.showMessageBoxSync as unknown as Mock<typeof dialog.showMessageBoxSync>).mockImplementation(
+      () => 0
+    )
 
     showUnhandledExceptionDialog('something bad happened')
 
@@ -45,7 +43,9 @@ describe('#showUnhandledExceptionDialog', () => {
   })
 
   it('will not relaunch the app when the user clicks quit', () => {
-    showMessageBoxSyncMock.mockImplementation(() => 1)
+    ;(dialog.showMessageBoxSync as unknown as Mock<typeof dialog.showMessageBoxSync>).mockImplementation(
+      () => 1
+    )
 
     showUnhandledExceptionDialog('something bad happened')
 

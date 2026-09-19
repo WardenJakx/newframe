@@ -3,7 +3,6 @@ import { EventEmitter } from 'events'
 
 import store from '../../state-store'
 import createCanonicalStore from '../../state-store/createCanonicalStore'
-import type { Signers as SignersClass, SignersDependencies } from './index'
 import type Signer from './Signer'
 
 class HotSignerMock extends EventEmitter {
@@ -47,8 +46,8 @@ class AdapterMock extends EventEmitter {
 
 const createFromPrivateKey = mock(
   (
-    _vault: SignersDependencies['vault'],
-    _collection: Pick<SignersClass, 'add' | 'exists'>,
+    _vault: { acquireKey(password?: string): string },
+    _collection: { add(signer: Signer): void },
     _key: string,
     _password: string,
     _done: Callback<Signer>
@@ -102,7 +101,7 @@ function dependencies(canonicalStore = store) {
       unlock: mock(() => ''),
       unlockWithKey: mock(() => '')
     }
-  } satisfies SignersDependencies
+  }
 }
 
 const createSigners = () => new Signers(dependencies(), [], () => mock())

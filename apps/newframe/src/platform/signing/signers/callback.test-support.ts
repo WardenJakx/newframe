@@ -3,9 +3,9 @@ import { expect } from 'bun:test'
 import { GasFeesSource } from '../../../features/transactions/domain'
 import type HotSigner from './hot/HotSigner'
 
-export function callbackResult<T>(start: (done: Callback<T>) => void | Promise<void>): Promise<T> {
-  return new Promise(
-    (resolve, reject) => void start((error, value) => (error ? reject(error) : resolve(value as T)))
+export function callbackResult<T>(start: (done: Callback<T>) => void): Promise<T> {
+  return new Promise((resolve, reject) =>
+    start((error, value) => (error ? reject(error) : resolve(value as T)))
   )
 }
 
