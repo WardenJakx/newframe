@@ -69,6 +69,15 @@ export type TransactionInformationProps = {
   children?: ReactNode
 }
 
+const transactionFrameRecipe = cva({
+  base: {
+    width: '100%',
+    minHeight: '100%',
+    display: 'flex',
+    justifyContent: 'center'
+  }
+})
+
 const transactionRecipe = cva({
   base: {
     width: '100%',
@@ -76,7 +85,6 @@ const transactionRecipe = cva({
     display: 'flex',
     flexDirection: 'column',
     maxWidth: 'page-compact',
-    marginInline: 'auto',
     paddingInline: '5',
     paddingBlockEnd: '9'
   }
@@ -498,119 +506,121 @@ export default function TransactionInformation({
     path: `${detail.label}-${position}`
   }))
   return (
-    <div className={transactionRecipe()}>
-      <Stack gap='small' grow>
-        <section aria-label='Request summary' className={requestSummaryRecipe()}>
-          <Stack align='center' gap='xsmall'>
-            <RequestOrigin originName={originName} favicon={favicon} />
+    <div className={transactionFrameRecipe()}>
+      <div className={transactionRecipe()}>
+        <Stack gap='small' grow>
+          <section aria-label='Request summary' className={requestSummaryRecipe()}>
             <Stack align='center' gap='xsmall'>
-              <output className={badgeRecipe()}>
-                <Text tone='accent' variant='overline'>
-                  {statusLabel}
-                </Text>
-              </output>
-              {statusDetails}
-              {notice ? (
-                <div role='alert'>
-                  <Text tone='danger' variant='caption'>
-                    {notice}
+              <RequestOrigin originName={originName} favicon={favicon} />
+              <Stack align='center' gap='xsmall'>
+                <output className={badgeRecipe()}>
+                  <Text tone='accent' variant='overline'>
+                    {statusLabel}
                   </Text>
-                </div>
-              ) : null}
-            </Stack>
-          </Stack>
-        </section>
-
-        {effects ? (
-          <TransactionEffects
-            effects={effects}
-            emptyText={effectsEmptyText}
-            notice={effectsNotice}
-            imageCapability={imageCapability}
-            nativeCurrency={nativeCurrency}
-            networkIcon={networkIcon}
-            networkName={networkName}
-          />
-        ) : null}
-
-        {beforeDetails}
-
-        <Surface padding='none' radius='card' tone='card'>
-          <section aria-label='Transaction details' className={sectionRecipe()}>
-            <div className={sectionHeaderRecipe()}>
-              <Text variant={actionTitle ? 'sectionTitle' : 'overline'}>
-                {actionTitle ?? 'Request details'}
-              </Text>
-            </div>
-            <Surface padding='small' radius='none' tone='card'>
-              <Stack gap='xsmall'>
-                {actionNotice}
-                {keyedDetails.map(({ detail, path }) => (
-                  <DetailRow key={path} {...detail} wrap={wrapDetailValues} />
-                ))}
+                </output>
+                {statusDetails}
+                {notice ? (
+                  <div role='alert'>
+                    <Text tone='danger' variant='caption'>
+                      {notice}
+                    </Text>
+                  </div>
+                ) : null}
               </Stack>
-            </Surface>
+            </Stack>
           </section>
-        </Surface>
 
-        {calldata || verification?.length || rawTransaction ? (
-          <Surface padding='small' radius='card' tone='card'>
-            <section aria-label='Verification details'>
-              <Stack gap='xsmall'>
-                <Text tone='secondary' variant='overline'>
-                  Verification
+          {effects ? (
+            <TransactionEffects
+              effects={effects}
+              emptyText={effectsEmptyText}
+              notice={effectsNotice}
+              imageCapability={imageCapability}
+              nativeCurrency={nativeCurrency}
+              networkIcon={networkIcon}
+              networkName={networkName}
+            />
+          ) : null}
+
+          {beforeDetails}
+
+          <Surface padding='none' radius='card' tone='card'>
+            <section aria-label='Transaction details' className={sectionRecipe()}>
+              <div className={sectionHeaderRecipe()}>
+                <Text variant={actionTitle ? 'sectionTitle' : 'overline'}>
+                  {actionTitle ?? 'Request details'}
                 </Text>
-                {keyedVerification?.map(({ detail, path }) => (
-                  <Surface key={path} padding='small' radius='small' tone='raised'>
-                    <Stack gap='xsmall'>
-                      <Inline gap='xsmall' align='center' justify='between'>
-                        <Text tone='secondary' variant='overline'>
-                          {detail.label}
+              </div>
+              <Surface padding='small' radius='none' tone='card'>
+                <Stack gap='xsmall'>
+                  {actionNotice}
+                  {keyedDetails.map(({ detail, path }) => (
+                    <DetailRow key={path} {...detail} wrap={wrapDetailValues} />
+                  ))}
+                </Stack>
+              </Surface>
+            </section>
+          </Surface>
+
+          {calldata || verification?.length || rawTransaction ? (
+            <Surface padding='small' radius='card' tone='card'>
+              <section aria-label='Verification details'>
+                <Stack gap='xsmall'>
+                  <Text tone='secondary' variant='overline'>
+                    Verification
+                  </Text>
+                  {keyedVerification?.map(({ detail, path }) => (
+                    <Surface key={path} padding='small' radius='small' tone='raised'>
+                      <Stack gap='xsmall'>
+                        <Inline gap='xsmall' align='center' justify='between'>
+                          <Text tone='secondary' variant='overline'>
+                            {detail.label}
+                          </Text>
+                          {clipboard ? (
+                            <CopyButton
+                              clipboard={clipboard}
+                              value={detail.value}
+                              label={`Copy ${detail.label.toLowerCase()}`}
+                              copiedLabel={`${detail.label} copied`}
+                            />
+                          ) : null}
+                        </Inline>
+                        <Text as='span' variant='microCode'>
+                          <span className={calldataRecipe()}>{detail.value}</span>
                         </Text>
+                      </Stack>
+                    </Surface>
+                  ))}
+                  {calldata ? <CalldataDetails calldata={calldata} clipboard={clipboard} /> : null}
+                  {rawTransaction ? (
+                    <Disclosure
+                      label='Raw transaction'
+                      open={rawOpen}
+                      onToggle={() => setRawOpen((open) => !open)}
+                    >
+                      <Stack gap='xsmall'>
                         {clipboard ? (
                           <CopyButton
                             clipboard={clipboard}
-                            value={detail.value}
-                            label={`Copy ${detail.label.toLowerCase()}`}
-                            copiedLabel={`${detail.label} copied`}
+                            value={rawTransaction}
+                            label='Copy raw transaction'
+                            copiedLabel='Raw transaction copied'
                           />
                         ) : null}
-                      </Inline>
-                      <Text as='span' variant='microCode'>
-                        <span className={calldataRecipe()}>{detail.value}</span>
-                      </Text>
-                    </Stack>
-                  </Surface>
-                ))}
-                {calldata ? <CalldataDetails calldata={calldata} clipboard={clipboard} /> : null}
-                {rawTransaction ? (
-                  <Disclosure
-                    label='Raw transaction'
-                    open={rawOpen}
-                    onToggle={() => setRawOpen((open) => !open)}
-                  >
-                    <Stack gap='xsmall'>
-                      {clipboard ? (
-                        <CopyButton
-                          clipboard={clipboard}
-                          value={rawTransaction}
-                          label='Copy raw transaction'
-                          copiedLabel='Raw transaction copied'
-                        />
-                      ) : null}
-                      <Text as='span' variant='microCode'>
-                        <code className={calldataRecipe()}>{rawTransaction}</code>
-                      </Text>
-                    </Stack>
-                  </Disclosure>
-                ) : null}
-              </Stack>
-            </section>
-          </Surface>
-        ) : null}
+                        <Text as='span' variant='microCode'>
+                          <code className={calldataRecipe()}>{rawTransaction}</code>
+                        </Text>
+                      </Stack>
+                    </Disclosure>
+                  ) : null}
+                </Stack>
+              </section>
+            </Surface>
+          ) : null}
 
-        {children ? <div className={controlsRecipe()}>{children}</div> : null}
-      </Stack>
+          {children ? <div className={controlsRecipe()}>{children}</div> : null}
+        </Stack>
+      </div>
     </div>
   )
 }

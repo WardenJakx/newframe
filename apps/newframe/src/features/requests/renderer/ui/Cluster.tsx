@@ -3,10 +3,20 @@ import type { MouseEventHandler, ReactNode } from 'react'
 
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
 
+const clusterFrameRecipe = cva({
+  base: { padding: '3' },
+  variants: {
+    spacing: {
+      none: {},
+      top: { paddingBlockStart: '6' }
+    }
+  },
+  defaultVariants: { spacing: 'none' }
+})
+
 const clusterRecipe = cva({
   base: {
     display: 'flow-root',
-    margin: '3',
     paddingBlock: '1',
     borderRadius: 'card',
     background: 'bg.primary',
@@ -22,14 +32,16 @@ const clusterRecipe = cva({
     '& > [data-cluster-row]:last-child > [data-cluster-value]:last-child': {
       borderEndEndRadius: 'card'
     }
-  },
-  variants: {
-    spacing: {
-      none: {},
-      top: { marginBlockStart: '6' }
+  }
+})
+
+const rowRecipe = cva({
+  base: {
+    '& [data-cluster-value]': {
+      marginBlockStart: '1',
+      marginInlineEnd: '1'
     }
-  },
-  defaultVariants: { spacing: 'none' }
+  }
 })
 
 const valueRecipe = cva({
@@ -41,8 +53,6 @@ const valueRecipe = cva({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    marginBlockStart: '1',
-    marginInlineEnd: '1',
     borderBlockEndWidth: 'strong',
     borderBlockEndStyle: 'solid',
     borderBlockEndColor: 'bg.primary',
@@ -108,7 +118,7 @@ export function ClusterValue({
 
 export function ClusterRow({ children }: { children?: ReactNode }) {
   return (
-    <div data-cluster-row=''>
+    <div className={rowRecipe()} data-cluster-row=''>
       <Stack align='stretch' direction='row' gap='none' justify='center'>
         {children}
       </Stack>
@@ -117,5 +127,9 @@ export function ClusterRow({ children }: { children?: ReactNode }) {
 }
 
 export function Cluster({ children, spacing = 'none' }: { children?: ReactNode; spacing?: 'none' | 'top' }) {
-  return <div className={clusterRecipe({ spacing })}>{children}</div>
+  return (
+    <div className={clusterFrameRecipe({ spacing })}>
+      <div className={clusterRecipe()}>{children}</div>
+    </div>
+  )
 }

@@ -27,6 +27,7 @@ export default defineConfig({
       fontWeight: 'inherit'
     },
     '.nf-root input, .nf-root textarea': { userSelect: 'text' },
+    '.nf-root input[type="range"]': { margin: 0 },
     '::-webkit-scrollbar': { width: 0, height: 0, background: 'transparent' },
     '.nf-root ::selection': { backgroundColor: 'border' },
     '.nf-root *, .nf-root *::before, .nf-root *::after': {
