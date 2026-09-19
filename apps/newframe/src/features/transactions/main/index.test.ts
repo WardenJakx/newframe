@@ -3,49 +3,34 @@ import { describe, expect, it, mock } from 'bun:test'
 import { Common, Mainnet } from '@ethereumjs/common'
 import { addHexPrefix, stripHexPrefix } from '@ethereumjs/util'
 
-import { TxClassification } from '../../requests/contract/requests'
+import type { SignerSummary } from '../../../platform/signing/signers/Signer'
+import { TxClassification, type TransactionRequest } from '../../requests/contract/requests'
 import { GasFeesSource, type TransactionData } from '../domain'
-import * as transactionModule from './index'
+import { maxFee, londonToLegacy, signerCompatibility, populate, sign, classifyTransaction } from './index'
 
-// Real functions under test, adapted only to allow focused partial fixtures.
-const maxFee = (tx: Pick<TransactionData, 'chainId'>) =>
-  transactionModule.maxFee(tx as unknown as TransactionData)
-const londonToLegacy = (tx: Partial<TransactionData> & Pick<TransactionData, 'type'>) =>
-  transactionModule.londonToLegacy(tx as unknown as TransactionData)
-type SignerInput = Pick<Parameters<typeof transactionModule.signerCompatibility>[1], 'type'> &
-  Partial<Parameters<typeof transactionModule.signerCompatibility>[1]>
-const signerCompatibility = (tx: Pick<TransactionData, 'type'>, signer: SignerInput) =>
-  transactionModule.signerCompatibility(
-    tx as unknown as TransactionData,
-    signer as Parameters<typeof transactionModule.signerCompatibility>[1]
-  )
-interface TestGas {
-  price: {
-    levels: Partial<Record<'slow' | 'standard' | 'fast' | 'asap' | 'custom', string>>
-    fees?: {
-      maxPriorityFeePerGas?: string
-      maxBaseFeePerGas?: string
-    }
-  }
-}
-const populate = (
-  tx: Partial<TransactionData>,
-  config: Parameters<typeof transactionModule.populate>[1],
-  gas: TestGas
-): Partial<TransactionData> =>
-  transactionModule.populate(
-    tx as unknown as TransactionData,
-    config,
-    gas as unknown as Parameters<typeof transactionModule.populate>[2]
-  )
-const sign = (tx: Partial<TransactionData>, signingFn: Parameters<typeof transactionModule.sign>[1]) =>
-  transactionModule.sign(tx as unknown as TransactionData, signingFn)
-type ClassificationInput = Parameters<typeof transactionModule.classifyTransaction>[0]
-const classifyTransaction = (request: ClassificationInput) => transactionModule.classifyTransaction(request)
+const transaction = (overrides: Partial<TransactionData>): TransactionData => ({
+  chainId: '0x1',
+  type: '0x0',
+  gasFeesSource: GasFeesSource.Dapp,
+  ...overrides
+})
+
+const signerSummary = (overrides: Partial<SignerSummary>): SignerSummary => ({
+  id: 'test-signer',
+  name: 'Test signer',
+  model: '',
+  type: 'unrecognized',
+  addresses: [],
+  status: 'ok',
+  appVersion: { major: 0, minor: 0, patch: 0 },
+  ...overrides
+})
 
 describe('#signerCompatibility', () => {
   it('accepts every signer for legacy transactions', () => {
-    expect(signerCompatibility({ type: '0x0' }, { type: 'unrecognized' })).toStrictEqual({
+    expect(
+      signerCompatibility(transaction({ type: '0x0' }), signerSummary({ type: 'unrecognized' }))
+    ).toStrictEqual({
       signer: 'unrecognized',
       tx: 'legacy',
       compatible: true
@@ -54,7 +39,7 @@ describe('#signerCompatibility', () => {
 
   it('accepts application-owned seed and ring signers for London transactions', () => {
     for (const type of ['seed', 'ring']) {
-      expect(signerCompatibility({ type: '0x2' }, { type })).toStrictEqual({
+      expect(signerCompatibility(transaction({ type: '0x2' }), signerSummary({ type }))).toStrictEqual({
         signer: type,
         tx: 'london',
         compatible: true
@@ -109,7 +94,7 @@ describe('#signerCompatibility', () => {
     ]
 
     for (const { compatible, ...signer } of cases) {
-      expect(signerCompatibility({ type: '0x2' }, signer)).toStrictEqual({
+      expect(signerCompatibility(transaction({ type: '0x2' }), signerSummary(signer))).toStrictEqual({
         signer: signer.type,
         tx: 'london',
         compatible
@@ -120,14 +105,14 @@ describe('#signerCompatibility', () => {
 
 describe('#londonToLegacy', () => {
   it('leaves a legacy transaction untouched', () => {
-    const rawTx = {
+    const rawTx = transaction({
       type: '0x0',
       gasPrice: '0x165a0bc00',
       gasLimit: '0x61a8',
       value: '0x6f05b59d3b20000',
       to: '0x6635f83421bf059cd8111f180f0727128685bae4',
       data: '0x0000000000000000000006635f83421bf059cd8111f180f0726635f83421bf059cd8111f180f072'
-    }
+    })
 
     const tx = londonToLegacy(rawTx)
 
@@ -142,7 +127,7 @@ describe('#londonToLegacy', () => {
   })
 
   it('converts a London transaction to a legacy transaction', () => {
-    const rawTx = {
+    const rawTx = transaction({
       type: '0x2',
       maxFeePerGas: addHexPrefix((7e9).toString(16)),
       maxPriorityFeePerGas: addHexPrefix((2e9).toString(16)),
@@ -150,7 +135,7 @@ describe('#londonToLegacy', () => {
       value: '0x6f05b59d3b20000',
       to: '0x6635f83421bf059cd8111f180f0727128685bae4',
       data: '0x0000000000000000000006635f83421bf059cd8111f180f0726635f83421bf059cd8111f180f072'
-    }
+    })
 
     const tx = londonToLegacy(rawTx)
 
@@ -167,43 +152,43 @@ describe('#londonToLegacy', () => {
 
 describe('#maxFee', () => {
   it('sets the max fee as 2 ETH on mainnet', () => {
-    const tx = {
+    const tx = transaction({
       chainId: addHexPrefix((1).toString(16))
-    }
+    })
 
     expect(maxFee(tx)).toBe(2e18)
   })
 
   it('sets the max fee as 250 FTM on Fantom', () => {
-    const tx = {
+    const tx = transaction({
       chainId: addHexPrefix((250).toString(16))
-    }
+    })
 
     expect(maxFee(tx)).toBe(250e18)
   })
 
   it('sets the max fee as 50 on other chains', () => {
-    const tx = {
+    const tx = transaction({
       chainId: addHexPrefix((255).toString(16))
-    }
+    })
 
     expect(maxFee(tx)).toBe(5e19)
   })
 })
 
 describe('#populate', () => {
-  const rawTx = {
+  const rawTx = transaction({
     gasLimit: '0x61a8',
     value: '0x6f05b59d3b20000',
     to: '0x6635f83421bf059cd8111f180f0727128685bae4',
     data: '0x0000000000000000000006635f83421bf059cd8111f180f0726635f83421bf059cd8111f180f072',
     gasFeesSource: GasFeesSource.Dapp
-  }
+  })
 
   describe('legacy transactions', () => {
     const chainConfig = new Common({ chain: Mainnet, hardfork: 'istanbul' })
     const frameGasPrice = addHexPrefix((7e9).toString(16))
-    const gas = { price: { levels: { fast: frameGasPrice } } }
+    const gas = { samples: [], price: { selected: 'fast' as const, levels: { fast: frameGasPrice } } }
 
     it('uses the Frame gas price for missing and invalid dapp values', () => {
       for (const gasPrice of [undefined, '']) {
@@ -233,7 +218,9 @@ describe('#populate', () => {
     const frameBaseFee = addHexPrefix((7e9).toString(16))
     const framePriorityFee = addHexPrefix((3e9).toString(16))
     const gas = {
+      samples: [],
       price: {
+        selected: 'fast' as const,
         levels: { fast: '' },
         fees: {
           maxPriorityFeePerGas: framePriorityFee,
@@ -303,7 +290,12 @@ describe('#populate', () => {
     const chainConfig = new Common({ chain: Mainnet, hardfork: 'berlin' })
 
     it('projects the complete access-list fee result', () => {
-      expect(populate(rawTx, chainConfig, { price: { levels: { fast: '' } } })).toStrictEqual({
+      expect(
+        populate(rawTx, chainConfig, {
+          samples: [],
+          price: { selected: 'fast', levels: { fast: '' } }
+        })
+      ).toStrictEqual({
         ...rawTx,
         type: '0x1',
         gasPrice: '0x0',
@@ -314,14 +306,14 @@ describe('#populate', () => {
 })
 
 describe('#sign', () => {
-  const baseTx = {
+  const baseTx = transaction({
     chainId: '0x1',
     nonce: '0x33',
     gasLimit: '0x61a8',
     value: '0x6f05b59d3b20000',
     to: '0x6635f83421bf059cd8111f180f0727128685bae4',
     data: '0x00000000000000000000006635f83421bf059cd8111f180f0726635f83421bf059cd8111f180f072'
-  }
+  })
 
   const signature = {
     v: '0x00',
@@ -341,7 +333,7 @@ describe('#sign', () => {
       v: addHexPrefix((27).toString(16))
     }
 
-    const { type, chainId, ...expectedFields } = rawTx
+    const { type, chainId, gasFeesSource, ...expectedFields } = rawTx
     const signedTx = await sign(rawTx, mock().mockResolvedValueOnce(sig))
 
     expect(signedTx.toJSON()).toMatchObject({
@@ -359,7 +351,7 @@ describe('#sign', () => {
       maxPriorityFeePerGas: '0x3'
     }
 
-    const { type, ...expectedFields } = rawTx
+    const { type, gasFeesSource, ...expectedFields } = rawTx
     const signedTx = await sign(rawTx, mock().mockResolvedValueOnce(signature))
 
     expect(signedTx.toJSON()).toMatchObject({
@@ -390,14 +382,30 @@ describe('#classifyTransaction', () => {
   const method = 'eth_sendTransaction'
   const from = '0xd8da6bf26964af9d7eed9e03e53415d37aa96045'
   const to = '0x2f3a40a3db8a7e3d09b0adfefbce4f6f81927557'
-  const Request = (param: Partial<RPC.SendTransaction.TxParams>, recipientType: string) =>
-    ({
+  const Request = (
+    param: Partial<TransactionData>,
+    recipientType: string
+  ): Omit<TransactionRequest, 'classification'> => {
+    const data = transaction(param)
+    return {
+      handlerId: 'test-request',
+      type: 'transaction',
+      origin: 'test',
+      account: from,
+      data,
+      approvals: [],
+      feesUpdatedByUser: false,
+      recognizedActions: [],
       payload: {
+        id: 1,
+        jsonrpc: '2.0',
         method,
-        params: [param]
+        _origin: 'test',
+        params: [data]
       },
       recipientType
-    }) as unknown as ClassificationInput
+    }
+  }
 
   describe('contract deployments', () => {
     it('should classify transactions with data and no recipient as contract deployments', () => {

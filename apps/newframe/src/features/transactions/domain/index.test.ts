@@ -6,7 +6,6 @@ import {
   getTransactionIntent,
   getTransactionPositionTokens,
   normalizeChainId,
-  type TransactionAnalysisInput,
   type TransactionData,
   type TransactionEffect,
   typeSupportsBaseFee,
@@ -453,7 +452,7 @@ describe('#getTransactionEffects', () => {
 describe('#getTransactionPositionTokens', () => {
   it('returns unique ERC-20 balance deltas with account-position metadata', () => {
     const usdc = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
-    const req = {
+    const req: Parameters<typeof getTransactionPositionTokens>[0] = {
       data: { chainId: '0xa' },
       simulation: {
         status: 'success',
@@ -462,12 +461,14 @@ describe('#getTransactionPositionTokens', () => {
             id: 'native-out',
             kind: 'native',
             direction: 'out',
+            label: 'Native transfer',
             symbol: 'ETH'
           },
           {
             id: 'usdc-in',
             kind: 'erc20',
             direction: 'in',
+            label: 'Token received',
             decimals: 6,
             symbol: 'USDC',
             assetAddress: usdc,
@@ -477,6 +478,7 @@ describe('#getTransactionPositionTokens', () => {
             id: 'usdc-out',
             kind: 'erc20',
             direction: 'out',
+            label: 'Token sent',
             decimals: 6,
             symbol: 'USDC',
             assetAddress: usdc
@@ -485,6 +487,7 @@ describe('#getTransactionPositionTokens', () => {
             id: 'allowance',
             kind: 'erc20',
             direction: 'neutral',
+            label: 'Ignored allowance',
             decimals: 18,
             symbol: 'IGNORED',
             assetAddress: '0x0000000000000000000000000000000000001337'
@@ -493,7 +496,7 @@ describe('#getTransactionPositionTokens', () => {
       }
     }
 
-    expect(getTransactionPositionTokens(req as unknown as TransactionAnalysisInput)).toStrictEqual([
+    expect(getTransactionPositionTokens(req)).toStrictEqual([
       {
         address: usdc.toLowerCase(),
         chainId: 10,

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, jest as timers, spyOn } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, it, jest as timers, spyOn, type Mock } from 'bun:test'
 
 import { JsonRpcProvider, Wallet, type TransactionResponse } from 'ethers'
 
@@ -21,6 +21,7 @@ interface LocalOrderResponse {
   normalizedStatus: string
   open: boolean
   orderId: string
+  quoteId: string
   targetAsset: { chain: { id: string } }
   [key: string]: unknown
 }
@@ -51,9 +52,31 @@ interface LocalTradeBody {
   [key: string]: unknown
 }
 
-interface OrderTypedData {
+interface OrderTypedDataJson {
   domain: { chainId: number }
-  message: { quoteId: string; settlementAsset: string }
+  message: { quoteId?: string; settlementAsset: string }
+}
+
+function parseOrderTypedData(value: string): OrderTypedDataJson {
+  const parsed: unknown = JSON.parse(value)
+  if (!parsed || typeof parsed !== 'object' || !('domain' in parsed) || !('message' in parsed)) {
+    throw new Error('Expected order typed data')
+  }
+  const { domain, message } = parsed
+  if (!domain || typeof domain !== 'object' || !message || typeof message !== 'object') {
+    throw new Error('Expected order typed data domain and message')
+  }
+  const chainId = 'chainId' in domain ? domain.chainId : undefined
+  const quoteId = 'quoteId' in message ? message.quoteId : undefined
+  const settlementAsset = 'settlementAsset' in message ? message.settlementAsset : undefined
+  if (
+    typeof chainId !== 'number' ||
+    (quoteId !== undefined && typeof quoteId !== 'string') ||
+    typeof settlementAsset !== 'string'
+  ) {
+    throw new Error('Expected typed order fields')
+  }
+  return { domain: { chainId }, message: { quoteId, settlementAsset } }
 }
 
 function quoteRequest(overrides: Record<string, unknown> = {}) {
@@ -89,8 +112,8 @@ async function json(response: Response) {
 }
 
 describe('local trade service handler', () => {
-  let allowanceCall: ReturnType<typeof spyOn>
-  let sendTransaction: ReturnType<typeof spyOn>
+  let allowanceCall: Mock<typeof JsonRpcProvider.prototype.call>
+  let sendTransaction: Mock<typeof Wallet.prototype.sendTransaction>
 
   beforeEach(() => {
     timers.useFakeTimers()
@@ -150,9 +173,7 @@ describe('local trade service handler', () => {
     })
     expect(String(body.quoteId).startsWith('local-quote-')).toBe(true)
     expect(typeof body.evm.orderTypedData).toBe('string')
-    expect((JSON.parse(body.evm.orderTypedData) as unknown as OrderTypedData).message.quoteId).toBe(
-      body.quoteId
-    )
+    expect(parseOrderTypedData(body.evm.orderTypedData).message.quoteId).toBe(body.quoteId)
     expect(body.evm.approveTx).toBeTruthy()
     expect(body.actions.approval?.kind).toBe('approve')
     expect(body.steps.find((step: Record<string, unknown>) => step.kind === 'sign')?.label).toBe('Sign order')
@@ -414,7 +435,7 @@ describe('local trade service handler', () => {
       })
       const quoteResponse = await post('/v1/quote', request)
       const quote = await json(quoteResponse)
-      const typedData = JSON.parse(quote.evm.orderTypedData) as unknown as OrderTypedData
+      const typedData = parseOrderTypedData(quote.evm.orderTypedData)
 
       expect(quoteResponse.status).toBe(200)
       expect(quote.quoteId).toBe('')

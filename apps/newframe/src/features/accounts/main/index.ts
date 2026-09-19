@@ -82,6 +82,10 @@ function cloneForActivity<T>(value: T): T | undefined {
   }
 }
 
+function unknownRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
+}
+
 function transactionActivityId(hash: string) {
   return hash
 }
@@ -312,7 +316,9 @@ export class Accounts extends EventEmitter {
 
   private getTransactionActivityDisplay(req: TransactionRequest, chain?: Chain) {
     const value = req.data?.value
-    const network = chain ? this.store.getState().main.networks.ethereum[chain.id] : undefined
+    const network = chain
+      ? (this.store.getState().main.networks.ethereum[chain.id] as { symbol?: string })
+      : undefined
     const chainSymbol =
       (typeof network?.symbol === 'string' ? network.symbol : undefined) ??
       (chain ? this.store.getState().main.networksMeta.ethereum[chain.id].nativeCurrency.symbol : '') ??
@@ -345,7 +351,9 @@ export class Accounts extends EventEmitter {
 
   private getTransactionNativeSymbol(req: TransactionRequest) {
     const chain = this.getTransactionChain(req)
-    const network = chain ? this.store.getState().main.networks.ethereum[chain.id] : undefined
+    const network = chain
+      ? (this.store.getState().main.networks.ethereum[chain.id] as { symbol?: string })
+      : undefined
     const metadata = chain ? this.store.getState().main.networksMeta.ethereum[chain.id] : undefined
 
     return (
@@ -650,7 +658,7 @@ export class Accounts extends EventEmitter {
     }
 
     const receipt = cloneForActivity(req.tx?.receipt)
-    const receiptStatus = (req.tx?.receipt as any)?.status
+    const receiptStatus = unknownRecord(req.tx?.receipt).status
 
     if (receiptStatus === '0x0') {
       return this.finalizeTransactionActivity(req, 'reverted', {
@@ -679,7 +687,12 @@ export class Accounts extends EventEmitter {
   private finalizeTransactionActivity(
     req: TransactionRequest,
     status: 'succeeded' | 'reverted',
-    update: Record<string, unknown> = {}
+    update: {
+      completedAt?: number
+      confirmations?: number
+      receipt?: unknown
+      updatedAt?: number
+    } = {}
   ) {
     const hash = req.tx?.hash
     if (!hash) {
@@ -741,7 +754,7 @@ export class Accounts extends EventEmitter {
   }
 
   private receiptWasReverted(req: TransactionRequest) {
-    return (req.tx?.receipt as any)?.status === '0x0'
+    return unknownRecord(req.tx?.receipt).status === '0x0'
   }
 
   private transactionChainId(req: TransactionRequest) {
@@ -801,10 +814,11 @@ export class Accounts extends EventEmitter {
 
   private toActivityRequest(activity: ActivityRecord): TransactionRequest {
     const chainId = this.activityChainId(activity)
+    const activityData = unknownRecord(activity.data)
     const data = {
-      ...(activity.data as any),
-      chainId: (activity.data as any)?.chainId ?? (chainId ? addHexPrefix(chainId.toString(16)) : undefined),
-      nonce: (activity.data as any)?.nonce ?? activity.nonce
+      ...activityData,
+      chainId: activityData.chainId ?? (chainId ? addHexPrefix(chainId.toString(16)) : undefined),
+      nonce: activityData.nonce ?? activity.nonce
     }
 
     return {
@@ -1018,11 +1032,8 @@ export class Accounts extends EventEmitter {
 
         this.pruneSameNonceActivityLosers(currentActivity)
 
-        if ((receipt as any)?.status === '0x0') {
-          this.finalizeTransactionActivity(txRequest, 'reverted', {
-            confirmations,
-            receipt
-          })
+        if (unknownRecord(receipt).status === '0x0') {
+          this.finalizeTransactionActivity(txRequest, 'reverted', { confirmations, receipt })
           return this.stopActivityMonitor(activity.id)
         }
 
@@ -1070,7 +1081,7 @@ export class Accounts extends EventEmitter {
   }
 
   private openNextActionableRequest(account: FrameAccount) {
-    const panelNav = (this.store.getState().windows.panel.nav || []) as any[]
+    const panelNav = (this.store.getState().windows.panel.nav || []) as Array<{ view?: string }>
     if (panelNav[0]?.view === 'requestView') {
       return
     }
@@ -1435,7 +1446,7 @@ export class Accounts extends EventEmitter {
 
                 this.updateTransactionActivity(txRequest, confirmations)
 
-                const receiptStatus = receiptRes.result.status
+                const receiptStatus = unknownRecord(receiptRes.result).status
 
                 if (receiptStatus === '0x0' && txRequest.status === RequestStatus.Verifying) {
                   txRequest = account.patchRequest<TransactionRequest>(id, (request) => {
@@ -1710,7 +1721,10 @@ export class Accounts extends EventEmitter {
               if (!isCurrentMonitor()) {
                 return
               }
-              if (payload.method === 'eth_subscription' && (payload.params as any).subscription === headSub) {
+              if (
+                payload.method === 'eth_subscription' &&
+                unknownRecord(payload.params).subscription === headSub
+              ) {
                 // const newHead = payload.params.result
                 let confirmations
                 try {

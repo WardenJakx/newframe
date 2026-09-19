@@ -219,7 +219,7 @@ export function getTransactionIntent(req: TransactionAnalysisInput, nativeSymbol
     }
   }
 
-  switch (req?.classification) {
+  switch (req.classification) {
     case 'CONTRACT_DEPLOY':
       return { title: 'Deploy contract', subtitle: 'Contract creation' }
     case 'CONTRACT_CALL':
@@ -249,7 +249,7 @@ function getDeterministicTransactionEffects(
   const params = Array.isArray(payload?.params) ? payload.params : []
   const nativeValue = stringValue(data?.value) ?? stringValue(recordValue(params[0])?.value)
 
-  if (safeBigInt(nativeValue) > 0n) {
+  if (nativeValue !== undefined && safeBigInt(nativeValue) > 0n) {
     effects.push({
       id: 'native-value-out',
       kind: 'native',

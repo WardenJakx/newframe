@@ -4,25 +4,10 @@ import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import log from 'electron-log'
 
 import type { TypedMessage } from '../../../../features/requests/contract/requests'
-import { GasFeesSource } from '../../../../features/transactions/domain'
+import { GasFeesSource, type TransactionData } from '../../../../features/transactions/domain'
 import { callbackResult } from '../callback.test-support.ts'
 import { Derivation } from '../Signer/derive'
-
-type LatticeConstructor = (typeof import('./Lattice'))['default']
-type LatticeInstance = InstanceType<LatticeConstructor>
-type LatticeConnection = NonNullable<LatticeInstance['connection']>
-type AddressOptions = { n: number; startPath: number[] }
-type SigningOptions = {
-  currency?: string
-  data: {
-    chainId?: string
-    protocol?: string
-    signerPath: number[]
-    type?: number
-  }
-}
-
-const connectionFixture = (connection: object) => connection as unknown as LatticeConnection
+import type LatticeSigner from './Lattice'
 
 const ClientMock = mock()
 const gridplusConstantsMock = {
@@ -33,14 +18,62 @@ const gridplusConstantsMock = {
   }
 }
 
+interface AddressOptions {
+  n: number
+  startPath: number[]
+}
+
+interface SignOptions {
+  currency: string
+  data: {
+    chainId?: string
+    protocol?: string
+    signerPath: number[]
+    type?: number
+  }
+}
+
+const createPair = () => mock(async (_code: string) => true)
+const createGetAddresses = () => mock(async (_options: AddressOptions) => [] as string[])
+const createSign = () => mock(async (_options: SignOptions) => ({ sig: { r: '', s: '', v: 0n } }))
+
+interface TestConnection {
+  pair: ReturnType<typeof createPair>
+  getAddresses: ReturnType<typeof createGetAddresses>
+  sign: ReturnType<typeof createSign>
+  getAppName(): string
+  getFwVersion():
+    | { major: number; minor: number; fix: number }
+    | Promise<{ major: number; minor: number; fix: number }>
+}
+
+const testConnection = (overrides: Partial<TestConnection> = {}): TestConnection => ({
+  pair: createPair(),
+  getAddresses: createGetAddresses(),
+  sign: createSign(),
+  getAppName: () => 'frame-test',
+  getFwVersion: () => ({ major: 1, minor: 3, fix: 5 }),
+  ...overrides
+})
+
+type PublicLattice = { [Key in keyof LatticeSigner]: LatticeSigner[Key] }
+type TestLattice = Omit<PublicLattice, 'connection' | 'signTransaction'> & {
+  connection: TestConnection
+  signTransaction(
+    index: number,
+    transaction: Pick<TransactionData, 'chainId' | 'gasFeesSource' | 'type'>,
+    cb: Callback<string>
+  ): void
+}
+
 await mock.module('gridplus-sdk', () => ({
   Client: ClientMock,
   Constants: gridplusConstantsMock,
   Utils: { fetchCalldataDecoder: mock() }
 }))
 
-let lattice: LatticeInstance
-let Lattice: LatticeConstructor
+let lattice: TestLattice
+let Lattice: typeof LatticeSigner
 
 beforeAll(async () => {
   log.transports.console.level = false
@@ -54,7 +87,7 @@ afterAll(() => {
 })
 
 beforeEach(() => {
-  lattice = new Lattice('L8geF2', 'Gridplus-test', 'ABCXYZ')
+  lattice = new Lattice('L8geF2', 'Gridplus-test', 'ABCXYZ') as unknown as TestLattice
   lattice.derivation = Derivation.standard
   lattice.on('error', mock())
 })
@@ -123,7 +156,7 @@ describe('#pair', () => {
       }
       throw new Error('Error from device: Pairing failed')
     })
-    lattice.connection = connectionFixture({
+    lattice.connection = testConnection({
       pair
     })
   })
@@ -158,9 +191,9 @@ describe('#deriveAddresses', () => {
   beforeEach(() => {
     lattice.accountLimit = 5
     getAddresses = mock(async (options: AddressOptions) =>
-      Array.from({ length: options.n }, (_, index) => `addr${options.startPath.at(-1)! + index}`)
+      Array.from({ length: options.n }, (_, index) => `addr${(options.startPath.at(-1) ?? 0) + index}`)
     )
-    lattice.connection = connectionFixture({
+    lattice.connection = testConnection({
       getAppName: () => 'frame-test',
       getAddresses
     })
@@ -248,8 +281,7 @@ describe('signing and verification', () => {
   it('verifies matches and rejects mismatches or derivation failures', async () => {
     lattice.addresses = ['addr1', 'addr2', 'addr3', 'addr4', 'addr5']
     lattice.accountLimit = 5
-    const getAddresses = mock()
-    lattice.connection = connectionFixture({ getAddresses, getAppName: () => 'frame-test' })
+    lattice.connection = testConnection({ getAddresses: createGetAddresses() })
     expect(
       await callbackResult<boolean>((done) => {
         void lattice.verifyAddress(2, 'addr3', false, done)
@@ -262,7 +294,7 @@ describe('signing and verification', () => {
     ).rejects.toThrow('Address does not match device')
 
     lattice.addresses = []
-    getAddresses.mockRejectedValue(new Error('error!'))
+    lattice.connection.getAddresses.mockRejectedValue(new Error('error!'))
     expect(
       callbackResult<boolean>((done) => {
         void lattice.verifyAddress(2, 'addr3', false, done)
@@ -271,8 +303,8 @@ describe('signing and verification', () => {
   })
 
   it('signs personal and typed messages and rejects the wrong path', async () => {
-    lattice.connection = connectionFixture({
-      sign: mock(async (options: SigningOptions) => {
+    lattice.connection = testConnection({
+      sign: mock(async (options: SignOptions) => {
         const expectedIndex = options.data.protocol === 'eip712' ? 2 : 4
         if (options.currency !== 'ETH_MSG' || options.data.signerPath[4] !== expectedIndex) {
           throw new Error('invalid message!')
@@ -300,10 +332,10 @@ describe('signing and verification', () => {
     const typed: TypedMessage<SignTypedDataVersion.V4> = {
       version: SignTypedDataVersion.V4,
       data: {
-        types: { EIP712Domain: [] },
-        primaryType: 'EIP712Domain',
+        types: { EIP712Domain: [], Message: [{ name: 'contents', type: 'string' }] },
+        primaryType: 'Message',
         domain: {},
-        message: {}
+        message: { contents: 'typed data' }
       }
     }
     expect(
@@ -321,13 +353,13 @@ describe('signing and verification', () => {
   it('signs legacy and EIP-1559 transactions with their exact wire shapes', async () => {
     const wireTypes: unknown[] = []
     lattice.appVersion = { major: 1, minor: 1, patch: 0 }
-    lattice.connection = connectionFixture({
+    lattice.connection = testConnection({
       getFwVersion: async () => ({ major: 1, minor: 3, fix: 5 }),
-      sign: mock(async (options: SigningOptions) => {
+      sign: mock(async (options: SignOptions) => {
         wireTypes.push(options.data.type)
         expect(options.currency).toBe('ETH')
         expect(options.data.signerPath[4]).toBe(4)
-        expect(parseInt(options.data.chainId!)).toBe(137)
+        expect(parseInt(options.data.chainId ?? '')).toBe(137)
         return { sig: { r: '0x3ea8cd', s: '0x96f7a0', v: options.data.type === undefined ? 27n : 0n } }
       })
     })
@@ -348,7 +380,7 @@ describe('signing and verification', () => {
 it('disconnects without overwriting errors and clears connection-owned state', () => {
   let updates = 0
   lattice.status = 'ok'
-  Reflect.set(lattice, 'connection', 'a connection')
+  lattice.connection = testConnection()
   lattice.addresses = ['addr1']
   lattice.on('update', () => updates++)
   lattice.disconnect()
@@ -365,7 +397,7 @@ it('disconnects without overwriting errors and clears connection-owned state', (
 
 it('closes by publishing once, removing listeners, and disconnecting', () => {
   let closes = 0
-  Reflect.set(lattice, 'connection', 'a connection')
+  lattice.connection = testConnection()
   lattice.on('close', () => closes++)
   lattice.close()
   expect(closes).toBe(1)
@@ -374,7 +406,7 @@ it('closes by publishing once, removing listeners, and disconnecting', () => {
 })
 
 it('limits published summary addresses to the configured account limit', () => {
-  lattice.addresses = Array.from({ length: 10 }, (_, index) => String(index + 1))
+  lattice.addresses = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']
   lattice.accountLimit = 5
   expect(lattice.summary().addresses).toHaveLength(5)
 })

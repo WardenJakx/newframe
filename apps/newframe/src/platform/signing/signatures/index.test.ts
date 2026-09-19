@@ -62,7 +62,7 @@ describe('#identify', () => {
   })
 
   it('should successfully identfy empty types arrays', () => {
-    Reflect.set(typedMessage.data, 'types', [])
+    typedMessage.data.types = { EIP712Domain: [], Permit: [] }
 
     expect(signatureParser.identify(typedMessage)).toBe('signTypedData')
   })

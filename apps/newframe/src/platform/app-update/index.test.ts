@@ -1,8 +1,12 @@
 import { beforeAll, beforeEach, expect, it, mock } from 'bun:test'
 
+import type { StoreApi } from 'zustand/vanilla'
+
 import { resetStoreState, storeMock } from '../../../test/support/bun.mocks.ts'
+import type { CanonicalStore } from '../state-store/actions.ts'
 
 let updater: import('./index').Updater
+const store = storeMock as StoreApi<CanonicalStore>
 
 beforeAll(async () => {
   const { Updater } = await import('./index')
@@ -15,12 +19,12 @@ beforeEach(() => {
 })
 
 it('does not schedule repository release checks for the unsigned MVP', () => {
-  const initialState = storeMock.getState().main.updater
+  const initialState = store.getState().main.updater
 
   updater.start()
 
-  expect(storeMock.getState().main.updater).toEqual(initialState)
-  expect(storeMock.getState().view.badge).toBeFalsy()
+  expect(store.getState().main.updater).toEqual(initialState)
+  expect(store.getState().view.badge).toBeFalsy()
   expect(updater.updateReady).toBe(false)
 })
 
@@ -30,6 +34,6 @@ it('keeps every update action inert', () => {
   updater.dismissUpdate()
   updater.stop()
 
-  expect(storeMock.getState().view.badge).toBeFalsy()
+  expect(store.getState().view.badge).toBeFalsy()
   expect(updater.updateReady).toBe(false)
 })

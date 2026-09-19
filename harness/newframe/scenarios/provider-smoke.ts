@@ -78,7 +78,7 @@ async function main() {
   try {
     await waitForFrameConnect()
     provider = new BrowserProvider({
-      request: ({ method, params }: { method: string; params?: unknown[] }) =>
+      request: ({ method, params }: { method: string; params?: readonly unknown[] }) =>
         frame.request({ method, params })
     })
     await provider.send('eth_accounts', [])

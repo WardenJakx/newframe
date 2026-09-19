@@ -43,7 +43,9 @@ describe('#getGasPrices', () => {
 describe('#getFeeHistory', () => {
   const nextBlockBaseFee = '0xb6'
 
-  let gasUsedRatios: number[], blockRewards: string[][]
+  let gasUsedRatios: number[]
+  let blockRewards: string[][]
+  let feeHistoryHandler: ReturnType<typeof mock>
 
   beforeEach(() => {
     // default to all blocks being ineligible for priority fee calculation
@@ -51,8 +53,9 @@ describe('#getFeeHistory', () => {
     blockRewards = []
 
     requestHandlers = {
-      eth_feeHistory: mock((params: unknown[]) => {
-        const numBlocks = parseInt(typeof params[0] === 'string' ? params[0] : '0x', 16)
+      eth_feeHistory: (feeHistoryHandler = mock((params: unknown[]) => {
+        const blockCount = params[0]
+        const numBlocks = typeof blockCount === 'string' ? parseInt(blockCount, 16) : 0
 
         return {
           // base fees include the requested number of blocks plus the next block
@@ -61,7 +64,7 @@ describe('#getFeeHistory', () => {
           oldestBlock: '0x89502f',
           reward: fillEmptySlots(blockRewards, numBlocks, ['0x0']).reverse()
         }
-      })
+      }))
     }
   })
 
@@ -69,7 +72,7 @@ describe('#getFeeHistory', () => {
     const monitor = new GasMonitor(testConnection)
     const feeHistory = await monitor.getFeeHistory(1, [10, 20, 30])
 
-    expect(requestHandlers['eth_feeHistory']).toHaveBeenCalledWith([intToHex(1), 'pending', [10, 20, 30]])
+    expect(feeHistoryHandler).toHaveBeenCalledWith([intToHex(1), 'pending', [10, 20, 30]])
     expect(feeHistory).toHaveLength(2)
     expect(feeHistory[0]).toEqual({ baseFee: 8, gasUsedRatio: 0, rewards: [0] })
     expect(feeHistory[1]).toMatchObject({ baseFee: 182, rewards: [] })

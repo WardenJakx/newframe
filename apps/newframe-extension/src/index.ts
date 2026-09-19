@@ -157,12 +157,8 @@ const originFromUrl = (url?: string) => {
 const isInjectedUrl = (url = '') => url.startsWith('http') || url.startsWith('file')
 
 const subType = (pendingPayload: PendingRequest) => {
-  try {
-    const type = pendingPayload.params[0]
-    return typeof type === 'string' && subTypes.includes(type) ? type : 'unknown'
-  } catch (e) {
-    return 'unknown'
-  }
+  const type = pendingPayload.params[0]
+  return typeof type === 'string' && subTypes.includes(type) ? type : 'unknown'
 }
 
 const unsubscribeTab = (tabId: number) => {
@@ -664,7 +660,12 @@ async function addTabListeners() {
   }
 
   // Create an object to store the last known origin for each tab
-  const tabOrigins = Object.fromEntries(tabs.map((tab) => [tab.id, originFromUrl(tab.url)]))
+  const tabOrigins: Record<number, string> = {}
+  tabs.forEach((tab) => {
+    if (tab.id !== undefined) {
+      tabOrigins[tab.id] = originFromUrl(tab.url)
+    }
+  })
 
   chrome.tabs.onRemoved.addListener((tabId) => {
     delete tabOrigins[tabId]

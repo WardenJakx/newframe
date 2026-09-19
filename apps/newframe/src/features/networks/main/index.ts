@@ -9,6 +9,7 @@ import log from 'electron-log'
 import { shallow } from 'zustand/vanilla/shallow'
 
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
+import type { GasFees } from '../../../platform/state-store/state/index.js'
 import {
   createJsonRpcProvider,
   listenForProviderClose,
@@ -29,7 +30,24 @@ export interface Chain {
 
 type Priority = 'primary' | 'secondary'
 
-const selectConnectionSettings = (chain: any) => {
+type StoredConnection = {
+  connected: boolean
+  current: string
+  custom: string
+  on: boolean
+  status: string
+}
+
+type StoredChainSettings = {
+  connection: {
+    network?: string
+    primary: StoredConnection
+    secondary: StoredConnection
+  }
+  on: boolean
+}
+
+const selectConnectionSettings = (chain: StoredChainSettings | null | undefined) => {
   if (!chain) {
     return null
   }
@@ -68,22 +86,27 @@ const normalizeRpcError = (error: unknown): EVMError => {
     return { message: error, code: -1 }
   }
   if (error instanceof Error) {
-    const errorWithCode = error as Error & { code?: unknown }
-    return {
+    const details = error as Error & { code?: unknown; data?: unknown }
+    const normalized = {
       message: error.message,
-      code: typeof errorWithCode.code === 'number' ? errorWithCode.code : -1
+      code: typeof details.code === 'number' ? details.code : -1,
+      data: details.data
     }
+    return normalized
   }
   if (error && typeof error === 'object' && 'message' in error) {
-    return {
-      message: typeof error.message === 'string' ? error.message : 'JSON-RPC request failed',
-      code: 'code' in error && typeof error.code === 'number' ? error.code : -1
+    const details = error as Record<string, unknown>
+    const normalized = {
+      message: typeof details.message === 'string' ? details.message : 'JSON-RPC request failed',
+      code: typeof details.code === 'number' ? details.code : -1,
+      data: details.data
     }
+    return normalized
   }
   return { message: 'JSON-RPC request failed', code: -1 }
 }
 
-const resError = (error: unknown, payload: RPCId, res: RPCRequestCallback) =>
+const resError = (error: unknown, payload: JSONRPCRequestPayload, res: RPCRequestCallback) =>
   res({
     id: payload.id,
     jsonrpc: payload.jsonrpc,
@@ -313,7 +336,7 @@ class ChainConnection extends EventEmitter {
     }
   }
 
-  connect(chain: any) {
+  connect(chain: StoredChainSettings) {
     const connection = chain.connection
 
     log.info(this.type + ':' + this.chainId + "'s connection has been updated")
@@ -462,7 +485,7 @@ class ChainConnection extends EventEmitter {
     const chainId = parseInt(this.chainId)
     const gasMonitor = new GasMonitor(provider)
     const allowEip1559 = !legacyChains.includes(chainId)
-    let feeMarket: ReturnType<ChainConnection['gasCalculator']['calculateGas']> | null = null
+    let feeMarket: GasFees | null = null
 
     if (allowEip1559) {
       try {

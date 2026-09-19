@@ -82,30 +82,20 @@ export async function aggregate3<R, T>(
 ) {
   const aggData = buildCallData(calls)
   const data = multicallInterface.encodeFunctionData('aggregate3', [aggData])
-  const response = multicallInterface.decodeFunctionResult('aggregate3', await execute(data))
-  if (response.returnData.length !== calls.length) {
+  const decoded = multicallInterface.decodeFunctionResult('aggregate3', await execute(data))
+  const returnData: Array<{ success: boolean; returnData: BytesLike }> = decoded[0]
+  if (returnData.length !== calls.length) {
     throw new Error('Invalid Multicall3 result count')
   }
 
   return calls.map(({ call, returns, target }, i) => {
-    const results: unknown = response.returnData[i]
-    let success: unknown
-    if (Array.isArray(results)) {
-      success = results[0]
-    } else if (results && typeof results === 'object' && 'success' in results) {
-      success = results.success
-    }
-    if (success !== true) {
+    const results = returnData[i]
+
+    if (!results.success) {
       return { success: false, returnValues: [] }
     }
 
-    let returnData: unknown
-    if (Array.isArray(results)) {
-      returnData = results[1]
-    } else if (results && typeof results === 'object' && 'returnData' in results) {
-      returnData = results.returnData
-    }
-    const resultData = getResultData<R>(returnData, call, target)
+    const resultData = getResultData<R>(results.returnData, call, target)
     if (!resultData) {
       return { success: false, returnValues: [] }
     }

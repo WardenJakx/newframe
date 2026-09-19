@@ -184,19 +184,19 @@ export function isTraceCall(value: unknown): value is TraceCall {
         if (!event || typeof event !== 'object' || Array.isArray(event)) {
           return false
         }
-        const eventAddress: unknown = event.address
-        if (typeof eventAddress !== 'string' || !normalizeAddress(eventAddress)) {
+        const traceEvent = event as Record<string, unknown>
+        if (typeof traceEvent.address !== 'string' || !normalizeAddress(traceEvent.address)) {
           return false
         }
         if (
-          !Array.isArray(event.topics) ||
-          !event.topics.every(
+          !Array.isArray(traceEvent.topics) ||
+          !traceEvent.topics.every(
             (topic: unknown) => typeof topic === 'string' && /^0x[0-9a-f]{64}$/i.test(topic)
           )
         ) {
           return false
         }
-        if (!bytes(event.data)) {
+        if (!bytes(traceEvent.data)) {
           return false
         }
       }

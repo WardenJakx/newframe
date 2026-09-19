@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'bun:test'
 
 import { NATIVE_CURRENCY } from '../../../../features/tokens/domain/constants'
+import type { Token } from '../../../../features/tokens/domain/state/token'
 import type { SideTrayRendererState } from '../../contract/projections'
 import { createSideTrayWalletSelector } from './sideTrayWallet'
 
 const emptyCatalog = () => ({ byId: {}, accountTokenIds: {} })
-const globalCatalog = (token: any, source: 'custom' | 'bundled' = 'custom') => ({
+const globalCatalog = (token: Token, source: 'custom' | 'bundled' = 'custom') => ({
   byId: {
     [`${token.chainId}:${token.address}`]: {
       ...token,

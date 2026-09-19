@@ -518,7 +518,7 @@ export class Provider extends EventEmitter {
 
     if (feeTotalOverMax(rawTx, maxTotalFee)) {
       const chainId = parseInt(rawTx.chainId)
-      const symbol = (this.store.getState().main.networks.ethereum[chainId] as any)?.symbol
+      const symbol = this.store.getState().main.networks.ethereum[chainId]?.symbol
       const displayAmount = symbol ? ` (${Math.floor(maxTotalFee / 1e18)} ${symbol})` : ''
 
       const err = `Max fee is over hard limit${displayAmount}`
@@ -917,6 +917,7 @@ export class Provider extends EventEmitter {
     if (!isTypedData(typedData)) {
       return resError('Typed data missing message', rawPayload, res)
     }
+    const validatedTypedData = typedData as TypedData
 
     let explicitVersion: SignTypedDataVersion | undefined
     if (rawPayload.method.endsWith('_v3')) {
@@ -924,16 +925,16 @@ export class Provider extends EventEmitter {
     } else if (rawPayload.method.endsWith('_v4')) {
       explicitVersion = SignTypedDataVersion.V4
     }
-    const version = explicitVersion ?? getVersionFromTypedData(typedData)
+    const version = explicitVersion ?? getVersionFromTypedData(validatedTypedData)
     if (![SignTypedDataVersion.V3, SignTypedDataVersion.V4].includes(version)) {
       return resError('Agent typed-data signing supports only v3 and v4', rawPayload, res)
     }
 
     const payload = {
       ...rawPayload,
-      params: [account.id, typedData, ...additionalParams]
+      params: [account.id, validatedTypedData, ...additionalParams]
     } as RPC.SignTypedData.Request
-    const typedMessage: TypedMessage = { data: typedData, version }
+    const typedMessage: TypedMessage = { data: validatedTypedData, version }
     const digests = getEip712Digests(typedMessage)
     const handlerId = this.requests.create(res)
     const respond = (response: RPCResponsePayload) => this.requests.respond(handlerId, response)
@@ -1215,10 +1216,11 @@ export class Provider extends EventEmitter {
     if (!isTypedData(typedData)) {
       return resError('Typed data missing message', payload, res)
     }
+    const validatedTypedData = typedData
 
     // no explicit version called so we choose one which best fits the data
     if (!version) {
-      version = getVersionFromTypedData(typedData)
+      version = getVersionFromTypedData(validatedTypedData)
     }
 
     const fromAddress: unknown = from
@@ -1256,7 +1258,7 @@ export class Provider extends EventEmitter {
 
     const handlerId = this.requests.create(res)
     const typedMessage: TypedMessage<typeof version> = {
-      data: typedData,
+      data: validatedTypedData,
       version
     }
     const digests = getEip712Digests(typedMessage)
@@ -1452,7 +1454,7 @@ export class Provider extends EventEmitter {
   private switchEthereumChain(payload: RPCRequestPayload, res: RPCRequestCallback) {
     try {
       const params = payload.params
-      if (!params?.[0]) {
+      if (!isRecord(params?.[0])) {
         throw new Error('Params not supplied')
       }
 
@@ -1611,13 +1613,9 @@ export class Provider extends EventEmitter {
     const tokenData =
       watchAssetRequest && isRecord(watchAssetRequest.options) ? watchAssetRequest.options : undefined
 
-    if ((type ?? '').toLowerCase() !== 'erc20') {
+    if (typeof type !== 'string' || type.toLowerCase() !== 'erc20' || !isRecord(tokenData)) {
       return resError('only ERC-20 tokens are supported', payload, cb)
     }
-    if (!tokenData) {
-      return resError('tokens must define options', payload, cb)
-    }
-
     this.getChainId(
       payload,
       (resp: RPCResponsePayload) => {

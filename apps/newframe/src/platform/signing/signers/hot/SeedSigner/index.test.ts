@@ -7,8 +7,11 @@ import path from 'node:path'
 import log from 'electron-log'
 import { Mnemonic, randomBytes } from 'ethers'
 
+import type SeedSigner from '.'
 import { electronMock } from '../../../../../../test/support/electron.mock.ts'
+import { GasFeesSource } from '../../../../../features/transactions/domain'
 import { callbackResult, exerciseHotSignerContract } from '../../callback.test-support.ts'
+import type Signer from '../../Signer'
 
 const USER_DATA = fs.mkdtempSync(path.join(tmpdir(), 'newframe-seed-test-'))
 const SIGNER_PATH = path.join(USER_DATA, 'signers')
@@ -27,9 +30,10 @@ const vault = {
 }
 
 let hot: typeof import('..')
+const isSeedSigner = (value: Signer): value is SeedSigner => 'encryptedSeed' in value
 
 describe('Seed signer', () => {
-  let signer: any
+  let signer: SeedSigner
 
   beforeAll(async () => {
     log.transports.console.level = false
@@ -51,8 +55,8 @@ describe('Seed signer', () => {
   })
 
   test('stores one versioned encrypted seed and loads it without rewriting', async () => {
-    const added: any[] = []
-    signer = await callbackResult((done) =>
+    const added: Signer[] = []
+    const created = await callbackResult<Signer>((done) =>
       hot.createFromPhrase(
         vault,
         { add: (value) => added.push(value), exists: () => false },
@@ -61,15 +65,22 @@ describe('Seed signer', () => {
         done
       )
     )
+    if (!isSeedSigner(created)) {
+      throw new Error('Expected seed signer')
+    }
+    signer = created
     expect(signer.addresses).toHaveLength(100)
     const signerFile = path.resolve(SIGNER_PATH, `${signer.id}.json`)
     const before = fs.readFileSync(signerFile, 'utf8')
-    const stored = JSON.parse(before)
+    const stored = hot.StoredHotSignerSchema.parse(JSON.parse(before))
+    if (stored.type !== 'seed') {
+      throw new Error('Expected stored seed signer')
+    }
     expect(stored).toMatchObject({ version: 1, type: 'seed' })
     expect(stored.encryptedSeed.algorithm).toBe('aes-256-gcm')
     expect(before).not.toContain('mnemonic')
 
-    const loaded: any[] = []
+    const loaded: Signer[] = []
     fs.writeFileSync(
       path.resolve(SIGNER_PATH, 'legacy.json'),
       JSON.stringify({ ...stored, version: undefined })
@@ -94,7 +105,7 @@ describe('Seed signer', () => {
   test('preserves the multi-chain legacy transaction signatures', async () => {
     unlocked = true
     const privateKey = '4bbbf85ce3377467afe5d46f804f221813b2bb87f24d81f60f1fcdbf7cbf4356'
-    const fixed = await callbackResult<any>((done) =>
+    const fixed = await callbackResult<Signer>((done) =>
       hot.createFromPrivateKey(vault, { add: () => {}, exists: () => false }, privateKey, '', done)
     )
     const rawTx = {
@@ -104,7 +115,8 @@ describe('Seed signer', () => {
       data: '0x',
       gasLimit: '0x5208',
       type: '0x0',
-      gasPrice: '0xb2d05e00'
+      gasPrice: '0xb2d05e00',
+      gasFeesSource: GasFeesSource.Dapp
     }
     const chains = [
       [
@@ -146,8 +158,10 @@ describe('Seed signer', () => {
       )
       expect(signed).toBe(expected)
     }
-    expect(callbackResult((done) => fixed.signTransaction(0, rawTx, done))).rejects.toThrow(
-      'could not determine chain id for transaction'
-    )
+    expect(
+      callbackResult((done) =>
+        fixed.signTransaction(0, { ...rawTx, chainId: '', gasFeesSource: GasFeesSource.Dapp }, done)
+      )
+    ).rejects.toThrow('could not determine chain id for transaction')
   })
 })

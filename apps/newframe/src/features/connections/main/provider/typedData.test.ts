@@ -34,7 +34,6 @@ describe('#getVersionFromTypedData', () => {
     ['undefined properties', { ...typedData, message: {} }, SignTypedDataVersion.V3],
     ['malformed EIP-712 data', { ...typedData, primaryType: 'missing' }, SignTypedDataVersion.V4]
   ]
-
   cases.forEach(([description, data, version]) => {
     it(`returns ${version} for ${description}`, () => {
       expect(getVersionFromTypedData(data)).toBe(version)

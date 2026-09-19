@@ -7,6 +7,7 @@ import {
   ZeroAddress,
   getAddress,
   isAddress,
+  type ContractTransactionResponse,
   type JsonRpcProvider,
   type NonceManager
 } from 'ethers'
@@ -59,7 +60,7 @@ export async function seedSafe(
     ZeroAddress
   ])
   const proxyFactory = new Contract(factory, factoryArtifact.abi, signer)
-  const transaction = await proxyFactory
+  const transaction: ContractTransactionResponse = await proxyFactory
     .getFunction('createProxyWithNonce')
     .send(singleton, initializer, 20260908)
   const receipt = await transaction.wait(1)
