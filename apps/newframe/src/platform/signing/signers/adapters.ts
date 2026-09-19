@@ -20,7 +20,7 @@ export class SignerAdapter extends EventEmitter {
   remove(_signer: Signer) {
     // Optional hook for adapters that track signer removal.
   }
-  reload(_signer: Signer) {
+  reload(_signer: Signer): void | Promise<void> {
     // Optional hook for adapters that can refresh signer state.
   }
 }
