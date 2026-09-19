@@ -62,7 +62,7 @@ async function resolveEntityType(
       params: [address, 'latest'],
       jsonrpc: '2.0',
       id: 1,
-      chainId: addHexPrefix(chainId.toString(16)) // TODO: Verify this overrides setChain
+      chainId: addHexPrefix(chainId.toString(16))
     }
 
     const code = await provider.request(payload)
@@ -194,8 +194,6 @@ export function createRevealService(proxy: ProviderProxyConnection, nameResoluti
         .catch((error: unknown) => callback(error as Error))
     }
   }
-
-  provider.setChain('0x1')
 
   const surface: RevealService = {
     identity: async (address = '', chainId?: number) => {

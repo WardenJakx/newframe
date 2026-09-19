@@ -67,33 +67,28 @@ describe('origin value rules', () => {
   })
 
   it('projects origin payload, chain selection, and its single required mutation cohesively', () => {
-    const knownChains = new Set([1, 137])
     const basePayload = requestPayload()
     const newOrigin = projectOriginUpdate({
       payload: requestPayload({ chainId: '137' }),
       originId: 'origin-1',
-      knownEthereumChainIds: knownChains,
       connectionMessage: false
     })
     const existingOrigin = projectOriginUpdate({
       payload: requestPayload({ chainId: '0x89' }),
       originId: 'origin-1',
       existingChainId: 1,
-      knownEthereumChainIds: knownChains,
       connectionMessage: false
     })
     const unknownRequestedChain = projectOriginUpdate({
       payload: requestPayload({ chainId: '9999' }),
       originId: 'origin-1',
       existingChainId: 1,
-      knownEthereumChainIds: knownChains,
       connectionMessage: false
     })
     const connection = projectOriginUpdate({
       payload: basePayload,
       originId: 'origin-1',
       existingChainId: 137,
-      knownEthereumChainIds: knownChains,
       connectionMessage: true
     })
 
@@ -101,12 +96,12 @@ describe('origin value rules', () => {
       newOrigin: {
         payload: { ...basePayload, chainId: '0x89', _origin: 'origin-1' },
         chainId: '0x89',
-        mutation: { type: 'initialize', chainId: 137 }
+        mutation: { type: 'initialize', chainId: 1 }
       },
       existingOrigin: {
         payload: { ...basePayload, chainId: '0x89', _origin: 'origin-1' },
         chainId: '0x89',
-        mutation: { type: 'touch', switchToChainId: 137 }
+        mutation: { type: 'touch' }
       },
       unknownRequestedChain: {
         payload: { ...basePayload, chainId: '0x270f', _origin: 'origin-1' },

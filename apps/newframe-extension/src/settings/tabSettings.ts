@@ -64,7 +64,7 @@ export async function switchOriginChain(tab: chrome.tabs.Tab, chainId: number | 
 
   await chrome.runtime.sendMessage({
     tab,
-    method: 'frame_switch_origin_chain',
-    params: [normalizedChainId]
+    method: 'wallet_switchEthereumChain',
+    params: [{ chainId: normalizedChainId }]
   })
 }

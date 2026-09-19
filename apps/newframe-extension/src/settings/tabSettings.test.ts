@@ -98,8 +98,8 @@ describe('tab settings', () => {
 
     expect(sendMessage).toHaveBeenCalledWith({
       tab,
-      method: 'frame_switch_origin_chain',
-      params: ['0x2105']
+      method: 'wallet_switchEthereumChain',
+      params: [{ chainId: '0x2105' }]
     })
     expect(normalizeChainId('0x2105')).toBe('0x2105')
     expect(normalizeChainId('8453')).toBe('0x2105')

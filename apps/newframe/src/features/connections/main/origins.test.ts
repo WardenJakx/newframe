@@ -49,7 +49,7 @@ function createOriginHarness() {
     request: AccessRequest
   }> = []
   const continuations = new Map<string, RPCRequestCallback>()
-  const knownEthereumChainIds = new Set([1])
+  const switchedOriginChains: Array<{ id: string; chainId: number }> = []
   let currentAccount: { address: Address } | undefined = { address }
   let development = false
   let routeHandler:
@@ -59,7 +59,6 @@ function createOriginHarness() {
   const dependencies: OriginsServiceDependencies = {
     store: {
       getOrigin: (id) => origins[id],
-      getKnownEthereumChainIds: () => knownEthereumChainIds,
       initializeOrigin: (id, origin) => {
         origins[id] = origin
       },
@@ -70,6 +69,7 @@ function createOriginHarness() {
         origins[id].touches = (origins[id].touches ?? 0) + 1
       },
       switchOriginChain: (id, chainId) => {
+        switchedOriginChains.push({ id, chainId })
         origins[id].chain = { id: chainId, type: 'ethereum' }
       },
       getPermission: (accountAddress, origin) =>
@@ -123,12 +123,12 @@ function createOriginHarness() {
     origins,
     notifications,
     routedRequests,
+    switchedOriginChains,
     respond(requestId: string, response: RPCResponsePayload) {
       const continuation = continuations.get(requestId)
       continuations.delete(requestId)
       continuation?.(response)
     },
-    knownEthereumChainIds,
     setAccount(next?: Address) {
       currentAccount = next ? { address: next } : undefined
     },
@@ -154,9 +154,8 @@ function createOriginHarness() {
 }
 
 describe('origin update service', () => {
-  it('initializes a new known-chain origin with its complete projected result', () => {
+  it('routes a new origin request on its explicit chain while initializing the origin to mainnet', () => {
     const harness = createOriginHarness()
-    harness.knownEthereumChainIds.add(137)
     const originId = uuidv5('frame.test', uuidv5.DNS)
 
     const input = requestPayload({ chainId: '137' })
@@ -169,15 +168,15 @@ describe('origin update service', () => {
       },
       storedOrigin: {
         name: 'frame.test',
-        chain: { id: 137, type: 'ethereum' }
+        chain: { id: 1, type: 'ethereum' }
       }
     })
+    expect(harness.switchedOriginChains).toEqual([])
   })
 
-  it('touches an existing origin and switches only to a configured requested chain', () => {
+  it('routes explicit request chains without switching an existing origin', () => {
     const harness = createOriginHarness()
     const originId = uuidv5('frame.test', uuidv5.DNS)
-    harness.knownEthereumChainIds.add(137)
     harness.setOrigin(originId, {
       name: 'frame.test',
       chain: { id: 1, type: 'ethereum' }
@@ -203,10 +202,11 @@ describe('origin update service', () => {
       },
       storedOrigin: {
         name: 'frame.test',
-        chain: { id: 137, type: 'ethereum' },
+        chain: { id: 1, type: 'ethereum' },
         touches: 2
       }
     })
+    expect(harness.switchedOriginChains).toEqual([])
   })
 
   it('projects connection messages without mutating origin state', () => {

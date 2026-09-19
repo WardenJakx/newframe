@@ -70,12 +70,11 @@ it('round trips a canonical response through the real provider proxy', async () 
   const frameProvider = createProxyProvider(proxy)
   const responses: unknown[] = []
   proxy.on('payload', (payload) => responses.push(payload))
-  frameProvider.setChain('0xa')
 
   provider.start()
   proxy.start()
 
-  expect(await frameProvider.request<string>({ method: 'eth_chainId' })).toBe('0xa')
+  expect(await frameProvider.request<string>({ method: 'eth_chainId', chainId: '0xa' })).toBe('0xa')
   expect(responses).toEqual([{ id: 1, jsonrpc: '2.0', result: '0xa' }])
   expect(responses[0]).not.toHaveProperty('method')
 

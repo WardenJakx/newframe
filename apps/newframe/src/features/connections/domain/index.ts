@@ -107,49 +107,30 @@ export function parseExtensionIdentity({
   }
 }
 
-type OriginMutation = { type: 'initialize'; chainId: number } | { type: 'touch'; switchToChainId?: number }
+type OriginMutation = { type: 'initialize'; chainId: number } | { type: 'touch' }
 
 export function projectOriginUpdate({
   payload,
   originId,
   existingChainId,
-  knownEthereumChainIds,
   connectionMessage
 }: {
   payload: JSONRPCRequestPayload
   originId: string
   existingChainId?: number
-  knownEthereumChainIds: ReadonlySet<number>
   connectionMessage: boolean
 }) {
   const requestedChainId = normalizeRequestChainId(payload.chainId)
-  const parsedRequestedChainId =
-    requestedChainId && hexChainIdRegex.test(requestedChainId)
-      ? Number.parseInt(requestedChainId, 16)
-      : undefined
-  const knownRequestedChainId =
-    parsedRequestedChainId !== undefined && knownEthereumChainIds.has(parsedRequestedChainId)
-      ? parsedRequestedChainId
-      : undefined
-  const defaultChainId = knownRequestedChainId ?? existingChainId ?? 1
-  const chainId = requestedChainId ?? `0x${defaultChainId.toString(16)}`
+  const chainId = requestedChainId ?? `0x${(existingChainId ?? 1).toString(16)}`
   const projectedPayload = { ...payload, _origin: originId }
 
-  if (payload.chainId || connectionMessage) {
+  if (requestedChainId !== undefined || connectionMessage) {
     projectedPayload.chainId = chainId
   }
 
   let mutation: OriginMutation | undefined
   if (!connectionMessage) {
-    mutation =
-      existingChainId === undefined
-        ? { type: 'initialize', chainId: defaultChainId }
-        : {
-            type: 'touch',
-            ...(knownRequestedChainId && existingChainId !== knownRequestedChainId
-              ? { switchToChainId: knownRequestedChainId }
-              : {})
-          }
+    mutation = existingChainId === undefined ? { type: 'initialize', chainId: 1 } : { type: 'touch' }
   }
 
   return { payload: projectedPayload, chainId, mutation }

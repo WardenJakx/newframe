@@ -115,7 +115,7 @@ const originFromUrl = (url?: string) => {
   return `${path[0]}//${path[2]}`
 }
 const getOrigin = (sender: { url?: string } = {}) => originFromUrl(sender.url)
-const isInjectedUrl = (url = '') => url.startsWith('http') || url.startsWith('file')
+const isInjectedUrl = (url = '') => /^(https?|file):\/\//.test(url)
 
 const subType = (pendingPayload: PendingRequest) => {
   if (!Array.isArray(pendingPayload.params)) {
@@ -541,13 +541,33 @@ function addStateListeners() {
       return
     }
 
-    if (payload.method === 'frame_switch_origin_chain') {
-      if (sender.tab || !tab || !provider?.isConnected()) {
-        return
-      }
-      const [chainId] = params
-      const origin = originFromUrl(tab.url)
-      if (!origin || typeof chainId !== 'string' || !/^0x[0-9a-f]+$/i.test(chainId)) {
+    if (
+      payload.method === 'wallet_switchEthereumChain' &&
+      !sender.tab &&
+      sender.url === chrome.runtime.getURL('settings.html')
+    ) {
+      const requestedTab = tabFromMessage(tab)
+      const activeTabs: unknown = await chrome.tabs.query({ active: true, currentWindow: true })
+      const activeTab = Array.isArray(activeTabs) ? tabFromMessage(activeTabs[0]) : undefined
+      const [switchParams] = params
+      const chainId = isRecord(switchParams) ? switchParams.chainId : undefined
+      const origin = originFromUrl(requestedTab?.url)
+      const activeOrigin = originFromUrl(activeTab?.url)
+      const parsedChainId =
+        typeof chainId === 'string' && /^0x[0-9a-f]+$/i.test(chainId) ? BigInt(chainId) : 0n
+
+      if (
+        requestedTab?.id === undefined ||
+        activeTab?.id !== requestedTab.id ||
+        !isInjectedUrl(requestedTab.url ?? '') ||
+        !isInjectedUrl(activeTab.url ?? '') ||
+        !origin ||
+        activeOrigin !== origin ||
+        params.length !== 1 ||
+        parsedChainId <= 0n ||
+        parsedChainId > BigInt(Number.MAX_SAFE_INTEGER) ||
+        !provider?.isConnected()
+      ) {
         throw new Error('Invalid chain switch request')
       }
 
@@ -557,7 +577,7 @@ function addStateListeners() {
         __frameOrigin: origin,
         __extensionConnecting: true
       })
-      await refreshActiveOriginStatus(tab)
+      await refreshActiveOriginStatus(activeTab)
       return
     }
 
