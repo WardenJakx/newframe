@@ -191,6 +191,26 @@ it.each(['transaction', 'sign', 'signTypedData', 'signErc20Permit'])(
       type,
       account: signingAddress.toUpperCase(),
       ...(type === 'transaction' ? { approvals: [] } : {}),
+      ...(type === 'transaction'
+        ? {}
+        : {
+            signingCapability: {
+              type: 'direct' as const,
+              status: 'ready' as const,
+              candidates: [
+                {
+                  accountId: 'request-wallet',
+                  name: 'Signing wallet',
+                  address: signingAddress,
+                  created: '1',
+                  signerType: 'seed',
+                  signerAttached: true,
+                  signerStatus: 'ok',
+                  status: 'ready' as const
+                }
+              ]
+            }
+          }),
       data: { chainId: '0x1' }
     }
     const { user } = render(

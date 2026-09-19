@@ -1,4 +1,5 @@
-import { TypedDataEncoder, ZeroAddress } from 'ethers'
+import { SignTypedDataVersion } from '@metamask/eth-sig-util'
+import { computeAddress, SigningKey, TypedDataEncoder, ZeroAddress } from 'ethers'
 
 import {
   safeAddressSchema,
@@ -6,7 +7,28 @@ import {
   safeProposalSchema,
   type SafeProposal
 } from '../../src/features/accounts/domain/safe.js'
-import { verifySafeConfirmation, verifySafeHash } from '../../src/platform/safe/integrity.js'
+import type { LegacyTypedData, TypedData } from '../../src/features/requests/contract/requests.js'
+import {
+  getSafeMessageHash,
+  packSafeMessageSignatures,
+  recoverSafeConfirmationOwner,
+  verifySafeConfirmation,
+  verifySafeHash
+} from '../../src/platform/safe/integrity.js'
+import type { OriginalMessage } from '../../src/platform/signing/signatures/digests.js'
+
+function parseOriginalMessage(value: unknown): OriginalMessage | undefined {
+  if (typeof value === 'string') {
+    return value
+  }
+  if (Array.isArray(value)) {
+    return { data: value as LegacyTypedData, version: SignTypedDataVersion.V1 }
+  }
+  if (value && typeof value === 'object') {
+    return { data: value as TypedData, version: SignTypedDataVersion.V4 }
+  }
+  return undefined
+}
 
 export function createSafeHandler(options: {
   chainId: number
@@ -18,6 +40,7 @@ export function createSafeHandler(options: {
   includeMismatch?: boolean
   pageSize?: number
   proposals?: SafeProposal[]
+  messageConfirmationPrivateKeys?: string[]
 }) {
   if (!Number.isSafeInteger(options.chainId) || options.chainId <= 0) {
     throw new Error('Invalid Safe chain ID')
@@ -100,6 +123,19 @@ export function createSafeHandler(options: {
   }
   const requests: string[] = []
   const confirmations = new Map<string, Map<string, string>>()
+  const messages = new Map<
+    string,
+    {
+      created: string
+      modified: string
+      safe: string
+      messageHash: string
+      message: unknown
+      proposedBy: string
+      safeAppId: number | null
+      confirmations: Map<string, string>
+    }
+  >()
   let failure: { status: number; retryAfter?: string; offset?: number } | undefined
   const controls = {
     requests,
@@ -183,6 +219,112 @@ export function createSafeHandler(options: {
             results: entries.slice(offset, offset + pageSize)
           })
         }
+      }
+      const createMessageRoute = new RegExp(`^/api/v1/safes/${safe}/messages/$`, 'i').test(url.pathname)
+      if (createMessageRoute && request.method === 'POST') {
+        let body: unknown
+        try {
+          body = await request.json()
+        } catch {
+          return Response.json({ error: 'Invalid JSON' }, { status: 400 })
+        }
+        const rawMessage = body && typeof body === 'object' && 'message' in body ? body.message : undefined
+        const signature = body && typeof body === 'object' && 'signature' in body ? body.signature : undefined
+        const message = parseOriginalMessage(rawMessage)
+        if (!message || typeof signature !== 'string') {
+          return Response.json({ error: 'Invalid message' }, { status: 400 })
+        }
+        try {
+          const messageHash = getSafeMessageHash(
+            message,
+            options.chainId,
+            safe,
+            configuration.version
+          ).toLowerCase()
+          const owner = recoverSafeConfirmationOwner(messageHash, signature)
+          if (!owner || !configuration.owners.includes(owner)) {
+            return Response.json({ error: 'Invalid owner signature' }, { status: 400 })
+          }
+          if (messages.has(messageHash)) {
+            return Response.json({ error: 'Message already exists' }, { status: 409 })
+          }
+          const created = new Date().toISOString()
+          messages.set(messageHash, {
+            created,
+            modified: created,
+            safe,
+            messageHash,
+            message: rawMessage,
+            proposedBy: owner,
+            safeAppId: null,
+            confirmations: new Map([[owner, signature]])
+          })
+          const stored = messages.get(messageHash)!
+          for (const privateKey of options.messageConfirmationPrivateKeys ?? []) {
+            const confirmationOwner = computeAddress(privateKey)
+            if (
+              configuration.owners.some(
+                (candidate) => candidate.toLowerCase() === confirmationOwner.toLowerCase()
+              ) &&
+              !stored.confirmations.has(confirmationOwner)
+            ) {
+              stored.confirmations.set(
+                confirmationOwner,
+                new SigningKey(privateKey).sign(messageHash).serialized
+              )
+            }
+          }
+          return Response.json({}, { status: 201 })
+        } catch {
+          return Response.json({ error: 'Invalid message' }, { status: 400 })
+        }
+      }
+      const messageRoute = /^\/api\/v1\/messages\/(0x[0-9a-f]{64})\/$/i.exec(url.pathname)
+      if (messageRoute && request.method === 'GET') {
+        const stored = messages.get(messageRoute[1].toLowerCase())
+        if (!stored) {
+          return Response.json({ error: 'Message not found' }, { status: 404 })
+        }
+        const entries = [...stored.confirmations].map(([owner, signature]) => ({
+          created: stored.created,
+          modified: stored.modified,
+          owner,
+          signature,
+          signatureType: Number.parseInt(signature.slice(-2), 16) > 30 ? 'ETH_SIGN' : 'EOA'
+        }))
+        return Response.json({
+          ...stored,
+          confirmations: entries,
+          preparedSignature: packSafeMessageSignatures(stored.messageHash, configuration.owners, entries)
+        })
+      }
+      const messageSignatureRoute = /^\/api\/v1\/messages\/(0x[0-9a-f]{64})\/signatures\/$/i.exec(
+        url.pathname
+      )
+      if (messageSignatureRoute && request.method === 'POST') {
+        const stored = messages.get(messageSignatureRoute[1].toLowerCase())
+        if (!stored) {
+          return Response.json({ error: 'Message not found' }, { status: 404 })
+        }
+        let body: unknown
+        try {
+          body = await request.json()
+        } catch {
+          return Response.json({ error: 'Invalid JSON' }, { status: 400 })
+        }
+        const signature = body && typeof body === 'object' && 'signature' in body ? body.signature : undefined
+        const owner =
+          typeof signature === 'string'
+            ? recoverSafeConfirmationOwner(stored.messageHash, signature)
+            : undefined
+        if (!owner || !configuration.owners.includes(owner) || typeof signature !== 'string') {
+          return Response.json({ error: 'Invalid owner signature' }, { status: 400 })
+        }
+        if (!stored.confirmations.has(owner)) {
+          stored.confirmations.set(owner, signature)
+          stored.modified = new Date().toISOString()
+        }
+        return Response.json({}, { status: 201 })
       }
       if (request.method !== 'GET') {
         return Response.json({ error: 'Method not allowed' }, { status: 405 })

@@ -1,3 +1,4 @@
+import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import { Interface } from 'ethers'
 import { z } from 'zod'
 
@@ -9,11 +10,22 @@ import {
   type SafeConfiguration,
   type SafeProposal
 } from '../../features/accounts/domain/safe.js'
+import type { TypedData, TypedMessage } from '../../features/requests/contract/requests.js'
 import { decodeCallDataWithSignature, type DecodedCallData } from '../chain-rpc/contracts/index.js'
 import { getLocalFunctionSelectorSignatures } from '../chain-rpc/contracts/selectors.js'
 import { multicallAddress, type Call } from '../chain-rpc/multicall/constants.js'
 import { aggregate3 } from '../chain-rpc/multicall/index.js'
-import { verifySafeHash, serviceCalldataMismatch } from './integrity.js'
+import type { OriginalMessage } from '../signing/signatures/digests.js'
+import {
+  EIP1271_SIGNATURE,
+  getSafeMessageHash,
+  isEip1271MagicValue,
+  packSafeMessageSignatures,
+  serviceCalldataMismatch,
+  verifySafeHash,
+  verifySafeMessageConfirmation,
+  type VerifiedSafeMessageConfirmation
+} from './integrity.js'
 
 const SAFE_TRANSACTION_SERVICE_URL = 'https://api.safe.global/tx-service'
 // Hosted Transaction Service resolver from @safe-global/api-kit@5.0.3, synced 2026-09-09.
@@ -137,6 +149,68 @@ const confirmationSchema = z.object({
   signature: z.string().regex(/^0x[0-9a-f]{130}$/i)
 })
 const transactionHashSchema = z.string().regex(/^0x[0-9a-f]{64}$/i)
+const messageSignatureSchema = z.string().regex(/^0x[0-9a-f]{130}$/i)
+const typedDataFieldSchema = z.strictObject({
+  name: z.string().min(1).max(200),
+  type: z.string().min(1).max(200)
+})
+const serviceTypedDataSchema = z.strictObject({
+  types: z.record(z.string().min(1).max(200), z.array(typedDataFieldSchema).max(100)),
+  primaryType: z.string().min(1).max(200),
+  domain: z.record(z.string().max(200), z.unknown()),
+  message: z.record(z.string().max(200), z.unknown())
+})
+const serviceLegacyTypedDataSchema = z
+  .array(
+    z.strictObject({
+      name: z.string().min(1).max(200),
+      type: z.string().min(1).max(200),
+      value: z.unknown()
+    })
+  )
+  .max(1000)
+const serviceOriginalMessageSchema = z.union([
+  z.string().max(1_000_000),
+  serviceTypedDataSchema,
+  serviceLegacyTypedDataSchema
+])
+const messageConfirmationSchema = z.object({
+  owner: safeAddressSchema,
+  signature: messageSignatureSchema,
+  signatureType: z.enum(['EOA', 'ETH_SIGN']).optional()
+})
+const serviceMessageSchema = z.object({
+  safe: safeAddressSchema,
+  messageHash: transactionHashSchema.transform((hash) => hash.toLowerCase()),
+  message: serviceOriginalMessageSchema,
+  confirmations: z.array(messageConfirmationSchema).max(1000),
+  preparedSignature: z
+    .string()
+    .regex(/^0x(?:[0-9a-f]{2})*$/i)
+    .max(2 + 130 * 1000)
+    .nullable()
+})
+
+export interface SafeServiceMessage {
+  safe: string
+  messageHash: string
+  message: OriginalMessage
+  confirmations: VerifiedSafeMessageConfirmation[]
+  preparedSignature: string
+}
+
+function serviceOriginalMessage(message: z.infer<typeof serviceOriginalMessageSchema>): OriginalMessage {
+  if (typeof message === 'string') {
+    return message
+  }
+  return Array.isArray(message)
+    ? { data: message, version: SignTypedDataVersion.V1 }
+    : { data: message as TypedData, version: SignTypedDataVersion.V4 }
+}
+
+function rawOriginalMessage(message: OriginalMessage): string | TypedMessage['data'] {
+  return typeof message === 'string' ? message : message.data
+}
 
 export function createSafeClient({
   request,
@@ -167,7 +241,7 @@ export function createSafeClient({
     }
     return url.replace(/\/$/, '')
   }
-  async function json(url: string, signal?: AbortSignal, signature?: string): Promise<unknown> {
+  async function json(url: string, signal?: AbortSignal, body?: unknown): Promise<unknown> {
     const origin = new URL(url).origin
     const remaining = (cooldowns.get(origin) ?? 0) - now()
     if (remaining > 0) {
@@ -184,14 +258,14 @@ export function createSafeClient({
     try {
       controller.signal.throwIfAborted()
       const response = await request(url, {
-        method: signature === undefined ? 'GET' : 'POST',
+        method: body === undefined ? 'GET' : 'POST',
         signal: controller.signal,
         redirect: 'error',
         headers: {
           Accept: 'application/json',
-          ...(signature === undefined ? {} : { 'Content-Type': 'application/json' })
+          ...(body === undefined ? {} : { 'Content-Type': 'application/json' })
         },
-        ...(signature === undefined ? {} : { body: JSON.stringify({ signature }) })
+        ...(body === undefined ? {} : { body: JSON.stringify(body) })
       })
       if (response.status === 429) {
         const retry = response.headers.get('retry-after')
@@ -204,7 +278,7 @@ export function createSafeClient({
         throw new Error(`Safe service HTTP ${response.status}`)
       }
       // Confirmation responses are acknowledgements, not evidence of stored signature bytes.
-      const result: unknown = signature === undefined ? await response.json() : await response.text()
+      const result: unknown = body === undefined ? await response.json() : await response.text()
       controller.signal.throwIfAborted()
       return result
     } finally {
@@ -355,7 +429,95 @@ export function createSafeClient({
     async confirm(chainId: number, hash: string, signature: string, signal?: AbortSignal): Promise<void> {
       transactionHashSchema.parse(hash)
       confirmationSchema.shape.signature.parse(signature)
-      await json(`${base(chainId)}/v1/multisig-transactions/${hash}/confirmations/`, signal, signature)
+      await json(`${base(chainId)}/v1/multisig-transactions/${hash}/confirmations/`, signal, { signature })
+    },
+    async createMessage(
+      chainId: number,
+      address: string,
+      message: OriginalMessage,
+      signature: string,
+      configuration: SafeConfiguration,
+      signal?: AbortSignal
+    ): Promise<string> {
+      const safe = safeAddressSchema.parse(address)
+      const config = safeConfigurationSchema.parse(configuration)
+      messageSignatureSchema.parse(signature)
+      const hash = getSafeMessageHash(message, chainId, safe, config.version)
+      verifySafeMessageConfirmation(hash, config.owners, { signature })
+      await json(`${base(chainId)}/v1/safes/${safe}/messages/`, signal, {
+        message: rawOriginalMessage(message),
+        signature
+      })
+      return hash
+    },
+    async getMessage(
+      chainId: number,
+      address: string,
+      hash: string,
+      configuration: SafeConfiguration,
+      signal?: AbortSignal
+    ): Promise<SafeServiceMessage> {
+      const safe = safeAddressSchema.parse(address)
+      const expectedHash = transactionHashSchema.parse(hash).toLowerCase()
+      const config = safeConfigurationSchema.parse(configuration)
+      const raw = serviceMessageSchema.parse(
+        await json(`${base(chainId)}/v1/messages/${expectedHash}/`, signal)
+      )
+      if (raw.safe !== safe) {
+        throw new Error('Safe message identity mismatch')
+      }
+      const message = serviceOriginalMessage(raw.message)
+      const computedHash = getSafeMessageHash(message, chainId, safe, config.version)
+      if (raw.messageHash !== expectedHash || computedHash !== expectedHash) {
+        throw new Error('Safe message hash mismatch')
+      }
+      const confirmations = raw.confirmations.map((confirmation) =>
+        verifySafeMessageConfirmation(expectedHash, config.owners, confirmation)
+      )
+      const preparedSignature = packSafeMessageSignatures(expectedHash, config.owners, confirmations)
+      if (
+        raw.preparedSignature !== null &&
+        raw.preparedSignature.toLowerCase() !== preparedSignature.toLowerCase()
+      ) {
+        throw new Error('Safe message prepared signature mismatch')
+      }
+      return { safe, messageHash: expectedHash, message, confirmations, preparedSignature }
+    },
+    async confirmMessage(
+      chainId: number,
+      hash: string,
+      signature: string,
+      currentOwners: readonly string[],
+      signal?: AbortSignal
+    ): Promise<void> {
+      const expectedHash = transactionHashSchema.parse(hash).toLowerCase()
+      messageSignatureSchema.parse(signature)
+      verifySafeMessageConfirmation(expectedHash, currentOwners, { signature })
+      await json(`${base(chainId)}/v1/messages/${expectedHash}/signatures/`, signal, { signature })
+    },
+    async validateMessage(
+      chainId: number,
+      address: string,
+      hash: string,
+      signature: string,
+      signal?: AbortSignal
+    ): Promise<boolean> {
+      const safe = safeAddressSchema.parse(address)
+      const expectedHash = transactionHashSchema.parse(hash)
+      const packed = z
+        .string()
+        .regex(/^0x(?:[0-9a-f]{2})*$/i)
+        .max(2 + 130 * 1000)
+        .parse(signature)
+      const eip1271 = new Interface([EIP1271_SIGNATURE])
+      const data = eip1271.encodeFunctionData('isValidSignature', [expectedHash, packed])
+      const result = await read(chainId, safe, data, signal)
+      try {
+        const [magic] = eip1271.decodeFunctionResult('isValidSignature', result)
+        return typeof magic === 'string' && isEip1271MagicValue(magic)
+      } catch {
+        return false
+      }
     },
     async queueState(
       chainId: number,

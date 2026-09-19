@@ -1,7 +1,10 @@
 import { getProfileAccountIds } from '../../../app/contracts/state/main.js'
 import { accountDisplayType } from '../../../features/accounts/domain/accountDisplayType.js'
 import { deriveSafeOwners } from '../../../features/accounts/main/safeOwners.js'
+import { deriveSigningCapability } from '../../../features/accounts/main/signingCapability.js'
 import { createBalanceSummarySelector } from '../../../features/asset-data/domain/balance/index.js'
+import type { SignatureRequest } from '../../../features/requests/contract/requests.js'
+import { isSignatureRequest } from '../../../features/requests/domain/index.js'
 import { OperationRecordSchema, type OperationCollection } from '../../operations/operation.js'
 import type { CanonicalState } from '../../state-store/state/index.js'
 import {
@@ -384,12 +387,41 @@ function projectWalletAccounts(main: CanonicalMain) {
   previousWalletAccountOrder = accountOrder
   const profileAccounts = accountOrder.map((id) => main.accounts[id])
   previousWalletAccounts = Object.fromEntries(
-    profileAccounts.map((account) => [
-      account.id,
-      account.safe === undefined
-        ? account
-        : { ...account, safeOwners: deriveSafeOwners(account, profileAccounts, main.signers, main.appLock) }
-    ])
+    profileAccounts.map((account) => {
+      let requests = account.requests
+      for (const [requestId, value] of Object.entries(account.requests)) {
+        const request = value as SignatureRequest
+        if (!isSignatureRequest(request) || !Number.isSafeInteger(request.chainId)) {
+          continue
+        }
+        if (requests === account.requests) {
+          requests = { ...account.requests }
+        }
+        requests[requestId] = {
+          ...request,
+          signingCapability: deriveSigningCapability(
+            request,
+            profileAccounts,
+            main.signers,
+            main.appLock,
+            main.currentProfile
+          )
+        }
+      }
+      if (account.safe === undefined && requests === account.requests) {
+        return [account.id, account]
+      }
+      return [
+        account.id,
+        {
+          ...account,
+          requests,
+          ...(account.safe === undefined
+            ? {}
+            : { safeOwners: deriveSafeOwners(account, profileAccounts, main.signers, main.appLock) })
+        }
+      ]
+    })
   ) as WalletRendererState['accounts']
   return { accounts: previousWalletAccounts, accountOrder }
 }

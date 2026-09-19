@@ -15,6 +15,8 @@ import type { Chain } from '../../../platform/state-store/state/index.js'
 import { toBigInt } from '../../../shared/domain/units.js'
 import type { TrustedPrincipal } from '../../access-control/main/authority.js'
 import type { Accounts } from '../../accounts/main/index.js'
+import type { SafeMessageApprovalResult } from '../../accounts/main/safeMessage.js'
+import { deriveSigningCapability } from '../../accounts/main/signingCapability.js'
 import { resolveAssetRate } from '../../asset-data/domain/asset/index.js'
 import { NATIVE_CURRENCY } from '../../tokens/domain/constants.js'
 import {
@@ -29,6 +31,7 @@ import type {
   AddChainRequest,
   AddTokenRequest,
   RequestApprovalGate,
+  SignatureRequest,
   SignTypedDataRequest,
   TransactionRequest
 } from '../contract/requests.js'
@@ -85,6 +88,13 @@ export interface RequestServicePorts {
     approveSignTypedData(request: SignTypedDataRequest, context?: SigningUiContext): Promise<string>
     approveTransactionRequest(request: TransactionRequest, context?: SigningUiContext): Promise<string>
   }
+  safeMessages?: {
+    approve(
+      request: SignatureRequest,
+      ownerId: string,
+      context: SigningUiContext
+    ): Promise<SafeMessageApprovalResult>
+  }
   store: CanonicalStoreReader
   transactionPolicy: Pick<AccountTransactionPolicyPort, 'signerCompatibility'>
   vault: { exists(): boolean; isUnlocked(): boolean }
@@ -124,6 +134,15 @@ function normalizedError(error: unknown): EVMError {
 export function createRequestService(ports: RequestServicePorts) {
   const continuations = new Map<string, Continuation>()
   const approvalsInFlight = new Set<string>()
+  const approvalKey = (requestId: string, ownerId?: string) =>
+    ownerId ? `${requestId}:${ownerId.toLowerCase()}` : requestId
+  const clearApprovalKeys = (requestId: string) => {
+    for (const key of approvalsInFlight) {
+      if (key === requestId || key.startsWith(`${requestId}:`)) {
+        approvalsInFlight.delete(key)
+      }
+    }
+  }
 
   const locate = <T extends AccountRequest = AccountRequest>(requestId: string) => {
     const accountState = Object.values(ports.store.getState().main.accounts).find(
@@ -157,8 +176,8 @@ export function createRequestService(ports: RequestServicePorts) {
     return true
   }
 
-  const failApproval = (request: AccountRequest, error: unknown) => {
-    approvalsInFlight.delete(request.handlerId)
+  const failApproval = (request: AccountRequest, error: unknown, key = request.handlerId) => {
+    approvalsInFlight.delete(key)
     if (normalizedError(error).code === 4001) {
       const account = ports.accounts.getFrameAccount(request.account)
       if (account?.getRequest(request.handlerId)) {
@@ -175,8 +194,8 @@ export function createRequestService(ports: RequestServicePorts) {
     )
   }
 
-  const completeApproval = (request: AccountRequest, result: unknown) => {
-    approvalsInFlight.delete(request.handlerId)
+  const completeApproval = (request: AccountRequest, result: unknown, key = request.handlerId) => {
+    approvalsInFlight.delete(key)
     if (!settle(request.handlerId, rpcSuccess(request, result))) {
       return
     }
@@ -192,6 +211,27 @@ export function createRequestService(ports: RequestServicePorts) {
     request: AccountRequest,
     confirmed: ReadonlySet<RequestApprovalGate['type']>
   ): RequestApprovalGate | undefined => {
+    if (isSignatureRequest(request)) {
+      const main = ports.store.getState().main
+      const capability = deriveSigningCapability(
+        request,
+        Object.values(main.accounts),
+        main.signers,
+        main.appLock,
+        main.currentProfile
+      )
+      if (capability.status === 'ready') {
+        return
+      }
+      const attached = capability.candidates.filter((candidate) => candidate.signerAttached)
+      return attached.length
+        ? {
+            type: 'signer-compatibility',
+            reason: 'signer-unavailable',
+            signerIds: attached.map((candidate) => candidate.accountId)
+          }
+        : { type: 'signer-compatibility', reason: 'no-signer' }
+    }
     const signerSummaries = ports.store.getState().main.signers
     const sparseSignerSummaries = signerSummaries as Record<
       string,
@@ -276,11 +316,17 @@ export function createRequestService(ports: RequestServicePorts) {
     return { type: 'gas-fee', feeUSD, currentSymbol }
   }
 
-  const executeApproval = (account: RequestAccount, request: AccountRequest, context?: SigningUiContext) => {
-    if (approvalsInFlight.has(request.handlerId)) {
+  const executeApproval = (
+    account: RequestAccount,
+    request: AccountRequest,
+    context?: SigningUiContext,
+    ownerId?: string
+  ) => {
+    const key = approvalKey(request.handlerId, ownerId)
+    if (approvalsInFlight.has(key)) {
       return true
     }
-    approvalsInFlight.add(request.handlerId)
+    approvalsInFlight.add(key)
     setGate(account, request.handlerId)
     ports.accounts.setRequestPending(request)
 
@@ -304,7 +350,7 @@ export function createRequestService(ports: RequestServicePorts) {
       const currentAccount = currentAccounts[request.account]
       const currentRequest = currentAccount?.requests[request.handlerId] as AccountRequest | undefined
       if (currentAccount?.created !== created || currentRequest?.authorization?.actionId !== actionId) {
-        approvalsInFlight.delete(request.handlerId)
+        approvalsInFlight.delete(key)
         settle(
           request.handlerId,
           rpcError(request, { code: 4001, message: 'Signing approval is no longer active' })
@@ -315,6 +361,33 @@ export function createRequestService(ports: RequestServicePorts) {
     }
 
     const approveRequest = () => {
+      if (isSignatureRequest(request)) {
+        const main = ports.store.getState().main
+        const capability = deriveSigningCapability(
+          request,
+          Object.values(main.accounts),
+          main.signers,
+          main.appLock,
+          main.currentProfile
+        )
+        if (capability.type === 'safe') {
+          if (!ownerId || !context) {
+            throw new Error('Select an available Safe owner before approving.')
+          }
+          if (
+            !capability.candidates.some(
+              (candidate) =>
+                candidate.accountId.toLowerCase() === ownerId.toLowerCase() && candidate.status === 'ready'
+            )
+          ) {
+            throw new Error('Selected Safe owner is not ready or authorized for this request.')
+          }
+          if (!ports.safeMessages) {
+            throw new Error('Safe message signing is unavailable.')
+          }
+          return ports.safeMessages.approve(request, ownerId, context)
+        }
+      }
       if (isTransactionRequest(request)) {
         return ports.provider.approveTransactionRequest(request, context)
       }
@@ -326,10 +399,31 @@ export function createRequestService(ports: RequestServicePorts) {
       }
       return undefined
     }
-    const approval = approveRequest()
+    let approval: ReturnType<typeof approveRequest>
+    try {
+      approval = approveRequest()
+    } catch (error) {
+      failApproval(request, error, key)
+      return true
+    }
     void approval?.then(
-      (result) => complete(() => completeApproval(request, result)),
-      (error: unknown) => complete(() => failApproval(request, error))
+      (result) => {
+        approvalsInFlight.delete(key)
+        complete(() => {
+          if (typeof result === 'object' && 'status' in result) {
+            if (result.status === 'pending') {
+              return
+            }
+            completeApproval(request, result.signature, key)
+            return
+          }
+          completeApproval(request, result, key)
+        })
+      },
+      (error: unknown) => {
+        approvalsInFlight.delete(key)
+        complete(() => failApproval(request, error, key))
+      }
     )
     return true
   }
@@ -338,7 +432,8 @@ export function createRequestService(ports: RequestServicePorts) {
     account: RequestAccount,
     request: AccountRequest,
     confirmed: ReadonlySet<RequestApprovalGate['type']>,
-    context?: SigningUiContext
+    context?: SigningUiContext,
+    ownerId?: string
   ) => {
     const nextSignerGate = signerGate(account, request, confirmed)
     if (nextSignerGate) {
@@ -352,7 +447,7 @@ export function createRequestService(ports: RequestServicePorts) {
         return true
       }
     }
-    return executeApproval(account, request, context)
+    return executeApproval(account, request, context, ownerId)
   }
 
   const service = {
@@ -368,7 +463,7 @@ export function createRequestService(ports: RequestServicePorts) {
       if (cancelled) {
         const located = locate(requestId)
         located?.account.rejectRequest(located.request, { code: 4001, message: 'Request cancelled' })
-        approvalsInFlight.delete(requestId)
+        clearApprovalKeys(requestId)
       }
       return cancelled
     },
@@ -388,11 +483,16 @@ export function createRequestService(ports: RequestServicePorts) {
     },
 
     reject(request: AccountRequest, error: EVMError) {
-      approvalsInFlight.delete(request.handlerId)
+      clearApprovalKeys(request.handlerId)
       return settle(request.handlerId, rpcError(request, error))
     },
 
-    approve(requestId: string, context?: SigningUiContext, adjustments?: TransactionApprovalAdjustments) {
+    approve(
+      requestId: string,
+      context?: SigningUiContext,
+      adjustments?: TransactionApprovalAdjustments,
+      ownerId?: string
+    ) {
       const located = locate(requestId)
       if (!located || (!isTransactionRequest(located.request) && !isSignatureRequest(located.request))) {
         return false
@@ -410,7 +510,7 @@ export function createRequestService(ports: RequestServicePorts) {
       ) {
         return false
       }
-      if (approvalsInFlight.has(requestId)) {
+      if (approvalsInFlight.has(approvalKey(requestId, ownerId))) {
         return true
       }
       // Canonical success/error UI can outlive the external requester briefly.
@@ -462,10 +562,12 @@ export function createRequestService(ports: RequestServicePorts) {
         ports.accounts.setRequestError(requestId, new Error('Newframe locked'))
         return true
       }
-      if (!editable(located.request)) {
+      const safePending =
+        isSignatureRequest(located.request) && located.request.status === 'pending' && Boolean(ownerId)
+      if (!editable(located.request) && !safePending) {
         return false
       }
-      return advanceApproval(located.account, located.request, new Set(), context)
+      return advanceApproval(located.account, located.request, new Set(), context, ownerId)
     },
 
     confirmWarning(requestId: string, gate: RequestApprovalGate['type'], context?: SigningUiContext) {

@@ -47,6 +47,7 @@ import type {
   TypedMessage
 } from '../../../requests/contract/requests.js'
 import { ApprovalType } from '../../../requests/domain/approval.js'
+import { isSignatureRequest } from '../../../requests/domain/index.js'
 import type { PromptedRequestContinuationPort } from '../../../requests/main/service.js'
 import { toTokenId } from '../../../tokens/domain/index.js'
 import type { TransactionData } from '../../../transactions/domain/index.js'
@@ -429,7 +430,9 @@ export class Provider extends EventEmitter {
       )
     const expected = identity(request)
     const typed = 'typedMessage' in request ? (request as SignTypedDataRequest).typedMessage : undefined
-    let chainIdValue: unknown = this.origin(request.origin)?.chain.id ?? 1
+    let chainIdValue: unknown = isSignatureRequest(request)
+      ? request.chainId
+      : (this.origin(request.origin)?.chain.id ?? 1)
     if (request.type === 'transaction') {
       chainIdValue = (request as TransactionRequest).data.chainId
     } else if (typed && !Array.isArray(typed.data)) {
@@ -835,6 +838,7 @@ export class Provider extends EventEmitter {
       type: 'sign',
       payload: normalizedPayload,
       account: account.id,
+      chainId: this.parseTargetChain(normalizedPayload)?.id ?? 1,
       origin: 'newframe-agent',
       data: { decodedMessage: decodeMessage(message) }
     }
@@ -932,6 +936,7 @@ export class Provider extends EventEmitter {
       ...(digests ? { digests } : {}),
       payload,
       account: account.id,
+      chainId: this.parseTargetChain(payload)?.id ?? 1,
       origin: 'newframe-agent'
     }
 
@@ -1113,21 +1118,31 @@ export class Provider extends EventEmitter {
     this.connection.send(payload, res, targetChain)
   }
 
-  _personalSign(payload: RPCRequestPayload, res: RPCRequestCallback, principal: TrustedPrincipal) {
+  _personalSign(
+    payload: RPCRequestPayload,
+    res: RPCRequestCallback,
+    principal: TrustedPrincipal,
+    chainId?: number
+  ) {
     const params = arrayValue(payload.params)
 
     if (isAddress(params[0]) && !isAddress(params[1])) {
       // personal_sign requests expect the first parameter to be the message and the second
       // parameter to be an address. however some clients send these in the opposite order
       // so try to detect that
-      return this.sign(payload, res, principal)
+      return this.sign(payload, res, principal, chainId)
     }
 
     // switch the order of params to be consistent with eth_sign
-    return this.sign({ ...payload, params: [params[1], params[0], ...params.slice(2)] }, res, principal)
+    return this.sign(
+      { ...payload, params: [params[1], params[0], ...params.slice(2)] },
+      res,
+      principal,
+      chainId
+    )
   }
 
-  sign(payload: RPCRequestPayload, res: RPCRequestCallback, principal: TrustedPrincipal) {
+  sign(payload: RPCRequestPayload, res: RPCRequestCallback, principal: TrustedPrincipal, chainId?: number) {
     const [fromValue, messageValue] = arrayValue(payload.params)
     const from = typeof fromValue === 'string' ? fromValue : ''
     const message = typeof messageValue === 'string' ? messageValue : ''
@@ -1148,6 +1163,7 @@ export class Provider extends EventEmitter {
       type: 'sign',
       payload,
       account: currentAccount.getAccounts()[0],
+      chainId: chainId ?? this.parseTargetChain(payload)?.id ?? 1,
       origin: payload._origin,
       data: {
         decodedMessage: decodeMessage(message)
@@ -1161,7 +1177,8 @@ export class Provider extends EventEmitter {
     rawPayload: RPC.SignTypedData.Request,
     version: SignTypedDataVersion | undefined,
     res: RPCCallback<RPC.SignTypedData.Response>,
-    principal: TrustedPrincipal
+    principal: TrustedPrincipal,
+    chainId?: number
   ) {
     // ensure param order is [address, data, ...] regardless of version
     const rawParams = arrayValue(rawPayload.params)
@@ -1247,6 +1264,7 @@ export class Provider extends EventEmitter {
       ...(digests ? { digests } : {}),
       payload,
       account: targetAccount.address,
+      chainId: chainId ?? this.parseTargetChain(payload)?.id ?? 1,
       origin: payload._origin
     }
 
@@ -1724,6 +1742,14 @@ export class Provider extends EventEmitter {
 
     const method = payload.method || ''
 
+    if (method === 'eth_sign' || method === 'eth_signTransaction') {
+      return resError(
+        { message: `${method} is not supported; use personal_sign or eth_sendTransaction`, code: 4200 },
+        payload,
+        res
+      )
+    }
+
     // method handlers that are not chain-specific can go here, before parsing the target chain
     if (method === 'eth_unsubscribe' && this.ifSubRemove(payload.params[0] as string)) {
       return res({ id: payload.id, jsonrpc: '2.0', result: true })
@@ -1792,11 +1818,7 @@ export class Provider extends EventEmitter {
 
     if (method === 'personal_sign') {
       const trustedPrincipal = requirePrincipal()
-      return trustedPrincipal ? this._personalSign(payload, res, trustedPrincipal) : undefined
-    }
-    if (method === 'eth_sign') {
-      const trustedPrincipal = requirePrincipal()
-      return trustedPrincipal ? this.sign(payload, res, trustedPrincipal) : undefined
+      return trustedPrincipal ? this._personalSign(payload, res, trustedPrincipal, targetChain.id) : undefined
     }
 
     if (
@@ -1810,7 +1832,13 @@ export class Provider extends EventEmitter {
       ) as SignTypedDataVersion
       const trustedPrincipal = requirePrincipal()
       if (trustedPrincipal) {
-        return this.signTypedData(payload as RPC.SignTypedData.Request, version, res, trustedPrincipal)
+        return this.signTypedData(
+          payload as RPC.SignTypedData.Request,
+          version,
+          res,
+          trustedPrincipal,
+          targetChain.id
+        )
       }
       return
     }

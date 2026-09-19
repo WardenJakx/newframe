@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 
-import { getBytes, Wallet } from 'ethers'
+import { getBytes, Interface, Wallet } from 'ethers'
 
 import { createSafeHandler } from '../../../scripts/local-safe/handler.js'
 import { abi as multicallAbi, multicallAddress } from '../chain-rpc/multicall/constants.js'
 import { createSafeClient, safeServiceNetworks } from './client.js'
-import { verifySafeHash } from './integrity.js'
+import { EIP1271_MAGIC_VALUE, EIP1271_SIGNATURE, getSafeMessageHash, verifySafeHash } from './integrity.js'
 
 const safe = '0x1111111111111111111111111111111111111111'
 const owners = ['0x2222222222222222222222222222222222222222', '0x3333333333333333333333333333333333333333']
@@ -455,4 +455,95 @@ test('confirmation POST shares HTTP errors, cooldown, cancellation, redirect and
       )
   )
   expect(delayed.confirm(31337, hash, signature)).rejects.toThrow()
+})
+
+test('creates, confirms, and retrieves locally verified Safe messages', async () => {
+  const signers = [new Wallet(`0x${'12'.repeat(32)}`), new Wallet(`0x${'34'.repeat(32)}`)]
+  const configuration = {
+    owners: signers.map((signer) => signer.address),
+    threshold: 2,
+    nonce: '0',
+    version: '1.4.1'
+  }
+  const handler = createSafeHandler({
+    chainId: 31337,
+    safe,
+    owners: configuration.owners,
+    threshold: 2,
+    version: configuration.version
+  })
+  const client = createSafeClient({
+    networks: { 31337: 'http://safe.local/api' },
+    request: (url, init) => handler.fetch(new Request(url, init))
+  })
+  const message = 'Safe says hello'
+  const hash = getSafeMessageHash(message, 31337, safe, configuration.version)
+  const first = signers[0].signingKey.sign(hash).serialized
+  const second = signers[1].signingKey.sign(hash).serialized
+  expect(await client.createMessage(31337, safe, message, first, configuration)).toBe(hash)
+  expect((await client.getMessage(31337, safe, hash, configuration)).confirmations).toEqual([
+    { owner: signers[0].address, signature: first }
+  ])
+  await client.confirmMessage(31337, hash, second, configuration.owners)
+  const stored = await client.getMessage(31337, safe, hash, configuration)
+  expect(stored.message).toBe(message)
+  expect(stored.confirmations.map(({ owner }) => owner).sort()).toEqual(configuration.owners.toSorted())
+  expect(stored.preparedSignature).toHaveLength(2 + 130 * 2)
+  expect(
+    client.confirmMessage(
+      31337,
+      hash,
+      new Wallet(`0x${'56'.repeat(32)}`).signingKey.sign(hash).serialized,
+      configuration.owners
+    )
+  ).rejects.toThrow('owner')
+})
+
+test('rejects service message identity, hash, confirmation, and prepared-signature mismatches', async () => {
+  const signer = new Wallet(`0x${'12'.repeat(32)}`)
+  const configuration = { owners: [signer.address], threshold: 1, nonce: '0', version: '1.4.1' }
+  const message = 'trusted payload'
+  const hash = getSafeMessageHash(message, 1, safe, configuration.version)
+  const signature = signer.signingKey.sign(hash).serialized
+  const valid = {
+    safe,
+    messageHash: hash,
+    message,
+    confirmations: [{ owner: signer.address, signature, signatureType: 'EOA' }],
+    preparedSignature: signature
+  }
+  for (const replacement of [
+    { safe: owners[0] },
+    { messageHash: `0x${'00'.repeat(32)}` },
+    { message: 'tampered payload' },
+    { confirmations: [{ owner: owners[0], signature, signatureType: 'EOA' }] },
+    { preparedSignature: `0x${'00'.repeat(65)}` }
+  ]) {
+    const client = createSafeClient({
+      networks: { 1: 'https://safe.example/api' },
+      request: async () => Response.json({ ...valid, ...replacement })
+    })
+    expect(client.getMessage(1, safe, hash, configuration)).rejects.toThrow()
+  }
+})
+
+test('accepts only the EIP-1271 magic response from the injected chain call', async () => {
+  const hash = `0x${'11'.repeat(32)}`
+  const abi = new Interface([EIP1271_SIGNATURE])
+  for (const [result, valid] of [
+    [`${EIP1271_MAGIC_VALUE}${'0'.repeat(56)}`, true],
+    [`0xffffffff${'0'.repeat(56)}`, false],
+    ['0x', false]
+  ] as const) {
+    const client = createSafeClient({
+      request: fetch,
+      call: async (chainId, address, data) => {
+        expect(chainId).toBe(1)
+        expect(address).toBe(safe)
+        expect(Array.from(abi.decodeFunctionData('isValidSignature', data))).toEqual([hash, '0x1234'])
+        return result
+      }
+    })
+    expect(await client.validateMessage(1, safe, hash, '0x1234')).toBe(valid)
+  }
 })

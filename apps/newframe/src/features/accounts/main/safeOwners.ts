@@ -1,66 +1,17 @@
-import { getSignerType, isSignerReady } from '../../../platform/signing/domain/index.js'
 import type { SafeOwnerAccount } from '../domain/safe.js'
 import type { Account } from '../domain/state/account.js'
-
-function firstNonEmpty(...values: Array<string | undefined>): string {
-  for (const value of values) {
-    if (value) {
-      return value
-    }
-  }
-  return ''
-}
+import { safeOwnerCandidates } from './signingCapability.js'
 
 export function deriveSafeOwners(
   safeAccount: Account,
   accounts: Account[],
-  signers: Record<string, { type: string; status: string } | undefined>,
+  signers: Record<string, { type: string; status: string; addresses?: string[] } | undefined>,
   appLock: { locked: boolean }
 ): Record<string, SafeOwnerAccount[]> {
-  const candidates = accounts.filter(
-    (account) => account.profileId === safeAccount.profileId && account.safe === undefined
-  )
   return Object.fromEntries(
-    Object.entries(safeAccount.safe ?? {}).map(([chainId, deployment]) => {
-      const owners = new Set(deployment.configuration.owners.map((address) => address.toLowerCase()))
-      const matches = candidates
-        .filter((account) => owners.has(account.address.toLowerCase()))
-        .map((account): SafeOwnerAccount => {
-          const signer = signers[account.signer]
-          const signerType = firstNonEmpty(signer?.type, account.lastSignerType, 'address').toLowerCase()
-          const signingType = getSignerType(signer?.type.toLowerCase() ?? '')
-          const historicalType = getSignerType(account.lastSignerType.toLowerCase())
-          const watchOnly =
-            !signingType && !historicalType && (!account.signer || signer?.type.toLowerCase() === 'address')
-          let status: SafeOwnerAccount['status'] = 'unavailable'
-          if (watchOnly) {
-            status = 'watch-only'
-          } else if (signer && signingType && isSignerReady(signer) && !appLock.locked) {
-            status = 'ready'
-          }
-          let signerStatus = 'Signer unavailable'
-          if (signer?.status) {
-            signerStatus = signer.status
-          }
-          if (status === 'watch-only') {
-            signerStatus = 'Watch-only account'
-          } else if (appLock.locked) {
-            signerStatus = 'Wallet locked'
-          } else if (status === 'unavailable' && (!signer || isSignerReady(signer))) {
-            signerStatus = 'Signer unavailable'
-          }
-          return {
-            accountId: account.id,
-            name: account.name,
-            address: account.address,
-            created: account.created,
-            signerType,
-            signerAttached: Boolean(signer && signingType),
-            signerStatus,
-            status
-          }
-        })
-      return [chainId, matches]
-    })
+    Object.keys(safeAccount.safe ?? {}).map((chainId) => [
+      chainId,
+      safeOwnerCandidates(safeAccount, Number(chainId), accounts, signers, appLock) as SafeOwnerAccount[]
+    ])
   )
 }

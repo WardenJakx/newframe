@@ -23,6 +23,8 @@ import {
 } from '../../../features/accounts/main/providerPort.js'
 import type { AccountsRuntime } from '../../../features/accounts/main/runtime.js'
 import { createSafeService, type SafeService } from '../../../features/accounts/main/safe.js'
+import { createSafeMessageService } from '../../../features/accounts/main/safeMessage.js'
+import { createDeferredSafeMessageApprovalPort } from '../../../features/accounts/main/safeMessagePort.js'
 import { simulateSafeProposal } from '../../../features/accounts/main/safeSimulation.js'
 import { createAccountService, type AccountService } from '../../../features/accounts/main/service.js'
 import { createAgentService, type AgentService } from '../../../features/agent-access/main/index.js'
@@ -201,6 +203,7 @@ export function createProductionCapabilities(
     transactionPolicy: createDeferredAccountTransactionPolicyPort(),
     simulation: createDeferredTransactionSimulationPort()
   }
+  const safeMessages = createDeferredSafeMessageApprovalPort()
   const requestService = createRequestService({
     accounts: {
       clearRequestsByOrigin: (accountId, originId) => accounts.clearRequestsByOrigin(accountId, originId),
@@ -223,6 +226,7 @@ export function createProductionCapabilities(
       approveTransactionRequest: (request, context) =>
         requestApprovals.approveTransactionRequest(request, context)
     },
+    safeMessages: safeMessages.port,
     store,
     transactionPolicy: accountCapabilities.transactionPolicy.port,
     vault: adapters.security.vault
@@ -310,6 +314,8 @@ export function createProductionCapabilities(
       chainId: process.env.NEWFRAME_SAFE_CHAIN_ID
     })
   })
+  const safeMessageService = createSafeMessageService({ store, accounts, client: safeClient })
+  const disconnectSafeMessages = safeMessages.connect(safeMessageService)
   const safeService = createSafeService({
     accounts,
     store,
@@ -414,6 +420,8 @@ export function createProductionCapabilities(
     infrastructureCallbacks: {
       dispose() {
         airgapService.dispose()
+        disconnectSafeMessages()
+        safeMessageService.dispose()
         safeService.dispose()
         safeRpc.dispose()
         accountSelection.dispose()

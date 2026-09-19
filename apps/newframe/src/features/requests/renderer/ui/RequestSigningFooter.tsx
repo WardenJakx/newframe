@@ -8,15 +8,17 @@ import { SigningAccount } from './SigningAccount'
 export function RequestSigningFooter({
   account,
   clipboard,
-  children
+  children,
+  label
 }: {
   account: { address: string; name?: string; ensName?: string; accountType?: string }
   clipboard: ClipboardCapability
   children: ReactNode
+  label?: string
 }) {
   return (
     <Stack gap='small'>
-      <SigningAccount>
+      <SigningAccount label={label}>
         <AddressIdentity
           address={account.address}
           accountType={account.accountType}

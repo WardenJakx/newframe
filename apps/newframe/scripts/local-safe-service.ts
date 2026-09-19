@@ -48,7 +48,8 @@ const handler = createSafeHandler({
   proposals:
     'proposals' in seed && seed.proposals !== undefined
       ? safeProposalSchema.array().parse(seed.proposals)
-      : undefined
+      : undefined,
+  messageConfirmationPrivateKeys: ['0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d']
 })
 const server = Bun.serve({
   hostname: '127.0.0.1',

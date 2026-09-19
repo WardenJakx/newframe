@@ -1,5 +1,4 @@
 import { Disclosure } from '@newframe/ui/disclosure'
-import { Selection } from '@newframe/ui/selection'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 import { formatUnits } from 'ethers'
@@ -7,11 +6,6 @@ import { useState, type ReactNode } from 'react'
 
 import { getCalldataDigest } from '../../../shared/domain/calldata'
 import { AddressIdentity, shortAddress } from '../../../shared/renderer/ui/AddressIdentity'
-import {
-  signerIsReady,
-  signerStatusText,
-  signerTypeLabel
-} from '../../../shared/renderer/ui/signerPresentation'
 import type {
   SafeDeployment,
   SafeOwnerAccount,
@@ -21,6 +15,7 @@ import type {
 import TransactionInformation from './Account/Requests/TransactionRequest/TransactionInformation'
 import type { RequestRendererCapabilities } from './requestCapabilities'
 import { RequestActions } from './ui/RequestActions'
+import { SafeOwnerSelector } from './ui/SafeOwnerSelector'
 import { SigningAccount } from './ui/SigningAccount'
 import type { SafeConfirmationModel } from './useSafeConfirmation'
 
@@ -57,10 +52,8 @@ export function SafeProposalDetailsView({
   decimals?: number
   capabilities: Pick<RequestRendererCapabilities, 'external'>
 }) {
-  const [ownerMenuOpen, setOwnerMenuOpen] = useState(false)
   const [confirmationsOpen, setConfirmationsOpen] = useState(false)
   const selectedOwner = owners.find((owner) => owner.accountId === selectedOwnerId)
-  const hasSigningAccount = owners.some((owner) => owner.status !== 'watch-only')
   const busy = confirmation?.status === 'signing' || confirmation?.status === 'publishing'
   const published = confirmation?.status === 'published'
   const retryPublication = confirmation?.status === 'publication_failed'
@@ -84,12 +77,6 @@ export function SafeProposalDetailsView({
     actionLabel = 'No signer attached'
   } else if (recoverable) {
     actionLabel = 'Connect signer'
-  }
-  const ownerDescription = (owner: SafeOwnerAccount) => {
-    const type = signerTypeLabel(owner.signerType)
-    return signerIsReady(owner.signerStatus)
-      ? type
-      : `${type} · ${signerStatusText({ status: owner.signerStatus, type })}`
   }
   const currentNonce =
     simulation.status !== 'loading' && simulation.currentNonce !== undefined
@@ -274,51 +261,11 @@ export function SafeProposalDetailsView({
         <Stack gap='xsmall'>
           <SigningAccount label='Account'>{addressValue(proposal.safe)}</SigningAccount>
           <SigningAccount label='Signer'>
-            <Selection
-              label='Signer'
-              disabled={!hasSigningAccount || busy}
-              menuPlacement='above'
-              menuAlign='end'
-              menuWidth='wide'
-              triggerSize='small'
-              open={ownerMenuOpen && hasSigningAccount}
-              onOpenChange={setOwnerMenuOpen}
-              selectedId={selectedOwnerId}
-              onSelect={(id) => onSelectOwner?.(id)}
-              placeholder={hasSigningAccount && !selectedOwner}
-              trigger={
-                hasSigningAccount && selectedOwner ? (
-                  <AddressIdentity
-                    address={selectedOwner.address}
-                    accountType={selectedOwner.accountType ?? selectedOwner.signerType}
-                    nickname={selectedOwner.name || shortAddress(selectedOwner.address)}
-                    showCopy={false}
-                    showFullAddress
-                  />
-                ) : (
-                  <Text variant='caption' truncate={hasSigningAccount}>
-                    {hasSigningAccount ? 'Choose an account' : 'No attached signer for the Safe'}
-                  </Text>
-                )
-              }
-              items={owners.map((owner) => ({
-                id: owner.accountId,
-                disabled: owner.status === 'watch-only',
-                content: (
-                  <Stack gap='none' grow>
-                    <AddressIdentity
-                      address={owner.address}
-                      accountType={owner.accountType ?? owner.signerType}
-                      nickname={owner.name || shortAddress(owner.address)}
-                      showCopy={false}
-                      showFullAddress
-                    />
-                    <Text variant='caption' tone='secondary'>
-                      {ownerDescription(owner)}
-                    </Text>
-                  </Stack>
-                )
-              }))}
+            <SafeOwnerSelector
+              owners={owners}
+              disabled={busy}
+              selectedOwnerId={selectedOwnerId}
+              onSelectOwner={onSelectOwner}
             />
           </SigningAccount>
           {confirmation && selectedOwner && !published && simulation.status !== 'success' ? (

@@ -593,7 +593,12 @@ export function createOperationRegistry(services: OperationServices) {
       (command, event, context) =>
         'safeTxHash' in command
           ? safes.confirm(command, signingUiContext(event, context))
-          : requests.approve(command.requestId, signingUiContext(event, context), command.adjustments),
+          : requests.approve(
+              command.requestId,
+              signingUiContext(event, context),
+              command.adjustments,
+              command.ownerId
+            ),
       (command) => ('safeTxHash' in command ? 'not_found' : 'request_not_found'),
       ['tray']
     ),
