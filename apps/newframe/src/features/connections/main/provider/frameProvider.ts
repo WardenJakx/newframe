@@ -36,10 +36,6 @@ const providerEvents = ['networkChanged', 'chainChanged', 'chainsChanged', 'acco
 const DEFAULT_RECONNECT_INTERVAL = 5000
 const MAX_RECONNECT_INTERVAL = 60 * 1000
 
-function normalizeChainId(chainId: string | number) {
-  return typeof chainId === 'number' ? `0x${chainId.toString(16)}` : chainId
-}
-
 function resolveTargets(targets?: string | string[]) {
   const requestedTargets = targets ? ([] as string[]).concat(targets) : ['frame']
 
@@ -55,7 +51,6 @@ abstract class EventedRequestProvider extends EventEmitter implements Eip1193Pro
   networkVersion?: unknown
   selectedAddress?: string
 
-  protected manualChainId?: string
   protected providerChainId?: string
   protected nextId = 1
 
@@ -74,18 +69,7 @@ abstract class EventedRequestProvider extends EventEmitter implements Eip1193Pro
   }
 
   get chainId() {
-    return this.manualChainId ?? this.providerChainId
-  }
-
-  setChain(chainId: string | number) {
-    const nextChainId = normalizeChainId(chainId)
-    const changed = nextChainId !== this.chainId
-
-    this.manualChainId = nextChainId
-
-    if (changed) {
-      this.emit('chainChanged', this.chainId)
-    }
+    return this.providerChainId
   }
 
   async request<T = unknown>(payload: ProviderRequest) {
@@ -116,7 +100,7 @@ abstract class EventedRequestProvider extends EventEmitter implements Eip1193Pro
       jsonrpc: payload.jsonrpc ?? '2.0',
       method: payload.method,
       params: payload.params ?? [],
-      chainId: payload.chainId ?? this.manualChainId
+      chainId: payload.chainId
     }
   }
 
@@ -190,9 +174,7 @@ abstract class EventedRequestProvider extends EventEmitter implements Eip1193Pro
       this.emit('networkChanged', this.networkVersion)
     } else if (event === 'chainChanged') {
       this.providerChainId = result as string
-      if (!this.manualChainId) {
-        this.emit('chainChanged', result)
-      }
+      this.emit('chainChanged', result)
     } else {
       this.emit(event, result)
     }

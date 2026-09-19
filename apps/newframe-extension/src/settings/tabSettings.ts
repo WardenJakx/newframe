@@ -43,3 +43,28 @@ export async function refreshCurrentChain(tabId: number) {
     // The content script may be unavailable while the tab reloads.
   }
 }
+
+export function normalizeChainId(chainId: number | string) {
+  const input = String(chainId).trim()
+  if (!/^(?:0x[0-9a-f]+|[0-9]+)$/i.test(input)) {
+    return
+  }
+  const value = BigInt(input)
+  if (value <= 0n || value > BigInt(Number.MAX_SAFE_INTEGER)) {
+    return
+  }
+  return `0x${value.toString(16)}`
+}
+
+export async function switchOriginChain(tab: chrome.tabs.Tab, chainId: number | string) {
+  const normalizedChainId = normalizeChainId(chainId)
+  if (!normalizedChainId) {
+    throw new Error('Invalid chain ID')
+  }
+
+  await chrome.runtime.sendMessage({
+    tab,
+    method: 'wallet_switchEthereumChain',
+    params: [{ chainId: normalizedChainId }]
+  })
+}

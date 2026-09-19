@@ -14,14 +14,9 @@ import {
 type ProviderRequest = Parameters<NameResolutionProviderPort['request']>[0]
 
 class FakeProvider extends EventEmitter implements NameResolutionProviderPort {
-  chainId = ''
   readonly requests: ProviderRequest[] = []
   respond: (payload: ProviderRequest) => Promise<unknown> = async () => {
     throw new Error('No response configured')
-  }
-
-  setChain(chainId: string) {
-    this.chainId = chainId
   }
 
   override on(event: string, listener: (...args: never[]) => void) {
@@ -228,11 +223,9 @@ describe('name resolution', () => {
     nameResolution.start()
     nameResolution.start()
     expect({
-      chainId: provider.chainId,
       chainListeners: provider.listenerCount('chainsChanged'),
       connectListeners: provider.listenerCount('connect')
     }).toEqual({
-      chainId: '0x1',
       chainListeners: 1,
       connectListeners: 1
     })
@@ -240,6 +233,10 @@ describe('name resolution', () => {
     provider.emit('connect')
     await ready
     expect(nameResolution.ready()).toBe(true)
+    expect(provider.requests[0]).toEqual({
+      method: 'wallet_getEthereumChains',
+      chainId: '0x1'
+    })
 
     nameResolution.dispose()
     expect({

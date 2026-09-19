@@ -40,7 +40,6 @@ function decodedBigInt(result: Result, index: number, label: string) {
 }
 
 export interface NameResolutionProviderPort {
-  setChain(chainId: string): void
   on(event: string, listener: (...args: never[]) => void): unknown
   once(event: string, listener: (...args: never[]) => void): unknown
   off(event: string, listener: (...args: never[]) => void): unknown
@@ -96,7 +95,8 @@ export function createNameResolutionService(
 
     try {
       const activeChains = await getProvider().request<RPC.GetEthereumChains.Chain[]>({
-        method: 'wallet_getEthereumChains'
+        method: 'wallet_getEthereumChains',
+        chainId: MAINNET_CHAIN_ID
       })
       readyHandler(activeChains)
     } catch {
@@ -225,7 +225,6 @@ export function createNameResolutionService(
 
       active = true
       const activeProvider = getProvider()
-      activeProvider.setChain(MAINNET_CHAIN_ID)
       activeProvider.on('chainsChanged', readyHandler)
       activeProvider.once('connect', connectHandler)
     },

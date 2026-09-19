@@ -25,7 +25,6 @@ type OriginRequestContinuationPort = Pick<PromptedRequestContinuationPort, 'crea
 
 interface OriginStorePort {
   getOrigin(id: string): { name: string; chain?: { id: number } } | undefined
-  getKnownEthereumChainIds(): ReadonlySet<number>
   initializeOrigin(id: string, origin: { name: string; chain: { id: number; type: 'ethereum' } }): void
   setOriginFavicon(id: string, source: string): void
   touchOrigin(id: string): void
@@ -66,7 +65,6 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
       payload: requestPayload,
       originId,
       existingChainId: existingOrigin?.chain?.id,
-      knownEthereumChainIds: dependencies.store.getKnownEthereumChainIds(),
       connectionMessage
     })
 
@@ -77,9 +75,6 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
       })
     } else if (result.mutation?.type === 'touch') {
       dependencies.store.touchOrigin(originId)
-      if (result.mutation.switchToChainId !== undefined) {
-        dependencies.store.switchOriginChain(originId, result.mutation.switchToChainId)
-      }
     }
 
     if (faviconSource) {
@@ -225,7 +220,6 @@ export function createProductionOriginsService(
 ) {
   const productionStore: OriginStorePort = {
     getOrigin: (id) => store.getState().main.origins[id],
-    getKnownEthereumChainIds: () => new Set(Object.keys(store.getState().main.networks.ethereum).map(Number)),
     initializeOrigin: (id, origin) => store.getState().initOrigin(id, origin),
     setOriginFavicon: (id, source) => store.getState().setOriginFavicon(id, source),
     touchOrigin: (id) => store.getState().addOriginRequest(id),

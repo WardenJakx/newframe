@@ -133,7 +133,6 @@ export default class InjectedFrameProvider extends EventEmitter {
   private attemptedSubscriptions = new Set<string>()
   private subscriptions: string[] = []
   private networkVersion?: string | number
-  private manualChainId?: string
   private providerChainId?: string
   private checkConnectionRunning = false
   private checkConnectionTimer?: ReturnType<typeof setTimeout>
@@ -170,9 +169,7 @@ export default class InjectedFrameProvider extends EventEmitter {
       },
       chainChanged: (chainId) => {
         this.providerChainId = chainId
-        if (!this.manualChainId) {
-          this.emit('chainChanged', chainId)
-        }
+        this.emit('chainChanged', chainId)
       },
       chainsChanged: (chains) => this.emit('chainsChanged', chains),
       accountsChanged: (accounts) => {
@@ -193,7 +190,7 @@ export default class InjectedFrameProvider extends EventEmitter {
   }
 
   get chainId() {
-    return this.manualChainId ?? this.providerChainId
+    return this.providerChainId
   }
 
   async checkConnection(retryTimeout = 4000) {
@@ -245,7 +242,7 @@ export default class InjectedFrameProvider extends EventEmitter {
   doSend(
     rawPayload: string | JsonRpcPayload,
     rawParams: JsonRpcParams = [],
-    targetChain = this.manualChainId,
+    targetChain?: string,
     waitForConnection = true
   ) {
     const send = (resolve: (value: unknown) => void, reject: (error: unknown) => void) => {
@@ -358,7 +355,6 @@ export default class InjectedFrameProvider extends EventEmitter {
     const error = new Error('Provider closed, subscription lost, please subscribe again.')
     this.subscriptions.forEach((id) => this.emit(id, error))
     this.subscriptions = []
-    this.manualChainId = undefined
     this.providerChainId = undefined
     this.networkVersion = undefined
     this.selectedAddress = undefined
@@ -370,14 +366,10 @@ export default class InjectedFrameProvider extends EventEmitter {
   }
 
   setChain(chainId: string | number) {
-    const nextChainId = normalizeChainId(chainId)
-    const chainChanged = nextChainId !== this.chainId
-
-    this.manualChainId = nextChainId
-
-    if (chainChanged) {
-      this.emit('chainChanged', this.chainId)
-    }
+    return this.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{ chainId: normalizeChainId(chainId) }]
+    })
   }
 
   private async sendAsyncBatch(payloads: JsonRpcPayload[], cb: JsonRpcCallback<JsonRpcResponse[]>) {
