@@ -374,7 +374,9 @@ describe('creation-block listener lifecycle', () => {
     )
     store.getState().removeAccount(account.id)
 
-    expect(() => listener()).not.toThrow()
+    expect(() => {
+      listener()
+    }).not.toThrow()
     expect(providerMock.off).toHaveBeenCalledWith('connect', listener)
   })
 

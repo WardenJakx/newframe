@@ -32,14 +32,14 @@ type FeeOverlayInputProps = {
   labelText: string
   tabIndex: number
   decimals: boolean
-  onReceiveValue(value: bigint): void
-  limiter(value: bigint): bigint
+  onReceiveValue: (value: bigint) => void
+  limiter: (value: bigint) => bigint
 }
 
 type FeeInputProps = Omit<FeeOverlayInputProps, 'labelText' | 'decimals'>
 
 type TxFeeOverlayProps = {
-  onUpdateFee(field: TransactionFeeField, value: bigint): void
+  onUpdateFee: (field: TransactionFeeField, value: bigint) => void
   req: AdjustFeeRequestView
 }
 

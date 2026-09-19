@@ -19,7 +19,7 @@ type TransactionRequestProps = {
   identities?: AddressIdentities
   actionId?: string
   step: RequestViewStep
-  onUpdateFee(field: TransactionFeeField, value: bigint): void
+  onUpdateFee: (field: TransactionFeeField, value: bigint) => void
 }
 
 type TransactionRequestWithStateProps = Omit<TransactionRequestProps, 'actionId' | 'step' | 'onUpdateFee'>

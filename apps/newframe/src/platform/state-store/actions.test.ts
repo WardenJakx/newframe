@@ -53,7 +53,7 @@ function tokenRecord(token: Token, options: { custom?: boolean; curated?: boolea
     ...token,
     custom: Boolean(options.custom),
     curated: Boolean(options.curated),
-    sources: [options.custom ? 'custom' : 'onchain'],
+    sources: [options.custom ? 'custom' : 'onchain'] as Array<'custom' | 'onchain'>,
     updatedAt: 0
   }
 }
@@ -489,7 +489,10 @@ describe('#removeNetwork', () => {
 
     expect(main.networks.ethereum[10]).toBeUndefined()
     expect(main.networksMeta.ethereum[10]).toBeUndefined()
-    expect(Object.values(main.origins).map(({ chain }: any) => chain)).toStrictEqual([
+    const chains: Array<{ id: number; type: 'ethereum' }> = Object.values(main.origins).map(
+      ({ chain }) => chain
+    )
+    expect(chains).toStrictEqual([
       { id: 1, type: 'ethereum' },
       { id: 1, type: 'ethereum' },
       { id: 137, type: 'ethereum' },
@@ -830,9 +833,9 @@ describe('#setPortfolioApiKey', () => {
 describe('#removeAccountTokens', () => {
   it('removes exactly the requested account-token associations', () => {
     const records = Object.values(testTokens).map((token) => tokenRecord(token))
-    const cases = [
+    const cases: Array<{ removed: string[]; remaining: Array<(typeof records)[number]> }> = [
       { removed: records.map(toTokenId), remaining: [] },
-      { removed: [toTokenId(testTokens.badger)], remaining: [testTokens.zrx] }
+      { removed: [toTokenId(testTokens.badger)], remaining: [records[0]] }
     ]
 
     for (const { removed, remaining } of cases) {
@@ -841,9 +844,7 @@ describe('#removeAccountTokens', () => {
 
       actions.removeAccountTokens(owner, new Set(removed))
 
-      expect(tokensForAccount(getState().main.tokens, owner)).toStrictEqual(
-        remaining.map((token) => expect.objectContaining(token))
-      )
+      expect(tokensForAccount(getState().main.tokens, owner)).toStrictEqual(remaining)
     }
   })
 })

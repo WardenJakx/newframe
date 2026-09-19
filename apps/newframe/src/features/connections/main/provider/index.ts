@@ -401,7 +401,7 @@ export class Provider extends EventEmitter {
           'typedMessage' in value ? value.typedMessage : undefined,
           value.authorization
         ],
-        (_key, item) => (typeof item === 'function' ? undefined : item)
+        (_key, item: unknown) => (typeof item === 'function' ? undefined : item)
       )
     const expected = identity(request)
     const typed = 'typedMessage' in request ? (request as SignTypedDataRequest).typedMessage : undefined
@@ -620,7 +620,7 @@ export class Provider extends EventEmitter {
         payload,
         (response) => {
           if (response.error) {
-            log.warn(`error estimating gas for tx to ${txParams.to}: ${response.error}`)
+            log.warn(`error estimating gas for tx to ${txParams.to}: ${response.error.message}`)
             return reject(response.error)
           }
 

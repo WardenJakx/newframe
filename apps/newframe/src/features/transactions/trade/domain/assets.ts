@@ -103,7 +103,10 @@ export function balanceSummaryToFlashAsset(balance: FlashBalanceSummaryLike): Fl
 
   const address = normalizeFlashAddress(balance.address)
   const isNative = address === FLASH_NATIVE_ETH_TOKEN_ADDRESS
-  const symbol = String(balance.symbol ?? (isNative ? FLASH_NATIVE_ETH_ASSET_SYMBOL : '')).trim()
+  let symbol = isNative ? FLASH_NATIVE_ETH_ASSET_SYMBOL : ''
+  if (typeof balance.symbol === 'string') {
+    symbol = balance.symbol.trim()
+  }
   if (!symbol) {
     throw new Error('Invalid Flash balance symbol')
   }
@@ -115,7 +118,7 @@ export function balanceSummaryToFlashAsset(balance: FlashBalanceSummaryLike): Fl
     chainId,
     decimals: Number.isInteger(decimals) && decimals >= 0 ? decimals : 18,
     isNative,
-    name: String(balance.name ?? symbol),
+    name: typeof balance.name === 'string' ? balance.name : symbol,
     symbol
   })
 }

@@ -46,7 +46,7 @@ type NativeCurrency = {
 
 type TxFeeSummaryProps = {
   feeLevel?: TransactionFeeLevel | 'custom'
-  selectFeeLevel(level: TransactionFeeLevel): void
+  selectFeeLevel: (level: TransactionFeeLevel) => void
   capability: Pick<TransactionReviewCapability, 'setFeePreference'>
   req: TransactionRequestView
   chain: { type: 'ethereum'; id: number }
@@ -54,12 +54,12 @@ type TxFeeSummaryProps = {
   isTestnet: boolean
   gasPrice?: NonNullable<ReturnType<typeof useNetworkMetadata>['gas']>['price']
   nativeCurrencyRate: ReturnType<typeof useAssetRate>
-  openAdjustFee(): void
+  openAdjustFee: () => void
 }
 
 type TxReviewProps = {
   feeLevel?: TransactionFeeLevel | 'custom'
-  selectFeeLevel(level: TransactionFeeLevel): void
+  selectFeeLevel: (level: TransactionFeeLevel) => void
   capabilities: Pick<RequestRendererCapabilities, 'external' | 'transaction'>
   identities: ReturnType<typeof useAddressIdentities>
   nativeCurrencyRate: ReturnType<typeof useAssetRate>
@@ -69,7 +69,7 @@ type TxReviewProps = {
   originName: string
   favicon?: string
   tokens: ReturnType<typeof useTokens>
-  openAdjustFee(): void
+  openAdjustFee: () => void
 }
 
 type TxReviewWithStateProps = Pick<TxReviewProps, 'capabilities' | 'req'>

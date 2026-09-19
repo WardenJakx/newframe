@@ -351,7 +351,7 @@ test('publishes real owner signatures over HTTP and retrieves the retained bytes
     threshold: 2,
     pageSize: 1
   })
-  const server = Bun.serve({ port: 0, hostname: '127.0.0.1', fetch: handler.fetch })
+  const server = Bun.serve({ port: 0, hostname: '127.0.0.1', fetch: (request) => handler.fetch(request) })
   servers.push(server)
   const client = createSafeClient({ request: fetch, networks: { 31337: `${server.url}api` } })
   const configuration = await client.configuration(31337, safe)
@@ -415,7 +415,10 @@ test('confirmation POST shares HTTP errors, cooldown, cancellation, redirect and
       count++
       expect(init.method).toBe('POST')
       expect(init.redirect).toBe('error')
-      expect(JSON.parse(String(init.body))).toEqual({ signature })
+      if (typeof init.body !== 'string') {
+        throw new Error('Expected confirmation request body to be a string')
+      }
+      expect(JSON.parse(init.body)).toEqual({ signature })
       return Response.json({}, { status: 429, headers: { 'Retry-After': '30' } })
     }
   })

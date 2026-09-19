@@ -244,8 +244,7 @@ export function createOperationRegistry(services: OperationServices) {
     settings,
     tokens,
     createRendererPrincipal,
-    requestTokenImage,
-    resolveName
+    requestTokenImage
   } = services
   const idempotencyCache = new Map<string, { fingerprint: string; result: Promise<unknown> }>()
 
@@ -671,7 +670,7 @@ export function createOperationRegistry(services: OperationServices) {
       roles: ['wallet-ui', 'sidetray'],
       entrypoints: ['tray', 'sidetray'],
       async handle({ name }: NameResolveQuery) {
-        const address = await resolveName(name)
+        const address = await services.resolveName(name)
         return address ? ({ ok: true, address } as const) : ({ ok: false, error: 'not_found' } as const)
       },
       failure: { ok: false, error: 'resolution_failed' }
@@ -819,22 +818,19 @@ export function createOperationDispatcher(services: OperationServices): Operatio
 
   return {
     dispatchCommand: (event, command) =>
-      dispatchOperation(
-        'command',
-        event,
-        command,
-        commandRegistry,
-        commandContracts,
-        services.authorizeRenderer
+      dispatchOperation('command', event, command, commandRegistry, commandContracts, (invokeEvent) =>
+        services.authorizeRenderer(invokeEvent)
       ),
     dispatchQuery: (event, query) =>
-      dispatchOperation('query', event, query, queryRegistry, queryContracts, services.authorizeRenderer)
+      dispatchOperation('query', event, query, queryRegistry, queryContracts, (invokeEvent) =>
+        services.authorizeRenderer(invokeEvent)
+      )
   }
 }
 
 export function registerOperationHandlers(ipc: IpcMainHandlerPort, dispatcher: OperationDispatcher) {
-  ipc.handle(ExecuteCommandChannel, dispatcher.dispatchCommand)
-  ipc.handle(ExecuteQueryChannel, dispatcher.dispatchQuery)
+  ipc.handle(ExecuteCommandChannel, (event, command) => dispatcher.dispatchCommand(event, command))
+  ipc.handle(ExecuteQueryChannel, (event, query) => dispatcher.dispatchQuery(event, query))
 
   return () => {
     ipc.removeHandler(ExecuteCommandChannel)

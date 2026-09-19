@@ -280,7 +280,7 @@ async function disconnectActiveOrigin(tab?: TabLike) {
 
 async function sendEventToTab(tabId: number, event: string, args?: unknown) {
   try {
-    return await chrome.tabs.sendMessage(tabId, { type: 'eth:event', event, args })
+    await chrome.tabs.sendMessage(tabId, { type: 'eth:event', event, args })
   } catch (e) {
     // tabs without our content script (chrome:// pages, stale tabs) can't receive — expected
     if ((e as Error)?.message?.includes('Receiving end does not exist')) {

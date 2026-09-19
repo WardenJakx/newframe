@@ -21,7 +21,11 @@ import {
   type ActivityRecord
 } from '../../../app/contracts/state/main'
 import store from '../../../platform/state-store'
-import { createAgentPrincipal, createRpcPrincipal } from '../../access-control/main/authority'
+import {
+  createAgentPrincipal,
+  createRpcPrincipal,
+  type TrustedPrincipal
+} from '../../access-control/main/authority'
 import {
   RequestMode,
   RequestStatus,
@@ -330,14 +334,9 @@ describe('#routeRequest', () => {
       entrypoint: 'tray',
       webContentsId: 1,
       windowInstanceId: 'forged'
-    }
+    } as unknown as TrustedPrincipal
 
-    expect(
-      Reflect.apply(Accounts.routeRequest, Accounts, [
-        forgedPrincipal,
-        { ...request, account: account.address }
-      ])
-    ).toBe(false)
+    expect(Accounts.routeRequest(forgedPrincipal, { ...request, account: account.address })).toBe(false)
     expect(canonicalRequest()).toBeUndefined()
     expect(respond).toHaveBeenCalledWith({
       id: request.payload.id,

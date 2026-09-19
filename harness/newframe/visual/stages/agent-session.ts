@@ -155,7 +155,7 @@ async function submitExternalFlashOrder(credentials: AgentCredentials) {
       evmOrderTypedData
     })
   })
-  const orderId = String(submitted.orderId ?? '')
+  const orderId = typeof submitted.orderId === 'string' ? submitted.orderId : ''
   if (!orderId) {
     throw new Error('Local Flash submit omitted its order id')
   }

@@ -37,7 +37,9 @@ describe('Vault', () => {
   })
 
   test('Create rejects a weak password', () => {
-    expect(() => vault.create('weak')).toThrow()
+    expect(() => {
+      vault.create('weak')
+    }).toThrow()
     expect(vault.exists()).toBe(false)
   })
 
@@ -50,7 +52,9 @@ describe('Vault', () => {
   })
 
   test('Create fails when vault already exists', () => {
-    expect(() => vault.create(PASSWORD)).toThrow('Vault already exists')
+    expect(() => {
+      vault.create(PASSWORD)
+    }).toThrow('Vault already exists')
   })
 
   test('Lock', () => {
@@ -60,7 +64,9 @@ describe('Vault', () => {
   })
 
   test('Unlock with wrong password', () => {
-    expect(() => vault.unlock('wrong password')).toThrow('Incorrect password')
+    expect(() => {
+      vault.unlock('wrong password')
+    }).toThrow('Incorrect password')
     expect(vault.isUnlocked()).toBe(false)
   })
 
@@ -90,11 +96,15 @@ describe('Vault', () => {
     const key = currentKey()
     vault.changePassword(PASSWORD, NEW_PASSWORD)
     vault.lock()
-    expect(() => vault.unlock(PASSWORD)).toThrow('Incorrect password')
+    expect(() => {
+      vault.unlock(PASSWORD)
+    }).toThrow('Incorrect password')
     expect(vault.unlock(NEW_PASSWORD)).toBe(key)
   })
 
   test('Change password rejects a weak new password', () => {
-    expect(() => vault.changePassword(NEW_PASSWORD, 'weak')).toThrow()
+    expect(() => {
+      vault.changePassword(NEW_PASSWORD, 'weak')
+    }).toThrow()
   })
 })

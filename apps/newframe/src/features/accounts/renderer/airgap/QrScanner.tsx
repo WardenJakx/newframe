@@ -29,9 +29,9 @@ export function QrScanner({
 }: {
   active: boolean
   camera: QrCameraCapability
-  onFrame(frame: string): Promise<void>
-  onReady?(): void
-  onError(message: string): void
+  onFrame: (frame: string) => Promise<void>
+  onReady?: () => void
+  onError: (message: string) => void
 }) {
   const video = useRef<HTMLVideoElement>(null)
   const callbacks = useRef({ onFrame, onReady, onError })

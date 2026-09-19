@@ -88,17 +88,17 @@ export interface TradeViewModel {
 }
 
 export interface TradeViewEvents {
-  onAssetOpenChange(field: TradeAssetField, open: boolean): void
-  onBalancePercentChange(field: TradeAssetField, value: number): void
-  onClose(): void
-  onInputAmountChange(inputAmount: string): void
-  onOrderFieldChange(field: keyof TradeOrderFields, value: string): void
-  onOrderTypeChange(orderType: FlashOrderType): void
-  onReview(): void
-  onSelectAsset(field: TradeAssetField, assetId: string): void
-  onShowMoreAssets(field: TradeAssetField): void
-  onSlippageChange(slippage: string): void
-  onTimeInForceChange(timeInForce: 'gtc' | 'gtt'): void
-  onToggleAdvanced(): void
-  onToggleSide(): void
+  onAssetOpenChange: (field: TradeAssetField, open: boolean) => void
+  onBalancePercentChange: (field: TradeAssetField, value: number) => void
+  onClose: () => void
+  onInputAmountChange: (inputAmount: string) => void
+  onOrderFieldChange: (field: keyof TradeOrderFields, value: string) => void
+  onOrderTypeChange: (orderType: FlashOrderType) => void
+  onReview: () => void
+  onSelectAsset: (field: TradeAssetField, assetId: string) => void
+  onShowMoreAssets: (field: TradeAssetField) => void
+  onSlippageChange: (slippage: string) => void
+  onTimeInForceChange: (timeInForce: 'gtc' | 'gtt') => void
+  onToggleAdvanced: () => void
+  onToggleSide: () => void
 }

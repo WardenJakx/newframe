@@ -115,7 +115,7 @@ function setup() {
     })
   }
   const service = createSafeConfirmationService({ store, operations, accounts, client })
-  disposals.push(service.dispose)
+  disposals.push(() => service.dispose())
   let active = true
   const listeners = new Set<() => void>()
   const context: SigningUiContext = {
