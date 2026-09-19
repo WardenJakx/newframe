@@ -30,18 +30,20 @@ export default class LedgerEthereumApp {
 
     const path = getDerivationPath(derivation)
 
-    const executor = async (resolve: (addresses: string[]) => void, reject: (err?: Error) => void) => {
-      try {
-        const result = await this.getAddress(path, false, true)
-        deriveHDAccounts(result.publicKey, result.chainCode ?? '', (err, addresses) => {
-          if (err) {
-            return reject(err)
-          }
-          resolve(addresses as string[])
-        })
-      } catch (err) {
-        reject(err as Error)
-      }
+    const executor = (resolve: (addresses: string[]) => void, reject: (err?: Error) => void) => {
+      void (async () => {
+        try {
+          const result = await this.getAddress(path, false, true)
+          deriveHDAccounts(result.publicKey, result.chainCode ?? '', (err, addresses) => {
+            if (err) {
+              return reject(err)
+            }
+            resolve(addresses as string[])
+          })
+        } catch (err) {
+          reject(err as Error)
+        }
+      })()
     }
 
     return new Promise(executor)

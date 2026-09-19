@@ -195,7 +195,7 @@ export class Signers {
   reload(id: string) {
     const signer = this.handles[id]
     if (signer && !(signer instanceof HotSigner) && signer.type in this.adapters) {
-      this.adapters[signer.type].adapter.reload(signer)
+      void this.adapters[signer.type].adapter.reload(signer)
     }
   }
 
