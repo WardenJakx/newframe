@@ -59,7 +59,11 @@ const batchAbi = new Interface(['function multiSend(bytes) payable'])
 let anvil: ReturnType<typeof Bun.spawn> | undefined
 let provider: JsonRpcProvider
 let seed: SafeSeedManifest
-let token: Contract
+type TestToken = Contract & {
+  mint(address: string, amount: bigint): Promise<{ wait(): Promise<unknown> }>
+}
+
+let token: TestToken
 let tokenAddress: string
 let multiSend: string
 let service: ReturnType<typeof createSafeService>
@@ -206,7 +210,7 @@ beforeAll(async () => {
   ).deploy()
   await deployedToken.waitForDeployment()
   tokenAddress = await deployedToken.getAddress()
-  token = new Contract(tokenAddress, tokenAbi, signer)
+  token = new Contract(tokenAddress, tokenAbi, signer) as TestToken
   const harnessRequire = createRequire(new URL('../../../../harness/package.json', import.meta.url))
   const multiSendArtifact = (await Bun.file(
     harnessRequire.resolve(

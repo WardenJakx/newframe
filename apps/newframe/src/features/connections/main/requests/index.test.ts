@@ -3,7 +3,7 @@ import { describe, expect, it } from 'bun:test'
 import { mapRequest as mapRequestTyped } from './index'
 
 // real function under test, exercised with loose payload fixtures
-const mapRequest = mapRequestTyped as any
+const mapRequest = mapRequestTyped as unknown as (request: any) => any
 
 describe('#mapRequest', () => {
   it('passes through a request that does not require mapping', () => {

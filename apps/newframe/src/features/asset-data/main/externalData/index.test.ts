@@ -1,13 +1,24 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, jest as timers, mock } from 'bun:test'
+import type { Mock } from 'bun:test'
 
 import store from '../../../../platform/state-store'
 import createCanonicalStore from '../../../../platform/state-store/createCanonicalStore'
+import type { DataScanner } from './index'
+
+type BalancesScanner = ReturnType<typeof import('./balances').default>
+type BalancesScannerMock = {
+  [Method in keyof BalancesScanner]: BalancesScanner[Method] extends (...args: infer Args) => infer Result
+    ? Mock<(...args: Args) => Result>
+    : never
+}
 
 const mockBalancesFactory = mock(() => mockBalances)
 
 await mock.module('./balances', () => ({ default: mockBalancesFactory }))
 
-let dataManager: any, externalData: any, mockBalances: any
+let dataManager: DataScanner
+let externalData: typeof import('./index').default
+let mockBalances: BalancesScannerMock
 
 beforeAll(async () => {
   externalData = (await import('./index')).default

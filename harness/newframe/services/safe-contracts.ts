@@ -6,6 +6,7 @@ import {
   Interface,
   ZeroAddress,
   getAddress,
+  type ContractTransactionResponse,
   type JsonRpcProvider,
   type NonceManager
 } from 'ethers'
@@ -51,7 +52,12 @@ export async function seedSafe(
     ZeroAddress
   ])
   const proxyFactory = new Contract(factory, factoryArtifact.abi, signer)
-  const receipt = await (await proxyFactory.createProxyWithNonce(singleton, initializer, 20260908)).wait(1)
+  const createProxyWithNonce = proxyFactory.getFunction('createProxyWithNonce') as (
+    singleton: string,
+    initializer: string,
+    saltNonce: number
+  ) => Promise<ContractTransactionResponse>
+  const receipt = await (await createProxyWithNonce(singleton, initializer, 20260908)).wait(1)
   if (receipt?.status !== 1) {
     throw new Error('Safe proxy creation failed')
   }

@@ -140,7 +140,7 @@ function tokenFromValue(value: any): Token | undefined {
   }
 
   return {
-    address: value.address.toLowerCase(),
+    address: (value.address as string).toLowerCase(),
     chainId: Number(value.chainId),
     decimals: Number(value.decimals),
     name: value.name,
@@ -152,7 +152,7 @@ function tokenFromValue(value: any): Token | undefined {
 
 function balanceFromValue(value: any) {
   return {
-    address: value.address === NATIVE_CURRENCY ? NATIVE_CURRENCY : value.address.toLowerCase(),
+    address: value.address === NATIVE_CURRENCY ? NATIVE_CURRENCY : (value.address as string).toLowerCase(),
     balance: value.balance,
     chainId: Number(value.chainId),
     displayBalance: value.displayBalance ?? ''
@@ -210,7 +210,8 @@ function upsertTokenRecords(
 }
 
 function stripRequestCapabilities(request: MutableRecord) {
-  ;(request.recognizedActions ?? []).forEach((action: MutableRecord) => delete action.update)
+  const actions = (request.recognizedActions ?? []) as MutableRecord[]
+  actions.forEach((action) => delete action.update)
 }
 
 export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
@@ -1330,7 +1331,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         const key = address.toLowerCase()
 
         Object.values(balances).forEach((value) => {
-          const accountBalances = value as any[]
+          const accountBalances = value as Array<{ address: string; chainId: number }>
           const index = accountBalances.findIndex((balance) => {
             return balance.chainId === chainId && balance.address.toLowerCase() === key
           })

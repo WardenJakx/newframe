@@ -759,7 +759,12 @@ export class Accounts extends EventEmitter {
   }
 
   private activityAccount(activity: ActivityRecord) {
-    return (activity.account ?? activity.address ?? (activity.data as any)?.from ?? '').toLowerCase()
+    return (
+      activity.account ??
+      activity.address ??
+      (activity.data as { from?: string } | undefined)?.from ??
+      ''
+    ).toLowerCase()
   }
 
   private isNonTerminalActivity(activity?: ActivityRecord) {

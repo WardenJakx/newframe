@@ -43,13 +43,15 @@ const post = (path: string, body: unknown) =>
     new Request(`http://127.0.0.1:8422${path}`, { method: 'POST', body: JSON.stringify(body) })
   )
 
+type JsonBody = Record<string, any> & { steps: Record<string, unknown>[] }
+
 async function json(response: Response) {
-  return response.json() as Promise<Record<string, any>>
+  return response.json() as Promise<JsonBody>
 }
 
 describe('local trade service handler', () => {
-  let allowanceCall: ReturnType<typeof spyOn>
-  let sendTransaction: ReturnType<typeof spyOn>
+  let allowanceCall: { mockRestore(): void }
+  let sendTransaction: { mockRestore(): void; mock: { calls: unknown[][] } }
 
   beforeEach(() => {
     timers.useFakeTimers()

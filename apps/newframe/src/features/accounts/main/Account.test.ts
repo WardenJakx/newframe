@@ -7,6 +7,7 @@ import { createRendererAuthorizationRegistry } from '../../../platform/ipc/main/
 import type { SigningApprovalContext, SignerRequestContext } from '../../../platform/signing/signers/Signer'
 import { createRendererPrincipal, decideWalletAction } from '../../access-control/main/authority'
 import type { TypedMessage } from '../../requests/contract/requests'
+import type { AccountChainRpcPort } from './providerPort'
 
 const revealMock = {
   recog: mock(),
@@ -34,12 +35,39 @@ await mock.module('../../name-resolution/main/nameResolution', () => ({
   }
 }))
 
-let account: any
-let Account: any
-let reveal: any
-let fetchContract: any
-let nav: any
-let store: any
+type AccountConstructor = typeof import('./Account').default
+type ProviderRequest = Parameters<AccountChainRpcPort['send']>[0]
+type ProviderResponse = Parameters<Parameters<AccountChainRpcPort['send']>[1]>[0]
+type ProviderRespond = (response: Partial<ProviderResponse> & { result?: unknown; error?: EVMError }) => void
+type ProviderListener = Parameters<AccountChainRpcPort['on']>[1]
+type LooseRequest = Record<string, any>
+type TestAccount = {
+  readonly id: string
+  readonly address: string
+  readonly created: string
+  readonly ensName?: string
+  readonly requests: Record<string, LooseRequest>
+  readonly actionUpdateHandlers: Map<unknown, unknown>
+  addRequest: (request: LooseRequest) => void
+  approveRequest: (requestId: string, approvalType: string, data: unknown) => boolean
+  clearRequest: (requestId: string) => void
+  close: () => void
+  getRequest: (requestId: string) => LooseRequest | undefined
+  rejectRequest: (request: LooseRequest, error: EVMError) => void
+  resolveRequest: (request: LooseRequest, result?: unknown) => void
+  setAccess: (request: LooseRequest, approved: boolean, target: string) => void
+  setProfileActive: (active: boolean) => void
+  signMessage: (...args: any[]) => void
+  signTransaction: (...args: any[]) => void
+  signTypedData: (...args: any[]) => void
+  updateRecognizedAction: (requestId: string, actionId: string, data: unknown) => boolean
+}
+
+let account: TestAccount
+let Account: AccountConstructor
+let reveal: typeof revealMock
+let nav: typeof navMock
+let store: typeof import('../../../platform/state-store').default
 const nameResolution = {
   off: mock(),
   ready: mock(() => true),
@@ -88,17 +116,16 @@ const accountState = {
 beforeAll(async () => {
   Account = (await import('./Account')).default
   reveal = revealMock
-  fetchContract = (await import('../../../platform/chain-rpc/contracts')).fetchContract
   nav = navMock
   store = (await import('../../../platform/state-store')).default
 })
 
 function createAccount(profileActive = true) {
-  return new Account(
-    accountState as any,
-    accounts as any,
+  const args = [
+    accountState,
+    accounts,
     store,
-    providerMock as any,
+    providerMock,
     { simulateTransactionEffects: simulateTransactionEffectsMock },
     nameResolution,
     revealMock,
@@ -114,7 +141,9 @@ function createAccount(profileActive = true) {
     },
     requestLifecycle,
     profileActive
-  )
+  ] as unknown as ConstructorParameters<AccountConstructor>
+
+  return new Account(...args) as unknown as TestAccount
 }
 
 beforeEach(() => {
@@ -123,7 +152,7 @@ beforeEach(() => {
   requestLifecycle.pending.clear()
   store.getState().removeAccount(accountState.address.toLowerCase())
   account = createAccount()
-  fetchContract.mockResolvedValueOnce(undefined)
+  fetchContractMock.mockResolvedValueOnce(undefined)
   simulateTransactionEffectsMock.mockResolvedValue({ status: 'success', effects: [] })
 })
 
@@ -192,7 +221,7 @@ describe('#addRequest', () => {
     expect(requestLifecycle.pending.has(request.handlerId)).toBe(true)
     expect('responseHandlers' in account).toBe(false)
 
-    const canonical = store.getState().main.accounts[account.id].requests[request.handlerId]
+    const canonical = store.getState().main.accounts[account.id].requests[request.handlerId] as LooseRequest
     expect(canonical.recognizedActions[0].update).toBeUndefined()
     expect(() => structuredClone(canonical)).not.toThrow()
 
@@ -304,8 +333,12 @@ describe('#addRequest', () => {
 
 describe('creation-block listener lifecycle', () => {
   it('removes the provider listener after resolving the creation block', () => {
-    const listener = providerMock.on.mock.calls.find(([event]) => event === 'connect')?.[1]
-    providerMock.send.mockImplementationOnce((_payload, respond) => respond({ result: '0x64' }))
+    const listener = providerMock.on.mock.calls.find(
+      ([event]) => event === 'connect'
+    )?.[1] as ProviderListener
+    providerMock.send.mockImplementationOnce((_payload: ProviderRequest, respond: ProviderRespond) =>
+      respond({ result: '0x64' })
+    )
 
     listener()
 
@@ -314,7 +347,9 @@ describe('creation-block listener lifecycle', () => {
   })
 
   it('removes the provider listener when the account handle closes', () => {
-    const listener = providerMock.on.mock.calls.find(([event]) => event === 'connect')?.[1]
+    const listener = providerMock.on.mock.calls.find(
+      ([event]) => event === 'connect'
+    )?.[1] as ProviderListener
 
     account.close()
 
@@ -322,8 +357,12 @@ describe('creation-block listener lifecycle', () => {
   })
 
   it('ignores a late creation-block response after canonical removal', () => {
-    const listener = providerMock.on.mock.calls.find(([event]) => event === 'connect')?.[1]
-    providerMock.send.mockImplementationOnce((_payload, respond) => respond({ result: '0x64' }))
+    const listener = providerMock.on.mock.calls.find(
+      ([event]) => event === 'connect'
+    )?.[1] as ProviderListener
+    providerMock.send.mockImplementationOnce((_payload: ProviderRequest, respond: ProviderRespond) =>
+      respond({ result: '0x64' })
+    )
     store.getState().removeAccount(account.id)
 
     expect(() => listener()).not.toThrow()
@@ -387,7 +426,12 @@ describe('#clearRequest', () => {
       pendingRequest('confirmed', 0, { status: 'confirmed' }),
       pendingRequest('monitoring', 0, { mode: 'monitor', status: 'confirming' })
     ].forEach((request) => {
-      store.getState().upsertAccountRequest(account.id, request)
+      store
+        .getState()
+        .upsertAccountRequest(
+          account.id,
+          request as unknown as Parameters<ReturnType<typeof store.getState>['upsertAccountRequest']>[1]
+        )
     })
     store.setState((state: any) => {
       state.windows.panel.nav = [
@@ -465,7 +509,7 @@ it('rejects every Safe signing method even when an owner signer is associated', 
 it.each([true, false])(
   'settles the original access owner and grants only the selected target, approved=%s',
   (approved) => {
-    const ownerAccount = account as InstanceType<typeof import('./Account').default>
+    const ownerAccount = account
     const target = '0x0000000000000000000000000000000000000002'
     const origin = 'selected-target-test'
     const respond = mock<RPCRequestCallback>()
@@ -481,7 +525,11 @@ it.each([true, false])(
     store.getState().revokePermission(target, handlerId)
     ownerAccount.addRequest(request)
     ownerAccount.setAccess(request, approved, target)
-    expect(store.getState().main.permissions[target]?.[handlerId]?.provider).toBe(approved ? true : undefined)
+    if (approved) {
+      expect(store.getState().main.permissions[target]?.[handlerId]?.provider).toBe(true)
+    } else {
+      expect(store.getState().main.permissions[target]?.[handlerId]?.provider).toBeUndefined()
+    }
     expect(store.getState().main.permissions[ownerAccount.address]?.[handlerId]).toBeUndefined()
     expect(ownerAccount.getRequest(handlerId)).toBeUndefined()
     expect(respond).toHaveBeenCalledWith({ id: 19, jsonrpc: '2.0', result: approved ? target : undefined })

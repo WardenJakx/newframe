@@ -595,7 +595,8 @@ class FrameAccount {
   addRequest(req: any) {
     const add = (r: AccountRequest) => {
       const actionHandlers = new Map<string, Action<unknown>>()
-      ;(req.recognizedActions ?? []).forEach((action: any) => {
+      const recognizedActions = (req.recognizedActions ?? []) as Action<unknown>[]
+      recognizedActions.forEach((action) => {
         if (typeof action.update === 'function') {
           actionHandlers.set(action.id, action)
         }

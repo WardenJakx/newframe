@@ -5,7 +5,11 @@ import { intToHex } from '@ethereumjs/util'
 import { createGasCalculator as createGasCalculatorTyped } from './gas'
 
 // real function under test, exercised with partial fee history fixtures
-const createGasCalculator = createGasCalculatorTyped as any
+type GasCalculator = ReturnType<typeof createGasCalculatorTyped>
+type TestGasCalculator = Omit<GasCalculator, 'calculateGas'> & {
+  calculateGas(history: any[]): Promise<Awaited<ReturnType<GasCalculator['calculateGas']>>>
+}
+const createGasCalculator = createGasCalculatorTyped as unknown as (...args: any[]) => TestGasCalculator
 import { gweiToHex } from '../../../../test/support/util'
 
 describe('#createGasCalculator', () => {
@@ -126,13 +130,13 @@ describe('#createGasCalculator', () => {
         { baseFee: 182, rewards: [] }
       ]
 
-      const rewards = feeHistory.reduce(
-        (acc: any[], { rewards }) => (rewards.length ? acc.concat(intToHex(rewards[0])) : acc),
-        [] as any[]
+      const rewards = feeHistory.reduce<string[]>(
+        (acc, { rewards }) => (rewards.length ? acc.concat(intToHex(rewards[0])) : acc),
+        []
       )
 
       const { maxPriorityFeePerGas } = await gasCalculator.calculateGas(feeHistory)
-      expect(rewards.includes(maxPriorityFeePerGas)).toBe(true)
+      expect(rewards.includes(maxPriorityFeePerGas!)).toBe(true)
     })
 
     it('uses the priority fee from the latest block when no eligible blocks are available', async () => {

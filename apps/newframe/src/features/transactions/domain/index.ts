@@ -68,6 +68,11 @@ export interface TransactionPositionToken {
 
 type TransactionSimulationStatus = 'loading' | 'success' | 'unavailable' | 'error'
 
+type RecognizedTransactionAction = {
+  id?: string
+  data?: any
+}
+
 export interface TransactionSimulation {
   status: TransactionSimulationStatus
   effects?: TransactionEffect[]
@@ -102,8 +107,12 @@ function shortAddress(address?: string) {
   return `${address.slice(0, 8)}...${address.slice(-6)}`
 }
 
+function recognizedActions(req: any): RecognizedTransactionAction[] {
+  return Array.isArray(req?.recognizedActions) ? (req.recognizedActions as RecognizedTransactionAction[]) : []
+}
+
 function firstRecognizedAction(req: any) {
-  return (req?.recognizedActions ?? [])[0]
+  return recognizedActions(req)[0]
 }
 
 function isUnlimitedApproval(amount?: string) {
@@ -119,8 +128,8 @@ function decodedArg(req: any, index: number) {
 }
 
 function hasRecognizedErc20Action(req: any) {
-  return (req?.recognizedActions ?? []).some((action: any) =>
-    ['erc20:transfer', 'erc20:approve', 'erc20:revoke'].includes(action?.id)
+  return recognizedActions(req).some((action) =>
+    ['erc20:transfer', 'erc20:approve', 'erc20:revoke'].includes(action.id ?? '')
   )
 }
 
@@ -219,7 +228,7 @@ function getDeterministicTransactionEffects(req: any, nativeSymbol = 'ETH'): Tra
     })
   }
 
-  ;(req?.recognizedActions ?? []).forEach((action: any, index: number) => {
+  recognizedActions(req).forEach((action, index) => {
     if (action?.id === 'erc20:transfer') {
       const { amount, recipient } = action.data ?? {}
       const token = erc20TokenData(req)
@@ -312,9 +321,9 @@ function getDeterministicTransactionEffects(req: any, nativeSymbol = 'ETH'): Tra
 
 export function getTransactionEffects(req: any, nativeSymbol = 'ETH'): TransactionEffect[] {
   const deterministicEffects = getDeterministicTransactionEffects(req, nativeSymbol)
-  const simulatedEffects =
+  const simulatedEffects: TransactionEffect[] =
     req?.simulation?.status === 'success' && Array.isArray(req.simulation.effects)
-      ? req.simulation.effects
+      ? (req.simulation.effects as TransactionEffect[])
       : []
 
   if (!simulatedEffects.length) {

@@ -3,6 +3,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, jest as timers, 
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import log from 'electron-log'
 
+import type { TypedMessage } from '../../../../features/requests/contract/requests'
+import { GasFeesSource } from '../../../../features/transactions/domain'
 import { callbackResult } from '../callback.test-support.ts'
 import { Derivation } from '../Signer/derive'
 
@@ -21,15 +23,15 @@ await mock.module('gridplus-sdk', () => ({
   Utils: { fetchCalldataDecoder: mock() }
 }))
 
-let lattice: any
-let Lattice: any
-let Client: any
+type GridPlusClient = InstanceType<typeof import('gridplus-sdk').Client>
+
+let lattice: InstanceType<typeof import('./Lattice').default>
+let Lattice: typeof import('./Lattice').default
 
 beforeAll(async () => {
   log.transports.console.level = false
   timers.useFakeTimers()
   Lattice = (await import('./Lattice')).default
-  Client = (await import('gridplus-sdk')).Client
 })
 
 afterAll(() => {
@@ -55,7 +57,7 @@ describe('#connect', () => {
       }
       throw new Error('connection error!')
     })
-    Client.mockImplementation((options: any) => {
+    ClientMock.mockImplementation((options: { name: string; baseUrl: string; privKey: string }) => {
       expect(options).toMatchObject({ name: 'Newframe-ABCXYZ', baseUrl, privKey: privateKey })
       return {
         connect,
@@ -98,16 +100,22 @@ describe('#connect', () => {
 
 describe('#pair', () => {
   const pairingCode = 'JG7F9XS3'
+  const pair = mock(async (code: string) => {
+    if (code === pairingCode) {
+      return true
+    }
+    throw new Error('Error from device: Pairing failed')
+  })
 
   beforeEach(() => {
-    lattice.connection = {
-      pair: mock(async (code: string) => {
-        if (code === pairingCode) {
-          return true
-        }
-        throw new Error('Error from device: Pairing failed')
-      })
-    }
+    pair.mockReset()
+    pair.mockImplementation(async (code: string) => {
+      if (code === pairingCode) {
+        return true
+      }
+      throw new Error('Error from device: Pairing failed')
+    })
+    lattice.connection = { pair } as unknown as GridPlusClient
   })
 
   it('publishes pairing state and the active-wallet result', async () => {
@@ -120,7 +128,7 @@ describe('#pair', () => {
     expect(statuses).toEqual(['Pairing'])
     expect(paired.at(-1)).toBeTrue()
 
-    lattice.connection.pair.mockResolvedValue(false)
+    pair.mockResolvedValue(false)
     expect(await lattice.pair(pairingCode)).toBeFalse()
     expect(paired.at(-1)).toBeFalse()
   })
@@ -135,36 +143,38 @@ describe('#pair', () => {
 })
 
 describe('#deriveAddresses', () => {
+  const getAddresses = mock(async (options: { n: number; startPath: number[] }) =>
+    Array.from({ length: options.n }, (_, index) => `addr${(options.startPath.at(-1) ?? 0) + index}`)
+  )
+
   beforeEach(() => {
     lattice.accountLimit = 5
     lattice.connection = {
       getAppName: () => 'frame-test',
-      getAddresses: mock(async (options: any) =>
-        Array.from({ length: options.n }, (_, index) => `addr${options.startPath.at(-1) + index}`)
-      )
-    }
+      getAddresses
+    } as unknown as GridPlusClient
   })
 
   it('uses the standard, legacy, and Live derivation paths', async () => {
     await lattice.deriveAddresses(Derivation.standard)
-    expect(lattice.connection.getAddresses).toHaveBeenLastCalledWith(
+    expect(getAddresses).toHaveBeenLastCalledWith(
       expect.objectContaining({ startPath: [0x8000002c, 0x8000003c, 0x80000000, 0, 0] })
     )
 
     lattice.addresses = ['addr1', 'addr2', 'addr3', 'addr4', 'addr5']
     lattice.accountLimit = 10
     await lattice.deriveAddresses(Derivation.legacy)
-    expect(lattice.connection.getAddresses).toHaveBeenLastCalledWith(
+    expect(getAddresses).toHaveBeenLastCalledWith(
       expect.objectContaining({ startPath: [0x8000002c, 0x8000003c, 0x80000000, 5] })
     )
 
     lattice.addresses = []
     lattice.accountLimit = 5
-    lattice.connection.getAddresses.mockClear()
+    getAddresses.mockClear()
     await lattice.deriveAddresses(Derivation.live)
-    expect(lattice.connection.getAddresses).toHaveBeenCalledTimes(5)
+    expect(getAddresses).toHaveBeenCalledTimes(5)
     for (let index = 0; index < 5; index++) {
-      expect(lattice.connection.getAddresses).toHaveBeenNthCalledWith(
+      expect(getAddresses).toHaveBeenNthCalledWith(
         index + 1,
         expect.objectContaining({
           startPath: [0x8000002c, 0x8000003c, 0x80000000 + index, 0, 0]
@@ -185,10 +195,10 @@ describe('#deriveAddresses', () => {
     await lattice.deriveAddresses()
     expect(lattice.addresses).toEqual(Array.from({ length: 10 }, (_, index) => `0xaddr${index}`))
 
-    lattice.connection.getAddresses.mockClear()
+    getAddresses.mockClear()
     lattice.accountLimit = 5
     await lattice.deriveAddresses()
-    expect(lattice.connection.getAddresses).not.toHaveBeenCalled()
+    expect(getAddresses).not.toHaveBeenCalled()
     expect(lattice.addresses).toHaveLength(10)
   })
 
@@ -196,7 +206,7 @@ describe('#deriveAddresses', () => {
     let requests = 0
     let errors = 0
     lattice.on('error', () => errors++)
-    lattice.connection.getAddresses.mockImplementation(async () => {
+    getAddresses.mockImplementation(async () => {
       if (++requests === 1) {
         throw new Error('Error from device: Getting addresses failed')
       }
@@ -213,9 +223,7 @@ describe('#deriveAddresses', () => {
   })
 
   it('publishes a terminal error after retries are exhausted', async () => {
-    lattice.connection.getAddresses.mockRejectedValue(
-      new Error('Error from device: Getting addresses failed')
-    )
+    getAddresses.mockRejectedValue(new Error('Error from device: Getting addresses failed'))
     let errors = 0
     lattice.on('error', () => errors++)
     await lattice.deriveAddresses(Derivation.standard, 0)
@@ -229,14 +237,15 @@ describe('signing and verification', () => {
   it('verifies matches and rejects mismatches or derivation failures', async () => {
     lattice.addresses = ['addr1', 'addr2', 'addr3', 'addr4', 'addr5']
     lattice.accountLimit = 5
-    lattice.connection = { getAddresses: mock(), getAppName: () => 'frame-test' }
-    expect(await callbackResult((done) => lattice.verifyAddress(2, 'addr3', false, done))).toBeTrue()
-    expect(callbackResult((done) => lattice.verifyAddress(2, 'addrX', false, done))).rejects.toThrow(
+    const getAddresses = mock(async (): Promise<string[]> => [])
+    lattice.connection = { getAddresses, getAppName: () => 'frame-test' } as unknown as GridPlusClient
+    expect(await callbackResult<boolean>((done) => lattice.verifyAddress(2, 'addr3', false, done))).toBeTrue()
+    expect(callbackResult<boolean>((done) => lattice.verifyAddress(2, 'addrX', false, done))).rejects.toThrow(
       'Address does not match device'
     )
 
     lattice.addresses = []
-    lattice.connection.getAddresses.mockRejectedValue(new Error('error!'))
+    getAddresses.mockRejectedValue(new Error('error!'))
     expect(callbackResult((done) => lattice.verifyAddress(2, 'addr3', false, done))).rejects.toThrow(
       'Verify Address Error'
     )
@@ -244,7 +253,7 @@ describe('signing and verification', () => {
 
   it('signs personal and typed messages and rejects the wrong path', async () => {
     lattice.connection = {
-      sign: mock(async (options: any) => {
+      sign: mock(async (options: { currency: string; data: { protocol: string; signerPath: number[] } }) => {
         const expectedIndex = options.data.protocol === 'eip712' ? 2 : 4
         if (options.currency !== 'ETH_MSG' || options.data.signerPath[4] !== expectedIndex) {
           throw new Error('invalid message!')
@@ -257,13 +266,16 @@ describe('signing and verification', () => {
           }
         }
       })
-    }
+    } as unknown as GridPlusClient
     expect(await callbackResult<string>((done) => lattice.signMessage(4, 'sign this please', done))).toBe(
       '0x9af6cbabcd0401'
     )
     expect(callbackResult((done) => lattice.signMessage(3, 'sign this please', done))).rejects.toBeTruthy()
 
-    const typed = { version: SignTypedDataVersion.V4, data: 'typed data' }
+    const typed = {
+      version: SignTypedDataVersion.V4,
+      data: 'typed data'
+    } as unknown as TypedMessage<SignTypedDataVersion.V4>
     expect(await callbackResult<string>((done) => lattice.signTypedData(2, typed, done))).toBe(
       '0x3ea8cdabcd0401'
     )
@@ -275,20 +287,27 @@ describe('signing and verification', () => {
     lattice.appVersion = { major: 1, minor: 1, patch: 0 }
     lattice.connection = {
       getFwVersion: async () => ({ major: 1, minor: 3, fix: 5 }),
-      sign: mock(async (options: any) => {
-        wireTypes.push(options.data.type)
-        expect(options.currency).toBe('ETH')
-        expect(options.data.signerPath[4]).toBe(4)
-        expect(parseInt(options.data.chainId)).toBe(137)
-        return { sig: { r: '0x3ea8cd', s: '0x96f7a0', v: options.data.type === undefined ? 27n : 0n } }
-      })
-    }
+      sign: mock(
+        async (options: {
+          currency: string
+          data: { type?: number; signerPath: number[]; chainId: string }
+        }) => {
+          wireTypes.push(options.data.type)
+          expect(options.currency).toBe('ETH')
+          expect(options.data.signerPath[4]).toBe(4)
+          expect(parseInt(options.data.chainId)).toBe(137)
+          return { sig: { r: '0x3ea8cd', s: '0x96f7a0', v: options.data.type === undefined ? 27n : 0n } }
+        }
+      )
+    } as unknown as GridPlusClient
     for (const [type, expected, wireType] of [
       ['0x0', '0xcf8080808080801b833ea8cd8396f7a0', undefined],
       ['0x2', '0x02d3818980808080808080c080833ea8cd8396f7a0', 2]
     ] as const) {
       expect(
-        await callbackResult<string>((done) => lattice.signTransaction(4, { chainId: '0x89', type }, done))
+        await callbackResult<string>((done) =>
+          lattice.signTransaction(4, { chainId: '0x89', type, gasFeesSource: GasFeesSource.Dapp }, done)
+        )
       ).toBe(expected)
       expect(wireTypes.at(-1)).toBe(wireType)
     }
@@ -298,7 +317,7 @@ describe('signing and verification', () => {
 it('disconnects without overwriting errors and clears connection-owned state', () => {
   let updates = 0
   lattice.status = 'ok'
-  lattice.connection = 'a connection'
+  lattice.connection = 'a connection' as unknown as GridPlusClient
   lattice.addresses = ['addr1']
   lattice.on('update', () => updates++)
   lattice.disconnect()
@@ -315,7 +334,7 @@ it('disconnects without overwriting errors and clears connection-owned state', (
 
 it('closes by publishing once, removing listeners, and disconnecting', () => {
   let closes = 0
-  lattice.connection = 'a connection'
+  lattice.connection = 'a connection' as unknown as GridPlusClient
   lattice.on('close', () => closes++)
   lattice.close()
   expect(closes).toBe(1)
@@ -324,7 +343,7 @@ it('closes by publishing once, removing listeners, and disconnecting', () => {
 })
 
 it('limits published summary addresses to the configured account limit', () => {
-  lattice.addresses = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  lattice.addresses = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']
   lattice.accountLimit = 5
   expect(lattice.summary().addresses).toHaveLength(5)
 })

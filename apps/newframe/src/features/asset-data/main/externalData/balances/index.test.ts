@@ -4,7 +4,9 @@ import { EventEmitter } from 'events'
 import log from 'electron-log'
 
 import store from '../../../../../platform/state-store'
+import type { Token, TokenRecord } from '../../../../../platform/state-store/state'
 import { NATIVE_CURRENCY } from '../../../../tokens/domain/constants'
+import type { TokenCatalog } from '../../../../tokens/domain/state/token'
 import BalancesScanner from './index'
 
 const controllerEvents = new EventEmitter()
@@ -25,7 +27,8 @@ await mock.module('./controller', () => ({
   ...balancesControllerMock
 }))
 
-const balancesController = balancesControllerMock as any
+const balancesController = balancesControllerMock
+type BalancesWorkerController = import('./controller').default
 
 const address = '0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5'
 
@@ -49,7 +52,7 @@ function token(index: number, chainId = 10) {
   }
 }
 
-function storedToken(token: any, custom = false) {
+function storedToken(token: Token, custom = false): TokenRecord {
   return {
     ...token,
     custom,
@@ -59,7 +62,7 @@ function storedToken(token: any, custom = false) {
   }
 }
 
-function catalogFor(known: any[], custom: any[] = []) {
+function catalogFor(known: Token[], custom: Token[] = []): TokenCatalog {
   const records = [
     ...known.map((item) => storedToken(item)),
     ...custom.map((item) => storedToken(item, true))
@@ -72,7 +75,7 @@ function catalogFor(known: any[], custom: any[] = []) {
   }
 }
 
-let balances: any
+let balances: ReturnType<typeof BalancesScanner>
 
 beforeAll(() => {
   log.transports.console.level = false
@@ -297,7 +300,9 @@ it('caps large known token scans while preserving custom tokens', () => {
     expect.arrayContaining(customTokens)
   )
 
-  const scannedTokens = balancesController.updateKnownTokenBalances.mock.calls[0][1]
+  const scannedTokens = balancesController.updateKnownTokenBalances.mock.calls[0][1] as Parameters<
+    BalancesWorkerController['updateKnownTokenBalances']
+  >[1]
   expect(scannedTokens).toHaveLength(250)
   expect(scannedTokens.slice(0, customTokens.length)).toEqual(customTokens)
 })

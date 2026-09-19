@@ -45,7 +45,7 @@ const TYPED_TYPES = {
   Mail: TYPED_DATA.types.Mail
 }
 
-let frame: any
+let frame: ReturnType<typeof createFrameProvider>
 let provider: BrowserProvider
 
 const waitForFrameConnect = () =>
@@ -74,10 +74,11 @@ async function main() {
   try {
     await waitForFrameConnect()
     provider = new BrowserProvider({
-      request: ({ method, params }: { method: string; params?: any[] }) => frame.request({ method, params })
+      request: ({ method, params }: { method: string; params?: readonly unknown[] }) =>
+        frame.request({ method, params })
     })
 
-    const [address] = await provider.send('eth_requestAccounts', [])
+    const [address] = (await provider.send('eth_requestAccounts', [])) as string[]
     const expectedDigest = TypedDataEncoder.hash(TYPED_DATA.domain, TYPED_TYPES, TYPED_DATA.message)
     const signaturePromise = provider.send('eth_signTypedData_v4', [address, JSON.stringify(TYPED_DATA)])
     console.log(JSON.stringify({ address, expectedDigest, label: 'EIP-712 Digest' }))

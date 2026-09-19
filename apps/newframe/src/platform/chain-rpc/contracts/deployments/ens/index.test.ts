@@ -9,7 +9,7 @@ const to = '0x388C818CA8B9251b393131C08a736A67ccB19297'
 const tokenId = '79233663829379634837589865448569342784712482819484549289560981379859480642508'
 
 describe('registrar', () => {
-  const registrar: any = ensContracts.find((c) => c.name.toLowerCase().includes('permanent registrar'))
+  const registrar = ensContracts.find((c) => c.name.toLowerCase().includes('permanent registrar'))!
 
   const registrarInterface = new Interface([
     'function transferFrom(address from, address to, uint256 tokenId)',
@@ -58,7 +58,7 @@ describe('registrar', () => {
 })
 
 describe('registrar controller', () => {
-  const registrarController: any = ensContracts.find((c) => c.name.toLowerCase().includes('controller'))
+  const registrarController = ensContracts.find((c) => c.name.toLowerCase().includes('controller'))!
 
   const registrarControllerInterface = new Interface([
     'function commit(bytes32 commitment)',
@@ -105,7 +105,7 @@ describe('registrar controller', () => {
         31536000,
         encodeBytes32String('asecretphrase')
       ])
-      const action = registrarController.decode(calldata)
+      const action = registrarController.decode(calldata) as { data: { name: string } }
 
       expect(action.data.name).toBe('frame.eth')
     })

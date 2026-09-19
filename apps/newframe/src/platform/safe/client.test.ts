@@ -10,6 +10,11 @@ import { verifySafeHash } from './integrity.js'
 const safe = '0x1111111111111111111111111111111111111111'
 const owners = ['0x2222222222222222222222222222222222222222', '0x3333333333333333333333333333333333333333']
 const servers: ReturnType<typeof Bun.serve>[] = []
+type SafeHandler = {
+  fetch(request: Request): Promise<Response>
+  failNext(status: number, retryAfter?: string): void
+  requests: unknown[]
+}
 afterEach(async () => {
   await Promise.all(servers.splice(0).map((server) => server.stop(true)))
 })
@@ -21,7 +26,7 @@ function setup(transform?: (request: Request, response: Response) => Promise<Res
     threshold: 2,
     nonce: '9007199254740993',
     version
-  })
+  }) as SafeHandler
   const server = Bun.serve({
     port: 0,
     hostname: '127.0.0.1',
@@ -90,7 +95,7 @@ describe('Safe service client over HTTP', () => {
       if (!request.url.includes('/v2/')) {
         return response
       }
-      const page = await response.json()
+      const page = (await response.json()) as { results: unknown[] }
       page.results.push(page.results[0])
       return Response.json(page)
     })

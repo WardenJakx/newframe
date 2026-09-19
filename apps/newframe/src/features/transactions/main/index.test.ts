@@ -6,8 +6,15 @@ import { addHexPrefix, stripHexPrefix } from '@ethereumjs/util'
 import * as transactionModule from './index'
 
 // real functions under test, exercised with partial tx fixtures
-const { maxFee, londonToLegacy, signerCompatibility, populate, sign, classifyTransaction } =
-  transactionModule as Record<string, any>
+type LooseCall = (...args: any[]) => any
+const maxFee = transactionModule.maxFee as unknown as LooseCall
+const londonToLegacy = transactionModule.londonToLegacy as unknown as LooseCall
+const signerCompatibility = transactionModule.signerCompatibility as unknown as LooseCall
+const populate = transactionModule.populate as unknown as LooseCall
+const sign = transactionModule.sign as unknown as (
+  ...args: any[]
+) => Promise<{ toJSON(): Record<string, unknown> }>
+const classifyTransaction = transactionModule.classifyTransaction as unknown as LooseCall
 import { TxClassification } from '../../requests/contract/requests'
 import { GasFeesSource } from '../domain'
 

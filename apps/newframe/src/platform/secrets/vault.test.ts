@@ -10,7 +10,7 @@ const VAULT_PATH = path.resolve(import.meta.dirname, '../../../.userData/vault.j
 
 const clean = () => rm(VAULT_PATH, { recursive: true, force: true })
 
-let vault: any
+let vault: typeof import('./vault').default
 
 describe('Vault', () => {
   beforeAll(async () => {
@@ -63,23 +63,23 @@ describe('Vault', () => {
   })
 
   test('Unlock returns the same key created', () => {
-    const key = vault.getKey()
+    const key = vault.getKey()!
     vault.lock()
     expect(vault.unlock(PASSWORD)).toBe(key)
   })
 
   test('Unlock with vault key', () => {
-    const key = vault.getKey()
+    const key = vault.getKey()!
     vault.lock()
     expect(vault.unlockWithKey(key)).toBe(key)
   })
 
   test('Acquire key uses the session when unlocked', () => {
-    expect(vault.acquireKey('any password, ignored')).toBe(vault.getKey())
+    expect(vault.acquireKey('any password, ignored')).toBe(vault.getKey()!)
   })
 
   test('Change password keeps the same vault key', () => {
-    const key = vault.getKey()
+    const key = vault.getKey()!
     vault.changePassword(PASSWORD, NEW_PASSWORD)
     vault.lock()
     expect(() => vault.unlock(PASSWORD)).toThrow('Incorrect password')

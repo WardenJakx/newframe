@@ -430,7 +430,7 @@ export class Provider extends EventEmitter {
 
   approveSignTypedData(req: SignTypedDataRequest, cb: Callback<string>, context?: SigningUiContext) {
     const typedMessage = structuredClone(req.typedMessage)
-    const [address] = req.payload.params
+    const [address] = req.payload.params as [string, ...unknown[]]
 
     this.accounts.signTypedData(
       address,
@@ -1139,7 +1139,7 @@ export class Provider extends EventEmitter {
       version = getVersionFromTypedData(typedData)
     }
 
-    const targetAccount = this.accounts.get(from.toLowerCase())
+    const targetAccount = this.accounts.get((from as string).toLowerCase())
 
     if (!targetAccount) {
       return resError(`Unknown account: ${from}`, payload, res)
@@ -1270,12 +1270,10 @@ export class Provider extends EventEmitter {
   private getOriginConnection(payload: RPCRequestPayload) {
     const originId = payload._origin
     const origin = this.store.getState().main.origins[originId]
-    const currentAccount = this.accounts.current() as any
+    const currentAccount = this.accounts.current() as { address?: string; id?: string } | undefined
     const rawAddress = currentAccount?.address ?? currentAccount?.id ?? ''
     const address = rawAddress ? rawAddress.toLowerCase() : ''
-    const permissionAddresses = Array.from(
-      new Set([rawAddress, address].filter(Boolean).map((candidate) => candidate.toString()))
-    )
+    const permissionAddresses = Array.from(new Set([rawAddress, address].filter(Boolean)))
 
     let permissionAddress = ''
     let permissionId = ''
@@ -1476,7 +1474,7 @@ export class Provider extends EventEmitter {
       : {
           type,
           id,
-          name: chainName.trim(),
+          name: (chainName as string).trim(),
           symbol: nativeCurrency.symbol,
           primaryRpc: rpcUrls[0],
           secondaryRpc: rpcUrls[1],
@@ -1500,7 +1498,17 @@ export class Provider extends EventEmitter {
     targetChain: Chain,
     principal: TrustedPrincipal
   ) {
-    const { type, options: tokenData } = (payload.params || {}) as any
+    const { type, options: tokenData } = (payload.params || {}) as unknown as {
+      type?: string
+      options: {
+        address?: string
+        decimals?: string | number
+        image?: string
+        logoURI?: string
+        name?: string
+        symbol?: string
+      }
+    }
 
     if ((type ?? '').toLowerCase() !== 'erc20') {
       return resError('only ERC-20 tokens are supported', payload, cb)
@@ -1516,7 +1524,7 @@ export class Provider extends EventEmitter {
         const chainId = parseInt(resp.result)
         const address = (tokenData.address ?? '').toLowerCase()
         const symbol = (tokenData.symbol ?? '').toUpperCase()
-        const decimals = parseInt(tokenData.decimals ?? '1')
+        const decimals = parseInt(String(tokenData.decimals ?? '1'))
 
         if (!address) {
           return resError('tokens must define an address', payload, cb)

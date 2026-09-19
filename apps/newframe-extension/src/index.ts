@@ -346,8 +346,8 @@ function initProvider(requestApproval = false) {
         delete pending[payload.id]
       }
     } else if (
-      payload.method &&
-      payload.method.indexOf('_subscription') > -1 &&
+      typeof payload.method === 'string' &&
+      (payload.method as string).includes('_subscription') &&
       subs[payload.params.subscription]
     ) {
       // Emit subscription result to tab
@@ -376,7 +376,11 @@ function destroyProvider() {
 
 function addStateListeners() {
   function setMediaBlob(blobUrl: string, location: any, message?: string) {
-    ;(window as any).__setMediaBlob__(blobUrl, location, message)
+    ;(
+      window as unknown as Window & {
+        __setMediaBlob__(blobUrl: string, location: any, message?: string): void
+      }
+    ).__setMediaBlob__(blobUrl, location, message)
   }
 
   async function handleMessage(

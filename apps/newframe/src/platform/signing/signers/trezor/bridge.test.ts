@@ -43,13 +43,13 @@ await mock.module('@trezor/connect', () => ({
   UI_EVENT
 }))
 
-let TrezorConnect: any
-let TrezorBridge: any
+let TrezorConnect: typeof TrezorConnectMock
+let TrezorBridge: typeof import('./bridge').default
 
 beforeAll(async () => {
   log.transports.console.level = false
 
-  TrezorConnect = (await import('@trezor/connect')).default
+  TrezorConnect = TrezorConnectMock
   TrezorBridge = (await import('./bridge')).default
 })
 
@@ -59,7 +59,7 @@ afterAll(() => {
 
 beforeEach((done) => {
   TrezorBridge.once('connect', done)
-  TrezorBridge.open()
+  void TrezorBridge.open()
 })
 
 afterEach(() => {
@@ -182,7 +182,7 @@ describe('requests', () => {
 
     const loadedFeatures = await TrezorBridge.getFeatures({ device: { path: '41' } } as any)
 
-    expect(loadedFeatures).toEqual(features)
+    expect(loadedFeatures as unknown).toEqual(features)
   })
 
   it('gets the public key for a given device', async () => {
@@ -196,7 +196,7 @@ describe('requests', () => {
 
     const publicKey = await TrezorBridge.getPublicKey({ path: '4' } as any, "m/44'/60'/0/1/0")
 
-    expect(publicKey).toEqual(key)
+    expect(publicKey as unknown).toEqual(key)
   })
 
   it('gets the signature after signing a transaction', async () => {
@@ -211,6 +211,6 @@ describe('requests', () => {
 
     const signature = await TrezorBridge.signTransaction({ path: '11' } as any, "m/44'/60'/0'/4/0", tx)
 
-    expect(signature).toEqual({ v: 1, r: 2, s: 3 })
+    expect(signature as unknown).toEqual({ v: 1, r: 2, s: 3 })
   })
 })

@@ -183,11 +183,10 @@ export function isTraceCall(value: unknown): value is TraceCall {
         if (typeof event.address !== 'string' || !normalizeAddress(event.address)) {
           return false
         }
+        const topics = (event as { topics?: unknown }).topics
         if (
-          !Array.isArray(event.topics) ||
-          !event.topics.every(
-            (topic: unknown) => typeof topic === 'string' && /^0x[0-9a-f]{64}$/i.test(topic)
-          )
+          !Array.isArray(topics) ||
+          !topics.every((topic: unknown) => typeof topic === 'string' && /^0x[0-9a-f]{64}$/i.test(topic))
         ) {
           return false
         }

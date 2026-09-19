@@ -3,6 +3,7 @@ import { EventEmitter } from 'events'
 
 import store from '../../state-store'
 import createCanonicalStore from '../../state-store/createCanonicalStore'
+import type { Signers as SignersClass, SignersDependencies } from './index'
 import type Signer from './Signer'
 
 class HotSignerMock extends EventEmitter {
@@ -44,7 +45,15 @@ class AdapterMock extends EventEmitter {
   }
 }
 
-const createFromPrivateKey = mock()
+const createFromPrivateKey = mock(
+  (
+    _vault: SignersDependencies['vault'],
+    _collection: Pick<SignersClass, 'add' | 'exists'>,
+    _key: string,
+    _password: string,
+    _done: Callback<Signer>
+  ) => {}
+)
 
 await mock.module('./hot/HotSigner', () => ({ default: HotSignerMock }))
 await mock.module('./hot', () => ({
@@ -93,7 +102,7 @@ function dependencies(canonicalStore = store) {
       unlock: mock(() => ''),
       unlockWithKey: mock(() => '')
     }
-  }
+  } satisfies SignersDependencies
 }
 
 const createSigners = () => new Signers(dependencies(), [], () => mock())
@@ -228,8 +237,8 @@ it('unlocks only the vault and publishes post-create vault state on success or f
 
   deps.vault.summary.mockReturnValue({ exists: true, unlocked: true })
   createFromPrivateKey.mockImplementation((_vault, collection, _key, _password, done) => {
-    collection.add(handle)
-    done(null, handle)
+    collection.add(handle as unknown as Signer)
+    done(null, handle as unknown as Signer)
   })
   signers.createFromPrivateKey('11'.repeat(32), 'password', () => {})
   expect(store.getState().main.appLock).toEqual({ locked: false, vaultExists: true })
