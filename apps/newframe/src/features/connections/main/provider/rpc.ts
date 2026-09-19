@@ -55,7 +55,7 @@ interface CloseAwareSocket {
 
 function normalizeParams(params?: RpcParams) {
   if (Array.isArray(params)) {
-    return [...params]
+    return [...params] as unknown[]
   }
   return params ?? []
 }

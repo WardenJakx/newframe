@@ -52,6 +52,13 @@ type LatticeResponseError = {
 type SigningPayload = Parameters<InstanceType<typeof Client>['sign']>[0]['data']
 type SignProtocol = 'eip712' | 'signPersonal'
 
+function booleanResponse(value: unknown, operation: string) {
+  if (typeof value !== 'boolean') {
+    throw new Error(`Lattice returned an invalid ${operation} response`)
+  }
+  return value
+}
+
 const Status = {
   OK: 'ok',
   CONNECTING: 'connecting',
@@ -120,7 +127,8 @@ export default class Lattice extends Signer {
     })
 
     try {
-      const paired = await this.connection.connect(this.deviceId)
+      const pairedResult: unknown = await this.connection.connect(this.deviceId)
+      const paired = booleanResponse(pairedResult, 'connection')
 
       const { fix: patch, minor, major } = this.connection.getFwVersion() || { fix: 0, major: 0, minor: 0 }
 
@@ -175,7 +183,8 @@ export default class Lattice extends Signer {
 
     try {
       const connection = this.connection as Client
-      const hasActiveWallet = await connection.pair(pairingCode)
+      const pairResult: unknown = await connection.pair(pairingCode)
+      const hasActiveWallet = booleanResponse(pairResult, 'pairing')
 
       log.info(`successfully paired to Lattice ${this.deviceId}`)
 

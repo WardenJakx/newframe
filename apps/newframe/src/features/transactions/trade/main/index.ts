@@ -632,7 +632,7 @@ function parseTypedData(value: unknown) {
   }
 
   try {
-    const parsed = JSON.parse(clean)
+    const parsed = JSON.parse(clean) as unknown
 
     return parsed && typeof parsed === 'object' ? parsed : value
   } catch {
@@ -1814,7 +1814,7 @@ async function quote(request: FlashQuoteRequest) {
 function quoteTypedData(quote: FlashQuote, field: 'orderTypedData' | 'permitTypedData') {
   const evm = objectPayload(objectPayload(quote.raw).evm)
 
-  return evm[`${field}Raw`] ?? evm[field]
+  return (evm[`${field}Raw`] ?? evm[field]) as unknown
 }
 
 export function buildFlashSubmitBody(request: FlashSubmitOrderRequest) {

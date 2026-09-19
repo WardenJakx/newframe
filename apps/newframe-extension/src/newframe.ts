@@ -69,7 +69,7 @@ function shimWeb3(provider: InjectedFrameProvider | undefined, appearAsMetaMask:
             `You are requesting the "${property as string}" property of window.web3 which no longer supported; use window.ethereum instead.`
           )
         }
-        return Reflect.get(target, property, ...args)
+        return Reflect.get(target, property, ...args) as unknown
       },
       set: (...args) => {
         console.warn(

@@ -62,7 +62,7 @@ function displayValue(value: unknown): string {
 
   try {
     return (
-      JSON.stringify(value, (_key, nestedValue) =>
+      JSON.stringify(value, (_key, nestedValue: unknown) =>
         typeof nestedValue === 'bigint' ? nestedValue.toString() : nestedValue
       ) ?? ''
     )

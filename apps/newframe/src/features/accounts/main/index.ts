@@ -62,20 +62,20 @@ function isBalanceChange(effect: TransactionEffect) {
   )
 }
 
-function cloneForActivity(value: any) {
+function cloneForActivity<T>(value: T): T | undefined {
   if (value === undefined) {
     return undefined
   }
 
   try {
     return JSON.parse(
-      JSON.stringify(value, (_key, nextValue) => {
+      JSON.stringify(value, (_key, nextValue: unknown) => {
         if (typeof nextValue === 'function') {
           return undefined
         }
         return nextValue
       })
-    )
+    ) as T
   } catch {
     return undefined
   }

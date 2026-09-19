@@ -342,9 +342,9 @@ describe('creation-block listener lifecycle', () => {
     const listener = providerMock.on.mock.calls.find(
       ([event]) => event === 'connect'
     )?.[1] as ProviderListener
-    providerMock.send.mockImplementationOnce((_payload: ProviderRequest, respond: ProviderRespond) =>
+    providerMock.send.mockImplementationOnce((_payload: ProviderRequest, respond: ProviderRespond) => {
       respond({ result: '0x64' })
-    )
+    })
 
     listener()
 
@@ -366,12 +366,14 @@ describe('creation-block listener lifecycle', () => {
     const listener = providerMock.on.mock.calls.find(
       ([event]) => event === 'connect'
     )?.[1] as ProviderListener
-    providerMock.send.mockImplementationOnce((_payload: ProviderRequest, respond: ProviderRespond) =>
+    providerMock.send.mockImplementationOnce((_payload: ProviderRequest, respond: ProviderRespond) => {
       respond({ result: '0x64' })
-    )
+    })
     store.getState().removeAccount(account.id)
 
-    expect(() => listener()).not.toThrow()
+    expect(() => {
+      listener()
+    }).not.toThrow()
     expect(providerMock.off).toHaveBeenCalledWith('connect', listener)
   })
 

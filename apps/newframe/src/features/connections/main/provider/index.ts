@@ -377,7 +377,7 @@ export class Provider extends EventEmitter {
           'typedMessage' in value ? value.typedMessage : undefined,
           value.authorization
         ],
-        (_key, item) => (typeof item === 'function' ? undefined : item)
+        (_key, item: unknown) => (typeof item === 'function' ? undefined : item)
       )
     const expected = identity(request)
     const typed = 'typedMessage' in request ? (request as SignTypedDataRequest).typedMessage : undefined

@@ -1,5 +1,6 @@
 import { expect, it, mock } from 'bun:test'
 
+import type { IpcMainHandlerPort } from '../../../platform/ipc/main/operations'
 import createCanonicalStore from '../../../platform/state-store/createCanonicalStore'
 import {
   createProductionCapabilities,
@@ -67,7 +68,9 @@ it('keeps mutable state, listeners, and deferred capability ports graph-local', 
       (
         _payload: Parameters<ChainRpcPort['sendAsync']>[0],
         callback: Parameters<ChainRpcPort['sendAsync']>[1]
-      ) => callback(null, { id: 1, jsonrpc: '2.0', result: value })
+      ) => {
+        callback(null, { id: 1, jsonrpc: '2.0', result: value })
+      }
     ),
     getL1GasCost: async () => 1n,
     on: mock(),
@@ -114,7 +117,10 @@ it('keeps mutable state, listeners, and deferred capability ports graph-local', 
 
 it('releases registered handlers, account listeners, and Flash polling on disposal', () => {
   const { store, capabilities } = graph()
-  const ipc = { handle: mock(), removeHandler: mock() }
+  const ipc = {
+    handle: mock<IpcMainHandlerPort['handle']>(),
+    removeHandler: mock<IpcMainHandlerPort['removeHandler']>()
+  }
   const persistence = {
     started: false,
     start: mock(async () => undefined),

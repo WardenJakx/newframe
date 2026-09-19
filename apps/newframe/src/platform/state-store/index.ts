@@ -27,7 +27,7 @@ if (process.env.NEWFRAME_VISUAL_HARNESS === 'true' && process.env.FRAME_PROFILE 
     configurable: false,
     value: () => {
       const { main, operations, windows } = store.getState()
-      return JSON.parse(JSON.stringify({ main, operations, windows }))
+      return JSON.parse(JSON.stringify({ main, operations, windows })) as unknown
     },
     writable: false
   })
