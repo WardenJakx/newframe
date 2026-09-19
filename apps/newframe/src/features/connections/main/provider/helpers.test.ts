@@ -20,7 +20,7 @@ afterAll(() => {
 })
 
 describe('#getRawTx', () => {
-  ;[
+  const cases: Array<[string, Record<string, string | undefined>, string, string | undefined]> = [
     ['valid value', { value: '0x2540be400' }, 'value', '0x2540be400'],
     ['leading-zero value', { value: '0x0a45c6' }, 'value', '0xa45c6'],
     ['hex zero', { value: '0x0' }, 'value', '0x0'],
@@ -30,8 +30,10 @@ describe('#getRawTx', () => {
     ['hex nonce', { nonce: '0x168' }, 'nonce', '0x168'],
     ['integer nonce', { nonce: '360' }, 'nonce', '0x168'],
     ['missing nonce', { nonce: undefined }, 'nonce', undefined]
-  ].forEach(([description, input, field, expected]) => {
-    it(`normalizes ${description}`, () => expect(getRawTx(input as any)[field as string]).toBe(expected))
+  ]
+
+  cases.forEach(([description, input, field, expected]) => {
+    it(`normalizes ${description}`, () => expect(getRawTx(input as any)[field]).toBe(expected))
   })
   ;['invalid', '-360', '3.60'].forEach((nonce) => {
     it(`rejects invalid nonce ${nonce}`, () => {

@@ -588,7 +588,7 @@ export class Provider extends EventEmitter {
         payload,
         (response) => {
           if (response.error) {
-            log.warn(`error estimating gas for tx to ${txParams.to}: ${response.error}`)
+            log.warn(`error estimating gas for tx to ${txParams.to}: ${response.error.message}`)
             return reject(response.error)
           }
 

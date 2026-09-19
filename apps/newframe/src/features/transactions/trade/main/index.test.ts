@@ -72,8 +72,16 @@ class FakeFlashWebSocket extends EventEmitter {
     this.readyState = WebSocket.OPEN
     this.emit('open')
   }
-  receive(payload: unknown) {
-    this.emit('message', Buffer.from(JSON.stringify(payload)))
+  receive(payload: unknown, encoding: 'array-buffer' | 'buffer' | 'buffer-array' = 'buffer') {
+    const bytes = Buffer.from(JSON.stringify(payload))
+    if (encoding === 'array-buffer') {
+      this.emit('message', Uint8Array.from(bytes).buffer)
+    } else if (encoding === 'buffer-array') {
+      const midpoint = Math.floor(bytes.length / 2)
+      this.emit('message', [bytes.subarray(0, midpoint), bytes.subarray(midpoint)])
+    } else {
+      this.emit('message', bytes)
+    }
   }
   send(_message: string) {
     // Tests inject server frames directly.
@@ -267,6 +275,23 @@ describe('main Flash facade helpers', () => {
     expect(omitted).not.toHaveProperty('maxSlippage')
     expect(omitted).not.toHaveProperty('maxPriceImpact')
     expect(zero).toMatchObject({ maxSlippage: '0', maxPriceImpact: '0' })
+  })
+  it('uses string fallbacks instead of object stringification in quote responses', () => {
+    const quote = normalizedQuote({
+      quoteId: { value: 'quote-object' },
+      from: { asset: {}, amount: {}, notional: {} },
+      to: { asset: {}, amount: {}, notional: {} }
+    })
+
+    expect(quote).toMatchObject({
+      id: '',
+      inputAmount: '',
+      inputNotional: '',
+      outputAmount: '0',
+      outputNotional: '',
+      from: { asset: 'target' },
+      to: { asset: 'contra' }
+    })
   })
   it('accepts mainnet when the packaged runtime has no explicit environment', () => {
     delete (process.env as Partial<NodeJS.ProcessEnv>).NODE_ENV
@@ -611,6 +636,19 @@ describe('main Flash facade helpers', () => {
       open: false
     })
   })
+  it('treats object-valued statuses as terminated and missing statuses as accepted', async () => {
+    const orders = [
+      officialOrder({ orderId: 'object-status', status: {} }),
+      officialOrder({ orderId: 'missing-status', status: undefined })
+    ]
+    const { flash } = flashWithFetch(async () => jsonResponse({ orders }))
+    const result = await flash.listOrders({ accountAddress })
+
+    expect(Object.fromEntries(result.orders.map(({ orderId, status }) => [orderId, status]))).toEqual({
+      'missing-status': 'accepted',
+      'object-status': 'terminated'
+    })
+  })
   it('uses official get and cancel request shapes with root order responses', async () => {
     const orderId = '00000000-0000-4000-8000-000000000002'
     const accountAddress = '0x0000000000000000000000000000000000000002'
@@ -644,8 +682,11 @@ describe('main Flash facade helpers', () => {
     const cancelled = await flash.cancelOrder({ orderId, signature: '0xcancel-signature' })
     const cancelUrl = new URL(String(fetchMock.mock.calls[1]?.[0]))
     const cancelInit = fetchMock.mock.calls[1]?.[1] as RequestInit
+    if (typeof cancelInit.body !== 'string') {
+      throw new Error('Expected a JSON request body')
+    }
     expect(cancelUrl.pathname).toBe(`/v1/orders/${orderId}/cancel`)
-    expect(JSON.parse(String(cancelInit.body))).toEqual({
+    expect(JSON.parse(cancelInit.body)).toEqual({
       cancelMessage: `Definitive Flash v1 — Cancel Order\nOrder: ${orderId}`,
       userSignature: '0xcancel-signature'
     })
@@ -805,17 +846,29 @@ describe('main Flash facade helpers', () => {
     const persistedOrder = () => store.getState().main.orders[orderId]
     const notification = () => store.getState().view.notifications[`flash-order:${orderId}`]
     socket.open()
-    socket.receive({
-      channel: 'subscriptions',
-      type: 'ack',
-      subscriptions: ['orders', 'heartbeats']
-    })
-    sendOfficialOrder(socket, 'snapshot', {
-      orderId,
-      funderAddress: accountAddress,
-      status: 'ORDER_STATUS_ACCEPTED',
-      filled: null
-    })
+    socket.receive(
+      {
+        channel: 'subscriptions',
+        type: 'ack',
+        subscriptions: ['orders', 'heartbeats']
+      },
+      'array-buffer'
+    )
+    socket.receive(
+      {
+        channel: 'orders',
+        type: 'snapshot',
+        orders: [
+          officialOrder({
+            orderId,
+            funderAddress: accountAddress,
+            status: 'ORDER_STATUS_ACCEPTED',
+            filled: null
+          })
+        ]
+      },
+      'buffer-array'
+    )
     await Bun.sleep(0)
     expect(persistedOrder()).toMatchObject({ accountAddress, status: 'accepted', open: true })
     expect(notification()).toMatchObject({ state: 'pending', metadata: { orderId, status: 'accepted' } })

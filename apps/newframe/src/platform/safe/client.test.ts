@@ -404,7 +404,10 @@ test('confirmation POST shares HTTP errors, cooldown, cancellation, redirect and
       count++
       expect(init.method).toBe('POST')
       expect(init.redirect).toBe('error')
-      expect(JSON.parse(String(init.body))).toEqual({ signature })
+      if (typeof init.body !== 'string') {
+        throw new Error('Expected confirmation request body to be a string')
+      }
+      expect(JSON.parse(init.body)).toEqual({ signature })
       return Response.json({}, { status: 429, headers: { 'Retry-After': '30' } })
     }
   })

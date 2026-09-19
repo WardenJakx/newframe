@@ -616,10 +616,12 @@ describe('#send', () => {
       expect((await sendResult(request)).result).toBe(true)
       expect(accountRequests).toHaveLength(0)
     })
-    ;[
+    const unavailableNetworkCases: Array<[string, unknown]> = [
       ['does not exist', undefined],
       ['is disabled', { id: 1, on: false }]
-    ].forEach(([description, network]) => {
+    ]
+
+    unavailableNetworkCases.forEach(([description, network]) => {
       it(`rejects a request when the chain ${description}`, async () => {
         setNetwork(1, network)
         expect((await sendResult(request)).error).toMatchObject({
@@ -970,13 +972,16 @@ describe('#send', () => {
 
     const typedDataLegacy = [{ type: 'string', name: 'fullName', value: 'Satoshi Nakamoto' }]
 
-    const validRequests = [
+    const validRequestCases: Array<
+      [string, typeof typedDataLegacy | typeof typedData, SignTypedDataVersion, string]
+    > = [
       ['eth_signTypedData', typedDataLegacy, SignTypedDataVersion.V1, 'legacy'],
       ['eth_signTypedData', typedData, SignTypedDataVersion.V4, 'eip-712'],
       ['eth_signTypedData_v1', typedDataLegacy, SignTypedDataVersion.V1, 'legacy'],
       ['eth_signTypedData_v3', typedData, SignTypedDataVersion.V3, 'eip-712'],
       ['eth_signTypedData_v4', typedData, SignTypedDataVersion.V4, 'eip-712']
-    ].flatMap(([method, data, version, dataDescription]) => [
+    ]
+    const validRequests = validRequestCases.flatMap(([method, data, version, dataDescription]) => [
       { method, params: [address, data], version, dataDescription },
       { method, params: [data, address], version, dataFirst: true, dataDescription }
     ])
@@ -1018,7 +1023,7 @@ describe('#send', () => {
 
       verifyRequest(SignTypedDataVersion.V4, typedData)
     })
-    ;[
+    const invalidRequestCases: Array<[string, unknown[], string]> = [
       ['without a message', [address, { ...typedData, message: undefined }], 'Typed data missing message'],
       [
         'from an unknown account',
@@ -1026,7 +1031,9 @@ describe('#send', () => {
         'Unknown account: 0xa4581bfe76201f3aa147cce8e360140582260441'
       ],
       ['with malformed data', [address, 'test'], 'Malformed typed data']
-    ].forEach(([description, params, message]) => {
+    ]
+
+    invalidRequestCases.forEach(([description, params, message]) => {
       it(`does not submit a request ${description}`, async () => {
         expect((await sendResult({ method: 'eth_signTypedData_v3', params })).error).toEqual({
           message,
