@@ -243,7 +243,7 @@
           }
         ],
         "typescript/prefer-optional-chain": "error",
-        "typescript/no-unsafe-assignment": "warn",
+        "typescript/no-unsafe-assignment": "error",
         "typescript/no-unsafe-argument": "warn",
         "typescript/no-unsafe-call": "error",
         "typescript/no-unsafe-member-access": "error",
@@ -357,7 +357,7 @@
           }
         ],
         "typescript/prefer-optional-chain": "error",
-        "typescript/no-unsafe-assignment": "warn",
+        "typescript/no-unsafe-assignment": "error",
         "typescript/no-unsafe-argument": "warn",
         "typescript/no-unsafe-call": "error",
         "typescript/no-unsafe-member-access": "error",

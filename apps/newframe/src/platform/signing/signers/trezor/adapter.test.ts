@@ -28,8 +28,15 @@ it('cancels pending signer initialization when closed', () => {
   const updates = mock()
   let signer: { status: string } | undefined
   adapter.on('update', updates)
-  adapter.on('add', (added) => {
-    signer = added
+  adapter.on('add', (added: unknown) => {
+    if (
+      typeof added === 'object' &&
+      added !== null &&
+      'status' in added &&
+      typeof added.status === 'string'
+    ) {
+      signer = { status: added.status }
+    }
   })
   adapter.open()
 

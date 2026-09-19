@@ -17,7 +17,7 @@ interface GasPrices {
 }
 
 interface RpcProvider {
-  send(method: string, params: any[]): Promise<any>
+  send<T>(method: string, params: readonly unknown[]): Promise<T>
 }
 
 export default class GasMonitor {
@@ -34,7 +34,7 @@ export default class GasMonitor {
   ): Promise<Block[]> {
     const blockCount = intToHex(numBlocks)
 
-    const feeHistory: FeeHistoryResponse = await this.connection.send('eth_feeHistory', [
+    const feeHistory = await this.connection.send<FeeHistoryResponse>('eth_feeHistory', [
       blockCount,
       newestBlock,
       rewardPercentiles
@@ -52,7 +52,7 @@ export default class GasMonitor {
   }
 
   async getGasPrices(): Promise<GasPrices> {
-    const gasPrice = await this.connection.send('eth_gasPrice', [])
+    const gasPrice = await this.connection.send<string>('eth_gasPrice', [])
 
     // in the future we may want to have specific calculators to calculate variations
     // in the gas price or eliminate this structure altogether

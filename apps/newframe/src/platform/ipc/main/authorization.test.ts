@@ -48,13 +48,14 @@ beforeEach(() => {
 describe('renderer authorization', () => {
   it('derives the registered role from Electron-owned WebContents identity', () => {
     const wallet = renderer('tray', 'wallet-ui')
+    const result = authorization.authorizeRenderer(wallet.event)
 
-    expect(authorization.authorizeRenderer(wallet.event)).toEqual({
+    expect(result).toMatchObject({
       clientType: 'wallet-ui',
       entrypoint: 'tray',
-      webContentsId: wallet.webContents.id,
-      windowInstanceId: expect.any(String)
+      webContentsId: wallet.webContents.id
     })
+    expect(typeof result?.windowInstanceId).toBe('string')
   })
 
   it('rejects subframes and unexpected renderer URLs', () => {

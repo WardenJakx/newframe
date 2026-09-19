@@ -176,16 +176,16 @@ it('signs exact canonical fields for a future nonce without changing selected Sa
     expect.objectContaining({
       requestId: test.command.operationId,
       chainId: 1,
-      signal: expect.any(AbortSignal),
+      signal: expect.any(AbortSignal) as unknown,
       ui: test.context,
-      isActive: expect.any(Function)
+      isActive: expect.any(Function) as unknown
     })
   ])
   expect(test.client.confirm).toHaveBeenCalledWith(
     1,
     test.proposal.safeTxHash,
     test.signature,
-    expect.any(AbortSignal)
+    expect.any(AbortSignal) as unknown
   )
   expect(test.client.confirmations).toHaveBeenCalledTimes(2)
   expect(test.store.getState().main.currentAccount).toBe(safeAddress)

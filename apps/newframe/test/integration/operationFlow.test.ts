@@ -1,6 +1,7 @@
 import { expect, it, mock } from 'bun:test'
 
 import { CommandResultSchema } from '../../src/app/contracts/operations'
+import { DEFAULT_PROFILE_ID } from '../../src/app/contracts/state/main'
 import type { AccountRequest, TransactionRequest } from '../../src/features/requests/contract/requests'
 import { createRequestService } from '../../src/features/requests/main/service'
 import { createRequestRendererCapabilities } from '../../src/features/requests/renderer/requestCapabilities'
@@ -57,15 +58,34 @@ it('authorizes and validates final adjustments against canonical state before si
       accounts: {
         [accountId]: {
           id: accountId,
+          profileId: DEFAULT_PROFILE_ID,
           address: accountId,
-          created: 1,
+          name: 'Test account',
+          lastSignerType: 'ledger',
+          status: 'ok',
+          signer: 'signer',
+          created: 'test:1',
           requests: { [request.handlerId]: request }
         }
       },
       signers: {
-        signer: { id: 'signer', type: 'ledger', status: 'ok', addresses: [accountId], capabilities: [] }
+        signer: {
+          id: 'signer',
+          name: 'Test Ledger',
+          model: 'Nano',
+          type: 'ledger',
+          status: 'ok',
+          addresses: [accountId],
+          appVersion: { major: 1, minor: 0, patch: 0 },
+          capabilities: []
+        }
       },
-      mute: { gasFeeWarning: true, signerCompatibilityWarning: true }
+      mute: {
+        explorerWarning: false,
+        gasFeeWarning: true,
+        onboardingWindow: false,
+        signerCompatibilityWarning: true
+      }
     }
   })
   const current = () =>

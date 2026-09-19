@@ -128,7 +128,7 @@ it('imports through real HTTP, merges chains, retains queue on later-page failur
   expect(store.getState().main.accounts[address].safe!['1']).toMatchObject({
     pending: snapshot.pending,
     refreshedAt: snapshot.refreshedAt,
-    error: expect.any(String)
+    error: expect.any(String) as unknown
   })
   store.getState().setAccount({ id: address })
   await Bun.sleep(10)
@@ -492,7 +492,7 @@ it('settles in-flight simulations on semantic proposal changes, account lifetime
     }
     expect(await pending).toMatchObject({
       status: 'unavailable',
-      error: expect.stringContaining('cancelled')
+      error: expect.stringContaining('cancelled') as unknown
     })
     expect(signal.aborted).toBeTrue()
     const before = context.store.getState().main.accounts[address].safe

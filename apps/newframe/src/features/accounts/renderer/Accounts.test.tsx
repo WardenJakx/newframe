@@ -114,7 +114,7 @@ describe('Accounts profile controls', () => {
     await user.click(screen.getByRole('option', { name: /Work/ }))
 
     expect(capability.updateAccount).toHaveBeenCalledWith({
-      operationId: expect.any(String),
+      operationId: expect.any(String) as unknown,
       accountId: account.id,
       profileId: 'work'
     })

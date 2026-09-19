@@ -17,7 +17,7 @@ export interface TokenData {
 
 function createEip1193Wrapper(chainId: number, provider: Erc20ProviderPort) {
   return {
-    request: (request: { method: string; params?: any[] }) =>
+    request: (request: { method: string; params?: readonly unknown[] }) =>
       new Promise((resolve, reject) => {
         const wrappedPayload = {
           method: request.method,
@@ -90,12 +90,12 @@ export default class Erc20Contract {
     }
   }
 
-  static encodeCallData(fn: string, params: any[]) {
+  static encodeCallData(fn: string, params: readonly unknown[]) {
     return erc20Interface.encodeFunctionData(fn, params)
   }
 
   async getTokenData(): Promise<TokenData> {
-    const calls = await Promise.all([
+    const calls: unknown[] = await Promise.all([
       this.contract.decimals().catch(() => 0),
       this.contract.name().catch(() => ''),
       this.contract.symbol().catch(() => ''),
@@ -105,12 +105,15 @@ export default class Erc20Contract {
         .catch(() => '') // totalSupply is mandatory on the ERC20 interface
     ])
     const decimals = Number(calls[0] ?? 0)
+    const name = typeof calls[1] === 'string' ? calls[1] : ''
+    const symbol = typeof calls[2] === 'string' ? calls[2] : ''
+    const totalSupply = typeof calls[3] === 'string' ? calls[3] : ''
 
     return {
       decimals: Number.isFinite(decimals) ? decimals : 0,
-      name: calls[1],
-      symbol: calls[2],
-      totalSupply: calls[3]
+      name,
+      symbol,
+      totalSupply
     }
   }
 }

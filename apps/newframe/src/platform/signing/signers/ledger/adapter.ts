@@ -59,7 +59,7 @@ export default class LedgerSignerAdapter extends SignerAdapter {
     this.unsubscribeDerivation?.()
     this.unsubscribeDerivation = this.store.subscribe(
       (state) => {
-        const settings = state.main.ledger as { derivation: Derivation; liveAccountLimit: number }
+        const settings = state.main.ledger
         return [settings.derivation, settings.liveAccountLimit] as const
       },
       ([ledgerDerivation, liveAccountLimit]) => {

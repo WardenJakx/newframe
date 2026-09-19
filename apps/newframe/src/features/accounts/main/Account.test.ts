@@ -10,12 +10,6 @@ import type { AccountRequest, CanonicalAccountRequest, TypedMessage } from '../.
 import { RequestMode, RequestStatus } from '../../requests/contract/requests'
 import { ApprovalType } from '../../requests/domain/approval'
 import { GasFeesSource, type TransactionData } from '../../transactions/domain'
-import type { AccountChainRpcPort } from './providerPort'
-
-type ProviderRequest = Parameters<AccountChainRpcPort['send']>[0]
-type ProviderResponse = Parameters<Parameters<AccountChainRpcPort['send']>[1]>[0]
-type ProviderRespond = (response: Partial<ProviderResponse> & { result?: unknown; error?: EVMError }) => void
-type ProviderListener = Parameters<AccountChainRpcPort['on']>[1]
 
 const revealMock = {
   recog: mock(),
@@ -26,7 +20,13 @@ const revealMock = {
 }
 const fetchContractMock = mock()
 const simulateTransactionEffectsMock = mock()
-const providerMock = { on: mock(), off: mock(), send: mock(), getL1GasCost: mock() }
+const providerMock = {
+  on: mock<(event: string | symbol, listener: (...args: never[]) => void) => void>(),
+  off: mock<(event: string | symbol, listener: (...args: never[]) => void) => void>(),
+  send: mock<(payload: RPCRequestPayload, callback: RPCRequestCallback) => void>(),
+  sendAsync: mock<(payload: RPCRequestPayload, callback: Callback<RPCResponsePayload>) => void>(),
+  getL1GasCost: mock(async (_transaction: TransactionData) => 0n)
+}
 const signersMock = { get: mock() }
 const windowsMock = { showTray: mock() }
 const navMock = { forward: mock(), back: mock() }
@@ -127,7 +127,7 @@ function createAccount(profileActive = true) {
     accountState,
     accounts as any,
     store,
-    providerMock as any,
+    providerMock,
     { simulateTransactionEffects: simulateTransactionEffectsMock },
     nameResolution,
     revealMock,
@@ -339,12 +339,13 @@ describe('#addRequest', () => {
 
 describe('creation-block listener lifecycle', () => {
   it('removes the provider listener after resolving the creation block', () => {
-    const listener = providerMock.on.mock.calls.find(
-      ([event]) => event === 'connect'
-    )?.[1] as ProviderListener
-    providerMock.send.mockImplementationOnce((_payload: ProviderRequest, respond: ProviderRespond) => {
-      respond({ result: '0x64' })
-    })
+    const listener = providerMock.on.mock.calls.find(([event]) => event === 'connect')?.[1]
+    if (!listener) {
+      throw new Error('Expected a provider connect listener')
+    }
+    providerMock.send.mockImplementationOnce((payload, respond) =>
+      respond({ id: payload.id, jsonrpc: payload.jsonrpc, result: '0x64' })
+    )
 
     listener()
 
@@ -353,9 +354,10 @@ describe('creation-block listener lifecycle', () => {
   })
 
   it('removes the provider listener when the account handle closes', () => {
-    const listener = providerMock.on.mock.calls.find(
-      ([event]) => event === 'connect'
-    )?.[1] as ProviderListener
+    const listener = providerMock.on.mock.calls.find(([event]) => event === 'connect')?.[1]
+    if (!listener) {
+      throw new Error('Expected a provider connect listener')
+    }
 
     account.close()
 
@@ -363,12 +365,13 @@ describe('creation-block listener lifecycle', () => {
   })
 
   it('ignores a late creation-block response after canonical removal', () => {
-    const listener = providerMock.on.mock.calls.find(
-      ([event]) => event === 'connect'
-    )?.[1] as ProviderListener
-    providerMock.send.mockImplementationOnce((_payload: ProviderRequest, respond: ProviderRespond) => {
-      respond({ result: '0x64' })
-    })
+    const listener = providerMock.on.mock.calls.find(([event]) => event === 'connect')?.[1]
+    if (!listener) {
+      throw new Error('Expected a provider connect listener')
+    }
+    providerMock.send.mockImplementationOnce((payload, respond) =>
+      respond({ id: payload.id, jsonrpc: payload.jsonrpc, result: '0x64' })
+    )
     store.getState().removeAccount(account.id)
 
     expect(() => {

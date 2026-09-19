@@ -79,6 +79,21 @@ const selectors = createStore(subscribeWithSelector(() => base.getState()))
 const store = { ...base.store, subscribe: selectors.subscribe }
 const projection = createTransactionSimulationProjection(store)
 
+interface SafeHashContract {
+  getTransactionHash(
+    to: string,
+    value: string,
+    data: string,
+    operation: number,
+    safeTxGas: string,
+    baseGas: string,
+    gasPrice: string,
+    gasToken: string,
+    refundReceiver: string,
+    nonce: string
+  ): Promise<string>
+}
+
 function batch(calls: { to: string; value?: bigint; data?: string }[]) {
   return batchAbi.encodeFunctionData('multiSend', [
     concat(
@@ -300,7 +315,7 @@ beforeAll(async () => {
       data: tokenAbi.encodeFunctionData('transferFrom', [seed.safe, recipient, 1n])
     }
   }
-  const safe = new Contract(seed.safe, safeAbi, provider)
+  const safe = new Contract(seed.safe, safeAbi, provider) as unknown as SafeHashContract
   proposals = Object.fromEntries(
     await Promise.all(
       Object.entries(cases).map(async ([name, fields]) => {
@@ -325,14 +340,14 @@ beforeAll(async () => {
           proposal.value,
           proposal.data,
           proposal.operation,
-          proposal.safeTxGas,
-          proposal.baseGas,
-          proposal.gasPrice,
-          proposal.gasToken,
-          proposal.refundReceiver,
+          proposal.safeTxGas ?? '0',
+          proposal.baseGas ?? '0',
+          proposal.gasPrice ?? '0',
+          proposal.gasToken ?? ZeroAddress,
+          proposal.refundReceiver ?? ZeroAddress,
           proposal.nonce
         )
-        return [name, proposal]
+        return [name, proposal] as const
       })
     )
   )
