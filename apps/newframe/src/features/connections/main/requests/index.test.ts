@@ -2,31 +2,17 @@ import { describe, expect, it } from 'bun:test'
 
 import { mapRequest as mapRequestTyped } from './index'
 
-type TestRequest = {
-  jsonrpc: string
-  id: string | number
-  method: string
-  params: unknown
-  _origin?: string
-}
-type MappedRequest = {
-  jsonrpc?: string
-  id?: string | number
-  method?: string
-  params?: unknown
-  chainId?: string
-  _origin?: string
-}
-
-const mapRequest = (request: TestRequest) => mapRequestTyped(request as RPCRequestPayload) as MappedRequest
+// Real function under test, exercised with deliberately loose payload fixtures.
+const mapRequest = (request: unknown) => mapRequestTyped(request as RPCRequestPayload)
 
 describe('#mapRequest', () => {
   it('passes through a request that does not require mapping', () => {
-    const request = {
+    const request: RPCRequestPayload = {
       jsonrpc: '2.0',
       id: 4,
       method: 'eth_signTransaction',
-      params: ['atx']
+      params: ['atx'],
+      _origin: 'test'
     }
 
     expect(mapRequest(request)).toStrictEqual(request)

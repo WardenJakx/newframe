@@ -4,11 +4,12 @@ import { intToHex } from '@ethereumjs/util'
 
 import { createGasCalculator as createGasCalculatorTyped, type Block } from './gas'
 
-type TestBlock = Omit<Block, 'gasUsedRatio'> & { gasUsedRatio?: number }
+// real function under test, exercised with partial fee history fixtures
+type FeeHistoryBlock = Omit<Block, 'gasUsedRatio'> & { gasUsedRatio?: number }
 const createGasCalculator = (chainId?: string | number) => {
-  const calculator = createGasCalculatorTyped(chainId as string)
+  const calculator = createGasCalculatorTyped(String(chainId ?? ''))
   return {
-    calculateGas: async (blocks: TestBlock[]) => calculator.calculateGas(blocks as Block[])
+    calculateGas: async (blocks: FeeHistoryBlock[]) => calculator.calculateGas(blocks as Block[])
   }
 }
 import { gweiToHex } from '../../../../test/support/util'

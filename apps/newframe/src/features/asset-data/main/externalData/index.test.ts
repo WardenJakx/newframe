@@ -7,11 +7,9 @@ const mockBalancesFactory = mock(() => mockBalances)
 
 await mock.module('./balances', () => ({ default: mockBalancesFactory }))
 
-type ExternalDataFactory = typeof import('./index').default
-
-let dataManager!: ReturnType<ExternalDataFactory>
-let externalData!: ExternalDataFactory
-let mockBalances!: ReturnType<typeof createBalancesMock>
+let dataManager: ReturnType<typeof externalData>
+let externalData: typeof import('./index').default
+let mockBalances: ReturnType<typeof createBalancesMock>
 
 beforeAll(async () => {
   externalData = (await import('./index')).default

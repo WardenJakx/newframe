@@ -14,6 +14,14 @@ import {
 
 const temporaryRoots: string[] = []
 
+function versionFromJson(contents: string): string {
+  const value: unknown = JSON.parse(contents)
+  if (!value || typeof value !== 'object' || !("version" in value) || typeof value.version !== 'string') {
+    throw new Error('Expected JSON with a string version')
+  }
+  return value.version
+}
+
 function temporaryRoot(): string {
   const root = mkdtempSync(path.join(tmpdir(), 'newframe-release-test-'))
   temporaryRoots.push(root)
@@ -113,7 +121,7 @@ describe('release file preparation', () => {
       version: '2026.727.1',
       tag: 'desktop-v2026.727.1'
     })
-    expect(JSON.parse(readFileSync(path.join(root, 'apps/newframe/package.json'), 'utf8')).version).toBe(
+    expect(versionFromJson(readFileSync(path.join(root, 'apps/newframe/package.json'), 'utf8'))).toBe(
       '2026.727.1'
     )
     expect(readFileSync(path.join(root, 'apps/newframe-extension/package.json'), 'utf8')).toBe(
@@ -136,12 +144,12 @@ describe('release file preparation', () => {
       ['extension-v2026.727.4']
     )
 
-    const packageVersion = JSON.parse(
+    const packageVersion = versionFromJson(
       readFileSync(path.join(root, 'apps/newframe-extension/package.json'), 'utf8')
-    ).version
-    const manifestVersion = JSON.parse(
+    )
+    const manifestVersion = versionFromJson(
       readFileSync(path.join(root, 'apps/newframe-extension/src/manifest.json'), 'utf8')
-    ).version
+    )
     expect(packageVersion).toBe('2026.727.5')
     expect(manifestVersion).toBe(packageVersion)
     expect(readFileSync(path.join(root, 'apps/newframe/package.json'), 'utf8')).toBe(

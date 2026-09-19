@@ -176,7 +176,6 @@ export function listenForProviderClose(provider: EthersRpcProvider, onClose: () 
 
   try {
     const socket: unknown = provider.websocket
-
     if (isEventEmitterCloseSocket(socket)) {
       socket.on('close', onClose)
     } else if (isPropertyCloseSocket(socket)) {

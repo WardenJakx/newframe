@@ -2,10 +2,12 @@ import { beforeEach, describe, expect, it, type Mock } from 'bun:test'
 
 import { globalShortcut } from 'electron'
 
+import type { Shortcut } from '../../features/settings/domain/state/shortcuts'
+
 let registerShortcut: typeof import('./keyboardShortcuts').registerShortcut
 
 describe('registerShortcut', () => {
-  const shortcut: Parameters<typeof import('./keyboardShortcuts').registerShortcut>[0] = {
+  const shortcut: Shortcut = {
     shortcutKey: 'Slash',
     modifierKeys: ['Alt'],
     enabled: true,

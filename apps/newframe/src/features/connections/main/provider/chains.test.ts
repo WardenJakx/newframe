@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, jest as timers, mock } from 'bun:test'
 
 import store from '../../../../platform/state-store'
+import type { Origin } from '../../../connections/domain/state/origin'
+import type { Chain, ChainMetadata } from '../../../networks/domain/state/chain'
 import { createChainsObserver, createOriginChainObserver, getActiveChains } from './chains'
 
 const ether = {
@@ -10,29 +12,47 @@ const ether = {
   decimals: 18
 }
 
-const network = (id: number, name: string, on: boolean, connected: boolean, explorer?: string) => ({
-  id,
-  name,
-  explorer,
-  connection: { primary: { connected }, secondary: { connected: false } },
-  on
+const connection = (connected: boolean) => ({
+  on: true,
+  connected,
+  current: 'chainlist' as const,
+  status: connected ? ('connected' as const) : ('disconnected' as const),
+  custom: ''
 })
 
-const chains: any = {
+const network = (id: number, name: string, on: boolean, connected: boolean, explorer = ''): Chain => ({
+  id,
+  type: 'ethereum',
+  name,
+  explorer,
+  connection: { primary: connection(connected), secondary: connection(false) },
+  on,
+  isTestnet: id !== 1
+})
+
+const chains: Record<number, Chain> = {
   1: network(1, 'Ethereum Mainnet', true, true, 'https://etherscan.io'),
   137: network(137, 'Polygon', false, true),
   11155111: network(11155111, 'Ethereum Testnet Sepolia', true, false, 'https://sepolia.etherscan.io')
 }
 
-const chainMeta: any = {
+const metadata = (overrides: Partial<ChainMetadata> = {}): ChainMetadata => ({
+  gas: { samples: [], price: { selected: 'fast', levels: {} } },
+  nativeCurrency: ether,
+  primaryColor: 'accent1',
+  ...overrides
+})
+
+const chainMeta: Record<number, ChainMetadata> = {
   1: {
+    ...metadata(),
     icon: 'https://chain-icons.example/ethereum.png',
     image: { base64: 'aWNvbg==', contentHash: 'test-icon', mimeType: 'image/png' },
     nativeCurrency: ether,
     primaryColor: 'accent1'
   },
-  137: { nativeCurrency: {}, primaryColor: 'accent6' },
-  11155111: { nativeCurrency: { ...ether, name: 'Sepolia Ether' }, primaryColor: 'accent2' }
+  137: metadata({ primaryColor: 'accent6' }),
+  11155111: metadata({ nativeCurrency: { ...ether, name: 'Sepolia Ether' }, primaryColor: 'accent2' })
 }
 
 const selectedAddress = '0x2796317b0ff8538f253012862c06787adfb8ceb6'
@@ -88,14 +108,11 @@ describe('#createChainsObserver', () => {
       timers.runAllTimers()
     }
 
-    handler.chainsChanged = mock((_address: string, _chains: ReturnType<typeof getActiveChains>) => {})
+    handler.chainsChanged = mock()
   })
 
   it('invokes the handler with EVM chain objects', () => {
-    setChains(
-      { ...chains, 10: optimism },
-      { ...chainMeta, 10: { nativeCurrency: ether, primaryColor: 'accent4' } }
-    )
+    setChains({ ...chains, 10: optimism }, { ...chainMeta, 10: metadata({ primaryColor: 'accent4' }) })
 
     const expected = getActiveChains(store)
     fireObserver()
@@ -105,7 +122,7 @@ describe('#createChainsObserver', () => {
   ;[
     {
       description: 'added',
-      arrange: () => setChains({ ...chains, 10: optimism }, { ...chainMeta, 10: { nativeCurrency: ether } }),
+      arrange: () => setChains({ ...chains, 10: optimism }, { ...chainMeta, 10: metadata() }),
       expected: [1, 10, 11155111]
     },
     {
@@ -148,12 +165,18 @@ describe('#createChainsObserver', () => {
 
 describe('#createOriginChainObserver', () => {
   const handler = { chainChanged: mock(), networkChanged: mock() }
-  let observer: ReturnType<typeof createOriginChainObserver>
+  let observer: () => void
 
   const originId = '8073729a-5e59-53b7-9e69-5d9bcff94087'
-  const frameTestOrigin = {
+  const origin = (name: string, chainId: number): Origin => ({
+    name,
+    chain: { id: chainId, type: 'ethereum' },
+    session: { requests: 0, startedAt: 0, lastUpdatedAt: 0 }
+  })
+  const frameTestOrigin: Origin = {
+    ...origin('test.frame', 137),
     name: 'test.frame',
-    chain: { id: 137, type: 'ethereum', connection: { primary: {}, secondary: {} } }
+    chain: { id: 137, type: 'ethereum' }
   }
 
   beforeEach(() => {
@@ -179,7 +202,7 @@ describe('#createOriginChainObserver', () => {
   })
 
   it('does not invoke the handler the first time an origin is seen', () => {
-    const newOrigin = { name: 'send.eth', chain: { type: 'ethereum', id: 4 } }
+    const newOrigin = origin('send.eth', 4)
     setOrigins({ 'some-id': newOrigin })
 
     observer()
@@ -191,16 +214,16 @@ describe('#createOriginChainObserver', () => {
 
 // helper functions
 
-function setChains(chainState: any, chainMetaState = chainMeta) {
-  store.setState((state: any) => {
+function setChains(chainState: Record<number, Chain>, chainMetaState: typeof chainMeta = chainMeta) {
+  store.setState((state) => {
     state.main.currentAccount = selectedAddress
     state.main.networks.ethereum = chainState
     state.main.networksMeta.ethereum = chainMetaState
   })
 }
 
-function setOrigins(originState: any) {
-  store.setState((state: any) => {
+function setOrigins(originState: ReturnType<typeof store.getState>['main']['origins']) {
+  store.setState((state) => {
     state.main.origins = originState
   })
 }

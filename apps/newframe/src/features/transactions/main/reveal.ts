@@ -38,13 +38,6 @@ function hasToHexString(value: unknown): value is { toHexString(): string } {
   )
 }
 
-function requireString(value: unknown, label: string) {
-  if (typeof value !== 'string') {
-    throw new TypeError(`${label} must be a string`)
-  }
-  return value
-}
-
 function toHexAmount(value: unknown) {
   if (typeof value === 'bigint') {
     return addHexPrefix(value.toString(16))
@@ -52,8 +45,8 @@ function toHexAmount(value: unknown) {
   if (hasToHexString(value)) {
     return value.toHexString()
   }
-  const amount = typeof value === 'string' || typeof value === 'number' ? value : String(value ?? 0)
-  return addHexPrefix(BigInt(amount).toString(16))
+  const scalar = ['string', 'number', 'boolean'].includes(typeof value) ? value : 0
+  return addHexPrefix(BigInt(scalar as string | number | boolean).toString(16))
 }
 
 async function resolveEntityType(
@@ -105,7 +98,7 @@ async function recogErc20(
 
       const { decimals = 0, name, symbol } = await contract.getTokenData()
       if (Erc20Contract.isApproval(decoded)) {
-        const spenderAddress = requireString(decoded.args[0], 'Approval spender').toLowerCase()
+        const spenderAddress = String(decoded.args[0]).toLowerCase()
         const amount = toHexAmount(decoded.args[1])
 
         const [spenderIdentity, contractIdentity] = await Promise.all([
@@ -141,7 +134,7 @@ async function recogErc20(
 
             const txRequest = request as TransactionRequest
 
-            Reflect.set(data, 'amount', amount)
+            data.amount = amount ?? '0x0'
             txRequest.data.data = Erc20Contract.encodeCallData('approve', [spenderAddress, amount])
 
             if (txRequest.decodedData) {
@@ -151,7 +144,7 @@ async function recogErc20(
         }
         return action
       } else if (Erc20Contract.isTransfer(decoded)) {
-        const recipient = requireString(decoded.args[0], 'Transfer recipient').toLowerCase()
+        const recipient = String(decoded.args[0]).toLowerCase()
         const amount = toHexAmount(decoded.args[1])
         const identity = await surface.identity(recipient, chainId)
         const action: Erc20Transfer = {

@@ -570,8 +570,9 @@ export const projectionStateSchemas = {
   sidetray: SideTrayRendererStateSchema
 } as const
 
-function createProjectionChangesSchema<TSchema extends z.ZodObject>(schema: TSchema) {
+function createProjectionChangesSchema<TShape extends z.ZodRawShape>(schema: z.ZodObject<TShape>) {
   const shape = schema.shape
+  const fields = shape as unknown as Record<string, z.ZodType<unknown>>
 
   return z.record(z.string(), z.unknown()).transform((changes, context) => {
     const parsedChanges: Record<string, unknown> = {}
@@ -586,11 +587,11 @@ function createProjectionChangesSchema<TSchema extends z.ZodObject>(schema: TSch
         continue
       }
 
-      const propertySchema: unknown = (shape as Record<string, unknown>)[key]
-      if (!(propertySchema instanceof z.ZodType)) {
+      const field = fields[key]
+      if (!field) {
         continue
       }
-      const result = propertySchema.safeParse(value)
+      const result = field.safeParse(value)
       if (!result.success) {
         context.addIssue({
           code: 'custom',
@@ -603,7 +604,7 @@ function createProjectionChangesSchema<TSchema extends z.ZodObject>(schema: TSch
       parsedChanges[key] = result.data
     }
 
-    return parsedChanges as Partial<z.infer<TSchema>>
+    return parsedChanges as Partial<z.infer<z.ZodObject<TShape>>>
   })
 }
 

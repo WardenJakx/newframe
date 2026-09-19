@@ -2,10 +2,10 @@ import { afterAll, afterEach, beforeAll, beforeEach, expect, it, jest as timers,
 import EventEmitter from 'events'
 
 import log from 'electron-log'
-import type { Device } from 'node-hid'
 import { v5 as uuid } from 'uuid'
 
 import store from '../../../state-store'
+import type LedgerSignerAdapterType from './adapter'
 
 const ns = '3bbcee75-cecc-5b56-8031-b6641c1ed1f1'
 
@@ -64,7 +64,26 @@ const TransportNodeHidSingletonMock = {
   listen: mock(() => ({ unsubscribe: mock() }))
 }
 
-let connectedHids: Device[] = []
+interface ConnectedHid {
+  interface: number
+  path: string
+  product: string
+  usagePage: number
+}
+
+type PublicAdapter = {
+  [Key in keyof LedgerSignerAdapterType]: LedgerSignerAdapterType[Key]
+}
+
+type TestAdapter = Omit<PublicAdapter, 'reload'> & {
+  disconnections: Array<{ device: LedgerMock; timeout: NodeJS.Timeout }>
+  handleDeviceChanges(): void
+  handleDisconnectedDevice(device: LedgerMock): void
+  knownSigners: Record<string, LedgerMock>
+  reload(device: LedgerMock): void
+}
+
+let connectedHids: ConnectedHid[] = []
 
 await mock.module('./dependencies.js', () => ({
   getLedgerDevices: () => connectedHids,
@@ -77,15 +96,7 @@ await mock.module('./Ledger/index.js', () => ({
 }))
 
 function simulateLedgerConnection(path: string) {
-  connectedHids.push({
-    interface: 0,
-    path,
-    product: 'Nano S',
-    productId: 0,
-    release: 0,
-    usagePage: 0xffa0,
-    vendorId: 0
-  })
+  connectedHids.push({ interface: 0, product: 'Nano S', usagePage: 0xffa0, path })
 }
 
 function simulateLedgerDisconnection(path: string) {
@@ -93,34 +104,8 @@ function simulateLedgerDisconnection(path: string) {
   connectedHids.splice(hidIndex, 1)
 }
 
-type LedgerSignerAdapterConstructor = typeof import('./adapter').default
-type ProductionLedgerSignerAdapter = InstanceType<LedgerSignerAdapterConstructor>
-type LedgerSignerAdapterTestAccess = Pick<
-  ProductionLedgerSignerAdapter,
-  'close' | 'off' | 'on' | 'once' | 'open'
-> & {
-  disconnections: Array<{ device: LedgerMock; timeout: NodeJS.Timeout }>
-  handleDeviceChanges(): void
-  handleDisconnectedDevice(ledger: LedgerMock): void
-  knownSigners: Record<string, LedgerMock>
-  reload(ledger: LedgerMock): void
-}
-
-let LedgerSignerAdapter: LedgerSignerAdapterConstructor
-let adapter: LedgerSignerAdapterTestAccess
-
-function hasTestAccess(
-  value: ProductionLedgerSignerAdapter
-): value is ProductionLedgerSignerAdapter & LedgerSignerAdapterTestAccess {
-  const knownSigners: unknown = Reflect.get(value, 'knownSigners')
-  return (
-    typeof knownSigners === 'object' &&
-    knownSigners !== null &&
-    Array.isArray(Reflect.get(value, 'disconnections')) &&
-    typeof Reflect.get(value, 'handleDeviceChanges') === 'function' &&
-    typeof Reflect.get(value, 'handleDisconnectedDevice') === 'function'
-  )
-}
+let LedgerSignerAdapter: typeof LedgerSignerAdapterType
+let adapter: TestAdapter
 
 beforeAll(async () => {
   timers.useFakeTimers()
@@ -133,11 +118,7 @@ beforeEach(() => {
   connectedHids = []
   store.getState().clearHomeCommand()
 
-  const candidate = new LedgerSignerAdapter(store)
-  if (!hasTestAccess(candidate)) {
-    throw new Error('Ledger adapter test access is unavailable')
-  }
-  adapter = candidate
+  adapter = new LedgerSignerAdapter(store) as unknown as TestAdapter
   adapter.open()
 })
 

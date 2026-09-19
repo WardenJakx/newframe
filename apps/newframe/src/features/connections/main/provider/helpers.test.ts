@@ -3,19 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
 import { fromUtf8 } from '@ethereumjs/util'
 import log from 'electron-log'
 
-import * as helpersModule from './helpers'
-
-type RawTx = ReturnType<typeof helpersModule.getRawTx>
-type RawTxInput = Partial<Parameters<typeof helpersModule.getRawTx>[0]>
-
-const { decodeMessage, encodePersonalSignMessage } = helpersModule
-const getRawTx = (input: RawTxInput) =>
-  helpersModule.getRawTx(input as Parameters<typeof helpersModule.getRawTx>[0])
-const getSignedAddress = (
-  signed: string | null,
-  message: string | Uint8Array,
-  callback: Parameters<typeof helpersModule.getSignedAddress>[2]
-) => helpersModule.getSignedAddress(signed ?? '', message as string, callback)
+import { decodeMessage, encodePersonalSignMessage, getRawTx, getSignedAddress } from './helpers'
 
 beforeAll(async () => {
   log.transports.console.level = false
@@ -26,23 +14,25 @@ afterAll(() => {
 })
 
 describe('#getRawTx', () => {
-  const cases: Array<[string, RawTxInput, keyof RawTx, RawTx[keyof RawTx]]> = [
-    ['valid value', { value: '0x2540be400' }, 'value', '0x2540be400'],
-    ['leading-zero value', { value: '0x0a45c6' }, 'value', '0xa45c6'],
-    ['hex zero', { value: '0x0' }, 'value', '0x0'],
-    ['empty hex value', { value: '0x' }, 'value', '0x0'],
-    ['unprefixed zero', { value: '0' }, 'value', '0x0'],
-    ['missing value', { value: undefined }, 'value', '0x0'],
-    ['hex nonce', { nonce: '0x168' }, 'nonce', '0x168'],
-    ['integer nonce', { nonce: '360' }, 'nonce', '0x168'],
-    ['missing nonce', { nonce: undefined }, 'nonce', undefined]
-  ]
-  cases.forEach(([description, input, field, expected]) => {
-    it(`normalizes ${description}`, () => expect(getRawTx(input)[field]).toBe(expected))
+  ;(
+    [
+      ['valid value', { value: '0x2540be400' }, 'value', '0x2540be400'],
+      ['leading-zero value', { value: '0x0a45c6' }, 'value', '0xa45c6'],
+      ['hex zero', { value: '0x0' }, 'value', '0x0'],
+      ['empty hex value', { value: '0x' }, 'value', '0x0'],
+      ['unprefixed zero', { value: '0' }, 'value', '0x0'],
+      ['missing value', { value: undefined }, 'value', '0x0'],
+      ['hex nonce', { nonce: '0x168' }, 'nonce', '0x168'],
+      ['integer nonce', { nonce: '360' }, 'nonce', '0x168'],
+      ['missing nonce', { nonce: undefined }, 'nonce', undefined]
+    ] as const
+  ).forEach(([description, input, field, expected]) => {
+    it(`normalizes ${description}`, () =>
+      expect(getRawTx({ chainId: '0x1', ...input })[field]).toBe(expected))
   })
   ;['invalid', '-360', '3.60'].forEach((nonce) => {
     it(`rejects invalid nonce ${nonce}`, () => {
-      expect(() => getRawTx({ nonce })).toThrow('Invalid nonce')
+      expect(() => getRawTx({ chainId: '0x1', nonce })).toThrow('Invalid nonce')
     })
   })
 })
@@ -60,8 +50,7 @@ describe('#decodeMessage', () => {
 describe('#encodePersonalSignMessage', () => {
   it('preserves canonical UTF-8 bytes including newlines and a trailing zero nibble', () => {
     const message = 'Definitive Flash v1 — Cancel Order\nOrder: 7c2fec66-26cb-4455-844a-f638f3cb8680'
-    const expected: ReturnType<typeof encodePersonalSignMessage> =
-      `0x${Buffer.from(message, 'utf8').toString('hex')}`
+    const expected: `0x${string}` = `0x${Buffer.from(message, 'utf8').toString('hex')}`
 
     expect(encodePersonalSignMessage(message)).toBe(expected)
     expect(Buffer.from(expected.slice(2), 'hex').toString('utf8')).toBe(message)
@@ -78,14 +67,14 @@ describe('#getSignedAddress', () => {
       '0xa4ba512820eab7022d0c88b9335425b6235c184565c84fb9e451965844a185030baec17ac9565c666675525cae41e367c458c1fdf575a80f6a44197d3b48c0ba1c'
     const message = fromUtf8('Example `personal_sign` message')
 
-    getSignedAddress(signature, message, (err, verifiedAddress) => {
+    getSignedAddress(signature, message, (err, verifiedAddress = '') => {
       expect(err).toBeFalsy()
-      expect(verifiedAddress?.toLowerCase()).toBe('0x3a077715f7383ad97215d1a585778bce6a9aa8af')
+      expect(verifiedAddress.toLowerCase()).toBe('0x3a077715f7383ad97215d1a585778bce6a9aa8af')
     })
   })
 
   it('returns an error if no signature is provided', () => {
-    getSignedAddress(null, 'some message', (err) => {
+    getSignedAddress('', 'some message', (err) => {
       expect(err).toBeTruthy()
     })
   })

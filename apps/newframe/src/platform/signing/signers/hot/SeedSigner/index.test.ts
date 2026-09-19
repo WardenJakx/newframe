@@ -7,12 +7,11 @@ import path from 'node:path'
 import log from 'electron-log'
 import { Mnemonic, randomBytes } from 'ethers'
 
+import type SeedSigner from '.'
 import { electronMock } from '../../../../../../test/support/electron.mock.ts'
-import { GasFeesSource } from '../../../../../features/transactions/domain/index.ts'
+import { GasFeesSource } from '../../../../../features/transactions/domain'
 import { callbackResult, exerciseHotSignerContract } from '../../callback.test-support.ts'
-import type Signer from '../../Signer/index.ts'
-
-type SeedSigner = InstanceType<typeof import('./index').default>
+import type Signer from '../../Signer'
 
 const USER_DATA = fs.mkdtempSync(path.join(tmpdir(), 'newframe-seed-test-'))
 const SIGNER_PATH = path.join(USER_DATA, 'signers')
@@ -31,6 +30,7 @@ const vault = {
 }
 
 let hot: typeof import('..')
+const isSeedSigner = (value: Signer): value is SeedSigner => 'encryptedSeed' in value
 
 describe('Seed signer', () => {
   let signer: SeedSigner
@@ -56,7 +56,7 @@ describe('Seed signer', () => {
 
   test('stores one versioned encrypted seed and loads it without rewriting', async () => {
     const added: Signer[] = []
-    signer = (await callbackResult<Signer>((done) =>
+    const created = await callbackResult<Signer>((done) =>
       hot.createFromPhrase(
         vault,
         { add: (value) => added.push(value), exists: () => false },
@@ -64,11 +64,18 @@ describe('Seed signer', () => {
         '',
         done
       )
-    )) as SeedSigner
+    )
+    if (!isSeedSigner(created)) {
+      throw new Error('Expected seed signer')
+    }
+    signer = created
     expect(signer.addresses).toHaveLength(100)
     const signerFile = path.resolve(SIGNER_PATH, `${signer.id}.json`)
     const before = fs.readFileSync(signerFile, 'utf8')
-    const stored = JSON.parse(before)
+    const stored = hot.StoredHotSignerSchema.parse(JSON.parse(before))
+    if (stored.type !== 'seed') {
+      throw new Error('Expected stored seed signer')
+    }
     expect(stored).toMatchObject({ version: 1, type: 'seed' })
     expect(stored.encryptedSeed.algorithm).toBe('aes-256-gcm')
     expect(before).not.toContain('mnemonic')
@@ -152,7 +159,9 @@ describe('Seed signer', () => {
       expect(signed).toBe(expected)
     }
     expect(
-      callbackResult((done) => fixed.signTransaction(0, { ...rawTx, chainId: '' }, done))
+      callbackResult((done) =>
+        fixed.signTransaction(0, { ...rawTx, chainId: '', gasFeesSource: GasFeesSource.Dapp }, done)
+      )
     ).rejects.toThrow('could not determine chain id for transaction')
   })
 })

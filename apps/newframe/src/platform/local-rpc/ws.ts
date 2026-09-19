@@ -292,7 +292,11 @@ export function createWebSocketRpcTransport({
   }
 
   const subscriptionHandler = (payload: RPC.Susbcription.Response) => {
-    const subscription = subs[payload.params.subscription]
+    const subscriptionId = (payload.params as { subscription?: unknown }).subscription
+    if (typeof subscriptionId !== 'string') {
+      return
+    }
+    const subscription = subs[subscriptionId]
     if (subscription?.socket.readyState === openReadyState) {
       subscription.socket.send(JSON.stringify(payload))
     }

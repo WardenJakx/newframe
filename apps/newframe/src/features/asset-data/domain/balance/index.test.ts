@@ -41,7 +41,7 @@ describe('#createBalance', () => {
 })
 
 describe('#sortByTotalValue', () => {
-  const mockBalance = (totalValue: any, balance = 0, decimals = 0) => ({
+  const mockBalance = (totalValue: number, balance = 0, decimals = 0) => ({
     totalValue,
     decimals,
     balance
@@ -49,7 +49,7 @@ describe('#sortByTotalValue', () => {
 
   it('should sort balances in descending order by total value', () => {
     const values = [10, 100, 60]
-    const unsorted: any[] = values.map(mockBalance as any)
+    const unsorted = values.map((value) => mockBalance(value))
 
     const sortedValues = unsorted.sort(byTotalValue as any).map((b) => b.totalValue)
 

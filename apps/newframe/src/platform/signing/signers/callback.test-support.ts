@@ -1,14 +1,7 @@
 import { expect } from 'bun:test'
 
-import { GasFeesSource, type TransactionData } from '../../../features/transactions/domain/index.js'
-import type Signer from './Signer/index.js'
-
-type HotSignerContract = Pick<
-  Signer,
-  'addresses' | 'close' | 'signMessage' | 'signTransaction' | 'verifyAddress'
-> & {
-  exportPrivateKey(index: number, cb: Callback<string>): void
-}
+import { GasFeesSource } from '../../../features/transactions/domain'
+import type HotSigner from './hot/HotSigner'
 
 export function callbackResult<T>(start: (done: Callback<T>) => void): Promise<T> {
   return new Promise((resolve, reject) =>
@@ -16,7 +9,7 @@ export function callbackResult<T>(start: (done: Callback<T>) => void): Promise<T
   )
 }
 
-export async function exerciseHotSignerContract(signer: HotSignerContract, vault: { lock(): void }) {
+export async function exerciseHotSignerContract(signer: HotSigner, vault: { lock(): void }) {
   const signature = await callbackResult<string>((done) =>
     signer.signMessage(0, '0x' + Buffer.from('test').toString('hex'), done)
   )
@@ -34,7 +27,7 @@ export async function exerciseHotSignerContract(signer: HotSignerContract, vault
         chainId: '0x1',
         type: '0x0',
         gasFeesSource: GasFeesSource.Dapp
-      } satisfies TransactionData,
+      },
       done
     )
   )
@@ -43,7 +36,7 @@ export async function exerciseHotSignerContract(signer: HotSignerContract, vault
   expect(
     await callbackResult<boolean>((done) => signer.verifyAddress(0, signer.addresses[0], false, done))
   ).toBeTrue()
-  expect(callbackResult((done) => signer.verifyAddress(0, '0xabcdef', false, done))).rejects.toThrow(
+  expect(callbackResult<boolean>((done) => signer.verifyAddress(0, '0xabcdef', false, done))).rejects.toThrow(
     'Unable to verify address'
   )
 

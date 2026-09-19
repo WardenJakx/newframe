@@ -44,7 +44,15 @@ class AdapterMock extends EventEmitter {
   }
 }
 
-const createFromPrivateKey = mock<typeof import('./hot').createFromPrivateKey>()
+const createFromPrivateKey = mock(
+  (
+    _vault: { acquireKey(password?: string): string },
+    _collection: { add(signer: Signer): void },
+    _key: string,
+    _password: string,
+    _done: Callback<Signer>
+  ) => {}
+)
 
 await mock.module('./hot/HotSigner', () => ({ default: HotSignerMock }))
 await mock.module('./hot', () => ({
@@ -228,12 +236,8 @@ it('unlocks only the vault and publishes post-create vault state on success or f
 
   deps.vault.summary.mockReturnValue({ exists: true, unlocked: true })
   createFromPrivateKey.mockImplementation((_vault, collection, _key, _password, done) => {
-    const signer = signers.get(handle.id)
-    if (!signer) {
-      throw new Error('Expected the test signer to be registered')
-    }
-    collection.add(signer)
-    done(null, signer)
+    collection.add(handle as unknown as Signer)
+    done(null, handle as unknown as Signer)
   })
   signers.createFromPrivateKey('11'.repeat(32), 'password', () => {})
   expect(store.getState().main.appLock).toEqual({ locked: false, vaultExists: true })

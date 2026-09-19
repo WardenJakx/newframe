@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'bun:test'
 
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 
-import type { TypedMessage } from '../../../features/requests/contract/requests.ts'
+import type { TypedMessage } from '../../../features/requests/contract/requests'
 import * as signatureParser from './index'
 
 describe('#identify', () => {
@@ -56,18 +56,13 @@ describe('#identify', () => {
   })
 
   it('should return the base typed signature type when unable to identify a request', () => {
-    typedMessage.data.types.Permit = [
-      { name: 'owner', type: 'address' },
-      { name: 'spender', type: 'address' },
-      { name: 'value', type: 'uint256' },
-      { name: 'nonce', type: 'uint256' }
-    ]
+    typedMessage.data.types.Permit.pop()
 
     expect(signatureParser.identify(typedMessage)).toBe('signTypedData')
   })
 
   it('should successfully identfy empty types arrays', () => {
-    typedMessage.data.types = { EIP712Domain: [] }
+    typedMessage.data.types = { EIP712Domain: [], Permit: [] }
 
     expect(signatureParser.identify(typedMessage)).toBe('signTypedData')
   })
