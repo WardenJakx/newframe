@@ -11,6 +11,7 @@ import {
   type FrameExtension,
   type OriginsService
 } from '../../features/connections/main/origins.js'
+import { WebSocketJsonRpcRequestSchema, type WebSocketJsonRpcRequest } from './protocol.js'
 import {
   createOriginSessionMonitor,
   type ApiTimerPort,
@@ -53,12 +54,6 @@ interface FrameWebSocket extends WebSocket {
   origin?: string
   frameExtension?: FrameExtension
   companionInternal: boolean
-}
-
-interface ExtensionPayload extends JSONRPCRequestPayload {
-  __frameOrigin?: string
-  __frameFavicon?: unknown
-  __extensionConnecting?: boolean
 }
 
 interface WebSocketProviderPort extends RpcProviderSendPort {
@@ -165,7 +160,10 @@ export function createWebSocketRpcTransport({
     }
 
     const processMessage = async (data: WebSocket.RawData) => {
-      const rawPayload = validPayload<ExtensionPayload>(rawDataText(data))
+      const rawPayload: WebSocketJsonRpcRequest | false = validPayload(
+        rawDataText(data),
+        WebSocketJsonRpcRequestSchema
+      )
       if (!rawPayload) {
         log.warn('Invalid WebSocket RPC payload')
         return
@@ -208,12 +206,12 @@ export function createWebSocketRpcTransport({
           log.info(
             `req -> | ${socket.frameExtension ? 'ext' : 'ws'} | ${origin} | ${
               rawPayload.method
-            } | -> | ${rawPayload.params}`
+            } | -> | ${JSON.stringify(rawPayload.params)}`
           )
         }
 
         await requestHandler({
-          rawPayload,
+          rawPayload: rawPayload as JSONRPCRequestPayload,
           origin,
           chainHint: parseRequestChainId(req),
           identity: {

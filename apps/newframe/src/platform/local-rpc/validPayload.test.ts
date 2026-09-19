@@ -1,9 +1,15 @@
 import { afterAll, beforeAll, beforeEach, expect, it } from 'bun:test'
 
+import {
+  HttpJsonRpcRequestSchema,
+  RoutedJsonRpcRequestSchema,
+  WebSocketJsonRpcRequestSchema
+} from './protocol'
 import validatePayloadTyped from './validPayload'
 
 // real function under test, exercised with invalid payloads
-const validatePayload = validatePayloadTyped as (payload: unknown) => ReturnType<typeof validatePayloadTyped>
+const validatePayload = (payload: unknown) =>
+  validatePayloadTyped(payload as string, RoutedJsonRpcRequestSchema)
 
 import log from 'electron-log'
 
@@ -123,9 +129,53 @@ it('is not valid if jsonrpc field is not a string', () => {
   expect(result).toBe(false)
 })
 
-it('is not valid if params are not an array or objecvt', () => {
+it('is not valid if jsonrpc field is not exactly 2.0', () => {
+  payload.jsonrpc = '1.0'
+  const result = validatePayload(JSON.stringify(payload))
+
+  expect(result).toBe(false)
+})
+
+it('is not valid if params are not an array or object', () => {
   payload.params = 'params'
   const result = validatePayload(JSON.stringify(payload))
 
   expect(result).toBe(false)
+})
+
+it('is not valid if params are null', () => {
+  payload.params = null
+  const result = validatePayload(JSON.stringify(payload))
+
+  expect(result).toBe(false)
+})
+
+it('is not valid with an unknown field', () => {
+  const result = validatePayload(JSON.stringify({ ...payload, extra: true }))
+
+  expect(result).toBe(false)
+})
+
+it('accepts an explicit routed chain id', () => {
+  const result = validatePayload(JSON.stringify({ ...payload, chainId: '0x1' }))
+
+  expect(result as unknown).toEqual({ ...payload, chainId: '0x1' })
+})
+
+it('accepts extensions only through their transport schema', () => {
+  const httpPayload = { ...payload, pollId: 'poll-1' }
+  const webSocketPayload = {
+    ...payload,
+    __frameOrigin: 'https://app.example',
+    __frameFavicon: 'https://app.example/favicon.png',
+    __extensionConnecting: true
+  }
+
+  expect(validatePayloadTyped(JSON.stringify(httpPayload), HttpJsonRpcRequestSchema) as unknown).toEqual(
+    httpPayload
+  )
+  expect(
+    validatePayloadTyped(JSON.stringify(webSocketPayload), WebSocketJsonRpcRequestSchema) as unknown
+  ).toEqual(webSocketPayload)
+  expect(validatePayload(JSON.stringify(httpPayload))).toBe(false)
 })

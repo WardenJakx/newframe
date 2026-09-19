@@ -1,22 +1,14 @@
 import log from 'electron-log'
+import type { z } from 'zod'
 
-export default function <T extends JSONRPCRequestPayload>(data: string): T | false {
+export default function <TSchema extends z.ZodType>(
+  data: string,
+  schema: TSchema
+): z.output<TSchema> | false {
   try {
     const payload: unknown = JSON.parse(data)
-
-    if (typeof payload === 'object' && payload !== null && 'id' in payload && 'method' in payload) {
-      const payloadRecord = payload as Record<string, unknown>
-      payloadRecord.params ??= []
-
-      return (
-        !!(
-          (typeof payload.id === 'number' || typeof payload.id === 'string') &&
-          typeof payloadRecord.jsonrpc === 'string' &&
-          typeof payloadRecord.method === 'string' &&
-          (Array.isArray(payloadRecord.params) || typeof payloadRecord.params === 'object')
-        ) && (payloadRecord as T)
-      )
-    }
+    const parsed = schema.safeParse(payload)
+    return parsed.success ? parsed.data : false
   } catch (e) {
     log.info('Error parsing payload: ', data, e)
   }

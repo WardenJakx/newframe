@@ -5,6 +5,7 @@ import log from 'electron-log'
 
 import { isAgentHttpRequest } from '../../features/agent-access/main/index.js'
 import { parseOrigin, parseRequestChainId } from '../../features/connections/main/origins.js'
+import { HttpJsonRpcRequestSchema, type HttpJsonRpcRequest } from './protocol.js'
 import {
   createOriginSessionMonitor,
   type ApiTimerPort,
@@ -22,10 +23,6 @@ interface PendingRequest {
 interface Subscription {
   id: string
   origin: string
-}
-
-interface HTTPPollingPayload extends JSONRPCRequestPayload {
-  pollId?: string
 }
 
 interface HttpProviderPort extends RpcProviderSendPort {
@@ -149,7 +146,7 @@ export function createHttpRpcTransport({
     const processRequest = async () => {
       res.on('error', (error) => log.error('HTTP response error', error))
       const data = Buffer.concat(body).toString()
-      const rawPayload = validPayload<HTTPPollingPayload>(data)
+      const rawPayload: HttpJsonRpcRequest | false = validPayload(data, HttpJsonRpcRequestSchema)
       if (!rawPayload) {
         log.warn('Invalid HTTP RPC payload')
         res.writeHead(400, { 'Content-Type': 'application/json' })
@@ -183,7 +180,7 @@ export function createHttpRpcTransport({
       }
 
       await requestHandler({
-        rawPayload,
+        rawPayload: rawPayload as JSONRPCRequestPayload,
         origin,
         chainHint: parseRequestChainId(req),
         identity: {

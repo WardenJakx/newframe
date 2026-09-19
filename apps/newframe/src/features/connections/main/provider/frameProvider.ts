@@ -1,10 +1,15 @@
 import EventEmitter from 'events'
 
+import log from 'electron-log'
+
+import {
+  extractJsonRpcId,
+  JsonRpcResponseOrNotificationSchema
+} from '../../../../platform/local-rpc/protocol.js'
 import {
   createError,
   createJsonRpcProvider,
   FrameWebSocketProvider,
-  isRpcResponsePayload,
   listenForProviderClose,
   sendRawPayload,
   withTimeout,
@@ -232,8 +237,11 @@ class FrameProxyProvider extends EventedRequestProvider {
     this.connection.on('connect', () => this.markConnected(this.chainId))
     this.connection.on('close', () => this.markClosed())
     this.connection.on('payload', (payload: unknown) => {
-      if (isRpcResponsePayload(payload)) {
-        this.handlePayload(payload)
+      const parsed = JsonRpcResponseOrNotificationSchema.safeParse(payload)
+      if (parsed.success) {
+        this.handlePayload(parsed.data)
+      } else {
+        this.handleInvalidPayload(payload)
       }
     })
   }
@@ -265,10 +273,6 @@ class FrameProxyProvider extends EventedRequestProvider {
       return
     }
 
-    if (!('id' in payload) || typeof payload.id === 'undefined') {
-      return
-    }
-
     const promise = this.promises[payload.id]
     if (!promise) {
       return
@@ -276,11 +280,25 @@ class FrameProxyProvider extends EventedRequestProvider {
 
     delete this.promises[payload.id]
 
-    if ('error' in payload && payload.error) {
+    if ('error' in payload) {
       promise.reject(createError(payload.error))
     } else {
       promise.resolve(payload.result)
     }
+  }
+
+  private handleInvalidPayload(payload: unknown) {
+    const error = Object.assign(new Error('Invalid JSON-RPC response'), { code: -32603 })
+    log.error(error.message)
+    const id = extractJsonRpcId(payload)
+    const promise = id === undefined ? undefined : this.promises[id]
+
+    if (promise && id !== undefined) {
+      delete this.promises[id]
+      promise.reject(error)
+    }
+
+    this.handleProviderError(error)
   }
 }
 

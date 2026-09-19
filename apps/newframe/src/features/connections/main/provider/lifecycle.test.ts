@@ -4,7 +4,9 @@ import EventEmitter from 'events'
 import createCanonicalStore from '../../../../platform/state-store/createCanonicalStore'
 import type { Chains } from '../../../networks/main'
 import type { AccountRequestPort } from './accountRequestPort'
+import { createProxyProvider } from './frameProvider'
 import { Provider } from './index'
+import { createProviderProxyConnection } from './proxy'
 import { createProviderStatePort } from './statePort'
 
 const memoryStorage = {
@@ -34,9 +36,9 @@ function createRequestContinuations() {
   }
 }
 
-function createProviderFixture(chainId?: number, start = false) {
+function createProviderFixture(chainId?: number, start = false, proxy = new EventEmitter()) {
   const connection = Object.assign(new EventEmitter(), {
-    connections: {},
+    connections: { ethereum: chainId ? { [chainId]: {} } : {} },
     refreshGasFees: async () => {},
     send: () => {}
   }) as unknown as Chains
@@ -46,7 +48,6 @@ function createProviderFixture(chainId?: number, start = false) {
       state.main.networks.ethereum[chainId] = { ...state.main.networks.ethereum[1], id: chainId, on: true }
     })
   }
-  const proxy = new EventEmitter()
   const requests = createRequestContinuations()
   const provider = new Provider({
     accounts: {} as AccountRequestPort,
@@ -62,6 +63,53 @@ function createProviderFixture(chainId?: number, start = false) {
   }
   return { connection, provider, proxy, requests }
 }
+
+it('round trips a canonical response through the real provider proxy', async () => {
+  const proxy = createProviderProxyConnection()
+  const { provider } = createProviderFixture(10, false, proxy)
+  const frameProvider = createProxyProvider(proxy)
+  const responses: unknown[] = []
+  proxy.on('payload', (payload) => responses.push(payload))
+  frameProvider.setChain('0xa')
+
+  provider.start()
+  proxy.start()
+
+  expect(await frameProvider.request<string>({ method: 'eth_chainId' })).toBe('0xa')
+  expect(responses).toEqual([{ id: 1, jsonrpc: '2.0', result: '0xa' }])
+  expect(responses[0]).not.toHaveProperty('method')
+
+  frameProvider.close()
+  provider.dispose()
+  proxy.dispose()
+})
+
+it('rejects a correlated malformed proxy response', async () => {
+  let requestId: string | number | undefined
+  const connection = Object.assign(new EventEmitter(), {
+    send(payload: { id: string | number }) {
+      requestId = payload.id
+    }
+  })
+  const frameProvider = createProxyProvider(connection)
+  connection.emit('connect')
+
+  const request = frameProvider.request({ method: 'eth_chainId' })
+  connection.emit('payload', {
+    id: requestId,
+    jsonrpc: '2.0',
+    method: 'eth_chainId',
+    result: '0x1'
+  })
+
+  const error = await request.then(
+    () => undefined,
+    (reason: unknown) => reason
+  )
+  expect(error).toBeInstanceOf(Error)
+  expect((error as Error).message).toBe('Invalid JSON-RPC response')
+  frameProvider.close()
+})
 
 it('constructs without listeners and owns an idempotent start/dispose lifecycle', () => {
   const { connection, provider, requests } = createProviderFixture()
