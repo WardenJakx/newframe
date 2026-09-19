@@ -141,12 +141,21 @@ class RingSigner extends HotSigner {
     cb(null, this)
   }
 
-  async addKeystore(keystore: any, keystorePassword: string, vaultKeyHex: string, cb: Callback<RingSigner>) {
+  async addKeystore(
+    keystore: unknown,
+    keystorePassword: string,
+    vaultKeyHex: string,
+    cb: Callback<RingSigner>
+  ) {
     let privateKey: Buffer | undefined
     try {
-      const version = keystore.version ?? Number(keystore.Version)
+      if (!keystore || typeof keystore !== 'object' || Array.isArray(keystore)) {
+        return cb(new Error('Invalid keystore version'), undefined)
+      }
+      const candidate = keystore as { version?: unknown; Version?: unknown }
+      const version = candidate.version ?? Number(candidate.Version)
       if (version === 1) {
-        privateKey = await decryptV1Keystore(keystore, keystorePassword)
+        privateKey = await decryptV1Keystore(keystore as V1Keystore, keystorePassword)
       } else if (version === 3) {
         const wallet = await Wallet.fromEncryptedJson(JSON.stringify(keystore), keystorePassword)
         privateKey = hexToBuffer(wallet.privateKey)

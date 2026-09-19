@@ -98,6 +98,8 @@ interface TransactionMetadata {
 type ProviderSubscriptionType = SubscriptionType | 'chainChanged' | 'networkChanged'
 
 type AccountHandle = NonNullable<ReturnType<AccountRequestPort['getFrameAccount']>>
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value)
 
 export interface ProviderDependencies {
   accounts: AccountRequestPort
@@ -431,6 +433,9 @@ export class Provider extends EventEmitter {
   approveSignTypedData(req: SignTypedDataRequest, cb: Callback<string>, context?: SigningUiContext) {
     const typedMessage = structuredClone(req.typedMessage)
     const [address] = req.payload.params
+    if (typeof address !== 'string') {
+      return cb(new Error('TypedData request missing address'))
+    }
 
     this.accounts.signTypedData(
       address,
@@ -465,7 +470,7 @@ export class Provider extends EventEmitter {
       chainId: parseInt(chainId, 16)
     }
 
-    const connection = this.connection.connections['ethereum'][txRequest.chainId] as any
+    const connection = this.connection.connections['ethereum'][txRequest.chainId]
     const connectedProvider = connection?.primary?.connected
       ? connection.primary?.provider
       : connection.secondary?.provider
@@ -483,7 +488,7 @@ export class Provider extends EventEmitter {
 
     if (feeTotalOverMax(rawTx, maxTotalFee)) {
       const chainId = parseInt(rawTx.chainId)
-      const symbol = (this.store.getState().main.networks.ethereum[chainId] as any)?.symbol
+      const symbol = this.store.getState().main.networks.ethereum[chainId]?.symbol
       const displayAmount = symbol ? ` (${Math.floor(maxTotalFee / 1e18)} ${symbol})` : ''
 
       const err = `Max fee is over hard limit${displayAmount}`
@@ -843,9 +848,10 @@ export class Provider extends EventEmitter {
       }
     }
 
-    if (!typedData || typeof typedData !== 'object' || Array.isArray(typedData) || !typedData.message) {
+    if (!isRecord(typedData) || !typedData.message) {
       return resError('Typed data missing message', rawPayload, res)
     }
+    const validatedTypedData = typedData as TypedData
 
     let explicitVersion: SignTypedDataVersion | undefined
     if (rawPayload.method.endsWith('_v3')) {
@@ -853,16 +859,16 @@ export class Provider extends EventEmitter {
     } else if (rawPayload.method.endsWith('_v4')) {
       explicitVersion = SignTypedDataVersion.V4
     }
-    const version = explicitVersion ?? getVersionFromTypedData(typedData)
+    const version = explicitVersion ?? getVersionFromTypedData(validatedTypedData)
     if (![SignTypedDataVersion.V3, SignTypedDataVersion.V4].includes(version)) {
       return resError('Agent typed-data signing supports only v3 and v4', rawPayload, res)
     }
 
     const payload = {
       ...rawPayload,
-      params: [account.id, typedData, ...additionalParams]
+      params: [account.id, validatedTypedData, ...additionalParams]
     } as RPC.SignTypedData.Request
-    const typedMessage: TypedMessage = { data: typedData, version }
+    const typedMessage: TypedMessage = { data: validatedTypedData, version }
     const digests = getEip712Digests(typedMessage)
     const handlerId = this.requests.create(res)
     const respond = (response: RPCResponsePayload) => this.requests.respond(handlerId, response)
@@ -1043,8 +1049,8 @@ export class Provider extends EventEmitter {
   }
 
   getTransactionByHash(payload: RPCRequestPayload, cb: RPCRequestCallback, targetChain: Chain) {
-    const res = (response: any) => {
-      if (response.result && !response.result.gasPrice && response.result.maxFeePerGas) {
+    const res: RPCRequestCallback = (response) => {
+      if (isRecord(response.result) && !response.result.gasPrice && response.result.maxFeePerGas) {
         return cb({ ...response, result: { ...response.result, gasPrice: response.result.maxFeePerGas } })
       }
 
@@ -1130,15 +1136,19 @@ export class Provider extends EventEmitter {
       }
     }
 
-    if (!Array.isArray(typedData) && !typedData.message) {
+    if (!Array.isArray(typedData) && (!isRecord(typedData) || !typedData.message)) {
       return resError('Typed data missing message', payload, res)
     }
+    const validatedTypedData = typedData as LegacyTypedData | TypedData
 
     // no explicit version called so we choose one which best fits the data
     if (!version) {
-      version = getVersionFromTypedData(typedData)
+      version = getVersionFromTypedData(validatedTypedData)
     }
 
+    if (typeof from !== 'string') {
+      return resError('Sign request missing account', payload, res)
+    }
     const targetAccount = this.accounts.get(from.toLowerCase())
 
     if (!targetAccount) {
@@ -1170,7 +1180,7 @@ export class Provider extends EventEmitter {
 
     const handlerId = this.requests.create(res)
     const typedMessage: TypedMessage<typeof version> = {
-      data: typedData,
+      data: validatedTypedData,
       version
     }
     const digests = getEip712Digests(typedMessage)
@@ -1270,7 +1280,7 @@ export class Provider extends EventEmitter {
   private getOriginConnection(payload: RPCRequestPayload) {
     const originId = payload._origin
     const origin = this.store.getState().main.origins[originId]
-    const currentAccount = this.accounts.current() as any
+    const currentAccount = this.accounts.current()
     const rawAddress = currentAccount?.address ?? currentAccount?.id ?? ''
     const address = rawAddress ? rawAddress.toLowerCase() : ''
     const permissionAddresses = Array.from(
@@ -1364,7 +1374,7 @@ export class Provider extends EventEmitter {
   private switchEthereumChain(payload: RPCRequestPayload, res: RPCRequestCallback) {
     try {
       const params = payload.params
-      if (!params?.[0]) {
+      if (!isRecord(params?.[0])) {
         throw new Error('Params not supplied')
       }
 
@@ -1401,7 +1411,7 @@ export class Provider extends EventEmitter {
     res: RPCRequestCallback,
     principal: TrustedPrincipal
   ) {
-    if (!payload.params[0]) {
+    if (!isRecord(payload.params[0])) {
       return resError('addChain request missing params', payload, res)
     }
 
@@ -1438,7 +1448,7 @@ export class Provider extends EventEmitter {
         return resError('addChain request missing chainName', payload, res)
       }
       if (
-        !nativeCurrency ||
+        !isRecord(nativeCurrency) ||
         typeof nativeCurrency.name !== 'string' ||
         typeof nativeCurrency.symbol !== 'string' ||
         nativeCurrency.decimals !== 18
@@ -1452,6 +1462,11 @@ export class Provider extends EventEmitter {
         return resError('Invalid block explorer URL', payload, res)
       }
     }
+
+    const customChainName = chainName as string
+    const customCurrency = nativeCurrency as { decimals: number; name: string; symbol: string }
+    const customRpcUrls = rpcUrls as string[]
+    const customExplorerUrls = blockExplorerUrls as string[]
 
     const metadata = this.store.getState().main.networksMeta[type][id]
     let icon = typeof metadata?.icon === 'string' ? metadata.icon.trim() : ''
@@ -1476,12 +1491,12 @@ export class Provider extends EventEmitter {
       : {
           type,
           id,
-          name: chainName.trim(),
-          symbol: nativeCurrency.symbol,
-          primaryRpc: rpcUrls[0],
-          secondaryRpc: rpcUrls[1],
-          explorer: blockExplorerUrls[0] ?? '',
-          nativeCurrencyName: nativeCurrency.name,
+          name: customChainName.trim(),
+          symbol: customCurrency.symbol,
+          primaryRpc: customRpcUrls[0],
+          secondaryRpc: customRpcUrls[1],
+          explorer: customExplorerUrls[0] ?? '',
+          nativeCurrencyName: customCurrency.name,
           ...(icon ? { icon } : {})
         }
     this.accounts.routeRequest(principal, {
@@ -1500,9 +1515,11 @@ export class Provider extends EventEmitter {
     targetChain: Chain,
     principal: TrustedPrincipal
   ) {
-    const { type, options: tokenData } = (payload.params || {}) as any
+    const tokenParams = isRecord(payload.params) ? payload.params : undefined
+    const type = tokenParams?.type
+    const tokenData = tokenParams?.options
 
-    if ((type ?? '').toLowerCase() !== 'erc20') {
+    if (typeof type !== 'string' || type.toLowerCase() !== 'erc20' || !isRecord(tokenData)) {
       return resError('only ERC-20 tokens are supported', payload, cb)
     }
 
@@ -1514,9 +1531,13 @@ export class Provider extends EventEmitter {
         }
 
         const chainId = parseInt(resp.result)
-        const address = (tokenData.address ?? '').toLowerCase()
-        const symbol = (tokenData.symbol ?? '').toUpperCase()
-        const decimals = parseInt(tokenData.decimals ?? '1')
+        const address = typeof tokenData.address === 'string' ? tokenData.address.toLowerCase() : ''
+        const symbol = typeof tokenData.symbol === 'string' ? tokenData.symbol.toUpperCase() : ''
+        const decimals = parseInt(
+          typeof tokenData.decimals === 'string' || typeof tokenData.decimals === 'number'
+            ? String(tokenData.decimals)
+            : '1'
+        )
 
         if (!address) {
           return resError('tokens must define an address', payload, cb)
@@ -1535,13 +1556,20 @@ export class Provider extends EventEmitter {
           return res({ id: payload.id, jsonrpc: '2.0', result: true })
         }
 
+        let logoURI = ''
+        if (typeof tokenData.image === 'string') {
+          logoURI = tokenData.image
+        } else if (typeof tokenData.logoURI === 'string') {
+          logoURI = tokenData.logoURI
+        }
+
         const token = {
           chainId,
-          name: tokenData.name ?? capitalize(symbol),
+          name: typeof tokenData.name === 'string' ? tokenData.name : capitalize(symbol),
           address,
           symbol,
           decimals,
-          logoURI: tokenData.image ?? tokenData.logoURI ?? ''
+          logoURI
         }
 
         const handlerId = this.requests.create(res)

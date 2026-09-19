@@ -159,13 +159,17 @@ export function listenForProviderClose(provider: EthersRpcProvider, onClose: () 
   }
 
   try {
-    const socket = provider.websocket as any
+    const socket: unknown = provider.websocket
+    if (!socket || typeof socket !== 'object') {
+      return
+    }
 
-    if (typeof socket.on === 'function') {
+    if ('on' in socket && typeof socket.on === 'function') {
       socket.on('close', onClose)
     } else {
-      const previousClose = socket.onclose
-      socket.onclose = (...args: unknown[]) => {
+      const closeSocket = socket as { onclose?: (...args: unknown[]) => void }
+      const previousClose = closeSocket.onclose
+      closeSocket.onclose = (...args: unknown[]) => {
         previousClose?.(...args)
         onClose()
       }

@@ -69,7 +69,11 @@ describe('wallet action authority', () => {
         }
       }
     })
-    expect((decision as any).authorization.principal.origin).toBeUndefined()
+    expect(decision.outcome).toBe('prompt')
+    if (decision.outcome !== 'prompt') {
+      throw new Error('Expected renderer request to require authorization')
+    }
+    expect('origin' in decision.authorization.principal).toBe(false)
   })
 
   it('keeps RPC origin as transport metadata and still requires a prompt', () => {

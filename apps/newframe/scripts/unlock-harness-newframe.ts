@@ -25,7 +25,7 @@ type LockState = {
 
 type RuntimeEvaluateResult = {
   result?: {
-    value?: any
+    value?: unknown
     description?: string
   }
   exceptionDetails?: {
@@ -50,8 +50,8 @@ class CdpClient {
       } else {
         buffer = Buffer.from(data)
       }
-      const message = JSON.parse(buffer.toString('utf8'))
-      if (!message.id) {
+      const message: unknown = JSON.parse(buffer.toString('utf8'))
+      if (!message || typeof message !== 'object' || !('id' in message) || typeof message.id !== 'number') {
         return
       }
 
@@ -61,10 +61,13 @@ class CdpClient {
       }
 
       this.pending.delete(message.id)
-      if (message.error) {
-        pending.reject(new Error(message.error.message ?? JSON.stringify(message.error)))
+      const error = 'error' in message ? message.error : undefined
+      if (error && typeof error === 'object') {
+        const errorMessage =
+          'message' in error && typeof error.message === 'string' ? error.message : undefined
+        pending.reject(new Error(errorMessage ?? JSON.stringify(error)))
       } else {
-        pending.resolve(message.result)
+        pending.resolve('result' in message ? message.result : undefined)
       }
     })
 
@@ -84,7 +87,7 @@ class CdpClient {
     })
   }
 
-  command<T>(method: string, params: Record<string, any> = {}) {
+  command<T>(method: string, params: Record<string, unknown> = {}) {
     const id = this.nextId++
     const payload = JSON.stringify({ id, method, params })
 

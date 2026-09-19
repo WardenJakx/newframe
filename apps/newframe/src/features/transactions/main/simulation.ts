@@ -180,18 +180,19 @@ export function isTraceCall(value: unknown): value is TraceCall {
         if (!event || typeof event !== 'object' || Array.isArray(event)) {
           return false
         }
-        if (typeof event.address !== 'string' || !normalizeAddress(event.address)) {
+        const traceEvent = event as Record<string, unknown>
+        if (typeof traceEvent.address !== 'string' || !normalizeAddress(traceEvent.address)) {
           return false
         }
         if (
-          !Array.isArray(event.topics) ||
-          !event.topics.every(
+          !Array.isArray(traceEvent.topics) ||
+          !traceEvent.topics.every(
             (topic: unknown) => typeof topic === 'string' && /^0x[0-9a-f]{64}$/i.test(topic)
           )
         ) {
           return false
         }
-        if (!bytes(event.data)) {
+        if (!bytes(traceEvent.data)) {
           return false
         }
       }
@@ -364,19 +365,33 @@ function tokenFromRequest(
     }
   }
 
-  const matchingAction = (req.recognizedActions ?? []).find((action: any) => {
-    const contract = action?.data?.contract?.address ?? action?.data?.contract
-    return sameAddress(contract, address)
-  }) as any
+  const matchingAction = (req.recognizedActions ?? []).find((action) => {
+    if (!action.data || typeof action.data !== 'object' || Array.isArray(action.data)) {
+      return false
+    }
+    const data = action.data as Record<string, unknown>
+    const contract = data.contract
+    const contractAddress =
+      contract && typeof contract === 'object' && !Array.isArray(contract)
+        ? (contract as Record<string, unknown>).address
+        : contract
+    return typeof contractAddress === 'string' && sameAddress(contractAddress, address)
+  })
 
-  if (matchingAction?.data) {
+  if (
+    matchingAction?.data &&
+    typeof matchingAction.data === 'object' &&
+    !Array.isArray(matchingAction.data)
+  ) {
+    const data = matchingAction.data as Record<string, unknown>
+    const symbol = typeof data.symbol === 'string' ? data.symbol : 'Token'
     return {
       address,
       chainId,
-      decimals: matchingAction.data.decimals,
-      logoURI: matchingAction.data.logoURI,
-      name: matchingAction.data.name ?? matchingAction.data.symbol ?? 'Token',
-      symbol: matchingAction.data.symbol ?? 'Token'
+      decimals: typeof data.decimals === 'number' ? data.decimals : undefined,
+      logoURI: typeof data.logoURI === 'string' ? data.logoURI : undefined,
+      name: typeof data.name === 'string' ? data.name : symbol,
+      symbol
     }
   }
 }

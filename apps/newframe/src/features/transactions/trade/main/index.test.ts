@@ -27,6 +27,16 @@ import {
   flashWebSocketUrl,
   normalizeFlashQuoteResponse
 } from './index'
+
+interface TestQuoteRaw {
+  evm: {
+    orderTypedData: unknown
+    orderTypedDataRaw?: string
+  }
+}
+
+const testQuoteRaw = (raw: unknown) => raw as TestQuoteRaw
+const parseOrderTypedData = (raw: string) => JSON.parse(raw) as { message: { toToken: string } }
 const originalEnv = { ...process.env }
 const originalFetch = globalThis.fetch
 const assetRateService = { observe: mock() }
@@ -364,7 +374,8 @@ describe('main Flash facade helpers', () => {
       )
       expect(quote.id).toBe('')
       expect(quote.actions?.approval?.tx.chainId).toBe(sourceChainId)
-      expect((quote.raw as any).evm.orderTypedData.message.toToken).toBe(bridgeSentinel)
+      const submittedTypedData = JSON.stringify(testQuoteRaw(quote.raw).evm.orderTypedData)
+      expect(parseOrderTypedData(submittedTypedData).message.toToken).toBe(bridgeSentinel)
 
       const body = buildFlashSubmitBody({
         ...request,
@@ -388,7 +399,7 @@ describe('main Flash facade helpers', () => {
         evmOrderTypedData: JSON.stringify(typedData)
       })
       expect(body).not.toHaveProperty('quoteId')
-      expect(JSON.parse(body.evmOrderTypedData!).message.toToken).not.toBe(body.targetAsset)
+      expect(parseOrderTypedData(body.evmOrderTypedData!).message.toToken).not.toBe(body.targetAsset)
     }
   )
   it('rejects cross-chain advanced orders before contacting Flash', () => {
@@ -425,8 +436,8 @@ describe('main Flash facade helpers', () => {
     expect(quote.fees).toEqual([{ label: 'Estimated fee (USD)', amount: '1.92' }])
     expect(quote.actions?.approval?.tx.to).toBe(FLASH_WETH_ASSET.address)
     expect(quote.steps.map((step) => step.kind)).toEqual(['approve', 'sign', 'submit'])
-    expect((quote.raw as any).evm.orderTypedData).toEqual(typedData)
-    expect((quote.raw as any).evm.orderTypedDataRaw).toBe(JSON.stringify(typedData))
+    expect(testQuoteRaw(quote.raw).evm.orderTypedData).toEqual(typedData)
+    expect(testQuoteRaw(quote.raw).evm.orderTypedDataRaw).toBe(JSON.stringify(typedData))
     const submitTypedData = orderTypedData('submit-quote')
     const orderTypedDataRaw = ` ${JSON.stringify(submitTypedData)} `
     const permitTypedDataRaw = `\n${JSON.stringify({ ...submitTypedData, primaryType: 'Permit' })}\n`
@@ -719,7 +730,7 @@ describe('main Flash facade helpers', () => {
       orderResponse('cancelled', '1500')
     ]
     const track = mock()
-    const refresh = mock()
+    const refresh = mock((_update: { chainId: number }) => {})
     const { flash, fetchMock } = flashWithFetch(queuedJsonResponses(responses), {
       positionSync: { track, refresh }
     })
@@ -751,7 +762,7 @@ describe('main Flash facade helpers', () => {
   it('syncs each participating chain once and attributes filled notifications to the receive chain', async () => {
     const socket = new FakeFlashWebSocket()
     const track = mock()
-    const refresh = mock()
+    const refresh = mock((_update: { chainId: number }) => {})
     const funderAddress = '0x00000000000000000000000000000000000000c1'
     const orderId = 'cross-chain-order'
     const targetAsset = { ...FLASH_WETH_ASSET, id: `1:${FLASH_WETH_ASSET.address}`, chainId: 1 }
@@ -824,7 +835,7 @@ describe('main Flash facade helpers', () => {
   it('hydrates external WebSocket orders through the canonical order, notification, and position path', async () => {
     const sockets: FakeFlashWebSocket[] = []
     const track = mock()
-    const refresh = mock()
+    const refresh = mock((_update: { chainId: number }) => {})
     const accountAddress = '0x00000000000000000000000000000000000000a1'
     const orderId = 'websocket-agent-order'
     const flash = createFlashService({

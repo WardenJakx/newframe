@@ -175,8 +175,8 @@ async function readJson(req: Request) {
   }
 }
 
-function objectRecord(value: unknown): Record<string, any> {
-  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, any>) : {}
+function objectRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
 }
 
 function cleanOptionalAmount(amount: unknown, label: string) {
@@ -848,7 +848,7 @@ async function buildQuote(body: Record<string, any>) {
 }
 
 function orderResponse(order: LocalOrderRecord) {
-  const localParameters = objectRecord(order.quote.raw).local
+  const localParameters = objectRecord(objectRecord(order.quote.raw).local)
   const targetAmount = order.side === 'sell' ? order.quote.inputAmount : order.quote.outputAmount
   const contraAmount = order.side === 'buy' ? order.quote.inputAmount : order.quote.outputAmount
   let closeReason: string | null = 'REASON_FULLY_FILLED'
@@ -909,7 +909,8 @@ function orderResponse(order: LocalOrderRecord) {
 function validateSubmitBody(quoteRecord: LocalQuoteRecord, body: Record<string, any>) {
   const quoteBody = quoteRecord.body
   const quoteResponse = quoteRecord.response
-  const wrappedAsset = String(objectRecord(quoteResponse.wrap).wrappedAsset ?? '')
+  const wrappedAssetValue = objectRecord(quoteResponse.wrap).wrappedAsset
+  const wrappedAsset = typeof wrappedAssetValue === 'string' ? wrappedAssetValue : ''
   const expectedTargetAsset =
     wrappedAsset && quoteBody.side === 'sell' ? wrappedAsset : String(quoteResponse.targetAsset ?? '')
   const expectedContraAsset =
@@ -1137,7 +1138,8 @@ export async function handleLocalTradeRequest(req: Request) {
 
     if (req.method === 'POST' && url.pathname === '/v1/order') {
       const body = await readJson(req)
-      const quoteReference = String(body.quoteId ?? body.bridgeQuoteId ?? '')
+      const quoteReferenceValue = body.quoteId ?? body.bridgeQuoteId
+      const quoteReference = typeof quoteReferenceValue === 'string' ? quoteReferenceValue : ''
       const quoteRecord = quotes.get(quoteReference)
 
       if (!quoteRecord) {
