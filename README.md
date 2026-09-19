@@ -99,11 +99,10 @@ reports unused suppression comments as errors. `bun run lint:warn` is an alias f
 Oxfmt handles formatting with `bun run format`;
 `bun run format:check` checks formatting without writing files.
 
-Oxlint's native rules cover JavaScript, TypeScript, React, and React Hooks.
-Testing Library, React's `no-deprecated` rule, the extension settings' React rules,
-and the Hooks `config` and `gating` rules use its JavaScript plugin support, which
-is currently alpha. The config preserves the previous rule scopes and ignores.
-Typed rules check floating and misused promises and exhaustive switches.
+Oxlint's native rules cover JavaScript, TypeScript, React, React Hooks, and React
+Compiler checks. Testing Library rules use its JavaScript plugin support, which is
+currently alpha. The config preserves the previous rule scopes and ignores. Typed
+rules check deprecated APIs, floating and misused promises, and exhaustive switches.
 The desktop portable scope also checks indexed access and exact optional properties.
 
 All workspaces depend directly on TypeScript 7.0.2 for builds and typechecks.
