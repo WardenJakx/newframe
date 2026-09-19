@@ -48,6 +48,11 @@ export interface SubscriptionPayload {
 
 export type EthersRpcProvider = JsonRpcApiProvider
 
+interface CloseAwareSocket {
+  on?(event: 'close', listener: () => void): unknown
+  onclose?: (...args: unknown[]) => unknown
+}
+
 function normalizeParams(params?: RpcParams) {
   if (Array.isArray(params)) {
     return [...params]
@@ -159,17 +164,12 @@ export function listenForProviderClose(provider: EthersRpcProvider, onClose: () 
   }
 
   try {
-    const socket: unknown = provider.websocket
-    if (!socket || typeof socket !== 'object') {
-      return
-    }
-
-    if ('on' in socket && typeof socket.on === 'function') {
+    const socket = provider.websocket as CloseAwareSocket
+    if (typeof socket.on === 'function') {
       socket.on('close', onClose)
     } else {
-      const closeSocket = socket as { onclose?: (...args: unknown[]) => void }
-      const previousClose = closeSocket.onclose
-      closeSocket.onclose = (...args: unknown[]) => {
+      const previousClose = socket.onclose
+      socket.onclose = (...args: unknown[]) => {
         previousClose?.(...args)
         onClose()
       }
