@@ -1,4 +1,14 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it, jest as timers, mock } from 'bun:test'
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  jest as timers,
+  mock,
+  type Mock
+} from 'bun:test'
 
 import log from 'electron-log'
 
@@ -51,7 +61,9 @@ afterAll(() => {
 
 describe('#fetchContract', () => {
   it('retrieves a contract from sourcify', async () => {
-    ;(fetchSourcifyContract as any).mockResolvedValue(mockContractSource('sourcify'))
+    ;(fetchSourcifyContract as Mock<typeof fetchSourcifyContract>).mockResolvedValue(
+      mockContractSource('sourcify')
+    )
 
     return expect(fetchContract('0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0', 1)).resolves.toStrictEqual({
       abi: JSON.stringify(mockAbi),
@@ -61,8 +73,10 @@ describe('#fetchContract', () => {
   })
 
   it(`retrieves a contract from etherscan when sourcify returns no contract`, async () => {
-    ;(fetchSourcifyContract as any).mockResolvedValue(undefined)
-    ;(fetchEtherscanContract as any).mockResolvedValue(mockContractSource('etherscan'))
+    ;(fetchSourcifyContract as Mock<typeof fetchSourcifyContract>).mockResolvedValue(undefined)
+    ;(fetchEtherscanContract as Mock<typeof fetchEtherscanContract>).mockResolvedValue(
+      mockContractSource('etherscan')
+    )
 
     return expect(fetchContract('0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0', 1)).resolves.toStrictEqual({
       abi: JSON.stringify(mockAbi),
@@ -72,8 +86,12 @@ describe('#fetchContract', () => {
   })
 
   it('prioritizes a contract from sourcify when both sources return contracts', async () => {
-    ;(fetchSourcifyContract as any).mockResolvedValue(mockContractSource('sourcify'))
-    ;(fetchEtherscanContract as any).mockResolvedValue(mockContractSource('etherscan'))
+    ;(fetchSourcifyContract as Mock<typeof fetchSourcifyContract>).mockResolvedValue(
+      mockContractSource('sourcify')
+    )
+    ;(fetchEtherscanContract as Mock<typeof fetchEtherscanContract>).mockResolvedValue(
+      mockContractSource('etherscan')
+    )
 
     return expect(fetchContract('0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0', 1)).resolves.toStrictEqual({
       abi: JSON.stringify(mockAbi),
@@ -84,15 +102,15 @@ describe('#fetchContract', () => {
 
   it('waits for a contract from sourcify even if etherscan returns first', async () => {
     timers.useFakeTimers()
-    const sourcifyResponse = new Promise((resolve) =>
+    const sourcifyResponse = new Promise<Awaited<ReturnType<typeof fetchSourcifyContract>>>((resolve) =>
       setTimeout(() => resolve(mockContractSource('sourcify')), 40)
     )
-    const etherscanResponse = new Promise((resolve) =>
+    const etherscanResponse = new Promise<Awaited<ReturnType<typeof fetchEtherscanContract>>>((resolve) =>
       setTimeout(() => resolve(mockContractSource('etherscan')), 20)
     )
 
-    ;(fetchSourcifyContract as any).mockReturnValue(sourcifyResponse)
-    ;(fetchEtherscanContract as any).mockReturnValue(etherscanResponse)
+    ;(fetchSourcifyContract as Mock<typeof fetchSourcifyContract>).mockReturnValue(sourcifyResponse)
+    ;(fetchEtherscanContract as Mock<typeof fetchEtherscanContract>).mockReturnValue(etherscanResponse)
 
     const contract = fetchContract('0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0', 1)
     timers.advanceTimersByTime(40)
@@ -105,8 +123,8 @@ describe('#fetchContract', () => {
   })
 
   it(`does not retrieve a contract when no contracts are available from any sources`, async () => {
-    ;(fetchSourcifyContract as any).mockResolvedValue(undefined)
-    ;(fetchEtherscanContract as any).mockResolvedValue(undefined)
+    ;(fetchSourcifyContract as Mock<typeof fetchSourcifyContract>).mockResolvedValue(undefined)
+    ;(fetchEtherscanContract as Mock<typeof fetchEtherscanContract>).mockResolvedValue(undefined)
 
     return expect(fetchContract('0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0', 1)).resolves.toBeUndefined()
   })
@@ -206,7 +224,7 @@ describe('#decodeCallDataWithSelectorRegistry', () => {
   })
 })
 
-function mockContractSource(source: any) {
+function mockContractSource(source: string) {
   return {
     abi: JSON.stringify(mockAbi),
     name: `mock ${source} abi`,

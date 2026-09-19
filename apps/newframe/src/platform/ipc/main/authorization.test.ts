@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { pathToFileURL } from 'url'
 
+import type { IpcMainInvokeEvent, WebContents, WebFrameMain } from 'electron'
+
 import { createRendererAuthorizationRegistry, type RendererAuthorizationRegistry } from './authorization'
 
 let nextId = 1
@@ -11,27 +13,31 @@ function renderer(
   clientType: 'wallet-ui' | 'sidetray',
   registry = authorization
 ) {
-  const frame: any = {
+  const frame: { parent: WebFrameMain | null; url: string } = {
     parent: null,
     url: pathToFileURL(`/app/bundle/${entrypoint}.html`).toString()
   }
   let destroyed: (() => void) | undefined
-  const webContents: any = {
+  const webContents = {
     id: nextId++,
     isDestroyed: mock(() => false),
-    mainFrame: frame,
+    mainFrame: frame as unknown as WebFrameMain,
     once: mock((event: string, handler: () => void) => {
       if (event === 'destroyed') {
         destroyed = handler
       }
     })
-  }
+  } as unknown as WebContents
+  const event = {
+    sender: webContents,
+    senderFrame: frame as unknown as WebFrameMain
+  } as unknown as IpcMainInvokeEvent
 
   registry.registerRenderer(webContents, clientType, entrypoint)
 
   return {
     destroy: () => destroyed?.(),
-    event: { sender: webContents, senderFrame: frame } as any,
+    event,
     frame,
     webContents
   }
@@ -46,18 +52,19 @@ beforeEach(() => {
 describe('renderer authorization', () => {
   it('derives the registered role from Electron-owned WebContents identity', () => {
     const wallet = renderer('tray', 'wallet-ui')
+    const result = authorization.authorizeRenderer(wallet.event)
 
-    expect(authorization.authorizeRenderer(wallet.event)).toEqual({
+    expect(result).toMatchObject({
       clientType: 'wallet-ui',
       entrypoint: 'tray',
-      webContentsId: wallet.webContents.id,
-      windowInstanceId: expect.any(String)
+      webContentsId: wallet.webContents.id
     })
+    expect(typeof result?.windowInstanceId).toBe('string')
   })
 
   it('rejects subframes and unexpected renderer URLs', () => {
     const wallet = renderer('tray', 'wallet-ui')
-    wallet.frame.parent = {}
+    wallet.frame.parent = {} as unknown as WebFrameMain
     expect(authorization.authorizeRenderer(wallet.event)).toBeUndefined()
 
     wallet.frame.parent = null

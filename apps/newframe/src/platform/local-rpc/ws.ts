@@ -84,7 +84,7 @@ export interface WebSocketRpcTransportDependencies {
   origins: OriginsService
   requestHandler: RpcRequestHandler
   windows: { toggleTray(): unknown }
-  createServer(server: Server): WebSocketServerPort
+  createServer: (server: Server) => WebSocketServerPort
   openReadyState: number
   timers?: ApiTimerPort
   createConnectionId?: () => string
@@ -93,6 +93,16 @@ export interface WebSocketRpcTransportDependencies {
 const systemTimers: ApiTimerPort = {
   setTimeout: (task, delayMs) => setTimeout(task, delayMs),
   clearTimeout: (timer) => clearTimeout(timer)
+}
+
+function rawDataText(data: WebSocket.RawData): string {
+  if (Array.isArray(data)) {
+    return Buffer.concat(data).toString('utf8')
+  }
+  if (Buffer.isBuffer(data)) {
+    return data.toString('utf8')
+  }
+  return Buffer.from(data).toString('utf8')
 }
 
 export function createWebSocketRpcTransport({
@@ -155,7 +165,7 @@ export function createWebSocketRpcTransport({
     }
 
     const processMessage = async (data: WebSocket.RawData) => {
-      const rawPayload = validPayload<ExtensionPayload>(data.toString())
+      const rawPayload = validPayload<ExtensionPayload>(rawDataText(data))
       if (!rawPayload) {
         log.warn('Invalid WebSocket RPC payload')
         return
@@ -222,7 +232,8 @@ export function createWebSocketRpcTransport({
           },
           acceptsProviderResponse: () => true,
           writeResponse: (response) => respond(response),
-          postValidationInterceptor: ({ chainId, respond: respondLocal }) => {
+          postValidationInterceptor: (context) => {
+            const { chainId } = context
             if (!socket.frameExtension || proxiedExtensionRequest) {
               return false
             }
@@ -233,11 +244,11 @@ export function createWebSocketRpcTransport({
 
             const { id, jsonrpc } = rawPayload
             if (rawPayload.method === 'eth_chainId' || requestExtensionConnection) {
-              respondLocal({ id, jsonrpc, result: chainId })
+              context.respond({ id, jsonrpc, result: chainId })
               return true
             }
             if (rawPayload.method === 'net_version') {
-              respondLocal({ id, jsonrpc, result: parseInt(chainId, 16) })
+              context.respond({ id, jsonrpc, result: parseInt(chainId, 16) })
               return true
             }
             return false
@@ -292,7 +303,11 @@ export function createWebSocketRpcTransport({
   }
 
   const subscriptionHandler = (payload: RPC.Susbcription.Response) => {
-    const subscription = (subs as Record<string, Subscription | undefined>)[payload.params.subscription]
+    const subscriptionId = (payload.params as { subscription?: unknown }).subscription
+    if (typeof subscriptionId !== 'string') {
+      return
+    }
+    const subscription = (subs as Record<string, Subscription | undefined>)[subscriptionId]
     if (subscription?.socket.readyState === openReadyState) {
       subscription.socket.send(JSON.stringify(payload))
     }

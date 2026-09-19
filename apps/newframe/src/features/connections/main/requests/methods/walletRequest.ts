@@ -8,7 +8,7 @@ const walletRequestParams = z.object({
   session: z.optional(sessionMatcher),
   request: z.object({
     method: z.string(),
-    params: z.any()
+    params: z.array(z.unknown())
   })
 })
 

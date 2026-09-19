@@ -646,10 +646,11 @@ export function createTradeService(ports: TradeServicePorts) {
         }
         const rawQuote = flashObject(result.quote.raw)
         const flashPayload = flashObject(result.flash)
-        const providerQuoteId = String(
-          result.quote.id ?? flashPayload.quoteId ?? rawQuote.quoteId ?? ''
-        ).trim()
-        const bridgeQuoteId = String(flashPayload.bridgeQuoteId ?? rawQuote.bridgeQuoteId ?? '').trim()
+        const providerQuoteIdCandidate = result.quote.id ?? flashPayload.quoteId ?? rawQuote.quoteId ?? ''
+        const providerQuoteId =
+          typeof providerQuoteIdCandidate === 'string' ? providerQuoteIdCandidate.trim() : ''
+        const bridgeQuoteIdCandidate = flashPayload.bridgeQuoteId ?? rawQuote.bridgeQuoteId ?? ''
+        const bridgeQuoteId = typeof bridgeQuoteIdCandidate === 'string' ? bridgeQuoteIdCandidate.trim() : ''
         if (!providerQuoteId && !bridgeQuoteId) {
           throw new TradeFailure('quote_invalid', 'Flash quote did not return a quote id.')
         }

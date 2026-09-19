@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it } from 'bun:test'
 import { accountSort as byCreation, hasAddress } from './index'
 
 const makeMockAccount = (address: string, timestamp = Date.now(), block = 0, name = address) => ({
+  id: address,
   address,
+  lastSignerType: 'address',
   name,
   created: block ? `${block}:${timestamp}` : `new:${timestamp}`
 })
@@ -28,26 +30,26 @@ describe('#hasAddress', () => {
     const address = '0xa7888f85bd76deef3bd03d4dbcf57765a49883b3'
     const account = { id: '0xa7888F85BD76deeF3Bd03d4DbCF57765a49883b3' }
 
-    expect(hasAddress(account as any, address)).toBe(true)
+    expect(hasAddress(account, address)).toBe(true)
   })
 
   it('does not match a different address', () => {
     const address = '0xa7888f85bd76deef3bd03d4dbcf57765a49883b3'
     const account = { id: '0x66b870ddf78c975af5cd8edc6de25eca81791de1' }
 
-    expect(hasAddress(account as any, address)).toBe(false)
+    expect(hasAddress(account, address)).toBe(false)
   })
 
   it('does not match an undefined address', () => {
     const account = { id: '0xa7888F85BD76deeF3Bd03d4DbCF57765a49883b3' }
 
-    expect(hasAddress(account as any, undefined)).toBe(false)
+    expect(hasAddress(account, undefined)).toBe(false)
   })
 
   it('does not match an empty address', () => {
     const account = { id: '0xa7888F85BD76deeF3Bd03d4DbCF57765a49883b3' }
 
-    expect(hasAddress(account as any, '')).toBe(false)
+    expect(hasAddress(account, '')).toBe(false)
   })
 })
 
@@ -59,7 +61,7 @@ describe('#accountSort', () => {
     const acc4 = makeMockAccount(addresses[3], now + 2000)
 
     const unsorted = [acc2, acc3, acc1, acc4]
-    const sorted = unsorted.sort(byCreation as any)
+    const sorted = unsorted.sort(byCreation)
 
     expect(sorted).toStrictEqual([acc4, acc3, acc2, acc1])
   })
@@ -71,7 +73,7 @@ describe('#accountSort', () => {
     const acc4 = makeMockAccount(addresses[3], now, 30)
 
     const unsorted = [acc2, acc4, acc3, acc1]
-    const sorted = unsorted.sort(byCreation as any)
+    const sorted = unsorted.sort(byCreation)
 
     expect(sorted).toStrictEqual([acc4, acc3, acc2, acc1])
   })
@@ -83,7 +85,7 @@ describe('#accountSort', () => {
     const acc4 = makeMockAccount(addresses[3], now + 100, 31)
 
     const unsorted = [acc2, acc3, acc1, acc4]
-    const sorted = unsorted.sort(byCreation as any)
+    const sorted = unsorted.sort(byCreation)
 
     expect(sorted).toStrictEqual([acc1, acc3, acc4, acc2])
   })

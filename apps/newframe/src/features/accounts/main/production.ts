@@ -54,7 +54,7 @@ function addressHasTransactions(
           return done(null, null)
         }
         try {
-          done(null, BigInt(response.result) > 0n)
+          done(null, BigInt(response.result as string) > 0n)
         } catch {
           done(null, null)
         }
@@ -91,7 +91,7 @@ export function createAddressChainUsageAdapter(
       })
     )
   }
-  addressChainUsage.dispose = callbacks.dispose
+  addressChainUsage.dispose = () => callbacks.dispose()
   return addressChainUsage
 }
 
@@ -109,6 +109,6 @@ export function createAccountSelectionAdapter(
     }
     return account
   }
-  selectAccount.dispose = callbacks.dispose
+  selectAccount.dispose = () => callbacks.dispose()
   return selectAccount
 }

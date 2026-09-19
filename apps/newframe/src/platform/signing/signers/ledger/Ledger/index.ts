@@ -191,7 +191,7 @@ export default class Ledger extends Signer {
       this.emit('update')
 
       if (this.status === Status.NEEDS_RECONNECTION) {
-        this.disconnect()
+        void this.disconnect()
       }
     }
   }
@@ -252,7 +252,7 @@ export default class Ledger extends Signer {
     })
   }
 
-  private async pollDeviceStatus(frequency: number) {
+  private pollDeviceStatus(frequency: number) {
     const lastStatus = this.status
 
     this.statusPoller = setTimeout(() => {

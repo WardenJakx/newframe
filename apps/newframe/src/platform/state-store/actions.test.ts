@@ -4,11 +4,18 @@ import { addHexPrefix } from '@ethereumjs/util'
 import log from 'electron-log'
 
 import { createTestStore as createActionHarness } from '../../../test/support/createTestStore'
-import { DEFAULT_PROFILE_ID } from '../../app/contracts/state/main'
+import { DEFAULT_PROFILE_ID, type OrderRecord } from '../../app/contracts/state/main'
 import { toTokenId } from '../../features/asset-data/domain/balance'
+import { RequestStatus } from '../../features/requests/contract/requests'
 import { customTokens, tokensForAccount } from '../../features/tokens/domain'
 import { NATIVE_CURRENCY } from '../../features/tokens/domain/constants'
+import type { Token, TokenCatalog, TokenRecord } from '../../features/tokens/domain/state/token'
+import type { CanonicalStore } from './actions'
 import createInitialState from './state'
+import type { ActivityRecord } from './state'
+
+type AccountRecord = CanonicalStore['main']['accounts'][string]
+type StatusNotification = CanonicalStore['view']['notifications'][string]
 
 beforeAll(() => {
   log.transports.console.level = false
@@ -46,17 +53,17 @@ const testTokens = {
   }
 }
 
-function tokenRecord(token: any, options: { custom?: boolean; curated?: boolean } = {}) {
+function tokenRecord(token: Token, options: { custom?: boolean; curated?: boolean } = {}): TokenRecord {
   return {
     ...token,
     custom: Boolean(options.custom),
     curated: Boolean(options.curated),
-    sources: [options.custom ? 'custom' : 'onchain'],
+    sources: [options.custom ? 'custom' : 'onchain'] as Array<'custom' | 'onchain'>,
     updatedAt: 0
   }
 }
 
-function tokenCatalog(tokens: any[], accountTokenIds: Record<string, string[]> = {}) {
+function tokenCatalog(tokens: TokenRecord[], accountTokenIds: Record<string, string[]> = {}): TokenCatalog {
   return {
     byId: Object.fromEntries(tokens.map((token) => [toTokenId(token), token])),
     accountTokenIds
@@ -70,15 +77,35 @@ const storedBalance = (token: { address: string; chainId: number }, balance: str
   displayBalance: ''
 })
 
+type NetworkSettings = Parameters<ReturnType<typeof createActionHarness>['actions']['addNetwork']>[0]
+
+const storedOrigin = (name: string, chainId = 1) => ({
+  name,
+  chain: { id: chainId, type: 'ethereum' as const },
+  session: { requests: 0, startedAt: 0, lastUpdatedAt: 0 }
+})
+
+const storedAccount = (id: string, profileId = DEFAULT_PROFILE_ID) => ({
+  id,
+  profileId,
+  address: id,
+  name: '',
+  lastSignerType: 'address',
+  status: 'ok',
+  signer: '',
+  requests: {},
+  created: 'test:1'
+})
+
 describe('#addNetwork', () => {
   const polygonNetwork = {
     id: 123456,
     name: 'Polygon',
-    type: 'ethereum',
-    layer: 'sidechain',
+    type: 'ethereum' as const,
+    layer: 'sidechain' as const,
     explorer: 'https://polygonscan.com',
     symbol: 'MATIC'
-  }
+  } satisfies NetworkSettings
 
   it('creates the complete runtime network and metadata projections atomically', () => {
     const { actions, getState } = createActionHarness({})
@@ -166,7 +193,7 @@ describe('#addNetwork', () => {
 
     for (const invalidNetwork of invalidNetworks) {
       const { actions, getState } = createActionHarness({})
-      actions.addNetwork(invalidNetwork)
+      Reflect.apply(actions.addNetwork, actions, [invalidNetwork])
 
       expect({
         networks: getState().main.networks,
@@ -179,10 +206,15 @@ describe('#addNetwork', () => {
   })
 
   it('preserves the existing network and metadata when the id already exists', () => {
-    const existingMetadata = { name: 'Polygon metadata' }
+    const defaults = createInitialState()
+    const existingNetwork = { ...defaults.main.networks.ethereum[1], ...polygonNetwork }
+    const existingMetadata = {
+      ...defaults.main.networksMeta.ethereum[1],
+      name: 'Polygon metadata'
+    }
     const { actions, getState } = createActionHarness({
       main: {
-        networks: { ethereum: { '123456': polygonNetwork } },
+        networks: { ethereum: { '123456': existingNetwork } },
         networksMeta: { ethereum: { '123456': existingMetadata } }
       }
     })
@@ -198,7 +230,7 @@ describe('#addNetwork', () => {
     expect({
       network: getState().main.networks.ethereum['123456'],
       metadata: getState().main.networksMeta.ethereum['123456']
-    } as unknown).toStrictEqual({ network: polygonNetwork, metadata: existingMetadata })
+    } as unknown).toStrictEqual({ network: existingNetwork, metadata: existingMetadata })
   })
 })
 
@@ -208,7 +240,9 @@ describe('#setBalances', () => {
     const badgerAmount = addHexPrefix(BigInt(419).toString(16))
     const { actions, getState } = createActionHarness({
       main: {
-        balances: { [owner]: [{ ...testTokens.badger, balance: addHexPrefix(BigInt(305).toString(16)) }] }
+        balances: {
+          [owner]: [storedBalance(testTokens.badger, addHexPrefix(BigInt(305).toString(16)))]
+        }
       }
     })
 
@@ -235,8 +269,8 @@ describe('#removeBalance', () => {
       [owner, otherOwner].map((account, index) => [
         account,
         [
-          { ...testTokens.zrx, balance: addHexPrefix(BigInt(798564 + index).toString(16)) },
-          { ...testTokens.badger, balance: addHexPrefix(BigInt(15543 + index).toString(16)) }
+          storedBalance(testTokens.zrx, addHexPrefix(BigInt(798564 + index).toString(16))),
+          storedBalance(testTokens.badger, addHexPrefix(BigInt(15543 + index).toString(16)))
         ]
       ])
     )
@@ -260,7 +294,11 @@ describe('#upsertTokens', () => {
     actions.upsertTokens([testTokens.badger], { custom: true, source: 'custom' })
 
     expect(customTokens(getState().main.tokens)).toEqual([
-      expect.objectContaining({ ...testTokens.badger, custom: true, sources: ['custom'] })
+      expect.objectContaining({
+        ...testTokens.badger,
+        custom: true,
+        sources: ['custom']
+      }) as unknown as TokenRecord
     ])
   })
 
@@ -276,7 +314,10 @@ describe('#upsertTokens', () => {
 
     expect(Object.keys(getState().main.tokens.byId)).toHaveLength(1)
     expect(tokensForAccount(getState().main.tokens, account)).toEqual([
-      expect.objectContaining({ symbol: 'BAD', sources: ['onchain', 'portfolio'] })
+      expect.objectContaining({
+        symbol: 'BAD',
+        sources: ['onchain', 'portfolio']
+      }) as unknown as TokenRecord
     ])
   })
 
@@ -311,9 +352,19 @@ describe('#clearOrigins', () => {
   it('should clear all existing origins and attached permissions', () => {
     const { actions, getState } = createActionHarness({
       main: {
-        origins: { [originIds.first]: {}, [originIds.second]: {}, [originIds.third]: {} },
+        origins: {
+          [originIds.first]: storedOrigin('first.test'),
+          [originIds.second]: storedOrigin('second.test'),
+          [originIds.third]: storedOrigin('third.test')
+        },
         permissions: {
-          '0xabc': { [originIds.first]: { origin: 'frame.test', provider: true } }
+          '0xabc': {
+            [originIds.first]: {
+              origin: 'frame.test',
+              provider: true,
+              handlerId: originIds.first
+            }
+          }
         }
       }
     })
@@ -387,10 +438,12 @@ describe('#addOriginRequest', () => {
       main: {
         origins: {
           activeOrigin: {
+            name: 'active.test',
             chain: { id: 10, type: 'ethereum' },
             session: { requests: 3, startedAt: creationTime, lastUpdatedAt: creationTime }
           },
           staleOrigin: {
+            name: 'stale.test',
             chain: { id: 42161, type: 'ethereum' },
             session: {
               requests: 14,
@@ -448,7 +501,10 @@ describe('#removeNetwork', () => {
 
     expect(main.networks.ethereum[10]).toBeUndefined()
     expect(main.networksMeta.ethereum[10]).toBeUndefined()
-    expect(Object.values(main.origins).map(({ chain }: any) => chain)).toStrictEqual([
+    const chains: Array<{ id: number; type: 'ethereum' }> = Object.values(main.origins).map(
+      ({ chain }) => chain
+    )
+    expect(chains).toStrictEqual([
       { id: 1, type: 'ethereum' },
       { id: 1, type: 'ethereum' },
       { id: 137, type: 'ethereum' },
@@ -459,10 +515,13 @@ describe('#removeNetwork', () => {
 
 describe('#activateNetwork', () => {
   it('activates the given chain and redirects its origins when deactivated', () => {
+    const defaults = createInitialState()
     const { actions, getState } = createActionHarness({
       main: {
-        networks: { ethereum: { 137: { on: false } } },
-        origins: { 'frame.test': { chain: { id: 137 } } }
+        networks: {
+          ethereum: { 137: { ...defaults.main.networks.ethereum[1], id: 137, on: false } }
+        },
+        origins: { 'frame.test': storedOrigin('frame.test', 137) }
       }
     })
 
@@ -480,7 +539,12 @@ describe('#upsertAccount', () => {
     return createActionHarness({
       main: {
         accounts: {
-          1: { id: '1', name: 'cool account', lastSignerType: 'ledger', balances: {} }
+          1: {
+            ...storedAccount('1'),
+            name: 'cool account',
+            lastSignerType: 'ledger',
+            balances: {}
+          }
         },
         accountsMeta: {
           [metadataId]: { name: 'cool account', lastUpdated: 1568682918135 }
@@ -781,9 +845,9 @@ describe('#setPortfolioApiKey', () => {
 describe('#removeAccountTokens', () => {
   it('removes exactly the requested account-token associations', () => {
     const records = Object.values(testTokens).map((token) => tokenRecord(token))
-    const cases = [
+    const cases: Array<{ removed: string[]; remaining: Array<(typeof records)[number]> }> = [
       { removed: records.map(toTokenId), remaining: [] },
-      { removed: [toTokenId(testTokens.badger)], remaining: [testTokens.zrx] }
+      { removed: [toTokenId(testTokens.badger)], remaining: [records[0]] }
     ]
 
     for (const { removed, remaining } of cases) {
@@ -792,9 +856,7 @@ describe('#removeAccountTokens', () => {
 
       actions.removeAccountTokens(owner, new Set(removed))
 
-      expect(tokensForAccount(getState().main.tokens, owner)).toStrictEqual(
-        remaining.map((token) => expect.objectContaining(token))
-      )
+      expect(tokensForAccount(getState().main.tokens, owner)).toStrictEqual(remaining)
     }
   })
 })
@@ -815,13 +877,29 @@ describe('#resetSavedData', () => {
           [otherOwner]: [storedBalance(testTokens.badger, '0x3')]
         },
         activity: { '0xabc': { id: '0xabc', hash: '0xabc', status: 'succeeded' } },
-        orders: { 'order-1': { orderId: 'order-1', status: 'open' } }
+        orders: {
+          'order-1': {
+            orderId: 'order-1',
+            accountAddress: owner,
+            provider: 'test',
+            status: 'open',
+            orderType: 'limit',
+            side: 'sell',
+            targetAsset: { chainId: 1 },
+            contraAsset: { chainId: 1 },
+            qty: '1',
+            createdAt: 1,
+            updatedAt: 1
+          } satisfies OrderRecord
+        }
       }
     })
     actions.resetSavedData()
     const main = getState().main
 
-    expect(customTokens(main.tokens)).toEqual([expect.objectContaining(testTokens.zrx)])
+    expect(customTokens(main.tokens)).toEqual([
+      expect.objectContaining(testTokens.zrx) as unknown as TokenRecord
+    ])
     expect(main.tokens.accountTokenIds).toStrictEqual({})
     expect(main.balances[owner]).toStrictEqual([storedBalance(testTokens.zrx, '0x1')])
     expect(main.balances[otherOwner]).toStrictEqual([])
@@ -838,7 +916,9 @@ describe('#navClearReq', () => {
       { view: 'expandedModule', data: { id: 'requests' } }
     ]
     const [req1, , inbox] = nav
-    const { actions, getState } = createActionHarness({ windows: { panel: { nav } } })
+    const { actions, getState } = createActionHarness({
+      windows: { panel: { ...createInitialState().windows.panel, nav } }
+    })
 
     actions.navClearReq('2b', true)
 
@@ -850,7 +930,9 @@ describe('#navClearReq', () => {
       { view: 'requestView', data: { requestId: '1c' } },
       { view: 'expandedModule', data: { id: 'requests' } }
     ]
-    const { actions, getState } = createActionHarness({ windows: { panel: { nav } } })
+    const { actions, getState } = createActionHarness({
+      windows: { panel: { ...createInitialState().windows.panel, nav } }
+    })
 
     actions.navClearReq('1c', false)
 
@@ -875,7 +957,8 @@ describe('#activity actions', () => {
       chainType: 'ethereum',
       origin: 'frame.test',
       payload: { method: 'eth_sendTransaction' },
-      display: { title: 'Send ETH' }
+      display: { title: 'Send ETH' },
+      status: 'submitted'
     })
 
     expect(getState().main.activity['tx-1']).toEqual({
@@ -902,7 +985,7 @@ describe('#activity actions', () => {
         status: 'confirming',
         confirmations: 2,
         updatedAt: confirmingAt.getTime()
-      })
+      }) as unknown as ActivityRecord
     )
 
     setSystemTime(completedAt)
@@ -914,7 +997,7 @@ describe('#activity actions', () => {
         completedAt: completedAt.getTime(),
         updatedAt: completedAt.getTime(),
         receipt: { status: '0x1' }
-      })
+      }) as unknown as ActivityRecord
     )
 
     actions.pruneActivity('tx-1')
@@ -962,7 +1045,7 @@ describe('#status notification actions', () => {
         detail: 'Confirmed',
         expiresAt,
         updatedAt: resolvedAt.getTime()
-      })
+      }) as unknown as StatusNotification
     )
 
     setSystemTime(dismissedAt)
@@ -973,7 +1056,7 @@ describe('#status notification actions', () => {
         hidden: true,
         dismissedAt: dismissedAt.getTime(),
         updatedAt: dismissedAt.getTime()
-      })
+      }) as unknown as StatusNotification
     )
 
     actions.expireNotification('notification-1')
@@ -1025,7 +1108,7 @@ describe('#canonical action boundaries', () => {
       {
         main: {
           accounts: {
-            [accountId]: { id: accountId, address: accountId, name: 'Before', requests: {} }
+            [accountId]: { ...storedAccount(accountId), name: 'Before' }
           }
         }
       },
@@ -1047,7 +1130,7 @@ describe('#canonical action boundaries', () => {
       payload: { id: 1, jsonrpc: '2.0', method: 'eth_requestAccounts', params: [] }
     })
     harness.actions.patchAccountRequest(accountId, 'request-1', (request) => {
-      request.status = 'pending' as any
+      request.status = RequestStatus.Pending
       request.notice = 'Waiting'
     })
 
@@ -1055,12 +1138,13 @@ describe('#canonical action boundaries', () => {
       expect.objectContaining({
         name: 'After',
         id: accountId,
-        address: accountId,
-        requests: {
-          'request-1': expect.objectContaining({ status: 'pending', notice: 'Waiting' })
-        }
-      })
+        address: accountId
+      }) as unknown as AccountRecord
     )
+    expect(harness.getState().main.accounts[accountId].requests['request-1']).toMatchObject({
+      status: 'pending',
+      notice: 'Waiting'
+    })
 
     harness.actions.removeAccountRequest(accountId, 'request-1')
     expect(harness.getState().main.accounts[accountId].requests).toEqual({})
@@ -1078,7 +1162,7 @@ describe('#canonical action boundaries', () => {
           currentProfile: DEFAULT_PROFILE_ID,
           currentAccount: '',
           accounts: {
-            'new-account': { id: 'new-account', profileId: DEFAULT_PROFILE_ID }
+            'new-account': storedAccount('new-account')
           },
           accountOrder: ['new-account']
         }

@@ -27,7 +27,7 @@ type PermitOverviewProps = {
   req: PermitRequestView
   chainData: PermitChainData
   originName: string
-  open(next: RequestViewState): void
+  open: (next: RequestViewState) => void
 }
 
 type EditPermitProps = {

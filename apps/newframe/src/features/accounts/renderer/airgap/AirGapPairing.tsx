@@ -17,7 +17,7 @@ export function AirGapPairing({
 }: {
   capability: AccountsCapability
   camera: QrCameraCapability
-  onPaired(signerId: string): void
+  onPaired: (signerId: string) => void
 }) {
   const [operationId, setOperationId] = useState('')
   const [ready, setReady] = useState(false)

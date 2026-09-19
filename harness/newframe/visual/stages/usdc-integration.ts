@@ -81,9 +81,12 @@ async function runUsdcIntegration(signal: AbortSignal) {
     const usdc = new Contract(usdcAddress, usdcInterface, signer)
     const testContract = new Contract(testContractAddress, testContractInterface, signer)
 
-    await waitForTransaction(usdc.approve(testContractAddress, usdcFlowAmount()), 'USDC approval')
     await waitForTransaction(
-      testContract.depositToken(usdcAddress, usdcFlowAmount(), usdcFlowMemo),
+      usdc.getFunction('approve').send(testContractAddress, usdcFlowAmount()),
+      'USDC approval'
+    )
+    await waitForTransaction(
+      testContract.getFunction('depositToken').send(usdcAddress, usdcFlowAmount(), usdcFlowMemo),
       'USDC deposit'
     )
   } finally {

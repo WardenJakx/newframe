@@ -230,19 +230,28 @@ async function seedAnvil(signal: AbortSignal) {
     const usdc = new Contract(usdcAddress, usdcArtifact.interface, signer)
     const weth = new Contract(wethAddress, wethArtifact.interface, signer)
 
-    await waitForTransaction(usdc.mint(harnessAccountAddress, harnessUsdcBalance), 'harness USDC mint')
     await waitForTransaction(
-      usdc.mint(mockFlashSettlementAddress, settlementUsdcLiquidity),
+      usdc.getFunction('mint').send(harnessAccountAddress, harnessUsdcBalance),
+      'harness USDC mint'
+    )
+    await waitForTransaction(
+      usdc.getFunction('mint').send(mockFlashSettlementAddress, settlementUsdcLiquidity),
       'settlement USDC mint'
     )
-    await waitForTransaction(weth.deposit({ value: harnessWethBalance }), 'harness WETH deposit')
     await waitForTransaction(
-      weth.transfer(harnessAccountAddress, harnessWethBalance),
+      weth.getFunction('deposit').send({ value: harnessWethBalance }),
+      'harness WETH deposit'
+    )
+    await waitForTransaction(
+      weth.getFunction('transfer').send(harnessAccountAddress, harnessWethBalance),
       'harness WETH transfer'
     )
-    await waitForTransaction(weth.deposit({ value: settlementWethLiquidity }), 'settlement WETH deposit')
     await waitForTransaction(
-      weth.transfer(mockFlashSettlementAddress, settlementWethLiquidity),
+      weth.getFunction('deposit').send({ value: settlementWethLiquidity }),
+      'settlement WETH deposit'
+    )
+    await waitForTransaction(
+      weth.getFunction('transfer').send(mockFlashSettlementAddress, settlementWethLiquidity),
       'settlement WETH transfer'
     )
     await assertSeeded(provider, usdc, weth)

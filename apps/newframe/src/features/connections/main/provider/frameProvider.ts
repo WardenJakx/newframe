@@ -4,6 +4,7 @@ import {
   createError,
   createJsonRpcProvider,
   FrameWebSocketProvider,
+  isRpcResponsePayload,
   listenForProviderClose,
   sendRawPayload,
   withTimeout,
@@ -43,7 +44,11 @@ function resolveTargets(targets?: string | string[]) {
 }
 
 abstract class EventedRequestProvider extends EventEmitter implements Eip1193Provider {
+  accounts: string[] = []
+  coinbase?: string
   connected = false
+  networkVersion?: unknown
+  selectedAddress?: string
 
   protected manualChainId?: string
   protected providerChainId?: string
@@ -55,7 +60,7 @@ abstract class EventedRequestProvider extends EventEmitter implements Eip1193Pro
   constructor() {
     super()
 
-    this.on('newListener', (event) => {
+    this.on('newListener', (event: string | symbol) => {
       if (this.connected && this.shouldStartSubscription(event)) {
         // Subscription failures are handled by startProviderSubscription.
         void this.startProviderSubscription(event as string)
@@ -165,17 +170,19 @@ abstract class EventedRequestProvider extends EventEmitter implements Eip1193Pro
     if (method === 'eth_chainId' && typeof result === 'string') {
       this.providerChainId = result
     } else if (['eth_accounts', 'eth_requestAccounts'].includes(method)) {
-      const accounts = (result ?? []) as string[]
-      ;(this as any).accounts = accounts
-      ;(this as any).selectedAddress = accounts[0]
-      ;(this as any).coinbase = accounts[0]
+      const accounts = Array.isArray(result)
+        ? result.filter((account): account is string => typeof account === 'string')
+        : []
+      this.accounts = accounts
+      this.selectedAddress = accounts[0]
+      this.coinbase = accounts[0]
     }
   }
 
   private handleProviderEvent(event: string, result: unknown) {
     if (event === 'networkChanged') {
-      ;(this as any).networkVersion = typeof result === 'string' ? parseInt(result) : result
-      this.emit('networkChanged', (this as any).networkVersion)
+      this.networkVersion = typeof result === 'string' ? parseInt(result) : result
+      this.emit('networkChanged', this.networkVersion)
     } else if (event === 'chainChanged') {
       this.providerChainId = result as string
       if (!this.manualChainId) {
@@ -224,7 +231,11 @@ class FrameProxyProvider extends EventedRequestProvider {
 
     this.connection.on('connect', () => this.markConnected(this.chainId))
     this.connection.on('close', () => this.markClosed())
-    this.connection.on('payload', (payload) => this.handlePayload(payload))
+    this.connection.on('payload', (payload: unknown) => {
+      if (isRpcResponsePayload(payload)) {
+        this.handlePayload(payload)
+      }
+    })
   }
 
   close() {
@@ -234,7 +245,10 @@ class FrameProxyProvider extends EventedRequestProvider {
 
   protected sendPayload<T = unknown>(payload: RpcPayload) {
     return new Promise<T>((resolve, reject) => {
-      this.promises[payload.id] = { resolve: resolve as (value: unknown) => void, reject }
+      this.promises[payload.id] = {
+        resolve: resolve as (value: unknown) => void,
+        reject
+      }
 
       try {
         this.connection.send(payload)

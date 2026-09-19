@@ -8,11 +8,8 @@ describe('platform service', () => {
     const store = createTestStore({
       main: {
         frames: {},
-        knownExtensions: {},
-        networks: { ethereum: { 1: { id: 1, type: 'ethereum' } } },
-        updater: { dontRemind: [] }
+        knownExtensions: {}
       },
-      tray: { homeCommand: { id: 7, view: 'home', data: {} } },
       view: {
         badge: { type: 'updateAvailable', version: '2.0.0' },
         notifications: {
@@ -22,6 +19,7 @@ describe('platform service', () => {
         notifyData: { id: 'extension-a' }
       }
     })
+    store.getState().navHome({ view: 'home' })
     const quit = mock()
     const writeText = mock()
     const dismissUpdate = mock()
@@ -49,8 +47,8 @@ describe('platform service', () => {
     })
     const event = { sender: { id: 1 } } as unknown as Pick<Electron.IpcMainInvokeEvent, 'sender'>
 
-    expect(service.consumeHomeCommand(8)).toBeFalse()
-    expect(service.consumeHomeCommand(7)).toBeTrue()
+    expect(service.consumeHomeCommand(2)).toBeFalse()
+    expect(service.consumeHomeCommand(1)).toBeTrue()
     expect(store.getState().tray.homeCommand).toBeNull()
     expect(service.updateNotification('missing', 'dismiss')).toBeFalse()
     expect(service.updateNotification('notice', 'dismiss')).toBeTrue()

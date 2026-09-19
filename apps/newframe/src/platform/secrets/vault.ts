@@ -25,6 +25,27 @@ interface VaultFile {
   kdf: { N: number; r: number; p: number }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function isVaultFile(value: unknown): value is VaultFile {
+  if (!isRecord(value) || !isRecord(value.kdf)) {
+    return false
+  }
+
+  return (
+    typeof value.version === 'number' &&
+    typeof value.salt === 'string' &&
+    typeof value.iv === 'string' &&
+    typeof value.encryptedKey === 'string' &&
+    typeof value.keyHash === 'string' &&
+    typeof value.kdf.N === 'number' &&
+    typeof value.kdf.r === 'number' &&
+    typeof value.kdf.p === 'number'
+  )
+}
+
 const validatePassword = (password: string) => {
   if (!password) {
     return new Error('Password required')
@@ -181,7 +202,11 @@ class Vault {
     if (!this.exists()) {
       throw new Error('No vault found')
     }
-    return JSON.parse(fs.readFileSync(VAULT_PATH, 'utf8'))
+    const parsed: unknown = JSON.parse(fs.readFileSync(VAULT_PATH, 'utf8'))
+    if (!isVaultFile(parsed)) {
+      throw new Error('Invalid vault file')
+    }
+    return parsed
   }
 }
 

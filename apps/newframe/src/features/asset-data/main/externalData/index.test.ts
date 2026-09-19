@@ -1,13 +1,17 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, jest as timers, mock } from 'bun:test'
 
+import { DEFAULT_PROFILE_ID } from '../../../../app/contracts/state/main'
 import store from '../../../../platform/state-store'
 import createCanonicalStore from '../../../../platform/state-store/createCanonicalStore'
+import type { Account } from '../../../accounts/domain/state/account'
 
 const mockBalancesFactory = mock(() => mockBalances)
 
 await mock.module('./balances', () => ({ default: mockBalancesFactory }))
 
-let dataManager: any, externalData: any, mockBalances: any
+let dataManager: ReturnType<typeof externalData>
+let externalData: typeof import('./index').default
+let mockBalances: ReturnType<typeof createBalancesMock>
 
 beforeAll(async () => {
   externalData = (await import('./index')).default
@@ -52,6 +56,22 @@ function createBalancesMock(start = mock(() => true)) {
     refresh: mock(),
     refreshPositions: mock(),
     setAddress: mock()
+  }
+}
+
+function accountState(address: string, lastSignerType: string): Account {
+  return {
+    id: address,
+    profileId: DEFAULT_PROFILE_ID,
+    address,
+    name: 'Test',
+    lastSignerType,
+    status: '',
+    signer: '',
+    signerStatus: '',
+    agentEnabled: false,
+    requests: {},
+    created: ''
   }
 }
 
@@ -203,7 +223,7 @@ describe('wallet lock lifecycle', () => {
     balances.setAddress.mockClear()
 
     scannerStore.setState((state) => {
-      state.main.accounts[normalAddress] = { address: normalAddress, lastSignerType: 'ledger' } as any
+      state.main.accounts[normalAddress] = accountState(normalAddress, 'ledger')
       state.main.currentAccount = normalAddress
       const network = Object.values(state.main.networks.ethereum).at(0)
       if (network) {
@@ -247,7 +267,7 @@ describe('address updates', () => {
 
   it('runs a targeted one-shot refresh when selecting a watch account', () => {
     store.setState((state) => {
-      state.main.accounts[address] = { address, lastSignerType: 'Address' } as any
+      state.main.accounts[address] = accountState(address, 'Address')
       state.main.currentAccount = address
     })
 
@@ -259,7 +279,7 @@ describe('address updates', () => {
 
   it('allows a manual on-chain refresh for a watch account', () => {
     store.setState((state) => {
-      state.main.accounts[address] = { address, lastSignerType: 'Address' } as any
+      state.main.accounts[address] = accountState(address, 'Address')
     })
 
     dataManager.refreshBalances(address)
@@ -344,7 +364,7 @@ it('cancels pending store-driven scans when closed', () => {
   mockBalances.setAddress.mockClear()
 
   store.setState((state) => {
-    state.main.accounts[address] = { address, lastSignerType: 'ledger' } as any
+    state.main.accounts[address] = accountState(address, 'ledger')
     state.main.currentAccount = address
     const network = Object.values(state.main.networks.ethereum).at(0)
     if (network) {
@@ -399,7 +419,7 @@ describe('hiding and showing the tray', () => {
   })
 })
 
-function setTrayShown(shown: any) {
+function setTrayShown(shown: boolean) {
   store.setState((state) => {
     state.tray.open = shown
   })

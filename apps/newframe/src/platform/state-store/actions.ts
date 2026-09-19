@@ -5,42 +5,114 @@ import { v5 as uuidv5 } from 'uuid'
 import {
   DEFAULT_PROFILE_ID,
   DEFAULT_PROFILE_NAME,
-  getProfileAccountIds
+  getProfileAccountIds,
+  type ActivityRecord,
+  type OrderRecord
 } from '../../app/contracts/state/main.js'
 import { accountNS, isDefaultAccountName } from '../../features/accounts/domain/index.js'
 import type { Account } from '../../features/accounts/domain/state/account.js'
+import type { Balance } from '../../features/asset-data/domain/state/balance.js'
+import type { GasFees } from '../../features/networks/domain/state/gas.js'
+import type { NativeCurrency } from '../../features/networks/domain/state/nativeCurrency.js'
 import type { CanonicalAccountRequest } from '../../features/requests/contract/requests.js'
 import { NATIVE_CURRENCY } from '../../features/tokens/domain/constants.js'
 import { toTokenId } from '../../features/tokens/domain/index.js'
 import type { Token, TokenImage, TokenSource } from '../../features/tokens/domain/state/token.js'
 import { AirGapPublicAccountSchema, type AirGapPublicAccount } from '../signing/domain/airgap.js'
+import type { Derivation } from '../signing/signers/Signer/derive.js'
 import type { SignerSummary } from '../signing/signers/Signer/index.js'
 import { createOperationActions } from './actions.operation.js'
 import { createPanelActions, type CanonicalGet, type CanonicalSet } from './actions.panel.js'
-import type { CanonicalState } from './state/index.js'
+import type {
+  CanonicalState,
+  Chain,
+  ChainMetadata,
+  NavigationEntry,
+  Origin,
+  Permission
+} from './state/index.js'
 
-type MutableRecord = Record<string, any>
-type AccountPatch = Partial<Omit<Account, 'id' | 'address' | 'profileId' | 'requests'>>
+type MutableRecord = Record<string, unknown>
+type AccountPatch = Partial<Omit<Account, 'id' | 'address' | 'profileId' | 'requests'>> & {
+  name?: string
+}
+type ActivityUpdate = Partial<ActivityRecord> & Record<string, unknown>
+type OrderUpdate = Partial<OrderRecord> & Record<string, unknown>
+type NetworkType = keyof CanonicalState['main']['networks']
+type NetworkConnection = Chain['connection']['primary']
+type GasPrice = ChainMetadata['gas']['price']
+type NetworkConnectionUpdate = Omit<Partial<NetworkConnection>, 'status'> & { status?: string }
+type LatticeState = CanonicalState['main']['lattice'][string]
+type ShortcutUpdate = Omit<Partial<CanonicalState['main']['shortcuts']['summon']>, 'shortcutKey'> & {
+  shortcutKey?: string
+}
 type AccountUpsert = Partial<Omit<Account, 'id' | 'profileId' | 'requests'>> &
   Pick<Account, 'id'> & {
+    address?: string
+    created?: string
+    lastSignerType?: string
+    name?: string
     profileId?: string
     requests?: Record<string, CanonicalAccountRequest>
+    signer?: string
+    status?: string
   }
 type MutableMain = Draft<CanonicalState['main']> & MutableRecord
 type MutableCanonicalState = Draft<CanonicalState> & MutableRecord
+type DynamicFields = Record<string, unknown>
+type NetworkSettingsInput = DynamicFields & {
+  explorer?: string
+  icon?: string
+  id?: number | string
+  name?: string
+  nativeCurrencyIcon?: string
+  nativeCurrencyName?: string
+  primaryColor?: string
+  primaryRpc?: string
+  secondaryRpc?: string
+  symbol?: string
+  type?: string
+}
+type BalanceInput = Omit<Balance, 'displayBalance'> & { displayBalance?: string } & Partial<Token>
+type DerivationInput = Derivation | `${Derivation}`
+type NavigationCrumb = { data?: Record<string, unknown>; view?: string }
+type MutableAccountRecord = MutableRecord & {
+  balances?: unknown
+  id?: string
+  profileId?: string
+  requests?: unknown
+}
+type MutableTokenRecord = MutableRecord &
+  Partial<Token> & {
+    curated?: boolean
+    custom?: boolean
+    sources?: TokenSource[]
+  }
+type MutableConnection = MutableRecord & {
+  current?: unknown
+  custom?: unknown
+  on?: boolean
+}
+type MutableNetwork = MutableRecord & {
+  connection: MutableRecord & { primary: MutableConnection; secondary: MutableConnection }
+  on?: boolean
+}
 
 const supportedNetworkTypes = ['ethereum']
 const completedActivityStatuses = new Set(['succeeded', 'reverted'])
 
 const mutable = (state: Draft<CanonicalState>) => state as MutableCanonicalState
 const mutableMain = (state: Draft<CanonicalState>) => state.main as MutableMain
-const record = (value: unknown) => value as MutableRecord
+function record<T extends object>(value: T): T & MutableRecord
+function record(value: unknown): MutableRecord
+function record(value: unknown) {
+  return value as MutableRecord
+}
 const windowState = (state: Draft<CanonicalState>, windowId: string) =>
   record(record(state.windows)[windowId])
 
 function ensureProfileState(main: MutableMain) {
-  const profiles = record(main.profiles)
-  main.profiles = profiles
+  const profiles = record(main.profiles) as Record<string, { id: string; name: string } | undefined>
 
   if (Object.keys(profiles).length === 0) {
     profiles[DEFAULT_PROFILE_ID] = { id: DEFAULT_PROFILE_ID, name: DEFAULT_PROFILE_NAME }
@@ -60,10 +132,13 @@ function ensureProfileState(main: MutableMain) {
     main.currentProfile = profileOrder[0]
   }
 
-  const accounts = record(main.accounts)
+  const accounts = record(main.accounts) as Record<string, MutableAccountRecord | undefined>
   Object.values(accounts).forEach((candidate) => {
-    const account = record(candidate)
-    if (account.id && !profiles[account.profileId]) {
+    if (!candidate) {
+      return
+    }
+    const account = candidate
+    if (account.id && (!account.profileId || !profiles[account.profileId])) {
       account.profileId = main.currentProfile
     }
   })
@@ -71,10 +146,8 @@ function ensureProfileState(main: MutableMain) {
     ...new Set([...main.accountOrder.filter((id) => accounts[id]), ...Object.keys(accounts)])
   ]
 
-  if (
-    main.currentAccount &&
-    (!accounts[main.currentAccount] || accounts[main.currentAccount].profileId !== main.currentProfile)
-  ) {
+  const currentAccount = accounts[main.currentAccount]
+  if (main.currentAccount && (!currentAccount || currentAccount.profileId !== main.currentProfile)) {
     selectProfileFallback(main)
   }
 }
@@ -90,14 +163,15 @@ function selectProfileFallback(main: MutableMain, profileId = main.currentProfil
 function switchChainForOrigins(origins: MutableRecord, oldChainId: number, newChainId: number) {
   Object.entries(origins).forEach(([originId, value]) => {
     const origin = record(value)
-    if (oldChainId === record(origin.chain).id) {
-      origins[originId].chain = { id: newChainId, type: 'ethereum' }
+    if (oldChainId === (record(origin.chain) as { id?: number }).id) {
+      ;(origins[originId] as MutableRecord).chain = { id: newChainId, type: 'ethereum' }
     }
   })
 }
 
-function validateNetworkSettings(network: any) {
-  const networkId = parseInt(network.id)
+function validateNetworkSettings(value: unknown) {
+  const network = record(value) as NetworkSettingsInput
+  const networkId = parseInt(String(network.id ?? ''))
   const validHttpUrl = (value: unknown, optional = false) => {
     if (optional && !value) {
       return true
@@ -127,30 +201,31 @@ function validateNetworkSettings(network: any) {
   return networkId
 }
 
-function tokenFromValue(value: any): Token | undefined {
+function tokenFromValue(value: unknown): Token | undefined {
+  const token = record(value)
   if (
-    value.address === NATIVE_CURRENCY ||
-    typeof value.address !== 'string' ||
-    !Number.isInteger(Number(value.chainId)) ||
-    typeof value.name !== 'string' ||
-    typeof value.symbol !== 'string' ||
-    !Number.isInteger(Number(value.decimals))
+    token.address === NATIVE_CURRENCY ||
+    typeof token.address !== 'string' ||
+    !Number.isInteger(Number(token.chainId)) ||
+    typeof token.name !== 'string' ||
+    typeof token.symbol !== 'string' ||
+    !Number.isInteger(Number(token.decimals))
   ) {
     return undefined
   }
 
   return {
-    address: value.address.toLowerCase(),
-    chainId: Number(value.chainId),
-    decimals: Number(value.decimals),
-    name: value.name,
-    symbol: value.symbol,
-    ...(value.logoURI ? { logoURI: value.logoURI } : {}),
-    ...(value.image ? { image: value.image } : {})
+    address: token.address.toLowerCase(),
+    chainId: Number(token.chainId),
+    decimals: Number(token.decimals),
+    name: token.name,
+    symbol: token.symbol,
+    ...(typeof token.logoURI === 'string' ? { logoURI: token.logoURI } : {}),
+    ...(token.image ? { image: token.image as TokenImage } : {})
   }
 }
 
-function balanceFromValue(value: any) {
+function balanceFromValue(value: BalanceInput) {
   return {
     address: value.address === NATIVE_CURRENCY ? NATIVE_CURRENCY : value.address.toLowerCase(),
     balance: value.balance,
@@ -164,10 +239,10 @@ function upsertTokenRecords(
   tokens: Token[],
   options: { account?: string; custom?: boolean; curated?: boolean; source: TokenSource }
 ) {
-  const catalog = record(main.tokens)
-  const byId = record(catalog.byId)
+  const catalog = main.tokens
+  const byId = catalog.byId
   const account = options.account?.toLowerCase()
-  const accountTokenIds = record(catalog.accountTokenIds)
+  const accountTokenIds = catalog.accountTokenIds
   const accountIds = new Set<string>((account && accountTokenIds[account]) ?? [])
 
   tokens.forEach((input) => {
@@ -176,7 +251,7 @@ function upsertTokenRecords(
       return
     }
     const id = toTokenId(token)
-    const existing = record(byId[id] ?? {})
+    const existing = record(byId[id] ?? {}) as MutableTokenRecord
     const preserveCustomMetadata = existing.custom && !options.custom
     const sourceSet = new Set<TokenSource>([...(existing.sources ?? []), options.source])
     const preferred = preserveCustomMetadata ? existing : token
@@ -185,9 +260,9 @@ function upsertTokenRecords(
       ...existing,
       address: token.address,
       chainId: token.chainId,
-      decimals: preferred.decimals ?? existing.decimals,
+      decimals: preferred.decimals ?? existing.decimals ?? token.decimals,
       name: preferred.name ?? existing.name ?? token.symbol,
-      symbol: preferred.symbol ?? existing.symbol,
+      symbol: preferred.symbol ?? existing.symbol ?? token.symbol,
       logoURI: preferred.logoURI ?? existing.logoURI ?? '',
       image:
         preferred.image && (!existing.image || preferred.image.sourceUrl !== existing.image.sourceUrl)
@@ -209,14 +284,15 @@ function upsertTokenRecords(
   }
 }
 
-function stripRequestCapabilities(request: MutableRecord) {
-  ;(request.recognizedActions ?? []).forEach((action: MutableRecord) => delete action.update)
+function stripRequestCapabilities(request: CanonicalAccountRequest) {
+  const actions = (request.recognizedActions ?? []) as MutableRecord[]
+  actions.forEach((action) => delete action.update)
 }
 
 export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
   let homeCommandId = 0
 
-  const toHomeCommand = (command: any) => ({
+  const toHomeCommand = (command: NavigationCrumb | null | undefined) => ({
     id: ++homeCommandId,
     view: command?.view === 'chains' ? 'networks' : command?.view,
     data: command?.data ?? {}
@@ -229,7 +305,8 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     activateNetwork: (type: string, chainId: number, active: boolean) => {
       set((draft) => {
         const main = mutableMain(draft)
-        record(record(main.networks)[type])[chainId].on = active
+        const network = record(record(main.networks)[type])[chainId] as MutableNetwork
+        network.on = active
 
         if (!active) {
           switchChainForOrigins(record(main.origins), chainId, 1)
@@ -237,50 +314,53 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
-    selectPrimary: (netType: string, netId: number, value: any) => {
+    selectPrimary: (netType: string, netId: number, value: string) => {
       set((draft) => {
-        record(record(record(mutableMain(draft).networks)[netType])[netId].connection).primary.current = value
+        const network = record(record(mutableMain(draft).networks)[netType])[netId] as MutableNetwork
+        network.connection.primary.current = value
       })
     },
 
-    setPrimaryCustom: (netType: string, netId: number, target: any) => {
+    setPrimaryCustom: (netType: string, netId: number, target: string) => {
       if (!netType || !netId) {
         return
       }
       set((draft) => {
-        record(record(record(mutableMain(draft).networks)[netType])[netId].connection).primary.custom = target
+        const network = record(record(mutableMain(draft).networks)[netType])[netId] as MutableNetwork
+        network.connection.primary.custom = target
       })
     },
 
-    setSecondaryCustom: (netType: string, netId: number, target: any) => {
+    setSecondaryCustom: (netType: string, netId: number, target: string) => {
       if (!netType || !netId) {
         return
       }
       set((draft) => {
-        record(record(record(mutableMain(draft).networks)[netType])[netId].connection).secondary.custom =
-          target
+        const network = record(record(mutableMain(draft).networks)[netType])[netId] as MutableNetwork
+        network.connection.secondary.custom = target
       })
     },
 
     toggleConnection: (netType: string, netId: number, node: string, on?: boolean) => {
       set((draft) => {
-        const connection = record(record(record(mutableMain(draft).networks)[netType])[netId].connection)
+        const connection = (record(record(mutableMain(draft).networks)[netType])[netId] as MutableNetwork)
+          .connection
         const target = record(connection[node])
         target.on = on ?? !target.on
       })
     },
 
-    setPrimary: (netType: string, netId: number, status: any) => {
+    setPrimary: (netType: NetworkType, netId: number, status: NetworkConnectionUpdate) => {
       set((draft) => {
-        const connection = record(record(record(mutableMain(draft).networks)[netType])[netId].connection)
-        connection.primary = { ...record(connection.primary), ...status }
+        const connection = mutableMain(draft).networks[netType][netId].connection
+        Object.assign(connection.primary, status)
       })
     },
 
-    setSecondary: (netType: string, netId: number, status: any) => {
+    setSecondary: (netType: NetworkType, netId: number, status: NetworkConnectionUpdate) => {
       set((draft) => {
-        const connection = record(record(record(mutableMain(draft).networks)[netType])[netId].connection)
-        connection.secondary = { ...record(connection.secondary), ...status }
+        const connection = mutableMain(draft).networks[netType][netId].connection
+        Object.assign(connection.secondary, status)
       })
     },
 
@@ -331,7 +411,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
-    setPermission: (address: string, permission: any) => {
+    setPermission: (address: string, permission: Permission) => {
       set((draft) => {
         const permissions = record(mutableMain(draft).permissions)
         const accountPermissions = record(permissions[address] ?? {})
@@ -377,24 +457,24 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
-    upsertSubmittedActivity: (activity: any) => {
-      const id = activity?.id
+    upsertSubmittedActivity: (activity: ActivityRecord) => {
+      const id = activity.id
       if (!id) {
         return
       }
       const now = Date.now()
 
       set((draft) => {
-        const activities = record(mutableMain(draft).activity)
-        const existingActivity = record(activities[id] ?? {})
+        const activities = mutableMain(draft).activity as Record<string, ActivityRecord | undefined>
+        const existingActivity = activities[id]
         const submittedActivity = {
           ...existingActivity,
           ...activity,
           id,
-          status: 'submitted',
-          submittedAt: activity.submittedAt ?? existingActivity.submittedAt ?? now,
+          status: 'submitted' as const,
+          submittedAt: activity.submittedAt ?? existingActivity?.submittedAt ?? now,
           updatedAt: activity.updatedAt ?? now,
-          confirmations: activity.confirmations ?? existingActivity.confirmations ?? 0
+          confirmations: activity.confirmations ?? existingActivity?.confirmations ?? 0
         }
 
         if (activity.completedAt === undefined) {
@@ -404,26 +484,26 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
-    updateActivity: (id: string, update: any = {}) => {
+    updateActivity: (id: string, update: ActivityUpdate = {}) => {
       if (!id) {
         return
       }
       const now = Date.now()
 
       set((draft) => {
-        const activities = record(mutableMain(draft).activity)
-        const activity = record(activities[id] ?? { id })
+        const activities = mutableMain(draft).activity as Record<string, ActivityRecord | undefined>
+        const activity = activities[id]
         activities[id] = {
           ...activity,
           ...update,
           id,
-          status: update.status ?? activity.status ?? 'confirming',
+          status: update.status ?? activity?.status ?? 'confirming',
           updatedAt: update.updatedAt ?? now
         }
       })
     },
 
-    finalizeActivity: (id: string, status: string, update: any = {}) => {
+    finalizeActivity: (id: string, status: ActivityRecord['status'], update: ActivityUpdate = {}) => {
       if (!id) {
         return
       }
@@ -435,8 +515,8 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       const completedAt = update.completedAt ?? Date.now()
 
       set((draft) => {
-        const activities = record(mutableMain(draft).activity)
-        const activity = record(activities[id] ?? { id })
+        const activities = mutableMain(draft).activity as Record<string, ActivityRecord | undefined>
+        const activity = activities[id]
         activities[id] = {
           ...activity,
           ...update,
@@ -444,7 +524,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
           status,
           completedAt,
           updatedAt: update.updatedAt ?? completedAt,
-          confirmations: update.confirmations ?? activity.confirmations ?? 0
+          confirmations: update.confirmations ?? activity?.confirmations ?? 0
         }
       })
     },
@@ -458,20 +538,19 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
-    upsertOrder: (order: any) => {
-      const orderId = order?.orderId
+    upsertOrder: (order: OrderRecord) => {
+      const orderId = order.orderId
       if (!orderId) {
         return
       }
-      const now = Date.now()
 
       set((draft) => {
-        const orders = record(mutableMain(draft).orders)
-        const existingOrder = record(orders[orderId] ?? {})
+        const orders = mutableMain(draft).orders as Record<string, OrderRecord | undefined>
+        const existingOrder = orders[orderId]
         const source =
-          order.source ?? order.provider ?? existingOrder.source ?? existingOrder.provider ?? 'flash'
+          order.source ?? order.provider ?? existingOrder?.source ?? existingOrder?.provider ?? 'flash'
         const provider =
-          order.provider ?? order.source ?? existingOrder.provider ?? existingOrder.source ?? source
+          order.provider ?? order.source ?? existingOrder?.provider ?? existingOrder?.source ?? source
 
         orders[orderId] = {
           ...existingOrder,
@@ -479,26 +558,26 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
           orderId,
           provider,
           source,
-          createdAt: order.createdAt ?? existingOrder.createdAt ?? now,
-          updatedAt: order.updatedAt ?? now
+          createdAt: order.createdAt,
+          updatedAt: order.updatedAt
         }
       })
     },
 
-    updateOrder: (orderId: string, update: any = {}) => {
+    updateOrder: (orderId: string, update: OrderUpdate = {}) => {
       if (!orderId) {
         return
       }
       const now = Date.now()
 
       set((draft) => {
-        const orders = record(mutableMain(draft).orders)
+        const orders = mutableMain(draft).orders as Record<string, OrderRecord | undefined>
         const existingOrder = orders[orderId]
         if (!existingOrder) {
           return
         }
 
-        const existing = record(existingOrder)
+        const existing = existingOrder
         const source = update.source ?? update.provider ?? existing.source ?? existing.provider ?? 'flash'
         const provider = update.provider ?? update.source ?? existing.provider ?? existing.source ?? source
 
@@ -521,7 +600,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       set((draft) => {
         const main = mutableMain(draft)
         ensureProfileState(main)
-        const profiles = record(main.profiles)
+        const profiles = record(main.profiles) as Record<string, unknown | undefined>
         if (profiles[id]) {
           return
         }
@@ -550,7 +629,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       set((draft) => {
         const main = mutableMain(draft)
         ensureProfileState(main)
-        if (!record(main.profiles)[id]) {
+        if (!(record(main.profiles) as Record<string, unknown | undefined>)[id]) {
           return
         }
 
@@ -585,7 +664,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       set((draft) => {
         const main = mutableMain(draft)
         ensureProfileState(main)
-        const profiles = record(main.profiles)
+        const profiles = record(main.profiles) as Record<string, unknown | undefined>
         if (!profiles[id] || main.profileOrder.length === 1) {
           return
         }
@@ -614,7 +693,11 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         const main = mutableMain(draft)
         ensureProfileState(main)
         const account = record(record(main.accounts)[accountId] ?? {})
-        if (!account.id || !record(main.profiles)[profileId] || account.profileId === profileId) {
+        if (
+          !account.id ||
+          !(record(main.profiles) as Record<string, unknown | undefined>)[profileId] ||
+          account.profileId === profileId
+        ) {
           return
         }
 
@@ -625,16 +708,21 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
-    setAccount: (account: any) => {
+    setAccount: (account: Pick<Account, 'id'>) => {
       set((draft) => {
         const state = mutable(draft)
         const main = mutableMain(draft)
         ensureProfileState(main)
-        const selectedAccount = record(record(main.accounts)[account?.id] ?? {})
-        if (!selectedAccount.id || !record(main.profiles)[selectedAccount.profileId]) {
+        const selectedAccount = record(record(main.accounts)[account.id] ?? {}) as MutableAccountRecord
+        const profileId = selectedAccount.profileId
+        if (
+          !selectedAccount.id ||
+          !profileId ||
+          !(record(main.profiles) as Record<string, unknown | undefined>)[profileId]
+        ) {
           return
         }
-        main.currentProfile = selectedAccount.profileId
+        main.currentProfile = profileId
         main.currentAccount = selectedAccount.id
         state.selected.minimized = false
         state.selected.open = true
@@ -654,22 +742,33 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       set((draft) => {
         const main = mutableMain(draft)
         ensureProfileState(main)
-        const accounts = record(main.accounts)
-        const account = record(accounts[id] ?? {})
+        const accounts = record(main.accounts) as Record<string, unknown | undefined>
+        const account = record(accounts[id] ?? {}) as MutableAccountRecord
         const accountUpdate = record({ ...updatedAccount })
-        const profileId = account.profileId ?? accountUpdate.profileId ?? main.currentProfile
-        if (!record(main.profiles)[profileId]) {
+        const profileId = account.profileId ?? updatedAccount.profileId ?? main.currentProfile
+        if (!(record(main.profiles) as Record<string, unknown | undefined>)[profileId]) {
           return
         }
-        Object.values(record(accountUpdate.requests ?? {})).forEach(stripRequestCapabilities)
-        accounts[id] = { ...accountUpdate, profileId, balances: account.balances ?? {} }
+        Object.values(accountUpdate.requests ?? {}).forEach(stripRequestCapabilities)
+        accounts[id] = {
+          ...accountUpdate,
+          profileId,
+          requests: accountUpdate.requests ?? {},
+          balances: account.balances ?? {}
+        }
 
         main.accountOrder = [...new Set(main.accountOrder.filter((accountId) => accounts[accountId]))]
         if (!main.accountOrder.includes(id)) {
           main.accountOrder.push(id)
         }
 
-        if (name && !isDefaultAccountName({ ...updatedAccount, name } as any)) {
+        if (
+          name &&
+          !isDefaultAccountName({
+            ...updatedAccount,
+            name
+          } as Parameters<typeof isDefaultAccountName>[0])
+        ) {
           const accountMetaId = uuidv5(id, accountNS)
           const accountsMeta = record(main.accountsMeta)
           accountsMeta[accountMetaId] = {
@@ -688,8 +787,8 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
 
       set((draft) => {
         const main = mutableMain(draft)
-        const account = record(record(main.accounts)[id])
-        if (!account.id) {
+        const account = (main.accounts as unknown as Record<string, Draft<Account> | undefined>)[id]
+        if (!account) {
           return
         }
         const {
@@ -698,10 +797,10 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
           profileId: _profileId,
           requests: _requests,
           ...safeUpdate
-        } = update as any
+        } = update as AccountPatch & Partial<Pick<Account, 'id' | 'address' | 'profileId' | 'requests'>>
         Object.assign(account, safeUpdate)
 
-        if (safeUpdate.name && !isDefaultAccountName(account as any)) {
+        if (safeUpdate.name && !isDefaultAccountName(account)) {
           const accountMetaId = uuidv5(id, accountNS)
           const accountsMeta = record(main.accountsMeta)
           accountsMeta[accountMetaId] = {
@@ -723,7 +822,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         if (!account.id) {
           return
         }
-        const canonicalRequest = record({ ...request })
+        const canonicalRequest: CanonicalAccountRequest = { ...request }
         stripRequestCapabilities(canonicalRequest)
         record(account.requests)[request.handlerId] = canonicalRequest
       })
@@ -743,7 +842,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         const request = record(account.requests)[requestId] as Draft<CanonicalAccountRequest> | undefined
         if (request) {
           update(request)
-          stripRequestCapabilities(record(request))
+          stripRequestCapabilities(request)
         }
       })
     },
@@ -781,7 +880,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       set((draft) => {
         const main = mutableMain(draft)
         ensureProfileState(main)
-        const accounts = record(main.accounts)
+        const accounts = record(main.accounts) as Record<string, unknown | undefined>
         const ordered = [...new Set(main.accountOrder.filter((id) => accounts[id]))]
 
         Object.keys(accounts).forEach((id) => {
@@ -816,7 +915,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         const signers = record(mutableMain(draft).signers)
         signers[signer.id] = { ...record(signers[signer.id] ?? {}), ...signer }
         if (signer.type === 'airgap' && !signer.airgapRequest) {
-          delete signers[signer.id].airgapRequest
+          delete (signers[signer.id] as MutableRecord).airgapRequest
         }
       })
     },
@@ -856,13 +955,16 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         delete draft.main.airgap[id]
       })
     },
-    updateLattice: (deviceId: string, update: any) => {
-      if (!deviceId || !update) {
+    updateLattice: (deviceId: string, update: Partial<LatticeState>) => {
+      if (!deviceId) {
         return
       }
       set((draft) => {
-        const lattice = record(mutableMain(draft).lattice)
-        lattice[deviceId] = { ...record(lattice[deviceId] ?? {}), ...update }
+        const lattice = mutableMain(draft).lattice as Record<string, LatticeState | undefined>
+        const existing = lattice[deviceId]
+        if (existing) {
+          Object.assign(existing, update)
+        }
       })
     },
 
@@ -877,53 +979,53 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
 
     setLatticeAccountLimit: (limit: number) => {
       set((draft) => {
-        mutableMain(draft).latticeSettings.accountLimit = limit
+        ;(mutableMain(draft).latticeSettings as { accountLimit: number }).accountLimit = limit
       })
     },
 
     setLatticeEndpointMode: (mode: string) => {
       set((draft) => {
-        mutableMain(draft).latticeSettings.endpointMode = mode
+        ;(mutableMain(draft).latticeSettings as { endpointMode: string }).endpointMode = mode
       })
     },
 
     setLatticeEndpointCustom: (url: string) => {
       set((draft) => {
-        mutableMain(draft).latticeSettings.endpointCustom = url
+        ;(mutableMain(draft).latticeSettings as { endpointCustom: string }).endpointCustom = url
       })
     },
 
-    setLatticeDerivation: (value: any) => {
+    setLatticeDerivation: (value: DerivationInput) => {
       set((draft) => {
-        mutableMain(draft).latticeSettings.derivation = value
+        ;(mutableMain(draft).latticeSettings as { derivation: unknown }).derivation = value
       })
     },
 
-    setLedgerDerivation: (value: any) => {
+    setLedgerDerivation: (value: DerivationInput) => {
       set((draft) => {
-        mutableMain(draft).ledger.derivation = value
+        ;(mutableMain(draft).ledger as { derivation: unknown }).derivation = value
       })
     },
 
-    setTrezorDerivation: (value: any) => {
+    setTrezorDerivation: (value: DerivationInput) => {
       set((draft) => {
-        mutableMain(draft).trezor.derivation = value
+        ;(mutableMain(draft).trezor as { derivation: unknown }).derivation = value
       })
     },
 
-    setLiveAccountLimit: (value: any) => {
+    setLiveAccountLimit: (value: number) => {
       set((draft) => {
-        mutableMain(draft).ledger.liveAccountLimit = value
+        ;(mutableMain(draft).ledger as { liveAccountLimit: unknown }).liveAccountLimit = value
       })
     },
 
-    setMenubarGasPrice: (value: any) => {
+    setMenubarGasPrice: (value: boolean) => {
       set((draft) => {
         mutableMain(draft).menubarGasPrice = value
       })
     },
 
-    setBiometricUnlock: (value: any) => {
+    setBiometricUnlock: (value: unknown) => {
       set((draft) => {
         mutableMain(draft).biometricUnlock = Boolean(value)
       })
@@ -956,16 +1058,15 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
-    setShortcut: (name: string, shortcut: any) => {
+    setShortcut: (name: 'summon', shortcut: ShortcutUpdate) => {
       set((draft) => {
-        const shortcuts = record(mutableMain(draft).shortcuts)
-        const existingShortcut = record(shortcuts[name] ?? {})
-        shortcuts[name] = {
+        const existingShortcut = mutableMain(draft).shortcuts[name]
+        Object.assign(existingShortcut, {
           modifierKeys: shortcut.modifierKeys ?? existingShortcut.modifierKeys,
           shortcutKey: shortcut.shortcutKey ?? existingShortcut.shortcutKey,
           configuring: shortcut.configuring ?? existingShortcut.configuring,
           enabled: shortcut.enabled ?? existingShortcut.enabled
-        }
+        })
       })
     },
 
@@ -975,44 +1076,52 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
-    setGasFees: (netType: string, netId: number, fees: any) => {
+    setGasFees: (netType: string, netId: number, fees: GasFees | null) => {
       set((draft) => {
-        const meta = record(record(mutableMain(draft).networksMeta)[netType])[netId]
-        record(record(meta).gas).price.fees = fees
+        const meta = record(record(mutableMain(draft).networksMeta)[netType])[netId] as {
+          gas: { price: MutableRecord & { fees?: unknown } }
+        }
+        meta.gas.price.fees = fees
       })
     },
 
-    setGasPrices: (netType: string, netId: number, prices: any) => {
+    setGasPrices: (netType: string, netId: number, prices: GasPrice['levels']) => {
       set((draft) => {
-        const meta = record(record(mutableMain(draft).networksMeta)[netType])[netId]
-        record(record(meta).gas).price.levels = prices
+        const meta = record(record(mutableMain(draft).networksMeta)[netType])[netId] as {
+          gas: { price: MutableRecord & { levels?: unknown } }
+        }
+        meta.gas.price.levels = prices
       })
     },
 
-    setGasDefault: (netType: string, netId: number, level: string, price?: any) => {
+    setGasDefault: (netType: NetworkType, netId: number, level: GasPrice['selected'], price?: string) => {
       set((draft) => {
-        const meta = record(record(mutableMain(draft).networksMeta)[netType])[netId]
-        const gasPrice = record(record(meta).gas).price
+        const gasPrice = mutableMain(draft).networksMeta[netType][netId].gas.price
         gasPrice.selected = level
 
         if (level === 'custom') {
-          record(gasPrice.levels).custom = price
+          gasPrice.levels.custom = price
         } else {
-          gasPrice.lastLevel = level
+          Object.assign(gasPrice, { lastLevel: level })
         }
       })
     },
 
-    setNativeCurrencyData: (netType: string, netId: number, currency: any) => {
+    setNativeCurrencyData: (netType: string, netId: number, currency: Partial<NativeCurrency>) => {
       set((draft) => {
-        const meta = record(record(mutableMain(draft).networksMeta)[netType])[netId]
+        const meta = record(record(mutableMain(draft).networksMeta)[netType])[netId] as MutableRecord & {
+          nativeCurrency?: unknown
+        }
         meta.nativeCurrency = { ...record(meta.nativeCurrency), ...currency }
       })
     },
 
-    addNetwork: (net: any) => {
+    addNetwork: (value: unknown) => {
       try {
-        const network = { ...net, id: validateNetworkSettings(net) }
+        const net = record(value) as NetworkSettingsInput
+        const networkId = validateNetworkSettings(net)
+        const networkType = typeof net.type === 'string' ? net.type : ''
+        const network = { ...net, id: networkId, type: networkType }
         const icon = network.icon ?? ''
         const primaryRpc = network.primaryRpc ?? ''
         const secondaryRpc = network.secondaryRpc ?? ''
@@ -1058,7 +1167,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
 
         const defaultMeta = {
           name: network.name,
-          primaryColor: /^accent[1-8]$/.test(network.primaryColor) ? network.primaryColor : 'accent1',
+          primaryColor: /^accent[1-8]$/.test(network.primaryColor ?? '') ? network.primaryColor : 'accent1',
           icon,
           nativeCurrency: {
             symbol: network.symbol,
@@ -1076,8 +1185,8 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
 
         set((draft) => {
           const main = mutableMain(draft)
-          const networks = record(main.networks)
-          const networksMeta = record(main.networksMeta)
+          const networks = record(main.networks) as Record<string, Record<number, MutableRecord | undefined>>
+          const networksMeta = record(main.networksMeta) as Record<string, Record<number, MutableRecord>>
           networks[network.type] ??= {}
           networksMeta[network.type] ??= {}
           if (networks[network.type][network.id]) {
@@ -1092,37 +1201,40 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       }
     },
 
-    removeNetwork: (net: any) => {
+    removeNetwork: (value: unknown) => {
       try {
-        const networkId = parseInt(net.id)
+        const net = record(value)
+        const networkId =
+          typeof net.id === 'string' || typeof net.id === 'number' ? parseInt(String(net.id)) : Number.NaN
+        const networkType = typeof net.type === 'string' ? net.type : ''
         if (!Number.isInteger(networkId)) {
           throw new Error('Invalid chain id')
         }
-        if (net.type === 'ethereum' && networkId === 1) {
+        if (networkType === 'ethereum' && networkId === 1) {
           throw new Error('Cannot remove mainnet')
         }
 
         set((draft) => {
           const main = mutableMain(draft)
           const networks = record(main.networks)
-          const typeNetworks = record(networks[net.type])
+          const typeNetworks = record(networks[networkType])
           if (Object.keys(typeNetworks).length <= 1) {
             return
           }
 
           switchChainForOrigins(record(main.origins), networkId, 1)
           delete typeNetworks[networkId]
-          delete record(record(main.networksMeta)[net.type])[networkId]
+          delete record(record(main.networksMeta)[networkType])[networkId]
         })
       } catch (error) {
         log.error(error)
       }
     },
 
-    initOrigin: (originId: string, origin: any) => {
+    initOrigin: (originId: string, origin: Omit<Origin, 'session'>) => {
       const now = Date.now()
       set((draft) => {
-        record(mutableMain(draft).origins)[originId] = {
+        mutableMain(draft).origins[originId] = {
           ...origin,
           session: { requests: 1, startedAt: now, lastUpdatedAt: now }
         }
@@ -1156,9 +1268,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     addOriginRequest: (originId: string) => {
       const now = Date.now()
       set((draft) => {
-        const origin = record(record(mutableMain(draft).origins)[originId])
-        const session = record(origin.session)
-        const isNewSession = session.startedAt < session.endedAt
+        const origin = mutableMain(draft).origins[originId]
+        const session = origin.session
+        const isNewSession = session.endedAt !== undefined && session.startedAt < session.endedAt
         origin.session = {
           requests: isNewSession ? 1 : session.requests + 1,
           startedAt: isNewSession ? now : session.startedAt,
@@ -1229,8 +1341,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       set((draft) => {
         const chainsMeta = record(record(mutableMain(draft).networksMeta)[netType])
         if (chainsMeta[chainId]) {
-          chainsMeta[chainId].icon = sourceUrl
-          chainsMeta[chainId].image = image
+          const chainMetadata = chainsMeta[chainId] as MutableRecord
+          chainMetadata.icon = sourceUrl
+          chainMetadata.image = image
         } else {
           log.error(`Action Error: setNetworkImage chainId: ${chainId} not found in chainsMeta`)
         }
@@ -1241,7 +1354,8 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       set((draft) => {
         const chainsMeta = record(record(mutableMain(draft).networksMeta)[netType])
         if (chainsMeta[chainId]) {
-          chainsMeta[chainId].nativeCurrency.image = image
+          const chainMetadata = chainsMeta[chainId] as { nativeCurrency: MutableRecord }
+          chainMetadata.nativeCurrency.image = image
         } else {
           log.error(`Action Error: setNativeCurrencyImage chainId: ${chainId} not found in chainsMeta`)
         }
@@ -1254,7 +1368,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
-    setBalance: (address: string, balance: any) => {
+    setBalance: (address: string, balance: BalanceInput) => {
       set((draft) => {
         const main = mutableMain(draft)
         const token = tokenFromValue(balance)
@@ -1263,7 +1377,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         }
         const normalizedBalance = balanceFromValue(balance)
         const balances = record(main.balances)
-        const accountBalances = ((balances[address] ?? []) as any[]).map(balanceFromValue)
+        const accountBalances = (balances[address] ?? []).map(balanceFromValue)
         balances[address] = [
           ...accountBalances.filter(
             (item) => item.address !== normalizedBalance.address || item.chainId !== normalizedBalance.chainId
@@ -1273,7 +1387,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
-    setBalances: (address: string, newBalances: any[]) => {
+    setBalances: (address: string, newBalances: BalanceInput[]) => {
       set((draft) => {
         const main = mutableMain(draft)
         upsertTokenRecords(main, newBalances.map(tokenFromValue).filter(Boolean) as Token[], {
@@ -1282,7 +1396,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         })
         const normalizedBalances = newBalances.map(balanceFromValue)
         const balances = record(main.balances)
-        const accountBalances = ((balances[address] ?? []) as any[]).map(balanceFromValue)
+        const accountBalances = (balances[address] ?? []).map(balanceFromValue)
         const existingBalances = accountBalances.filter((balance) => {
           return normalizedBalances.every(
             (newBalance) => newBalance.chainId !== balance.chainId || newBalance.address !== balance.address
@@ -1293,7 +1407,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
-    setPortfolioBalances: (address: string, newBalances: any[]) => {
+    setPortfolioBalances: (address: string, newBalances: BalanceInput[]) => {
       set((draft) => {
         const main = mutableMain(draft)
         upsertTokenRecords(main, newBalances.map(tokenFromValue).filter(Boolean) as Token[], {
@@ -1301,9 +1415,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
           source: 'portfolio'
         })
         const customTokenIds = new Set(
-          Object.values(record(main.tokens).byId ?? {})
-            .filter((token: any) => token.custom)
-            .map((token: any) => toTokenId(token))
+          Object.values(record(main.tokens).byId)
+            .filter((token) => token.custom)
+            .map((token) => toTokenId(token))
         )
         const portfolioBalances = newBalances
           .filter((balance) => !customTokenIds.has(toTokenId(balance)))
@@ -1311,7 +1425,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         const portfolioChains = new Set(portfolioBalances.map((balance) => balance.chainId))
         const portfolioBalanceIds = new Set(portfolioBalances.map(toTokenId))
         const balances = record(main.balances)
-        const existingBalances = ((balances[address] ?? []) as any[]).map(balanceFromValue)
+        const existingBalances = (balances[address] ?? []).map(balanceFromValue)
         const preservedBalances = existingBalances.filter((balance) => {
           const balanceId = toTokenId(balance)
           if (customTokenIds.has(balanceId)) {
@@ -1336,7 +1450,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         const key = address.toLowerCase()
 
         Object.values(balances).forEach((value) => {
-          const accountBalances = value as any[]
+          const accountBalances = value as BalanceInput[]
           const index = accountBalances.findIndex((balance) => {
             return balance.chainId === chainId && balance.address.toLowerCase() === key
           })
@@ -1359,7 +1473,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
 
     setTokenImage: (tokenId: string, image: TokenImage) => {
       set((draft) => {
-        const token = record(record(mutableMain(draft).tokens).byId)[tokenId]
+        const token = record(record(mutableMain(draft).tokens).byId)[tokenId] as
+          | MutableTokenRecord
+          | undefined
         if (!token) {
           return
         }
@@ -1373,7 +1489,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
 
       set((draft) => {
         const main = mutableMain(draft)
-        const byId = record(record(main.tokens).byId)
+        const byId = record(record(main.tokens).byId) as Record<string, MutableTokenRecord | undefined>
         tokenIds.forEach((id) => {
           if (byId[id]) {
             byId[id].custom = false
@@ -1386,9 +1502,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       set((draft) => {
         const accountTokenIds = record(record(mutableMain(draft).tokens).accountTokenIds)
         const key = address.toLowerCase()
-        accountTokenIds[key] = ((accountTokenIds[key] ?? []) as string[]).filter(
-          (tokenId) => !tokensToRemove.has(tokenId)
-        )
+        accountTokenIds[key] = (accountTokenIds[key] ?? []).filter((tokenId) => !tokensToRemove.has(tokenId))
       })
     },
 
@@ -1399,8 +1513,8 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         const byId = record(catalog.byId)
         const tokenIds = new Set(
           Object.values(byId)
-            .filter((token: any) => !token.custom && !token.curated)
-            .map((token: any) => toTokenId(token))
+            .filter((token) => !token.custom && !token.curated)
+            .map((token) => toTokenId(token))
         )
 
         tokenIds.forEach((id) => delete byId[id])
@@ -1411,7 +1525,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
 
         if (tokenIds.size > 0) {
           Object.entries(record(main.balances)).forEach(([address, value]) => {
-            record(main.balances)[address] = (value as any[]).filter(
+            record(main.balances)[address] = (value as Balance[]).filter(
               (balance) => !tokenIds.has(toTokenId(balance))
             )
           })
@@ -1419,10 +1533,10 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
-    navHome: (command: any) => {
+    navHome: (command: { view?: string; data?: Record<string, unknown> }) => {
       const homeCommand = toHomeCommand(command)
       set((draft) => {
-        record(draft.tray).homeCommand = homeCommand
+        record(draft.tray as unknown).homeCommand = homeCommand
         windowState(draft, 'panel').nav = []
       })
     },
@@ -1430,21 +1544,23 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     clearHomeCommand: (id?: number) => {
       set((draft) => {
         const tray = record(draft.tray)
-        if (!id || tray.homeCommand?.id === id) {
+        const homeCommand = tray.homeCommand as { id?: number } | null | undefined
+        if (!id || homeCommand?.id === id) {
           tray.homeCommand = null
         }
       })
     },
 
-    navForward: (windowId: string, crumb: any) => {
-      if (!windowId || !crumb) {
+    navForward: (windowId: string, value: unknown) => {
+      const crumb = record(value) as NavigationCrumb
+      if (!windowId) {
         log.warn('Invalid nav forward', windowId, crumb)
         return
       }
 
       set((draft) => {
         const window = windowState(draft, windowId)
-        const nav = window.nav as any[]
+        const nav = window.nav as NavigationCrumb[]
         if (JSON.stringify(nav[0]) !== JSON.stringify(crumb)) {
           nav.unshift(crumb)
         }
@@ -1452,18 +1568,19 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
-    navUpdate: (windowId: string, crumb: any, navigate: boolean) => {
-      if (!windowId || !crumb) {
+    navUpdate: (windowId: string, value: unknown, navigate: boolean) => {
+      const crumb = record(value) as NavigationCrumb
+      if (!windowId) {
         log.warn('Invalid nav forward', windowId, crumb)
         return
       }
 
       set((draft) => {
         const window = windowState(draft, windowId)
-        const nav = window.nav as any[]
+        const nav = window.nav as NavigationCrumb[]
         const updatedNavItem = {
           view: nav[0].view ?? crumb.view,
-          data: Object.keys(crumb.data).length === 0 ? {} : { ...nav[0].data, ...crumb.data }
+          data: Object.keys(crumb.data ?? {}).length === 0 ? {} : { ...nav[0].data, ...crumb.data }
         }
 
         if (JSON.stringify(nav[0]) !== JSON.stringify(updatedNavItem)) {
@@ -1482,9 +1599,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     navClearReq: (handlerId: string, showRequestInbox = true) => {
       set((draft) => {
         const panel = windowState(draft, 'panel')
-        panel.nav = (panel.nav as any[]).filter((item) => {
-          const isClearedRequest = item?.data?.requestId === handlerId
-          const isRequestInbox = item?.data?.id === 'requests' && item?.view === 'expandedModule'
+        panel.nav = (panel.nav as NavigationEntry[]).filter((item) => {
+          const isClearedRequest = item.data.requestId === handlerId
+          const isRequestInbox = item.data.id === 'requests' && item.view === 'expandedModule'
           return !isClearedRequest && (showRequestInbox || !isRequestInbox)
         })
       })
@@ -1497,12 +1614,12 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       }
 
       set((draft) => {
-        const nav = windowState(draft, windowId).nav as any[]
+        const nav = windowState(draft, windowId).nav as NavigationEntry[]
         nav.splice(0, Math.min(numSteps, nav.length))
       })
     },
 
-    setSideTray: (frame: any) => {
+    setSideTray: (frame: { id: string }) => {
       set((draft) => {
         const main = mutableMain(draft)
         main.frames = { [frame.id]: frame }

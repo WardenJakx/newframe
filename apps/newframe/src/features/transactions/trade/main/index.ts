@@ -107,7 +107,10 @@ function createFlashServiceState(
   }
 }
 
-function runtime(): FlashRuntime & { environment: string; profile: string | null } {
+function runtime(): FlashRuntime & {
+  environment: string
+  profile: string | null
+} {
   return getMainRuntime()
 }
 
@@ -139,8 +142,8 @@ export function flashHeaders() {
   return headers
 }
 
-function normalizeAddress(address?: string) {
-  return (address ?? '').trim().toLowerCase()
+function normalizeAddress(address?: unknown) {
+  return typeof address === 'string' ? address.trim().toLowerCase() : ''
 }
 
 function normalizeAmount(amount?: string | number) {
@@ -149,16 +152,28 @@ function normalizeAmount(amount?: string | number) {
     .replace(/,/g, '')
 }
 
-function objectPayload(value: unknown): Record<string, any> {
-  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, any>) : {}
+function objectPayload(value: unknown): Record<string, unknown | undefined> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown | undefined>)
+    : {}
 }
 
 function stringValue(value: unknown, fallback = '') {
   if (value === undefined || value === null) {
     return fallback
   }
+  if (typeof value === 'string') {
+    return value
+  }
+  if (typeof value === 'number' || typeof value === 'bigint' || typeof value === 'boolean') {
+    return String(value)
+  }
 
-  return String(value)
+  return fallback
+}
+
+function firstPresent(...values: unknown[]) {
+  return values.find((value) => value !== undefined && value !== null)
 }
 
 function formatFlashErrorPayload(payload: unknown, fallback: string) {
@@ -249,9 +264,15 @@ function statusPayload(orderId: string, status: FlashOrderStatus, raw?: unknown)
 }
 
 function normalizeStatus(status: unknown): FlashOrderStatus {
-  const rawStatus = String(status ?? '').trim()
-  const normalized = String(rawStatus || 'accepted')
-    .trim()
+  if (status === undefined || status === null) {
+    return 'accepted'
+  }
+  if (typeof status !== 'string') {
+    return 'terminated'
+  }
+
+  const rawStatus = status.trim()
+  const normalized = (rawStatus || 'accepted')
     .toLowerCase()
     .replace(/^order_status_/, '')
     .replace(/_/g, '-')
@@ -401,11 +422,12 @@ function optionalString(value: unknown) {
 }
 
 function optionalInteger(value: unknown, label: string, { max, min }: { max?: number; min?: number } = {}) {
-  if (value === undefined || value === null || String(value).trim() === '') {
+  if (value === undefined || value === null || (typeof value === 'string' && value.trim() === '')) {
     return undefined
   }
 
-  const parsed = Number(normalizeAmount(value as string | number))
+  const parsed =
+    typeof value === 'string' || typeof value === 'number' ? Number(normalizeAmount(value)) : Number.NaN
   if (
     !Number.isInteger(parsed) ||
     (min !== undefined && parsed < min) ||
@@ -484,11 +506,16 @@ export function buildFlashQuoteBody(request: FlashQuoteRequest) {
   const maxPriceImpact = normalizePercent(request.maxPriceImpact)
   const durationSeconds =
     orderType === 'twap'
-      ? optionalInteger(request.durationSeconds, 'durationSeconds', { min: 300 })
+      ? optionalInteger(request.durationSeconds, 'durationSeconds', {
+          min: 300
+        })
       : undefined
   const twapBucketCount =
     orderType === 'twap'
-      ? optionalInteger(request.twapBucketCount, 'twapBucketCount', { min: 2, max: 2560 })
+      ? optionalInteger(request.twapBucketCount, 'twapBucketCount', {
+          min: 2,
+          max: 2560
+        })
       : undefined
   const isTriggerOrder = ['stop', 'stop-loss', 'take-profit', 'bracket'].includes(orderType)
   const triggers = isTriggerOrder ? normalizeTriggers(request, orderType) : undefined
@@ -593,7 +620,12 @@ function normalizeFees(rawFees: unknown, spentAsset: FlashAsset) {
     const estimatedFeeNotional = optionalString(objectPayload(rawFees).estimatedFeeNotional)
 
     return estimatedFeeNotional
-      ? [{ label: 'Estimated fee (USD)', amount: estimatedFeeNotional } satisfies FlashQuoteFee]
+      ? [
+          {
+            label: 'Estimated fee (USD)',
+            amount: estimatedFeeNotional
+          } satisfies FlashQuoteFee
+        ]
       : []
   }
 
@@ -608,7 +640,7 @@ function normalizeFees(rawFees: unknown, spentAsset: FlashAsset) {
   })
 }
 
-function parseTypedData(value: unknown) {
+function parseTypedData(value: unknown): unknown {
   if (typeof value !== 'string') {
     return value ?? null
   }
@@ -619,7 +651,7 @@ function parseTypedData(value: unknown) {
   }
 
   try {
-    const parsed = JSON.parse(clean)
+    const parsed: unknown = JSON.parse(clean)
 
     return parsed && typeof parsed === 'object' ? parsed : value
   } catch {
@@ -733,7 +765,13 @@ export function normalizeFlashQuoteResponse(raw: unknown, request: FlashQuoteReq
   const steps: FlashStep[] = []
 
   if (wrapAction) {
-    steps.push({ id: 'wrap', kind: 'wrap', label: wrapAction.label, status: 'required', asset: spentAsset })
+    steps.push({
+      id: 'wrap',
+      kind: 'wrap',
+      label: wrapAction.label,
+      status: 'required',
+      asset: spentAsset
+    })
   }
   if (approvalAction) {
     steps.push({
@@ -823,8 +861,16 @@ export function normalizeFlashQuoteResponse(raw: unknown, request: FlashQuoteReq
 
 function quoteAssetRateInputs(quote: FlashQuote): AssetRateInput[] {
   const legs = [
-    { amount: quote.inputAmount, asset: quote.spentAsset, notional: quote.inputNotional },
-    { amount: quote.outputAmount, asset: quote.receiveAsset, notional: quote.outputNotional }
+    {
+      amount: quote.inputAmount,
+      asset: quote.spentAsset,
+      notional: quote.inputNotional
+    },
+    {
+      amount: quote.outputAmount,
+      asset: quote.receiveAsset,
+      notional: quote.outputNotional
+    }
   ]
 
   return legs.flatMap(({ amount, asset, notional }) => {
@@ -1064,7 +1110,7 @@ function orderAssetFromReference(value: unknown, fallback?: FlashAsset | null): 
   })
 }
 
-function rawOrderQuote(raw: Record<string, any>) {
+function rawOrderQuote(raw: Record<string, unknown>) {
   return objectPayload(raw.quote ?? raw.flashQuote ?? raw.quotePayload)
 }
 
@@ -1218,7 +1264,11 @@ function normalizeOrderRecord(rawOrder: unknown, fallback?: FlashOrderRecord | n
   }
 
   const derivedSpentAsset = getSpentAsset({ side, targetAsset, contraAsset })
-  const derivedReceiveAsset = getReceiveAsset({ side, targetAsset, contraAsset })
+  const derivedReceiveAsset = getReceiveAsset({
+    side,
+    targetAsset,
+    contraAsset
+  })
   const spentAsset =
     orderAssetFromReference(raw.spentAsset ?? quote.spentAsset, fallback?.spentAsset ?? derivedSpentAsset) ??
     derivedSpentAsset
@@ -1269,7 +1319,12 @@ function normalizeOrderRecord(rawOrder: unknown, fallback?: FlashOrderRecord | n
   }
   const open = isOpenStatus(status)
   const filledOutputAmount = stringValue(
-    raw.filledOutputAmount ?? raw.filledAmount ?? officialFilledOutputAmount ?? fallback?.filledOutputAmount
+    firstPresent(
+      raw.filledOutputAmount,
+      raw.filledAmount,
+      officialFilledOutputAmount,
+      fallback?.filledOutputAmount
+    )
   )
   const fillHash = stringValue(
     raw.fillHash ?? raw.fillTransactionHash ?? raw.transactionHash ?? fallback?.fillHash
@@ -1288,7 +1343,7 @@ function normalizeOrderRecord(rawOrder: unknown, fallback?: FlashOrderRecord | n
     ...fallback,
     orderId,
     accountAddress: normalizeAddress(
-      raw.accountAddress ?? raw.funderAddress ?? raw.account ?? fallback?.accountAddress
+      stringValue(raw.accountAddress ?? raw.funderAddress ?? raw.account ?? fallback?.accountAddress)
     ),
     provider: 'flash',
     source: 'flash',
@@ -1311,21 +1366,26 @@ function normalizeOrderRecord(rawOrder: unknown, fallback?: FlashOrderRecord | n
     estimatedOutputAmount: stringValue(raw.estimatedOutputAmount ?? quoteLike.outputAmount),
     targetNotional:
       stringValue(
-        raw.targetNotional ??
-          raw.targetNotionalAmount ??
-          quoteTargetNotional(quoteLike) ??
+        firstPresent(
+          raw.targetNotional,
+          raw.targetNotionalAmount,
+          quoteTargetNotional(quoteLike),
           fallback?.targetNotional
+        )
       ) || undefined,
     contraNotional:
       stringValue(
-        raw.contraNotional ??
-          raw.contraNotionalAmount ??
-          quoteContraNotional(quoteLike) ??
+        firstPresent(
+          raw.contraNotional,
+          raw.contraNotionalAmount,
+          quoteContraNotional(quoteLike),
           fallback?.contraNotional
+        )
       ) || undefined,
     filledOutputAmount: filledOutputAmount || null,
     averageFillPrice:
-      stringValue(raw.averageFillPrice ?? officialAverageFillPrice ?? fallback?.averageFillPrice) || null,
+      stringValue(firstPresent(raw.averageFillPrice, officialAverageFillPrice, fallback?.averageFillPrice)) ||
+      null,
     createdAt,
     updatedAt,
     terminalAt: isTerminalStatus(status) ? (closedAt ?? fallback?.terminalAt ?? updatedAt) : null,
@@ -1550,7 +1610,9 @@ function sortOrders(a: FlashOrderRecord, b: FlashOrderRecord) {
 }
 
 async function fetchOrderRecord(state: FlashServiceState, fallback: FlashOrderRecord) {
-  const params = new URLSearchParams({ funderAddress: fallback.accountAddress })
+  const params = new URLSearchParams({
+    funderAddress: fallback.accountAddress
+  })
   const raw = await flashRequest(`/orders/${encodeURIComponent(fallback.orderId)}?${params}`)
   const record = normalizeOrderRecord(objectPayload(raw).order ?? raw, fallback)
 
@@ -1992,7 +2054,11 @@ async function cancelOrder(state: FlashServiceState, request: FlashCancelOrderRe
   })
   const fallback = getRecord(state, request.orderId)
   const record = normalizeOrderRecord(
-    objectPayload(raw).order ?? { ...fallback, orderId: request.orderId, status: 'cancelled' },
+    objectPayload(raw).order ?? {
+      ...fallback,
+      orderId: request.orderId,
+      status: 'cancelled'
+    },
     fallback
   )
 

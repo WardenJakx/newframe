@@ -168,13 +168,18 @@ export function requestPermissions(payload: JSONRPCRequestPayload, res: RPCReque
   // we just need to return permission objects for the requested operations
   const now = new Date().getTime()
   const params = (payload as { params?: JSONRPCRequestPayload['params'] }).params ?? []
-  const requestedOperations = params.map((param) => permission(now, Object.keys(param)[0]))
+  const requestedOperations = params.map((param) =>
+    permission(now, Object.keys(param as Record<string, unknown>)[0])
+  )
 
   res({ id: payload.id, jsonrpc: '2.0', result: requestedOperations })
 }
 
 export function ecRecover(payload: JSONRPCRequestPayload, res: RPCRequestCallback) {
-  const [message, signed] = payload.params
+  const messageValue: unknown = payload.params[0]
+  const signedValue: unknown = payload.params[1]
+  const message = typeof messageValue === 'string' ? messageValue : ''
+  const signed = typeof signedValue === 'string' ? signedValue : ''
 
   getSignedAddress(signed, message, (err, verifiedAddress) => {
     if (err) {

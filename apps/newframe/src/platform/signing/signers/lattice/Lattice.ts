@@ -27,6 +27,22 @@ type LatticeSignature = {
   v?: bigint
 }
 
+interface LatticeUnsignedTransaction {
+  chainId: string
+  currency?: 'BTC' | 'ETH' | 'ETH_MSG'
+  data?: string
+  gasLimit: number
+  gasPrice?: number
+  maxFeePerGas?: number
+  maxPriorityFeePerGas?: number
+  nonce: number
+  signerPath: number[]
+  to?: string
+  type?: number
+  useEIP155: boolean
+  value?: string
+}
+
 type LatticeResponseError = {
   name: 'LatticeResponseError'
   responseCode: number
@@ -35,6 +51,13 @@ type LatticeResponseError = {
 
 type SigningPayload = Parameters<InstanceType<typeof Client>['sign']>[0]['data']
 type SignProtocol = 'eip712' | 'signPersonal'
+
+function booleanResponse(value: unknown, operation: string) {
+  if (typeof value !== 'boolean') {
+    throw new Error(`Lattice returned an invalid ${operation} response`)
+  }
+  return value
+}
 
 const Status = {
   OK: 'ok',
@@ -104,7 +127,8 @@ export default class Lattice extends Signer {
     })
 
     try {
-      const paired = await this.connection.connect(this.deviceId)
+      const pairedResult: unknown = await this.connection.connect(this.deviceId)
+      const paired = booleanResponse(pairedResult, 'connection')
 
       const firmware = this.connection.getFwVersion() as ReturnType<Client['getFwVersion']> | undefined
       const { fix: patch, minor, major } = firmware ?? { fix: 0, major: 0, minor: 0 }
@@ -160,7 +184,8 @@ export default class Lattice extends Signer {
 
     try {
       const connection = this.connection as Client
-      const hasActiveWallet = await connection.pair(pairingCode)
+      const pairResult: unknown = await connection.pair(pairingCode)
+      const hasActiveWallet = booleanResponse(pairResult, 'pairing')
 
       log.info(`successfully paired to Lattice ${this.deviceId}`)
 
@@ -235,93 +260,101 @@ export default class Lattice extends Signer {
     }
   }
 
-  override async verifyAddress(index: number, currentAddress: string, display = true, cb: Callback<boolean>) {
-    const connection = this.connection as Client
+  override verifyAddress(index: number, currentAddress: string, display = true, cb: Callback<boolean>) {
+    void (async () => {
+      const connection = this.connection as Client
 
-    log.info(`verifying address ${currentAddress} for Lattice ${connection.getAppName()}`)
+      log.info(`verifying address ${currentAddress} for Lattice ${connection.getAppName()}`)
 
-    try {
-      const addresses = await this.derive({ retries: 0 })
+      try {
+        const addresses = await this.derive({ retries: 0 })
 
-      const address = (addresses[index] || '').toLowerCase()
+        const address = (addresses[index] || '').toLowerCase()
 
-      if (address !== currentAddress) {
-        throw new Error('Address does not match device')
+        if (address !== currentAddress) {
+          throw new Error('Address does not match device')
+        }
+
+        log.info(`address ${currentAddress} matches device`)
+
+        cb(null, true)
+      } catch (e) {
+        const err = e as Error
+
+        this.handleError('could not verify address', err)
+        this.emit('error')
+
+        cb(err.message === 'Address does not match device' ? err : new Error('Verify Address Error'))
       }
-
-      log.info(`address ${currentAddress} matches device`)
-
-      cb(null, true)
-    } catch (e) {
-      const err = e as Error
-
-      this.handleError('could not verify address', err)
-      this.emit('error')
-
-      cb(err.message === 'Address does not match device' ? err : new Error('Verify Address Error'))
-    }
+    })()
   }
 
-  override async signMessage(index: number, message: string, cb: Callback<string>) {
-    try {
-      const signature = await this.sign(index, 'signPersonal', message)
+  override signMessage(index: number, message: string, cb: Callback<string>) {
+    void (async () => {
+      try {
+        const signature = await this.sign(index, 'signPersonal', message)
 
-      return cb(null, signature)
-    } catch (err) {
-      log.error('failed to sign message with Lattice', err)
-      const latticeErrorMessage = (err as LatticeResponseError).errorMessage
-      return cb(new Error(latticeErrorMessage))
-    }
+        return cb(null, signature)
+      } catch (err) {
+        log.error('failed to sign message with Lattice', err)
+        const latticeErrorMessage = (err as LatticeResponseError).errorMessage
+        return cb(new Error(latticeErrorMessage))
+      }
+    })()
   }
 
-  override async signTypedData(
+  override signTypedData(
     index: number,
     typedMessage: TypedMessage<SignTypedDataVersion.V4>,
     cb: Callback<string>
   ) {
-    try {
-      const signature = await this.sign(index, 'eip712', typedMessage.data)
+    void (async () => {
+      try {
+        const signature = await this.sign(index, 'eip712', typedMessage.data)
 
-      return cb(null, signature)
-    } catch (err) {
-      log.error('failed to sign typed data with Lattice', err)
-      const latticeErrorMessage = (err as LatticeResponseError).errorMessage
-      return cb(new Error(latticeErrorMessage))
-    }
+        return cb(null, signature)
+      } catch (err) {
+        log.error('failed to sign typed data with Lattice', err)
+        const latticeErrorMessage = (err as LatticeResponseError).errorMessage
+        return cb(new Error(latticeErrorMessage))
+      }
+    })()
   }
 
-  override async signTransaction(index: number, rawTx: TransactionData, cb: Callback<string>) {
-    try {
-      const connection = this.connection as Client
-      const compatibility = signerCompatibility(rawTx, this.summary())
-      const latticeTx = compatibility.compatible ? { ...rawTx } : londonToLegacy(rawTx)
+  override signTransaction(index: number, rawTx: TransactionData, cb: Callback<string>) {
+    void (async () => {
+      try {
+        const connection = this.connection as Client
+        const compatibility = signerCompatibility(rawTx, this.summary())
+        const latticeTx = compatibility.compatible ? { ...rawTx } : londonToLegacy(rawTx)
 
-      const signedTx = await sign(latticeTx, async (tx) => {
-        const unsignedTx = this.createTransaction(index, rawTx.type, latticeTx.chainId, tx)
-        const signingOptions = await this.createTransactionSigningOptions(tx, unsignedTx)
+        const signedTx = await sign(latticeTx, async (tx) => {
+          const unsignedTx = this.createTransaction(index, rawTx.type, latticeTx.chainId, tx)
+          const signingOptions = await this.createTransactionSigningOptions(tx, unsignedTx)
 
-        const signedTx = (await connection.sign(signingOptions)) as
-          | Awaited<ReturnType<Client['sign']>>
-          | undefined
-        const sig = signedTx?.sig as LatticeSignature | undefined
+          const signedTx = (await connection.sign(signingOptions as Parameters<Client['sign']>[0])) as
+            | Awaited<ReturnType<Client['sign']>>
+            | undefined
+          const sig = signedTx?.sig as LatticeSignature | undefined
 
-        if (sig?.v === undefined) {
-          throw new Error('Lattice returned an incomplete signature')
-        }
+          if (sig?.v === undefined) {
+            throw new Error('Lattice returned an incomplete signature')
+          }
 
-        return {
-          v: sig.v.toString(16),
-          r: stripHexPrefix(sig.r),
-          s: stripHexPrefix(sig.s)
-        }
-      })
+          return {
+            v: sig.v.toString(16),
+            r: stripHexPrefix(sig.r),
+            s: stripHexPrefix(sig.s)
+          }
+        })
 
-      cb(null, bytesToHex(signedTx.serialize()))
-    } catch (err) {
-      log.error('error signing transaction with Lattice', err)
-      const latticeErrorMessage = (err as LatticeResponseError).errorMessage
-      return cb(new Error(latticeErrorMessage))
-    }
+        cb(null, bytesToHex(signedTx.serialize()))
+      } catch (err) {
+        log.error('error signing transaction with Lattice', err)
+        const latticeErrorMessage = (err as LatticeResponseError).errorMessage
+        return cb(new Error(latticeErrorMessage))
+      }
+    })()
   }
 
   override summary() {
@@ -366,7 +399,7 @@ export default class Lattice extends Signer {
     const { value, to, data, ...txJson } = tx.toJSON()
     const type = hexToInt(txType)
 
-    const unsignedTx: any = {
+    const unsignedTx: LatticeUnsignedTransaction = {
       to,
       value,
       data,
@@ -381,19 +414,21 @@ export default class Lattice extends Signer {
       unsignedTx.type = type
     }
 
-    const optionalFields = ['gasPrice', 'maxFeePerGas', 'maxPriorityFeePerGas']
+    const optionalFields = ['gasPrice', 'maxFeePerGas', 'maxPriorityFeePerGas'] as const
 
     optionalFields.forEach((field) => {
       if (field in txJson) {
-        // @ts-expect-error: Transaction JSON optional fee fields are indexed dynamically.
-        unsignedTx[field] = hexToInt(txJson[field])
+        unsignedTx[field] = hexToInt(txJson[field] ?? '')
       }
     })
 
     return unsignedTx
   }
 
-  private async createTransactionSigningOptions(tx: TypedTransaction, unsignedTx: any) {
+  private async createTransactionSigningOptions(
+    tx: TypedTransaction,
+    unsignedTx: LatticeUnsignedTransaction
+  ) {
     const fwVersion = (this.connection as Client).getFwVersion() as
       | ReturnType<Client['getFwVersion']>
       | undefined

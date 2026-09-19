@@ -16,10 +16,14 @@ const createDefaultAdapters = (store: typeof canonicalStore) => [
   new AirGapAdapter(store)
 ]
 
+type AdapterListener =
+  | { event: 'add' | 'update'; handler: (signer: Signer) => void }
+  | { event: 'remove'; handler: (id: string) => void }
+
 interface AdapterSpec {
   [key: string]: {
     adapter: SignerAdapter
-    listeners: { event: string; handler: (payload: any) => void }[]
+    listeners: AdapterListener[]
   }
 }
 
@@ -195,7 +199,7 @@ export class Signers {
   reload(id: string) {
     const signer = this.handles[id]
     if (signer && !(signer instanceof HotSigner) && signer.type in this.adapters) {
-      this.adapters[signer.type].adapter.reload(signer)
+      void this.adapters[signer.type].adapter.reload(signer)
     }
   }
 

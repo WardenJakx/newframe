@@ -56,7 +56,18 @@ function displayValue(value: unknown): string {
   if (value === null || value === undefined) {
     return ''
   }
-  return value.toString()
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return String(value)
+  }
+
+  try {
+    const serialized = JSON.stringify(value, (_key, nestedValue: unknown) =>
+      typeof nestedValue === 'bigint' ? nestedValue.toString() : nestedValue
+    ) as string | undefined
+    return serialized ?? ''
+  } catch {
+    return ''
+  }
 }
 
 function decodeWithFragment(calldata: string, contractInterface: Interface, fragment: FunctionFragment) {

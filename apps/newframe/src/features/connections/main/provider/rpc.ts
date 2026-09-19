@@ -1,6 +1,6 @@
 import EventEmitter from 'events'
 
-import type { JsonRpcApiProvider } from 'ethers'
+import type { JsonRpcApiProvider, JsonRpcPayload } from 'ethers'
 import { FetchRequest, JsonRpcProvider, WebSocketProvider } from 'ethers'
 import WebSocket from 'ws'
 
@@ -46,11 +46,38 @@ export interface SubscriptionPayload {
   }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+export function isRpcResponsePayload(value: unknown): value is RpcResult | SubscriptionPayload {
+  if (!isRecord(value)) {
+    return false
+  }
+  if (value.method === 'eth_subscription') {
+    return (
+      value.jsonrpc === '2.0' &&
+      isRecord(value.params) &&
+      typeof value.params.subscription === 'string' &&
+      'result' in value.params
+    )
+  }
+  return (
+    (typeof value.id === 'string' || typeof value.id === 'number') &&
+    (!value.jsonrpc || value.jsonrpc === '2.0')
+  )
+}
+
 export type EthersRpcProvider = JsonRpcApiProvider
+
+interface CloseAwareSocket {
+  on?(event: 'close', listener: () => void): unknown
+  onclose?: (...args: unknown[]) => unknown
+}
 
 function normalizeParams(params?: RpcParams) {
   if (Array.isArray(params)) {
-    return [...params]
+    return Array.from(params as readonly unknown[])
   }
   return params ?? []
 }
@@ -109,12 +136,7 @@ export class FrameWebSocketProvider extends WebSocketProvider {
     try {
       const payload: unknown = JSON.parse(message)
 
-      if (
-        typeof payload === 'object' &&
-        payload !== null &&
-        'method' in payload &&
-        payload.method === 'eth_subscription'
-      ) {
+      if (isRpcResponsePayload(payload) && 'method' in payload) {
         this.frameEvents.emit('subscription', payload)
       }
     } catch {
@@ -164,8 +186,7 @@ export function listenForProviderClose(provider: EthersRpcProvider, onClose: () 
   }
 
   try {
-    const socket = provider.websocket as any
-
+    const socket = provider.websocket as CloseAwareSocket
     if (typeof socket.on === 'function') {
       socket.on('close', onClose)
     } else {
@@ -185,9 +206,9 @@ export function sendRpcPayload<T = unknown>(provider: EthersRpcProvider, payload
 }
 
 export async function sendRawPayload<T = unknown>(provider: EthersRpcProvider, payload: RpcPayload) {
-  const [response] = (await provider._send(payload as any)) as RpcResult[]
+  const [response] = await provider._send(payload as unknown as JsonRpcPayload)
 
-  if (response.error) {
+  if ('error' in response) {
     throw createError(response.error)
   }
 

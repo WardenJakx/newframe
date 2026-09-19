@@ -39,7 +39,7 @@ function buildCallData<R, T>(calls: Call<R, T>[]) {
   })
 }
 
-function getResultData(results: any, call: string[], target: string) {
+function getResultData(results: BytesLike, call: string[], target: string): readonly unknown[] {
   const [fnSignature] = call
   const callInterface = memoizedInterfaces[fnSignature]
   const fnName = getFunctionNameFromSignature(fnSignature)
@@ -77,20 +77,29 @@ export async function aggregate3<R, T>(
   const aggData = buildCallData(calls)
   const data = multicallInterface.encodeFunctionData('aggregate3', [aggData])
   const response = multicallInterface.decodeFunctionResult('aggregate3', await execute(data))
-  if (response.returnData.length !== calls.length) {
+  const rawReturnData: unknown = response[0]
+  if (!Array.isArray(rawReturnData) || rawReturnData.length !== calls.length) {
     throw new Error('Invalid Multicall3 result count')
   }
 
   return calls.map(({ call, returns, target }, i) => {
-    const results = response.returnData[i]
+    const resultValue: unknown = (rawReturnData as unknown[])[i]
+    if (!resultValue || typeof resultValue !== 'object') {
+      return { success: false, returnValues: [] }
+    }
+    const results = resultValue as { success?: unknown; returnData?: unknown }
 
     if (!results.success) {
       return { success: false, returnValues: [] }
     }
 
+    if (typeof results.returnData !== 'string' && !(results.returnData instanceof Uint8Array)) {
+      return { success: false, returnValues: [] }
+    }
+
     const resultData = getResultData(results.returnData, call, target)
 
-    return { success: true, returnValues: returns.map((handler, j) => handler(resultData[j])) }
+    return { success: true, returnValues: returns.map((handler, j) => handler(resultData[j] as R)) }
   })
 }
 

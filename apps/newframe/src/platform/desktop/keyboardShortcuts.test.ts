@@ -1,11 +1,13 @@
-import { beforeEach, describe, expect, it } from 'bun:test'
+import { beforeEach, describe, expect, it, type Mock } from 'bun:test'
 
-import { globalShortcut } from 'electron'
+import { electronMock } from '../../../test/support/electron.mock'
+import type { Shortcut } from '../../features/settings/domain/state/shortcuts'
 
-let registerShortcut: any
+let registerShortcut: typeof import('./keyboardShortcuts').registerShortcut
+const { register, unregister } = electronMock.globalShortcut
 
 describe('registerShortcut', () => {
-  const shortcut = {
+  const shortcut: Shortcut = {
     shortcutKey: 'Slash',
     modifierKeys: ['Alt'],
     enabled: true,
@@ -20,24 +22,27 @@ describe('registerShortcut', () => {
   it('should unregister an existing shortcut', () => {
     registerShortcut(shortcut, () => {})
 
-    expect(globalShortcut.unregister).toHaveBeenCalledWith('Alt+/')
-    expect(globalShortcut.unregister).toHaveBeenCalledTimes(1)
+    expect(unregister).toHaveBeenCalledWith('Alt+/')
+    expect(unregister).toHaveBeenCalledTimes(1)
   })
 
   it('should register the new shortcut', () => {
-    ;(globalShortcut.register as any).mockImplementationOnce((accelerator: any, handlerFn: any) =>
-      handlerFn(accelerator)
+    ;(register as Mock<typeof import('electron').globalShortcut.register>).mockImplementationOnce(
+      (_accelerator, handlerFn) => {
+        handlerFn()
+        return true
+      }
     )
 
     return new Promise<void>((resolve) => {
-      const handlerFn = (accelerator: any) => {
+      const handlerFn = (accelerator: string) => {
         expect(accelerator).toBe('Alt+/')
         resolve()
       }
       registerShortcut(shortcut, handlerFn)
 
-      expect(globalShortcut.register).toHaveBeenCalledWith('Alt+/', expect.any(Function))
-      expect(globalShortcut.register).toHaveBeenCalledTimes(1)
+      expect(register).toHaveBeenCalledWith('Alt+/', expect.any(Function))
+      expect(register).toHaveBeenCalledTimes(1)
     })
   })
 })

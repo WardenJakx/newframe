@@ -5,7 +5,7 @@ import AirGapSigner from './AirGapSigner.js'
 import { airGapId } from './protocol.js'
 
 export default class AirGapAdapter extends SignerAdapter {
-  private readonly known = new Map<string, { signer: AirGapSigner; update(): void }>()
+  private readonly known = new Map<string, { signer: AirGapSigner; update: () => void }>()
   private unsubscribe?: () => void
   private generation = 0
   private opened = false

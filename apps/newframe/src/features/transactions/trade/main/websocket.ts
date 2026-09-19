@@ -26,8 +26,8 @@ const retryableErrorCodes = new Set([
   'INTERNAL_ERROR'
 ])
 
-function objectPayload(value: unknown): Record<string, any> {
-  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, any>) : {}
+function objectPayload(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
 }
 
 export class FlashOrderStream {
@@ -116,7 +116,15 @@ export class FlashOrderStream {
       }
 
       try {
-        this.handleFrame(JSON.parse(message.toString()))
+        let buffer: Buffer
+        if (Array.isArray(message)) {
+          buffer = Buffer.concat(message)
+        } else if (Buffer.isBuffer(message)) {
+          buffer = message
+        } else {
+          buffer = Buffer.from(message)
+        }
+        this.handleFrame(JSON.parse(buffer.toString('utf8')))
       } catch (error) {
         this.options.onError?.(error)
       }
@@ -151,12 +159,14 @@ export class FlashOrderStream {
       (frame.type === 'snapshot' || frame.type === 'update') &&
       Array.isArray(frame.orders)
     ) {
+      const frameType = frame.type
+      const orders = frame.orders
       this.orderQueue = this.orderQueue
         .then(() => {
           if (this.stopped) {
             return
           }
-          return this.options.onOrders(frame.type, frame.orders)
+          return this.options.onOrders(frameType, orders)
         })
         .then(() => undefined)
         .catch((error: unknown) => this.options.onError?.(error))
@@ -167,9 +177,9 @@ export class FlashOrderStream {
       return
     }
 
-    const error = new Error(
-      `Flash WebSocket ${String(frame.code ?? 'ERROR')}: ${String(frame.message ?? '')}`
-    )
+    const code = typeof frame.code === 'string' ? frame.code : 'ERROR'
+    const message = typeof frame.message === 'string' ? frame.message : ''
+    const error = new Error(`Flash WebSocket ${code}: ${message}`)
     this.options.onError?.(error)
 
     if (frame.code === 'UNAUTHORIZED') {
@@ -180,7 +190,7 @@ export class FlashOrderStream {
       return
     }
 
-    if (retryableErrorCodes.has(String(frame.code ?? ''))) {
+    if (retryableErrorCodes.has(code)) {
       this.setAvailable(false)
       this.socket?.close()
     }

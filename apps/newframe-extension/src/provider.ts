@@ -34,6 +34,8 @@ interface PendingRequest {
 }
 
 export interface ProviderConnection extends EventEmitter {
+  on(event: 'connect' | 'close', listener: () => void): this
+  on(event: 'payload', listener: (payload: unknown) => void): this
   send(payload: JsonRpcPayload): void
   close?: () => void
 }
@@ -67,6 +69,28 @@ function isJsonRpcPayload(value: unknown): value is JsonRpcPayload {
 
 function isJsonRpcCallback(value: unknown): value is JsonRpcCallback {
   return typeof value === 'function'
+}
+
+function isJsonRpcId(value: unknown): value is number | string {
+  return typeof value === 'number' || typeof value === 'string'
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item: unknown) => typeof item === 'string')
+}
+
+function isJsonRpcResponse(value: unknown): value is JsonRpcResponse & { id: number | string } {
+  return isRecord(value) && isJsonRpcId(value.id) && (value.jsonrpc === undefined || value.jsonrpc === '2.0')
+}
+
+function isSubscriptionPayload(value: unknown): value is SubscriptionPayload {
+  return (
+    isRecord(value) &&
+    typeof value.method === 'string' &&
+    isRecord(value.params) &&
+    typeof value.params.subscription === 'string' &&
+    'result' in value.params
+  )
 }
 
 function createPayload(method: string, params: JsonRpcParams = [], id: number, targetChain?: string) {
@@ -105,7 +129,7 @@ function normalizeChainId(chainId: string | number) {
 
 export default class InjectedFrameProvider extends EventEmitter {
   private eventHandlers: { [Event in ProviderEvent]: (result: ProviderEventResult[Event]) => void }
-  private promises: Record<number, PendingRequest> = {}
+  private promises: Record<number | string, PendingRequest> = {}
   private attemptedSubscriptions = new Set<string>()
   private subscriptions: string[] = []
   private networkVersion?: string | number
@@ -113,6 +137,7 @@ export default class InjectedFrameProvider extends EventEmitter {
   private providerChainId?: string
   private checkConnectionRunning = false
   private checkConnectionTimer?: ReturnType<typeof setTimeout>
+  private readonly resumeSubscriptionsHandler = () => this.resumeSubscriptions()
 
   nextId = 1
   connected = false
@@ -157,14 +182,14 @@ export default class InjectedFrameProvider extends EventEmitter {
       assetsChanged: (assets) => this.emit('assetsChanged', assets)
     }
 
-    this.on('connect', this.resumeSubscriptions)
-    this.on('newListener', (event) => this.handleNewListener(event))
+    this.on('connect', this.resumeSubscriptionsHandler)
+    this.on('newListener', (event: string | symbol) => this.handleNewListener(event))
 
     this.connection.on('connect', () => {
       this.checkConnection(1000).catch(console.error)
     })
     this.connection.on('close', () => this.handleClose())
-    this.connection.on('payload', (payload) => this.handlePayload(payload))
+    this.connection.on('payload', (payload: unknown) => this.handlePayload(payload))
   }
 
   get chainId() {
@@ -234,13 +259,14 @@ export default class InjectedFrameProvider extends EventEmitter {
       }
 
       try {
-        const payload = createPayload(method, params, this.nextId++, chainTarget)
+        const id = this.nextId++
+        const payload = createPayload(method, params, id, chainTarget)
 
         if (!waitForConnection && (method === 'eth_chainId' || method === 'net_version')) {
           payload.__extensionConnecting = true
         }
 
-        this.promises[payload.id as number] = { resolve, reject, method }
+        this.promises[id] = { resolve, reject, method }
         this.connection.send(payload)
       } catch (e) {
         reject(e)
@@ -326,7 +352,7 @@ export default class InjectedFrameProvider extends EventEmitter {
 
   close() {
     this.connection.close?.()
-    this.off('connect', this.resumeSubscriptions)
+    this.off('connect', this.resumeSubscriptionsHandler)
     this.connected = false
 
     const error = new Error('Provider closed, subscription lost, please subscribe again.')
@@ -408,15 +434,15 @@ export default class InjectedFrameProvider extends EventEmitter {
     })
   }
 
-  private handlePayload(payload: JsonRpcResponse | SubscriptionPayload) {
-    if ('id' in payload && typeof payload.id !== 'undefined') {
-      const pending = this.promises[payload.id as number]
+  private handlePayload(payload: unknown) {
+    if (isJsonRpcResponse(payload)) {
+      const pending = this.promises[payload.id]
       if (!pending) {
         return
       }
 
       if (['eth_accounts', 'eth_requestAccounts'].includes(pending.method)) {
-        const accounts = (payload.result ?? []) as string[]
+        const accounts = isStringArray(payload.result) ? payload.result : []
         this.accounts = accounts
         this.selectedAddress = accounts[0]
         this.coinbase = accounts[0]
@@ -427,11 +453,11 @@ export default class InjectedFrameProvider extends EventEmitter {
       } else {
         pending.resolve(payload.result)
       }
-      delete this.promises[payload.id as number]
+      delete this.promises[payload.id]
       return
     }
 
-    if (!('method' in payload) || !payload.method.includes('_subscription')) {
+    if (!isSubscriptionPayload(payload) || !payload.method.includes('_subscription')) {
       return
     }
 

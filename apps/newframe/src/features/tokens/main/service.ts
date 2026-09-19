@@ -30,7 +30,7 @@ export function createTokenService(ports: TokenServicePorts) {
     ])
 
   return {
-    lookup: ports.lookup,
+    lookup: (address: string, chainId: number) => ports.lookup(address, chainId),
 
     add(command: TokenAddCommand, owner: OperationOwner) {
       const reference: OperationReference = { owner, id: command.operationId, type: command.type }

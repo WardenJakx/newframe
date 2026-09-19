@@ -99,6 +99,6 @@ export function createSafeSimulationRpc(
         }
       }
     },
-    dispose: callbacks.dispose
+    dispose: () => callbacks.dispose()
   }
 }

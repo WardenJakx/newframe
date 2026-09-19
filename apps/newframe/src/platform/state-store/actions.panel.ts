@@ -8,20 +8,30 @@ export type CanonicalSet = (update: (state: Draft<CanonicalState>) => void) => v
 export type CanonicalGet = () => CanonicalState
 
 type NotificationState = 'pending' | 'completed' | 'failed'
-type MutableRecord = Record<string, any>
+type MutableRecord = Record<string, unknown>
+type NotificationRecord = MutableRecord & {
+  createdAt?: unknown
+  dismissedAt?: unknown
+  hidden?: unknown
+  id?: string
+  state?: NotificationState
+  updatedAt?: unknown
+}
 type MutableCanonicalState = Omit<Draft<CanonicalState>, 'view'> & {
-  view: MutableRecord & { notifications: Record<string, MutableRecord | undefined> }
+  view: MutableRecord & { notifications: Record<string, NotificationRecord | undefined> }
 }
 
 const resolvedNotificationStates = new Set<NotificationState>(['completed', 'failed'])
 
 const mutable = (state: Draft<CanonicalState>) => state as unknown as MutableCanonicalState
+const notificationRecord = (value: unknown): NotificationRecord =>
+  value && typeof value === 'object' && !Array.isArray(value) ? (value as NotificationRecord) : {}
 
 export function createPanelActions(set: CanonicalSet, _get: CanonicalGet) {
   let trayInitial = true
 
   return {
-    notify: (type: string, data: any = {}) => {
+    notify: (type: string, data: unknown = {}) => {
       set((draft) => {
         const state = mutable(draft)
         state.view.notify = type
@@ -29,8 +39,9 @@ export function createPanelActions(set: CanonicalSet, _get: CanonicalGet) {
       })
     },
 
-    upsertPendingNotification: (notification: any) => {
-      const id = notification?.id
+    upsertPendingNotification: (value: unknown) => {
+      const notification = notificationRecord(value)
+      const id = notification.id
       if (!id) {
         return
       }
@@ -40,7 +51,7 @@ export function createPanelActions(set: CanonicalSet, _get: CanonicalGet) {
       set((draft) => {
         const notifications = mutable(draft).view.notifications
         const existingNotification = notifications[id] ?? {}
-        const pendingNotification = {
+        const pendingNotification: NotificationRecord = {
           ...existingNotification,
           ...notification,
           id,
@@ -57,12 +68,13 @@ export function createPanelActions(set: CanonicalSet, _get: CanonicalGet) {
       })
     },
 
-    resolveNotification: (id: string, state: Exclude<NotificationState, 'pending'>, update: any = {}) => {
+    resolveNotification: (id: string, state: Exclude<NotificationState, 'pending'>, value: unknown = {}) => {
       if (!id || !resolvedNotificationStates.has(state)) {
         return
       }
 
       const now = Date.now()
+      const update = notificationRecord(value)
 
       set((draft) => {
         const notifications = mutable(draft).view.notifications
@@ -87,11 +99,12 @@ export function createPanelActions(set: CanonicalSet, _get: CanonicalGet) {
       })
     },
 
-    dismissNotification: (id: string, update: any = {}) => {
+    dismissNotification: (id: string, value: unknown = {}) => {
       if (!id) {
         return
       }
 
+      const update = notificationRecord(value)
       const dismissedAt = update.dismissedAt ?? Date.now()
 
       set((draft) => {
@@ -119,7 +132,7 @@ export function createPanelActions(set: CanonicalSet, _get: CanonicalGet) {
       })
     },
 
-    updateBadge: (type: string, version: any) => {
+    updateBadge: (type: string, version: unknown) => {
       set((draft) => {
         mutable(draft).view.badge = { type, version }
       })

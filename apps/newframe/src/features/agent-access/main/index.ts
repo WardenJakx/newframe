@@ -68,11 +68,15 @@ function sendJson(res: ServerResponse, status: number, body: unknown) {
 }
 
 async function readJson(req: IncomingMessage) {
-  const chunks: Buffer[] = []
+  const chunks: Buffer<ArrayBufferLike>[] = []
   let size = 0
+  const requestBody: AsyncIterable<unknown> = req
 
-  for await (const value of req) {
-    const chunk = Buffer.isBuffer(value) ? value : Buffer.from(value)
+  for await (const value of requestBody) {
+    if (typeof value !== 'string' && !(value instanceof Uint8Array)) {
+      throw new TypeError('Request body contains an unsupported chunk')
+    }
+    const chunk = Buffer.from(value)
     size += chunk.length
     if (size > MAX_BODY_BYTES) {
       throw new Error('Request body is too large')

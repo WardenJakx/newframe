@@ -14,7 +14,7 @@ import balancesLoader from './scan.js'
 
 interface ExternalDataWorkerMessage {
   command: string
-  args: any[]
+  args: unknown[]
 }
 
 let heartbeat: NodeJS.Timeout
@@ -38,7 +38,7 @@ async function getChains() {
   }
 }
 
-function sendToMainProcess(data: any) {
+function sendToMainProcess(data: unknown) {
   if (process.send) {
     return process.send(data)
   }
@@ -80,7 +80,7 @@ function resetHeartbeat() {
   }, 60 * 1000)
 }
 
-const messageHandler: { [command: string]: (...params: any) => void } = {
+const messageHandler: { [command: string]: (...params: never[]) => void } = {
   updateChainBalance: (address: string, chains?: number[]) => {
     // Scans report their failures internally and may overlap.
     void chainBalanceScan(address, chains)
@@ -95,5 +95,5 @@ const messageHandler: { [command: string]: (...params: any) => void } = {
 process.on('message', (message: ExternalDataWorkerMessage) => {
   log.debug(`received message: ${message.command} [${message.args}]`)
 
-  messageHandler[message.command](...message.args)
+  messageHandler[message.command](...(message.args as never[]))
 })

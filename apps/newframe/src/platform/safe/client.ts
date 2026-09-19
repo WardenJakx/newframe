@@ -283,7 +283,7 @@ export function createSafeClient({
         methods.map(async (method) => {
           const data = abi.encodeFunctionData(method)
           const response = await read(chainId, address, data, signal, blockTag)
-          return abi.decodeFunctionResult(method, response)[0]
+          return abi.decodeFunctionResult(method, response)[0] as unknown
         })
       )
     }

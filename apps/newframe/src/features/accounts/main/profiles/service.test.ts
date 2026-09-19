@@ -45,7 +45,7 @@ function harness() {
     clock: { now: () => now++ },
     createId: () => 'unused'
   })
-  const accountsChanged = mock()
+  const accountsChanged = mock<(addresses: string[]) => void>()
   const service = createProfileService({
     accounts: { get: (id) => testStore.getState().main.accounts[id] },
     operations,

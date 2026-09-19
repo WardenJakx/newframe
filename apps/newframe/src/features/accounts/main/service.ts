@@ -37,7 +37,7 @@ export interface AccountServicePorts {
 
 export function createAccountService(ports: AccountServicePorts) {
   return {
-    addressChainUsage: ports.addressChainUsage,
+    addressChainUsage: (addresses: string[]) => ports.addressChainUsage(addresses),
 
     async select(accountId: string) {
       if (!ports.accounts.get(accountId)) {

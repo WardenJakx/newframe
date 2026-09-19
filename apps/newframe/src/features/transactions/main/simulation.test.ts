@@ -5,7 +5,7 @@ import { Interface } from 'ethers'
 import createCanonicalStore from '../../../platform/state-store/createCanonicalStore'
 import { erc20Interface } from '../../../shared/domain/evm'
 import { TxClassification, type TransactionRequest } from '../../requests/contract/requests'
-import { GasFeesSource } from '../domain'
+import { GasFeesSource, type TransactionEffect } from '../domain'
 import {
   createTransactionSimulationProjection,
   effectsFromTrace,
@@ -38,6 +38,9 @@ function event(name: 'Transfer' | 'Approval', from: string, to: string, amount: 
 }
 function trace(overrides: Partial<TraceCall> = {}): TraceCall {
   return { type: 'CALL', from: account, to: testContract, value: '0x0', input: '0x', ...overrides }
+}
+function effectMatching(effect: Partial<TransactionEffect>): TransactionEffect {
+  return expect.objectContaining(effect) as TransactionEffect
 }
 function request(): TransactionRequest {
   return {
@@ -106,7 +109,7 @@ describe('#effectsFromTrace', () => {
       projection
     )
     expect(effects).toEqual([
-      expect.objectContaining({
+      effectMatching({
         kind: 'erc20',
         direction: 'out',
         amount: '0x5f',
@@ -141,8 +144,8 @@ describe('#effectsFromTrace', () => {
       ]
     })
     expect(await effectsFromTrace(result, context, nativeCurrency, projection)).toEqual([
-      expect.objectContaining({ kind: 'native', amount: '0x7' }),
-      expect.objectContaining({ kind: 'erc20', amount: '0x9' })
+      effectMatching({ kind: 'native', amount: '0x7' }),
+      effectMatching({ kind: 'erc20', amount: '0x9' })
     ])
     expect(
       await effectsFromTrace({ ...result, revertReason: 'Outer revert' }, context, nativeCurrency, projection)
@@ -167,7 +170,7 @@ describe('#effectsFromTrace', () => {
       nativeCurrency,
       projection
     )
-    expect(effects).toEqual([expect.objectContaining({ kind: 'native', direction: 'out', amount: '0x14' })])
+    expect(effects).toEqual([effectMatching({ kind: 'native', direction: 'out', amount: '0x14' })])
   })
 
   it('requires ERC20 event shape, retaining a delegatecall event emitter rather than the implementation address', async () => {
@@ -187,7 +190,7 @@ describe('#effectsFromTrace', () => {
       nativeCurrency,
       projection
     )
-    expect(effects).toEqual([expect.objectContaining({ assetAddress: usdc.toLowerCase(), amount: '0x5' })])
+    expect(effects).toEqual([effectMatching({ assetAddress: usdc.toLowerCase(), amount: '0x5' })])
   })
 
   it('preserves zero and repeated owner-relative Approval events, without claiming final allowance', async () => {
@@ -239,7 +242,7 @@ describe('#effectsFromTrace', () => {
       createTransactionSimulationProjection(canonical)
     )
     expect(effects).toEqual([
-      expect.objectContaining({
+      effectMatching({
         amount: '0x17d7840',
         decimals: 6,
         symbol: 'USDC',
@@ -259,7 +262,7 @@ describe('#effectsFromTrace', () => {
     }
     for (const metadataContext of [context, recognized]) {
       expect(await effectsFromTrace(transfer, metadataContext, nativeCurrency, projection)).toEqual([
-        expect.objectContaining({ amount: '0x7ed6b40', decimals: 6, symbol: 'USDC' })
+        effectMatching({ amount: '0x7ed6b40', decimals: 6, symbol: 'USDC' })
       ])
     }
     const [unknown] = await effectsFromTrace(

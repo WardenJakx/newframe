@@ -17,14 +17,22 @@ type TransactionRequestProps = {
   identities?: AddressIdentities
   actionId?: string
   step: RequestViewStep
-  onUpdateFee(field: TransactionFeeField, value: bigint): void
+  onUpdateFee: (field: TransactionFeeField, value: bigint) => void
 }
 
 type TransactionRequestWithStateProps = Omit<TransactionRequestProps, 'actionId' | 'step' | 'onUpdateFee'>
 
 const decodeRequested = (req: TransactionRequestView) => {
   const calldata = req.payload.params[0]?.data ?? '0x'
-  const [spender, amount] = erc20Interface.decodeFunctionData('approve', calldata)
+  const decoded = erc20Interface.decodeFunctionData('approve', calldata)
+  const spender: unknown = decoded[0]
+  const amount: unknown = decoded[1]
+  if (
+    typeof spender !== 'string' ||
+    (typeof amount !== 'string' && typeof amount !== 'number' && typeof amount !== 'bigint')
+  ) {
+    throw new Error('Invalid ERC-20 approval calldata')
+  }
   return { spender, amount: BigInt(amount) }
 }
 

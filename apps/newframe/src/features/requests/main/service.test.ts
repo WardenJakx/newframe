@@ -340,7 +340,7 @@ describe('prompted request lifecycle', () => {
     expect(test.requests[request.handlerId]).toBe(replacement)
     expect(test.accounts.setRequestError).not.toHaveBeenCalled()
     expect(respond).toHaveBeenCalledWith(
-      expect.objectContaining({ error: expect.objectContaining({ code: 4001 }) })
+      expect.objectContaining({ error: expect.objectContaining({ code: 4001 }) as unknown })
     )
   })
 

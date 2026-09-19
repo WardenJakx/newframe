@@ -539,11 +539,11 @@ it('keeps Safe simulation tray-only and forwards only the canonical proposal ide
 it('binds AirGap and approval contexts to the authorized sender lifecycle', async () => {
   const services = createTestServices()
   const received: SigningUiContext[] = []
-  services.airgap.pairStart = (_command, context) => {
+  services.airgap.pairStart = (_command, context: SigningUiContext) => {
     received.push(context)
     return true
   }
-  services.requests.approve = mock((_id, context) => {
+  services.requests.approve = mock((_id, context: SigningUiContext) => {
     received.push(context)
     return true
   })

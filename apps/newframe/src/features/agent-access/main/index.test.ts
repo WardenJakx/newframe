@@ -2,6 +2,7 @@ import { expect, it, jest as timers, mock } from 'bun:test'
 import { EventEmitter } from 'events'
 import { Readable } from 'stream'
 
+import type { AccountRequest } from '../../requests/contract/requests'
 import { createAgentService } from './index'
 
 const accountId = '0x1111111111111111111111111111111111111111'
@@ -38,7 +39,7 @@ function response() {
 it('characterizes agent prompt timeout, disconnect, approval idempotency, and dispose cleanup', async () => {
   timers.useFakeTimers()
   try {
-    const requests: Record<string, any> = {}
+    const requests: Record<string, AccountRequest> = {}
     const continuations = new Map<string, (response: RPCResponsePayload) => void>()
     const requestLifecycle = {
       bind: mock(),
@@ -63,7 +64,7 @@ it('characterizes agent prompt timeout, disconnect, approval idempotency, and di
       getRequest: (id: string) => requests[id],
       getSigner: () => ({ type: 'seed', status: 'ok' }),
       patch: mock(),
-      rejectRequest(request: any, error: EVMError) {
+      rejectRequest(request: AccountRequest, error: EVMError) {
         requestLifecycle.respond(request.handlerId, {
           id: request.payload.id,
           jsonrpc: request.payload.jsonrpc,
@@ -71,7 +72,7 @@ it('characterizes agent prompt timeout, disconnect, approval idempotency, and di
         })
         delete requests[request.handlerId]
       },
-      resolveRequest(request: any, result: unknown) {
+      resolveRequest(request: AccountRequest, result: unknown) {
         requestLifecycle.respond(request.handlerId, {
           id: request.payload.id,
           jsonrpc: request.payload.jsonrpc,
@@ -84,7 +85,7 @@ it('characterizes agent prompt timeout, disconnect, approval idempotency, and di
       current: () => account,
       get: (id: string) => (id === accountId ? { ...account, lastSignerType: 'seed' } : undefined),
       getFrameAccount: (id: string) => (id === accountId ? account : undefined),
-      routeRequest: (_principal: unknown, routed: any) => {
+      routeRequest: (_principal: unknown, routed: AccountRequest) => {
         routed.authorization = {
           actionId: `action-${routed.handlerId}`,
           decision: 'prompt',
@@ -131,7 +132,7 @@ it('characterizes agent prompt timeout, disconnect, approval idempotency, and di
     })
     timers.advanceTimersByTime(1)
     expect({
-      body: JSON.parse(timedOut.body),
+      body: JSON.parse(timedOut.body) as unknown,
       lateApproval: service.resolveAgentAccessRequest(timedOutId, true),
       pending: Boolean(requests[timedOutId]),
       status: timedOut.status
@@ -147,7 +148,7 @@ it('characterizes agent prompt timeout, disconnect, approval idempotency, and di
     const disconnectedId = Object.keys(requests)[0]
     disconnected.emit('close')
     expect({
-      body: JSON.parse(disconnected.body),
+      body: JSON.parse(disconnected.body) as unknown,
       lateApproval: service.resolveAgentAccessRequest(disconnectedId, true),
       pending: Boolean(requests[disconnectedId])
     }).toEqual({

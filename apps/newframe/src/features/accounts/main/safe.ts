@@ -3,10 +3,13 @@ import { getAddress } from 'ethers'
 import type {
   AccountCreateCommand,
   AccountRefreshCommand,
+  SafeApprovalCommand,
+  SafeConfirmationStatusQuery,
   SafeSimulateQuery
 } from '../../../app/contracts/operations.js'
 import type { OperationService } from '../../../platform/operations/service.js'
 import type { OperationOwner } from '../../../platform/operations/types.js'
+import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.js'
 import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.js'
 import {
   safeConfigurationSchema,
@@ -47,11 +50,11 @@ export interface SafeServicePorts {
       signal?: AbortSignal
     ): Promise<{ version: string; owners: string[] }>
   }
-  simulate?(
+  simulate?: (
     input: SafeSimulationInput,
     signal: AbortSignal,
     observeConfiguration: NonNullable<SafeSimulationPorts['observeConfiguration']>
-  ): Promise<SafeProposalSimulation>
+  ) => Promise<SafeProposalSimulation>
   now?: () => number
   confirmations?: Pick<SafeConfirmationPorts, 'accounts' | 'client'>
 }
@@ -454,8 +457,10 @@ export function createSafeService({
   )
   refreshSelected()
   return {
-    confirm: confirmationService.confirm,
-    confirmationStatus: confirmationService.confirmationStatus,
+    confirm: (command: SafeApprovalCommand, context: SigningUiContext) =>
+      confirmationService.confirm(command, context),
+    confirmationStatus: (query: SafeConfirmationStatusQuery, owner?: OperationOwner) =>
+      confirmationService.confirmationStatus(query, owner),
     discoverNetworks,
     simulate,
     refresh,

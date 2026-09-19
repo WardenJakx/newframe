@@ -92,7 +92,8 @@ const systemTrayEventHandlers: SystemTrayEventHandlers = {
   clickShow: () => app.show()
 }
 const systemTray = new SystemTray(systemTrayEventHandlers)
-const getDisplaySummonShortcut = () => getStore().getState().main.shortcuts.altSlash
+const getDisplaySummonShortcut = () =>
+  (getStore().getState().main.shortcuts as { altSlash: boolean }).altSlash
 
 const detectMouse = () => {
   const m1 = screen.getCursorScreenPoint()
@@ -131,7 +132,13 @@ function initWindow(id: string, opts: Electron.BrowserWindowConstructorOptions, 
   if (!rendererAuthorization) {
     throw new Error('Renderer authorization must be configured before creating application windows')
   }
-  const window = createWindow(id, rendererAuthorization.registerRenderer, opts)
+  const authorization = rendererAuthorization
+  const window = createWindow(
+    id,
+    (webContents, clientType, entrypoint) =>
+      authorization.registerRenderer(webContents, clientType, entrypoint),
+    opts
+  )
   windows[id] = window
   const removeRendererReady = rendererReady
     ? onTrayRendererReady(window.webContents, rendererReady)
@@ -412,7 +419,10 @@ const initialize = () => {
     if (!rendererAuthorization) {
       throw new Error('Renderer authorization must be configured before starting application windows')
     }
-    sideTrayManager.start(rendererAuthorization.registerRenderer)
+    const authorization = rendererAuthorization
+    sideTrayManager.start((webContents, clientType, entrypoint) =>
+      authorization.registerRenderer(webContents, clientType, entrypoint)
+    )
     sideTrayManagerStarted = true
   }
 
@@ -452,12 +462,12 @@ const initialize = () => {
   const state = getStore().getState()
   updateHomeCommand(state.tray.homeCommand)
   updateNotification(state.view.notify)
-  updateSummonShortcut(state.main.shortcuts.summon)
+  updateSummonShortcut((state.main.shortcuts as { summon: Shortcut }).summon)
 
   stateUnsubscribers = [
     getStore().subscribe((next) => next.tray.homeCommand, updateHomeCommand),
     getStore().subscribe((next) => next.view.notify, updateNotification),
-    getStore().subscribe((next) => next.main.shortcuts.summon, updateSummonShortcut)
+    getStore().subscribe((next) => (next.main.shortcuts as { summon: Shortcut }).summon, updateSummonShortcut)
   ]
 }
 

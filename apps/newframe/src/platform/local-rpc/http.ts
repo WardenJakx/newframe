@@ -107,7 +107,11 @@ export function createHttpRpcTransport({
   }
 
   const subscriptionHandler = (payload: RPC.Susbcription.Response) => {
-    const subscription = pollSubs[payload.params.subscription]
+    const subscriptionId = (payload.params as { subscription?: unknown }).subscription
+    if (typeof subscriptionId !== 'string') {
+      return
+    }
+    const subscription = pollSubs[subscriptionId]
     if (!subscription) {
       return
     }
@@ -141,7 +145,7 @@ export function createHttpRpcTransport({
       return
     }
 
-    const body: Buffer[] = []
+    const body: Buffer<ArrayBufferLike>[] = []
     const processRequest = async () => {
       res.on('error', (error) => log.error('HTTP response error', error))
       const data = Buffer.concat(body).toString()
@@ -194,7 +198,7 @@ export function createHttpRpcTransport({
           if (payload.method !== 'eth_pollSubscriptions') {
             return false
           }
-          const id = payload.params[0]
+          const id: unknown = payload.params[0]
           if (typeof id !== 'string') {
             res.writeHead(401, { 'Content-Type': 'application/json' })
             res.end(JSON.stringify({ error: 'Invalid Client ID' }))
@@ -253,7 +257,7 @@ export function createHttpRpcTransport({
       })
     }
     req
-      .on('data', (chunk) => body.push(Buffer.from(chunk)))
+      .on('data', (chunk: string | Uint8Array) => body.push(Buffer.from(chunk)))
       .on('end', () => {
         // Request failures are converted to HTTP responses inside processRequest.
         void processRequest()

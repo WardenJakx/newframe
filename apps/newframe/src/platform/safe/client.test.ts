@@ -10,6 +10,17 @@ import { verifySafeHash } from './integrity.js'
 const safe = '0x1111111111111111111111111111111111111111'
 const owners = ['0x2222222222222222222222222222222222222222', '0x3333333333333333333333333333333333333333']
 const servers: ReturnType<typeof Bun.serve>[] = []
+
+interface MutableSafePage {
+  results: Array<
+    Record<string, unknown> & {
+      dataDecoded: { parameters: Array<{ value: string }> }
+    }
+  >
+}
+
+const responsePage = async (response: Response) => (await response.json()) as MutableSafePage
+
 afterEach(async () => {
   await Promise.all(servers.splice(0).map((server) => server.stop(true)))
 })
@@ -77,7 +88,7 @@ describe('Safe service client over HTTP', () => {
         if (!request.url.includes('/v2/')) {
           return response
         }
-        const page = await response.json()
+        const page = await responsePage(response)
         page.results[0] = { ...page.results[0], ...replacement }
         return Response.json(page)
       })
@@ -90,7 +101,7 @@ describe('Safe service client over HTTP', () => {
       if (!request.url.includes('/v2/')) {
         return response
       }
-      const page = await response.json()
+      const page = await responsePage(response)
       page.results.push(page.results[0])
       return Response.json(page)
     })
@@ -223,7 +234,7 @@ test('retains offending proposals when any signed field is changed by the servic
       if (!request.url.includes('/v2/')) {
         return response
       }
-      const page = await response.json()
+      const page = await responsePage(response)
       page.results[0] = { ...page.results[0], ...replacement }
       return Response.json(page)
     })
@@ -240,7 +251,7 @@ test('distinguishes missing fields and versions from inconsistent service descri
     if (!request.url.includes('/v2/')) {
       return response
     }
-    const page = await response.json()
+    const page = await responsePage(response)
     if (!new URL(request.url).searchParams.has('offset')) {
       delete page.results[0].baseGas
     } else {
@@ -289,9 +300,10 @@ test('discovers contracts through the requested chain and imports configuration 
     call: async (chainId, address, data) => {
       expect(chainId).toBe(8453)
       expect(address).toBe(multicallAddress)
-      const [batch] = multicall.decodeFunctionData('aggregate3', data)
+      const [decodedBatch] = multicall.decodeFunctionData('aggregate3', data)
+      const batch = decodedBatch as Array<{ target: string; callData: string }>
       return multicall.encodeFunctionResult('aggregate3', [
-        Array.from(batch, (entry: { target: string; callData: string }) => {
+        Array.from(batch, (entry) => {
           expect(entry.target).toBe(safe)
           const method = abi.getFunction(entry.callData.slice(0, 10))!.name
           calls.push(method)
@@ -340,7 +352,7 @@ test('publishes real owner signatures over HTTP and retrieves the retained bytes
     threshold: 2,
     pageSize: 1
   })
-  const server = Bun.serve({ port: 0, hostname: '127.0.0.1', fetch: handler.fetch })
+  const server = Bun.serve({ port: 0, hostname: '127.0.0.1', fetch: (request) => handler.fetch(request) })
   servers.push(server)
   const client = createSafeClient({ request: fetch, networks: { 31337: `${server.url}api` } })
   const configuration = await client.configuration(31337, safe)
@@ -404,7 +416,10 @@ test('confirmation POST shares HTTP errors, cooldown, cancellation, redirect and
       count++
       expect(init.method).toBe('POST')
       expect(init.redirect).toBe('error')
-      expect(JSON.parse(String(init.body))).toEqual({ signature })
+      if (typeof init.body !== 'string') {
+        throw new Error('Expected confirmation request body to be a string')
+      }
+      expect(JSON.parse(init.body)).toEqual({ signature })
       return Response.json({}, { status: 429, headers: { 'Retry-After': '30' } })
     }
   })

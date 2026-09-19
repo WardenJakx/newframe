@@ -1,19 +1,34 @@
 import { describe, expect, it, mock } from 'bun:test'
 
 import { createTestStore } from '../../../../test/support/createTestStore'
+import { DEFAULT_PROFILE_ID } from '../../../app/contracts/state/main'
 import { createOperationService } from '../../../platform/operations/service'
+import type { Account } from '../../accounts/domain/state/account'
+import { createBuiltInNetworks } from '../../networks/domain/chain/catalog'
 import { createPortfolioService } from './service'
 
 const address = '0x1111111111111111111111111111111111111111'
 const owner = { clientType: 'wallet-ui' as const, windowInstanceId: 'tray-test' }
+const account: Account = {
+  id: address,
+  profileId: DEFAULT_PROFILE_ID,
+  address,
+  name: 'Test',
+  lastSignerType: 'address',
+  status: 'ok',
+  signer: '',
+  requests: {},
+  created: ''
+}
+const mainnet = createBuiltInNetworks()[1]
 
 describe('portfolio refresh service', () => {
   it('lists orders only on manual refresh for the selected account', async () => {
     const store = createTestStore({
       main: {
         currentAccount: '',
-        accounts: { [address]: { id: address, address } },
-        networks: { ethereum: { 1: { id: 1, on: true } } }
+        accounts: { [address]: account },
+        networks: { ethereum: { 1: mainnet } }
       }
     })
     const assetRates = [{ chainId: 1, address, usdRate: 2 }]
@@ -66,8 +81,8 @@ describe('portfolio refresh service', () => {
     const store = createTestStore({
       main: {
         currentAccount: address,
-        accounts: { [address]: { id: address, address } },
-        networks: { ethereum: { 1: { id: 1, on: true } } }
+        accounts: { [address]: account },
+        networks: { ethereum: { 1: mainnet } }
       }
     })
     const listError = new Error('Flash unavailable')

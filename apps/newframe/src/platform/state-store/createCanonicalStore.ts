@@ -16,8 +16,11 @@ export default function createCanonicalStore(storage: PersistStorage<PersistedCa
   let hydrationError: unknown
   let hydration: Promise<void> | undefined
   const finishHydration = (success: boolean) => {
-    if ('finishHydration' in storage && typeof storage.finishHydration === 'function') {
-      storage.finishHydration(success)
+    const hydratableStorage = storage as PersistStorage<PersistedCanonicalState> & {
+      finishHydration?(success: boolean): void
+    }
+    if (typeof hydratableStorage.finishHydration === 'function') {
+      hydratableStorage.finishHydration(success)
     }
   }
   const store = createStore<CanonicalStore>()(

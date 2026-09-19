@@ -17,6 +17,8 @@ function unwrapTrezorConnect(value: unknown): TrezorConnectApi {
   return nested ?? (value as TrezorConnectApi)
 }
 const TrezorConnect = unwrapTrezorConnect(TrezorConnectModule.default)
+type TrezorTypedData = Parameters<typeof TrezorConnect.ethereumSignTypedData>[0]['data']
+type TrezorTransaction = Parameters<typeof TrezorConnect.ethereumSignTransaction>[0]['transaction']
 
 export class DeviceError extends Error {
   readonly code
@@ -111,7 +113,7 @@ class TrezorBridge extends EventEmitter {
     return result.signature
   }
 
-  async signTypedData(device: Device, path: string, data: any) {
+  async signTypedData(device: Device, path: string, data: TrezorTypedData) {
     const result = await this.makeRequest(() =>
       TrezorConnect.ethereumSignTypedData({
         device,
@@ -127,7 +129,7 @@ class TrezorBridge extends EventEmitter {
   async signTypedHash(
     device: Device,
     path: string,
-    data: any,
+    data: TrezorTypedData,
     domainSeparatorHash: string,
     messageHash: string
   ) {
@@ -145,7 +147,7 @@ class TrezorBridge extends EventEmitter {
     return result.signature
   }
 
-  async signTransaction(device: Device, path: string, tx: any) {
+  async signTransaction(device: Device, path: string, tx: TrezorTransaction) {
     const result = await this.makeRequest(() =>
       TrezorConnect.ethereumSignTransaction({
         device,

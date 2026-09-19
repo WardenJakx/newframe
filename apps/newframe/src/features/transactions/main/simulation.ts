@@ -136,6 +136,10 @@ export interface TraceCall {
   }>
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
 export function isTraceCall(value: unknown): value is TraceCall {
   const pending: unknown[] = [value]
   const seen = new Set<object>()
@@ -189,18 +193,19 @@ export function isTraceCall(value: unknown): value is TraceCall {
         if (!event || typeof event !== 'object' || Array.isArray(event)) {
           return false
         }
-        if (typeof event.address !== 'string' || !normalizeAddress(event.address)) {
+        const traceEvent = event as Record<string, unknown>
+        if (typeof traceEvent.address !== 'string' || !normalizeAddress(traceEvent.address)) {
           return false
         }
         if (
-          !Array.isArray(event.topics) ||
-          !event.topics.every(
+          !Array.isArray(traceEvent.topics) ||
+          !traceEvent.topics.every(
             (topic: unknown) => typeof topic === 'string' && /^0x[0-9a-f]{64}$/i.test(topic)
           )
         ) {
           return false
         }
-        if (!bytes(event.data)) {
+        if (!bytes(traceEvent.data)) {
           return false
         }
       }
@@ -373,19 +378,35 @@ function tokenFromRequest(
     }
   }
 
-  const matchingAction = (req.recognizedActions ?? []).find((action: any) => {
-    const contract = action?.data?.contract?.address ?? action?.data?.contract
-    return sameAddress(contract, address)
-  }) as any
+  const matchingData = (req.recognizedActions ?? [])
+    .map((action) => action.data)
+    .find((data) => {
+      if (!isRecord(data)) {
+        return false
+      }
+      const contract = data.contract
+      const contractAddress = isRecord(contract) ? contract.address : contract
+      return typeof contractAddress === 'string' && sameAddress(contractAddress, address)
+    })
 
-  if (matchingAction?.data) {
+  if (isRecord(matchingData)) {
+    const decimals = matchingData.decimals
+    const logoURI = matchingData.logoURI
+    const name = matchingData.name
+    const symbol = matchingData.symbol
+    let tokenName = 'Token'
+    if (typeof name === 'string') {
+      tokenName = name
+    } else if (typeof symbol === 'string') {
+      tokenName = symbol
+    }
     return {
       address,
       chainId,
-      decimals: matchingAction.data.decimals,
-      logoURI: matchingAction.data.logoURI,
-      name: matchingAction.data.name ?? matchingAction.data.symbol ?? 'Token',
-      symbol: matchingAction.data.symbol ?? 'Token'
+      decimals: typeof decimals === 'number' ? decimals : undefined,
+      logoURI: typeof logoURI === 'string' ? logoURI : undefined,
+      name: tokenName,
+      symbol: typeof symbol === 'string' ? symbol : 'Token'
     }
   }
 }
@@ -437,7 +458,11 @@ async function resolveTokenMetadata(
       symbol: tokenData.symbol || 'Token'
     }
   } catch (error) {
-    log.warn('unable to resolve simulated token metadata', { address, chainId, error })
+    log.warn('unable to resolve simulated token metadata', {
+      address,
+      chainId,
+      error
+    })
     return {
       address,
       chainId,
@@ -669,7 +694,10 @@ export async function simulateTransactionEffects(
   try {
     trace = await traceCall(req, chainId, provider)
   } catch (error) {
-    log.warn('transaction simulation unavailable', { handlerId: req.handlerId, error })
+    log.warn('transaction simulation unavailable', {
+      handlerId: req.handlerId,
+      error
+    })
     return simulationUnavailable(error)
   }
 
@@ -723,7 +751,10 @@ export async function simulateTransactionEffects(
       updatedAt: Date.now()
     }
   } catch (error) {
-    log.warn('transaction simulation failed', { handlerId: req.handlerId, error })
+    log.warn('transaction simulation failed', {
+      handlerId: req.handlerId,
+      error
+    })
     return {
       status: 'error',
       source: 'debug_traceCall',

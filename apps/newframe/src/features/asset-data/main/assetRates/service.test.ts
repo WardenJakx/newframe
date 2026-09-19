@@ -1,6 +1,7 @@
 import { describe, expect, it, mock } from 'bun:test'
 
 import { createTestStore } from '../../../../../test/support/createTestStore'
+import { createBuiltInNetworkMetadata } from '../../../networks/domain/chain/catalog'
 import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
 import { createAssetRateService } from './service'
 
@@ -10,12 +11,15 @@ const USDC_MAINNET = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
 const UNKNOWN = '0x0000000000000000000000000000000000000001'
 
 function setup() {
+  const metadata = createBuiltInNetworkMetadata()
+  const mainnet = metadata[1]
+  const polygon = metadata[137]
   const store = createTestStore({
     main: {
       networksMeta: {
         ethereum: {
-          1: { nativeCurrency: { symbol: 'ETH' } },
-          137: { nativeCurrency: { symbol: 'MATIC' } }
+          1: { ...mainnet, nativeCurrency: { symbol: 'ETH', name: 'Ether', decimals: 18, icon: '' } },
+          137: { ...polygon, nativeCurrency: { symbol: 'MATIC', name: 'Matic', decimals: 18, icon: '' } }
         }
       }
     }

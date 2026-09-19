@@ -74,8 +74,11 @@ export function formatOrderAmount(value: unknown) {
   if (value === undefined || value === null || value === '') {
     return ''
   }
+  if (typeof value !== 'string' && typeof value !== 'number') {
+    return ''
+  }
 
-  const numeric = typeof value === 'number' ? value : Number(String(value).replace(/,/g, ''))
+  const numeric = typeof value === 'number' ? value : Number(value.replace(/,/g, ''))
   if (Number.isFinite(numeric)) {
     return numeric.toLocaleString(undefined, {
       maximumFractionDigits: numeric >= 1 ? 6 : 8
@@ -247,9 +250,10 @@ export function orderJson(value: unknown) {
   }
 
   try {
-    return JSON.stringify(value, null, 2)
+    const serialized = JSON.stringify(value, null, 2) as string | undefined
+    return serialized ?? ''
   } catch {
-    return String(value)
+    return ''
   }
 }
 
@@ -261,11 +265,11 @@ export function orderErrorMessage(error: unknown, fallback: string) {
     return error
   }
   if (typeof error === 'object') {
-    if ('message' in error && error.message) {
-      return String(error.message)
+    if ('message' in error && typeof error.message === 'string') {
+      return error.message
     }
     if ('error' in error && typeof error.error === 'object' && error.error && 'message' in error.error) {
-      return String(error.error.message)
+      return typeof error.error.message === 'string' ? error.error.message : fallback
     }
   }
 

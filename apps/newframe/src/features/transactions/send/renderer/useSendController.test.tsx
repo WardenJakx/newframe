@@ -172,7 +172,7 @@ describe('Send controller integration', () => {
       recipient: string
     }
     expect(command).toEqual({
-      operationId: expect.any(String),
+      operationId: expect.any(String) as string,
       asset: { address: NATIVE_CURRENCY, chainId },
       amount: '1000000000000000000',
       recipient: recipient.address

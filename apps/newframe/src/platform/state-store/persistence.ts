@@ -1,10 +1,6 @@
 import log from 'electron-log'
 
-import {
-  DEFAULT_PROFILE_ID,
-  DEFAULT_PROFILE_NAME,
-  getProfileAccountIds
-} from '../../app/contracts/state/main.js'
+import { DEFAULT_PROFILE_ID, DEFAULT_PROFILE_NAME } from '../../app/contracts/state/main.js'
 import { listCuratedAssets } from '../../features/asset-data/domain/asset/index.js'
 import { CanonicalStatePersistenceError } from '../persistence/index.js'
 import type { CanonicalStore } from './actions.js'
@@ -14,7 +10,7 @@ import {
   type PersistedCanonicalState
 } from './persist/schema.js'
 
-type UnknownRecord = Record<string, any>
+type UnknownRecord = Record<string, unknown>
 
 const persistedChainColors = new Set([
   'accent1',
@@ -33,7 +29,7 @@ const fixedAssetRateKeys = new Set(
 )
 
 function persistedMute(value: unknown) {
-  const mute = (value ?? {}) as UnknownRecord
+  const mute = unknownRecord(value)
   return {
     explorerWarning: Boolean(mute.explorerWarning),
     gasFeeWarning: Boolean(mute.gasFeeWarning),
@@ -45,7 +41,7 @@ function persistedMute(value: unknown) {
 function persistedAccounts(accounts: UnknownRecord) {
   return Object.fromEntries(
     Object.entries(accounts).map(([id, value]) => {
-      const account = value as UnknownRecord
+      const account = unknownRecord(value)
       const {
         active: _legacySelection,
         balances: _balanceCache,
@@ -73,9 +69,9 @@ function persistedAccounts(accounts: UnknownRecord) {
 function persistedNetworks(networks: UnknownRecord) {
   return {
     ethereum: Object.fromEntries(
-      Object.entries(networks.ethereum ?? {}).map(([id, value]) => {
-        const network = value as UnknownRecord
-        const connection = network.connection ?? {}
+      Object.entries(unknownRecord(networks.ethereum)).map(([id, value]) => {
+        const network = unknownRecord(value)
+        const connection = unknownRecord(network.connection)
         const cleanConnection = (candidate: UnknownRecord = {}) => ({
           ...candidate,
           connected: false,
@@ -89,8 +85,8 @@ function persistedNetworks(networks: UnknownRecord) {
           {
             ...network,
             connection: {
-              primary: cleanConnection(connection.primary),
-              secondary: cleanConnection(connection.secondary)
+              primary: cleanConnection(unknownRecord(connection.primary)),
+              secondary: cleanConnection(unknownRecord(connection.secondary))
             }
           }
         ]
@@ -102,23 +98,26 @@ function persistedNetworks(networks: UnknownRecord) {
 function persistedNetworkMetadata(networksMeta: UnknownRecord) {
   return {
     ethereum: Object.fromEntries(
-      Object.entries(networksMeta.ethereum ?? {}).map(([id, value]) => {
-        const metadata = value as UnknownRecord
+      Object.entries(unknownRecord(networksMeta.ethereum)).map(([id, value]) => {
+        const metadata = unknownRecord(value)
         const { blockHeight: _legacyBlockHeight, ...durableMetadata } = metadata
-        const { usd: _legacyUsd, ...nativeCurrency } = metadata.nativeCurrency ?? {}
-        const price = metadata.gas?.price ?? {}
+        const { usd: _legacyUsd, ...nativeCurrency } = unknownRecord(metadata.nativeCurrency)
+        const price = unknownRecord(unknownRecord(metadata.gas).price)
 
         return [
           id,
           {
             ...durableMetadata,
             nativeCurrency,
-            primaryColor: persistedChainColors.has(metadata.primaryColor) ? metadata.primaryColor : 'accent1',
+            primaryColor:
+              typeof metadata.primaryColor === 'string' && persistedChainColors.has(metadata.primaryColor)
+                ? metadata.primaryColor
+                : 'accent1',
             gas: {
               samples: [],
               price: {
                 selected: price.selected ?? 'standard',
-                levels: { custom: price.levels?.custom ?? '' }
+                levels: { custom: unknownRecord(price.levels).custom ?? '' }
               }
             }
           }
@@ -129,7 +128,13 @@ function persistedNetworkMetadata(networksMeta: UnknownRecord) {
 }
 
 function unknownRecord(value: unknown): UnknownRecord {
-  return value && typeof value === 'object' && !Array.isArray(value) ? value : {}
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as UnknownRecord) : {}
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? (value as unknown[]).filter((item): item is string => typeof item === 'string')
+    : []
 }
 
 function normalizeProfileState(main: UnknownRecord) {
@@ -156,57 +161,57 @@ function normalizeProfileState(main: UnknownRecord) {
 
   const profileOrder: string[] = []
   const seenProfiles = new Set<string>()
-  ;[...(Array.isArray(main.profileOrder) ? main.profileOrder : []), ...Object.keys(profiles)].forEach(
-    (candidate) => {
-      const id = typeof candidate === 'string' ? profileAliases[candidate] || candidate : ''
-      if (profiles[id] && !seenProfiles.has(id)) {
-        seenProfiles.add(id)
-        profileOrder.push(id)
-      }
+  ;[...stringArray(main.profileOrder), ...Object.keys(profiles)].forEach((candidate) => {
+    const id = profileAliases[candidate] || candidate
+    if (profiles[id] && !seenProfiles.has(id)) {
+      seenProfiles.add(id)
+      profileOrder.push(id)
     }
-  )
+  })
 
+  const requestedOrderAccount = stringArray(main.accountOrder).find((id) => sourceAccounts[id])
   const requestedAccount =
     (typeof main.currentAccount === 'string' && sourceAccounts[main.currentAccount]
       ? main.currentAccount
       : (Object.keys(sourceAccounts).find((id) => unknownRecord(sourceAccounts[id]).active) ??
-        (Array.isArray(main.accountOrder)
-          ? main.accountOrder.find((id) => typeof id === 'string' && sourceAccounts[id])
-          : undefined) ??
-        Object.keys(sourceAccounts)[0])) ?? ''
-  const requestedAccountProfile = profileAliases[unknownRecord(sourceAccounts[requestedAccount]).profileId]
+        requestedOrderAccount ??
+        Object.keys(sourceAccounts).at(0))) ?? ''
+  const requestedAccountProfileValue = unknownRecord(sourceAccounts[requestedAccount]).profileId
+  const requestedAccountProfile =
+    typeof requestedAccountProfileValue === 'string'
+      ? profileAliases[requestedAccountProfileValue]
+      : undefined
   const requestedProfile =
     typeof main.currentProfile === 'string' ? profileAliases[main.currentProfile] || main.currentProfile : ''
-  let currentProfile = profileOrder[0]
-  if (profiles[requestedAccountProfile]) {
+  let currentProfile = profileOrder[0] ?? DEFAULT_PROFILE_ID
+  if (requestedAccountProfile && profiles[requestedAccountProfile]) {
     currentProfile = requestedAccountProfile
   } else if (profiles[requestedProfile]) {
     currentProfile = requestedProfile
   }
 
-  const accounts = Object.fromEntries(
+  const accounts: Record<string, UnknownRecord | undefined> = Object.fromEntries(
     Object.entries(sourceAccounts).map(([id, candidate]) => {
       const account = unknownRecord(candidate)
-      const profileId = profileAliases[account.profileId] || account.profileId
-      return [id, { ...account, profileId: profiles[profileId] ? profileId : currentProfile }]
+      const accountProfileId = typeof account.profileId === 'string' ? account.profileId : ''
+      const profileId = profileAliases[accountProfileId] || accountProfileId
+      return [id, { ...account, profileId: profiles[profileId] ? profileId : currentProfile }] as const
     })
-  ) as Record<string, UnknownRecord | undefined>
+  )
   const accountOrder: string[] = []
   const seenAccounts = new Set<string>()
-  ;[...(Array.isArray(main.accountOrder) ? main.accountOrder : []), ...Object.keys(accounts)].forEach(
-    (id) => {
-      if (typeof id === 'string' && accounts[id] && !seenAccounts.has(id)) {
-        seenAccounts.add(id)
-        accountOrder.push(id)
-      }
+  ;[...stringArray(main.accountOrder), ...Object.keys(accounts)].forEach((id) => {
+    if (accounts[id] && !seenAccounts.has(id)) {
+      seenAccounts.add(id)
+      accountOrder.push(id)
     }
-  )
+  })
 
   const normalized = { ...main, accounts, accountOrder, profiles, profileOrder, currentProfile }
   const currentAccount =
     requestedAccount && accounts[requestedAccount]?.profileId === currentProfile
       ? requestedAccount
-      : getProfileAccountIds(normalized as any, currentProfile)[0] || ''
+      : (accountOrder.find((id) => accounts[id]?.profileId === currentProfile) ?? '')
 
   return { ...normalized, currentAccount }
 }
@@ -227,12 +232,12 @@ export function selectPersistedState(state: CanonicalStore): PersistedCanonicalS
     main: {
       ...durableMain,
       assetRates: Object.fromEntries(
-        Object.entries(main.assetRates ?? {}).filter(([key]) => !fixedAssetRateKeys.has(key))
+        Object.entries(unknownRecord(main.assetRates)).filter(([key]) => !fixedAssetRateKeys.has(key))
       ),
-      accounts: persistedAccounts(main.accounts ?? {}),
+      accounts: persistedAccounts(unknownRecord(main.accounts)),
       mute: persistedMute(main.mute),
-      networks: persistedNetworks(main.networks ?? {}),
-      networksMeta: persistedNetworkMetadata(main.networksMeta ?? {})
+      networks: persistedNetworks(unknownRecord(main.networks)),
+      networksMeta: persistedNetworkMetadata(unknownRecord(main.networksMeta))
     }
   } as unknown as PersistedCanonicalState
 }
@@ -256,8 +261,8 @@ export function migratePersistedState(
     )
   }
 
-  const raw = (value ?? {}) as UnknownRecord
-  const rawMain = (raw.main ?? {}) as UnknownRecord
+  const raw = unknownRecord(value)
+  const rawMain = unknownRecord(raw.main)
   const legacyMain =
     fromVersion >= 5
       ? rawMain
@@ -272,7 +277,7 @@ export function migratePersistedState(
       ...mainWithoutLegacyRates,
       ...(fromVersion === 2 ? { tokens: { byId: {}, accountTokenIds: {} } } : {}),
       ...(fromVersion < PERSISTENCE_VERSION ? { orders: {} } : {}),
-      networksMeta: persistedNetworkMetadata(mainWithoutLegacyRates.networksMeta ?? {})
+      networksMeta: persistedNetworkMetadata(unknownRecord(mainWithoutLegacyRates.networksMeta))
     })
   }
   const parsed = PersistedCanonicalStateSchema.safeParse(candidate)
@@ -285,12 +290,16 @@ export function migratePersistedState(
 }
 
 function mergeRecord(current: unknown, persisted: unknown) {
-  return { ...(current as UnknownRecord), ...(persisted as UnknownRecord) }
+  return { ...unknownRecord(current), ...unknownRecord(persisted) }
 }
 
 function httpsImageSource(value: unknown) {
+  if (typeof value !== 'string') {
+    return ''
+  }
+
   try {
-    const url = new URL(String(value ?? '').trim())
+    const url = new URL(value.trim())
     return url.protocol === 'https:' ? url.toString() : ''
   } catch {
     return ''
@@ -303,20 +312,20 @@ function matchingPersistedImage(value: unknown, sourceUrl: string) {
 }
 
 function mergeNetworkMetadata(current: unknown, persisted: unknown) {
-  const currentEthereum = unknownRecord(current).ethereum ?? {}
-  const persistedEthereum = unknownRecord(persisted).ethereum ?? {}
+  const currentEthereum = unknownRecord(unknownRecord(current).ethereum)
+  const persistedEthereum = unknownRecord(unknownRecord(persisted).ethereum)
   const ethereum = mergeRecord(currentEthereum, persistedEthereum)
 
   Object.entries(persistedEthereum).forEach(([id, value]) => {
-    const currentMetadata = currentEthereum[id] ?? {}
-    const persistedMetadata = value as UnknownRecord
-    const currentGas = currentMetadata.gas ?? {}
-    const persistedGas = persistedMetadata.gas ?? {}
-    const currentPrice = currentGas.price ?? {}
-    const persistedPrice = persistedGas.price ?? {}
+    const currentMetadata = unknownRecord(currentEthereum[id])
+    const persistedMetadata = unknownRecord(value)
+    const currentGas = unknownRecord(currentMetadata.gas)
+    const persistedGas = unknownRecord(persistedMetadata.gas)
+    const currentPrice = unknownRecord(currentGas.price)
+    const persistedPrice = unknownRecord(persistedGas.price)
     const icon = httpsImageSource(currentMetadata.icon) || httpsImageSource(persistedMetadata.icon)
-    const currentNativeCurrency = currentMetadata.nativeCurrency ?? {}
-    const persistedNativeCurrency = persistedMetadata.nativeCurrency ?? {}
+    const currentNativeCurrency = unknownRecord(currentMetadata.nativeCurrency)
+    const persistedNativeCurrency = unknownRecord(persistedMetadata.nativeCurrency)
     const nativeCurrencyIcon =
       httpsImageSource(currentNativeCurrency.icon) || httpsImageSource(persistedNativeCurrency.icon)
 
@@ -337,7 +346,7 @@ function mergeNetworkMetadata(current: unknown, persisted: unknown) {
         price: {
           ...currentPrice,
           ...persistedPrice,
-          levels: mergeRecord(currentPrice.levels, persistedPrice.levels)
+          levels: mergeRecord(unknownRecord(currentPrice.levels), unknownRecord(persistedPrice.levels))
         }
       }
     }
@@ -352,8 +361,8 @@ export function mergePersistedState(persistedValue: unknown, current: CanonicalS
   }
 
   const persisted = migratePersistedState(persistedValue)
-  const saved = persisted.main as UnknownRecord
-  const currentMain = current.main as UnknownRecord
+  const saved = unknownRecord(persisted.main)
+  const currentMain = unknownRecord(current.main)
   const main: UnknownRecord = {
     ...currentMain,
     ...saved,
@@ -365,7 +374,10 @@ export function mergePersistedState(persistedValue: unknown, current: CanonicalS
     ledger: mergeRecord(currentMain.ledger, saved.ledger),
     mute: mergeRecord(currentMain.mute, saved.mute),
     networks: {
-      ethereum: mergeRecord(currentMain.networks?.ethereum, saved.networks?.ethereum)
+      ethereum: mergeRecord(
+        unknownRecord(currentMain.networks).ethereum,
+        unknownRecord(saved.networks).ethereum
+      )
     },
     networksMeta: mergeNetworkMetadata(currentMain.networksMeta, saved.networksMeta),
     focusedFrame: currentMain.focusedFrame,
@@ -374,18 +386,26 @@ export function mergePersistedState(persistedValue: unknown, current: CanonicalS
     signers: currentMain.signers,
     shortcuts: mergeRecord(currentMain.shortcuts, saved.shortcuts),
     tokens: {
-      byId: mergeRecord(currentMain.tokens?.byId, saved.tokens?.byId),
-      accountTokenIds: mergeRecord(currentMain.tokens?.accountTokenIds, saved.tokens?.accountTokenIds)
+      byId: mergeRecord(unknownRecord(currentMain.tokens).byId, unknownRecord(saved.tokens).byId),
+      accountTokenIds: mergeRecord(
+        unknownRecord(currentMain.tokens).accountTokenIds,
+        unknownRecord(saved.tokens).accountTokenIds
+      )
     },
     trezor: mergeRecord(currentMain.trezor, saved.trezor),
     updater: mergeRecord(currentMain.updater, saved.updater)
   }
 
-  main.accounts = persistedAccounts(main.accounts)
+  const mergedAccounts = persistedAccounts(unknownRecord(main.accounts))
+  main.accounts = mergedAccounts
+  const currentAccount = typeof main.currentAccount === 'string' ? main.currentAccount : ''
+  const currentProfile = typeof main.currentProfile === 'string' ? main.currentProfile : ''
   main.currentAccount =
-    main.accounts[main.currentAccount]?.profileId === main.currentProfile
-      ? main.currentAccount
-      : getProfileAccountIds(main as any, main.currentProfile)[0] || ''
+    unknownRecord(mergedAccounts[currentAccount]).profileId === currentProfile
+      ? currentAccount
+      : (Object.keys(mergedAccounts).find(
+          (id) => unknownRecord(mergedAccounts[id]).profileId === currentProfile
+        ) ?? '')
 
   return {
     ...current,

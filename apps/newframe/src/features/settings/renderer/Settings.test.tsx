@@ -9,6 +9,8 @@ import { createSecurityCapability } from '../../security/renderer/securityCapabi
 import type { SettingsSecurityCapability } from './Settings'
 import { createSettingsCapability } from './settingsCapability'
 
+const anyString = expect.any(String) as string
+
 Object.defineProperty(global.navigator, 'keyboard', {
   configurable: true,
   value: { getLayoutMap: async () => new Map() }
@@ -115,7 +117,7 @@ describe('settings security operations', () => {
       }
       expect(command).toEqual({
         type: 'security.configure',
-        operationId: expect.any(String),
+        operationId: anyString,
         mode: 'best-available',
         browser: { status: 'enrolled', ...enrollment }
       })
@@ -142,7 +144,7 @@ describe('settings security operations', () => {
       await unsupportedUser.click(screen.getByRole('switch', { name: 'Biometric Login' }))
       expect(lastCommand()).toEqual({
         type: 'security.configure',
-        operationId: expect.any(String),
+        operationId: anyString,
         mode: 'best-available',
         browser: { status: 'unavailable' }
       })
@@ -158,7 +160,7 @@ describe('settings security operations', () => {
       await failureUser.click(screen.getByRole('switch', { name: 'Biometric Login' }))
       expect(lastCommand()).toEqual({
         type: 'security.configure',
-        operationId: expect.any(String),
+        operationId: anyString,
         mode: 'best-available',
         browser: { status: 'failed' }
       })
@@ -206,7 +208,7 @@ describe('settings security operations', () => {
       if (lock.type !== 'wallet.lock') {
         throw new Error('Expected wallet lock command')
       }
-      expect(lock).toEqual({ type: 'wallet.lock', operationId: expect.any(String) })
+      expect(lock).toEqual({ type: 'wallet.lock', operationId: anyString })
       publishOperation(operation(lock.operationId, lock.type, 'succeeded'))
       expect(onPostLockNavigation).not.toHaveBeenCalled()
       publish({ appLock: { locked: true, vaultExists: true }, operations })
@@ -215,7 +217,7 @@ describe('settings security operations', () => {
       await user.click(screen.getByRole('button', { name: 'Reset Saved Data' }))
       expect(lastCommand()).toEqual({
         type: 'wallet.reset',
-        operationId: expect.any(String),
+        operationId: anyString,
         scope: 'saved-data'
       })
       const savedReset = lastCommand()
@@ -228,7 +230,7 @@ describe('settings security operations', () => {
       await user.click(screen.getByRole('button', { name: 'Yes' }))
       expect(lastCommand()).toEqual({
         type: 'wallet.reset',
-        operationId: expect.any(String),
+        operationId: anyString,
         scope: 'all-settings-data'
       })
     }

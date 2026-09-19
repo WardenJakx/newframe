@@ -31,14 +31,14 @@ type SelectedChain = {
 
 type TokenErrorProps = {
   text: string
-  onBack(): void
-  onContinue(): void
+  onBack: () => void
+  onContinue: () => void
 }
 
 type EnterAddressProps = {
   capability: Pick<TokensCapability, 'lookup'>
   chain: SelectedChain
-  onNavigate(data: AddTokenNotifyData): void
+  onNavigate: (data: AddTokenNotifyData) => void
 }
 
 type TokenDetailsFormProps = {
@@ -46,7 +46,7 @@ type TokenDetailsFormProps = {
   chain: SelectedChain
   tokenData: Partial<Token> & Pick<Token, 'address'> & { totalSupply?: string }
   isEdit?: boolean
-  onDone(): void
+  onDone: () => void
 }
 
 type TokenSubmission = {
@@ -62,10 +62,10 @@ type TokenBoundaryFailure = {
 type AddTokenProps = {
   capability: Pick<TokensCapability, 'add' | 'lookup'>
   data?: { notifyData?: AddTokenNotifyData }
-  onBack?(): void
-  onDone?(): void
-  onNavigate?(data: AddTokenNotifyData): void
-  onOpenNetworks?(): void
+  onBack?: () => void
+  onDone?: () => void
+  onNavigate?: (data: AddTokenNotifyData) => void
+  onOpenNetworks?: () => void
 }
 
 export type AddTokenNotifyData = {
@@ -107,8 +107,8 @@ function SelectChain({
   onNavigate,
   onOpenNetworks
 }: {
-  onNavigate(data: AddTokenNotifyData): void
-  onOpenNetworks(): void
+  onNavigate: (data: AddTokenNotifyData) => void
+  onOpenNetworks: () => void
 }) {
   const { chains, chainMetadata } = useWalletSelector(useShallow(selectChainState))
   const metadataByChain: Record<number, (typeof chainMetadata)[number] | undefined> = chainMetadata
