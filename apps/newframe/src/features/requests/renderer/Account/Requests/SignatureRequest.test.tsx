@@ -34,9 +34,11 @@ function request(decodedMessage: string): SignRequestView {
   }
 }
 
-it('preserves canonical non-SIWE message line breaks', () => {
+it('shows the requester and preserves canonical non-SIWE message line breaks', () => {
   const decodedMessage = 'Definitive Flash v1 — Cancel Order\nOrder: 7c2fec66-26cb-4455-844a-f638f3cb8680'
-  render(<SignatureRequestComponent req={request(decodedMessage)} />)
+  render(<SignatureRequestComponent req={request(decodedMessage)} originName='example.test' />)
+  expect(screen.getByText('example.test')).toBeTruthy()
+  expect(screen.getByText('wants you to sign a message')).toBeTruthy()
   const message = screen.getByLabelText('Message to sign')
   expect(message.tagName).toBe('PRE')
   expect(message.textContent).toBe(decodedMessage)
