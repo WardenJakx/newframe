@@ -9,6 +9,7 @@ import { shallow } from 'zustand/shallow'
 
 import packageFile from '../../../../../package.json' with { type: 'json' }
 import type { TokenData } from '../../../../platform/chain-rpc/contracts/erc20.js'
+import { JsonRpcResponseSchema } from '../../../../platform/local-rpc/protocol.js'
 import { getSignerType, Type as SignerType } from '../../../../platform/signing/domain/index.js'
 import { getCalldataDigest, getEip712Digests } from '../../../../platform/signing/signatures/digests.js'
 import * as sigParser from '../../../../platform/signing/signatures/index.js'
@@ -203,20 +204,24 @@ export class Provider extends EventEmitter {
   }
 
   private readonly handleProxySend = (payload: RPCRequestPayload) => {
-    const { id, method } = payload
+    const { id } = payload
     let settled = false
     const respond = (response: RPCResponsePayload) => {
       if (settled) {
         return
       }
       settled = true
-      const projected: { id: string | number; method: string; error?: EVMError; result?: unknown } = {
-        id,
-        method,
-        error: response.error,
-        result: response.result
-      }
-      this.proxy.emit('payload', projected)
+      const parsed = JsonRpcResponseSchema.safeParse(response)
+      this.proxy.emit(
+        'payload',
+        parsed.success
+          ? parsed.data
+          : {
+              id,
+              jsonrpc: '2.0',
+              error: { code: -32603, message: 'Invalid JSON-RPC response' }
+            }
+      )
     }
     Promise.resolve(this.send(payload, respond, proxyPrincipal)).catch((error: unknown) => {
       log.error('Could not handle proxy request', error)

@@ -4,6 +4,13 @@ import type { JsonRpcApiProvider, JsonRpcPayload } from 'ethers'
 import { FetchRequest, JsonRpcProvider, WebSocketProvider } from 'ethers'
 import WebSocket from 'ws'
 
+import {
+  EthSubscriptionNotificationSchema,
+  type EthSubscriptionNotification,
+  type JsonRpcError,
+  type JsonRpcResponse
+} from '../../../../platform/local-rpc/protocol.js'
+
 export type RpcParams = readonly unknown[] | Record<string, unknown>
 
 export interface ProviderRequest {
@@ -26,47 +33,8 @@ export interface RpcPayload extends ProviderRequest {
   params: RpcParams
 }
 
-export interface RpcResult {
-  id: string | number
-  jsonrpc?: '2.0'
-  result?: unknown
-  error?: {
-    message?: string
-    code?: number
-    data?: unknown
-  }
-}
-
-export interface SubscriptionPayload {
-  jsonrpc: '2.0'
-  method: 'eth_subscription'
-  params: {
-    subscription: string
-    result: unknown
-  }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-}
-
-export function isRpcResponsePayload(value: unknown): value is RpcResult | SubscriptionPayload {
-  if (!isRecord(value)) {
-    return false
-  }
-  if (value.method === 'eth_subscription') {
-    return (
-      value.jsonrpc === '2.0' &&
-      isRecord(value.params) &&
-      typeof value.params.subscription === 'string' &&
-      'result' in value.params
-    )
-  }
-  return (
-    (typeof value.id === 'string' || typeof value.id === 'number') &&
-    (!value.jsonrpc || value.jsonrpc === '2.0')
-  )
-}
+export type RpcResult = JsonRpcResponse
+export type SubscriptionPayload = EthSubscriptionNotification
 
 export type EthersRpcProvider = JsonRpcApiProvider
 
@@ -82,7 +50,7 @@ function normalizeParams(params?: RpcParams) {
   return params ?? []
 }
 
-export function createError(error: RpcResult['error'] | Error | unknown) {
+export function createError(error: JsonRpcError | Error | unknown) {
   if (error instanceof Error) {
     return error
   }
@@ -135,9 +103,10 @@ export class FrameWebSocketProvider extends WebSocketProvider {
   override async _processMessage(message: string) {
     try {
       const payload: unknown = JSON.parse(message)
+      const notification = EthSubscriptionNotificationSchema.safeParse(payload)
 
-      if (isRpcResponsePayload(payload) && 'method' in payload) {
-        this.frameEvents.emit('subscription', payload)
+      if (notification.success) {
+        this.frameEvents.emit('subscription', notification.data)
       }
     } catch {
       // The base provider handles malformed messages.
