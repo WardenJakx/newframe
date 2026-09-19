@@ -68,8 +68,8 @@ it('renders the focused import model and emits semantic draft and submit events'
   await user.type(screen.getByLabelText('Account name'), 'Imported')
   await user.click(screen.getByRole('button', { name: 'Create account' }))
 
-  expect(callbacks.onInputChange.mock.calls.map(([value]) => value).join('')).toBe('secret')
-  expect(callbacks.onNameChange.mock.calls.map(([value]) => value)).toContain('')
+  expect(callbacks.onInputChange.mock.calls.flat().join('')).toBe('secret')
+  expect(callbacks.onNameChange.mock.calls.flat()).toContain('')
   expect(callbacks.onSubmitImport.mock.calls).toHaveLength(1)
 })
 

@@ -34,7 +34,7 @@ function toHexAmount(value: any) {
     return addHexPrefix(value.toString(16))
   }
   if (value?.toHexString) {
-    return value.toHexString()
+    return value.toHexString() as string
   }
   return addHexPrefix(BigInt(value ?? 0).toString(16))
 }
@@ -124,8 +124,11 @@ async function recogErc20(
 
             const txRequest = request as TransactionRequest
 
-            data.amount = amount
-            txRequest.data.data = Erc20Contract.encodeCallData('approve', [spenderAddress, amount])
+            data.amount = amount as HexAmount
+            txRequest.data.data = Erc20Contract.encodeCallData('approve', [
+              spenderAddress,
+              amount as HexAmount
+            ])
 
             if (txRequest.decodedData) {
               txRequest.decodedData.args[1].value = amount === MAX_HEX ? 'unlimited' : approvedAmount

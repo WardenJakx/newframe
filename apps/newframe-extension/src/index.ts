@@ -75,8 +75,8 @@ const isInjectedUrl = (url = '') => url.startsWith('http') || url.startsWith('fi
 
 const subType = (pendingPayload: PendingRequest) => {
   try {
-    const type = pendingPayload.params[0]
-    return subTypes.includes(type) ? type : 'unknown'
+    const type: unknown = pendingPayload.params[0]
+    return typeof type === 'string' && subTypes.includes(type) ? type : 'unknown'
   } catch (e) {
     return 'unknown'
   }
@@ -235,7 +235,7 @@ async function disconnectActiveOrigin(tab?: chrome.tabs.Tab) {
 
 async function sendEventToTab(tabId: number, event: string, args?: any) {
   try {
-    return await chrome.tabs.sendMessage(tabId, { type: 'eth:event', event, args })
+    await chrome.tabs.sendMessage(tabId, { type: 'eth:event', event, args })
   } catch (e) {
     // tabs without our content script (chrome:// pages, stale tabs) can't receive — expected
     if ((e as Error)?.message?.includes('Receiving end does not exist')) {

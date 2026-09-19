@@ -357,8 +357,15 @@ describe('local trade service handler', () => {
     }
   ]) {
     it(`keeps a ${direction.name} market order accepted until signed cancellation`, async () => {
-      const published: Record<string, any>[] = []
-      const unsubscribe = subscribeLocalTradeOrders((order) => published.push(order))
+      type PublishedStatus = 'accepted' | 'cancelled'
+      const published: Array<{ hasChainId: boolean; normalizedStatus: PublishedStatus }> = []
+      const unsubscribe = subscribeLocalTradeOrders((order) => {
+        const normalizedStatus: PublishedStatus = order.normalizedStatus
+        published.push({
+          hasChainId: 'chainId' in order,
+          normalizedStatus
+        })
+      })
       const request = quoteRequest({
         contraAsset: direction.contraAsset,
         contraChain: direction.contraChain,
@@ -432,7 +439,7 @@ describe('local trade service handler', () => {
       })
       expect(cancelled.order).not.toHaveProperty('chainId')
       expect(published.map((order) => order.normalizedStatus)).toEqual(['accepted', 'cancelled'])
-      expect(published.every((order) => !('chainId' in order))).toBe(true)
+      expect(published.every((order) => !order.hasChainId)).toBe(true)
       unsubscribe()
     })
   }

@@ -15,8 +15,8 @@ beforeEach(async () => {
     get: mockLayoutGetKey
   })
   KeyboardShortcutConfigurator = (await import('./KeyboardShortcutConfigurator')).default
-  mockLayoutGetKey.mockImplementation((key: any) => {
-    const keyMap: any = {
+  mockLayoutGetKey.mockImplementation((key: string) => {
+    const keyMap: Record<string, string> = {
       Slash: '/'
     }
     return keyMap[key] ?? key

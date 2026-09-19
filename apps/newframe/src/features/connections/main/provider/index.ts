@@ -375,7 +375,7 @@ export class Provider extends EventEmitter {
           'typedMessage' in value ? value.typedMessage : undefined,
           value.authorization
         ],
-        (_key, item) => (typeof item === 'function' ? undefined : item)
+        (_key, item: unknown) => (typeof item === 'function' ? undefined : item)
       )
     const expected = identity(request)
     const typed = 'typedMessage' in request ? (request as SignTypedDataRequest).typedMessage : undefined
@@ -1270,7 +1270,7 @@ export class Provider extends EventEmitter {
   private getOriginConnection(payload: RPCRequestPayload) {
     const originId = payload._origin
     const origin = this.store.getState().main.origins[originId]
-    const currentAccount = this.accounts.current() as any
+    const currentAccount = this.accounts.current()
     const rawAddress = currentAccount?.address ?? currentAccount?.id ?? ''
     const address = rawAddress ? rawAddress.toLowerCase() : ''
     const permissionAddresses = Array.from(

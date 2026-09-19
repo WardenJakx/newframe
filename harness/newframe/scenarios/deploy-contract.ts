@@ -2,7 +2,7 @@ import { BrowserProvider } from 'ethers'
 
 import createFrameProvider from '../../../apps/newframe/src/features/connections/main/provider/connection.ts'
 
-let frame: any
+let frame: ReturnType<typeof createFrameProvider>
 let provider: BrowserProvider
 
 const waitForFrameConnect = () =>
@@ -27,7 +27,8 @@ async function main() {
   try {
     await waitForFrameConnect()
     provider = new BrowserProvider({
-      request: ({ method, params }: { method: string; params?: any[] }) => frame.request({ method, params })
+      request: ({ method, params }: { method: string; params?: any[] }) =>
+        frame.request<unknown>({ method, params })
     })
     await provider.send('eth_accounts', [])
 

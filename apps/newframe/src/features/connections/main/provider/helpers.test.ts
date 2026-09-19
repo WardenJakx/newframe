@@ -35,7 +35,9 @@ describe('#getRawTx', () => {
   })
   ;['invalid', '-360', '3.60'].forEach((nonce) => {
     it(`rejects invalid nonce ${nonce}`, () => {
-      expect(() => getRawTx({ nonce })).toThrow('Invalid nonce')
+      expect(() => {
+        getRawTx({ nonce })
+      }).toThrow('Invalid nonce')
     })
   })
 })

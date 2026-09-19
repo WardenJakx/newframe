@@ -133,7 +133,9 @@ describe('#createChainsObserver', () => {
     it(`invokes the handler when a chain is ${description}`, () => {
       arrange()
       fireObserver()
-      expect(handler.chainsChanged.mock.calls[0][1].map((chain: any) => chain.chainId)).toEqual(expected)
+      expect(
+        handler.chainsChanged.mock.calls[0][1].map((chain: { chainId: unknown }) => chain.chainId)
+      ).toEqual(expected)
     })
   })
 

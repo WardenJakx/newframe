@@ -130,7 +130,7 @@ function valueToText(value: unknown): string {
     return value.map(valueToText).join(', ')
   }
 
-  return JSON.stringify(value, (_key, nestedValue) =>
+  return JSON.stringify(value, (_key, nestedValue: unknown) =>
     typeof nestedValue === 'bigint' ? nestedValue.toString() : nestedValue
   )
 }

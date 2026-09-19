@@ -119,7 +119,7 @@ const simulationMock = {
 }
 
 function createAccounts(chainRpc = providerMock) {
-  return new AccountsClass(store, {
+  const accounts: Record<string, any> = new AccountsClass(store, {
     chainRpc,
     transactionPolicy: transactionMock,
     simulation: simulationMock,
@@ -138,12 +138,17 @@ function createAccounts(chainRpc = providerMock) {
       windows: windowsMock
     }
   })
+  return accounts
 }
 
-const storeState = () => store.getState() as any
-const canonicalRequest = (id: string | number = request.handlerId) => Accounts.current().requests[id]
-const patchRequest = (update: (request: any) => void, id: string | number = request.handlerId) =>
+const storeState = () => store.getState()
+const canonicalRequest = (id: string | number = request.handlerId) => {
+  const current: Record<string, any> = Accounts.current().requests[id]
+  return current
+}
+const patchRequest = (update: (request: any) => void, id: string | number = request.handlerId) => {
   Accounts.current().patchRequest(id, update)
+}
 const flushPromises = async (count = 4) => {
   while (count-- > 0) {
     await Promise.resolve()
@@ -152,13 +157,16 @@ const flushPromises = async (count = 4) => {
 function mockConfirmedReceipt(receiptBlock: number) {
   provider.send = mock((payload: any, cb: any) => {
     if (payload.method === 'eth_subscribe') {
-      return cb({ error: { code: -32601, message: 'unsupported' } })
+      cb({ error: { code: -32601, message: 'unsupported' } })
+      return
     }
     if (payload.method === 'eth_blockNumber') {
-      return cb({ result: intToHex(receiptBlock + TRANSACTION_CONFIRMATION_TARGET) })
+      cb({ result: intToHex(receiptBlock + TRANSACTION_CONFIRMATION_TARGET) })
+      return
     }
     if (payload.method === 'eth_getTransactionReceipt') {
-      return cb({ result: { status: '0x1', blockNumber: intToHex(receiptBlock), gasUsed: '0x5208' } })
+      cb({ result: { status: '0x1', blockNumber: intToHex(receiptBlock), gasUsed: '0x5208' } })
+      return
     }
     cb({ result: null })
   })
@@ -479,7 +487,9 @@ describe('#startDataScanner', () => {
     accounts.refreshBalances(account.address)
     expect(externalDataScannerFactoryMock).not.toHaveBeenCalled()
     expect(externalDataScannerMock.refreshBalances).not.toHaveBeenCalled()
-    expect(() => accounts.close()).not.toThrow()
+    expect(() => {
+      accounts.close()
+    }).not.toThrow()
     expect(externalDataScannerMock.close).not.toHaveBeenCalled()
 
     const startedAccounts = createAccounts()
@@ -548,19 +558,27 @@ describe('transaction fee editing', () => {
 
   it('shares strict request, lock, and manual-update guards across fee fields', () => {
     for (const invalid of [undefined, 'wrong', '-0x1']) {
-      expect(() => Accounts.setBaseFee(invalid, 1, false)).toThrow(/invalid input/i)
+      expect(() => {
+        Accounts.setBaseFee(invalid, 1, false)
+      }).toThrow(/invalid input/i)
     }
-    expect(() => Accounts.setBaseFee('0x1', 2, false)).toThrow(/could not find transaction/i)
+    expect(() => {
+      Accounts.setBaseFee('0x1', 2, false)
+    }).toThrow(/could not find transaction/i)
 
     patchRequest((current) => {
       current.locked = true
     })
-    expect(() => Accounts.setBaseFee('0x1', 1, false)).toThrow(/already been approved/i)
+    expect(() => {
+      Accounts.setBaseFee('0x1', 1, false)
+    }).toThrow(/already been approved/i)
     patchRequest((current) => {
       current.locked = false
       current.feesUpdatedByUser = true
     })
-    expect(() => Accounts.setGasPrice('0x61a8', 1, false)).toThrow(/updated by user/i)
+    expect(() => {
+      Accounts.setGasPrice('0x61a8', 1, false)
+    }).toThrow(/updated by user/i)
   })
 
   it('updates each distinct fee representation and records a manual change once', () => {
@@ -695,7 +713,7 @@ describe('#setTxSent', () => {
       expect.objectContaining(expectedToken)
     ])
     expect(storeState().main.activity[hash].positionsRefreshedAt).toEqual(expect.any(Number))
-    expect(storeState().main.activity[hash].balanceChanges).toEqual(simulation.effects)
+    expect(simulation.effects).toEqual(storeState().main.activity[hash].balanceChanges)
 
     Accounts.close()
   })
@@ -869,16 +887,18 @@ describe('#setTxSent', () => {
 
     provider.send = mock((payload: any, cb: any) => {
       if (payload.method === 'eth_getTransactionReceipt') {
-        return cb({
+        cb({
           result: {
             status: '0x1',
             blockNumber: intToHex(receiptBlock),
             gasUsed: '0x5208'
           }
         })
+        return
       }
       if (payload.method === 'eth_blockNumber') {
-        return cb({ result: intToHex(receiptBlock + TRANSACTION_CONFIRMATION_TARGET) })
+        cb({ result: intToHex(receiptBlock + TRANSACTION_CONFIRMATION_TARGET) })
+        return
       }
 
       cb({ result: null })
@@ -931,9 +951,8 @@ describe('#setTxSent', () => {
 
       storeState().selectProfile(profileId)
       receiptCallbacks[0]({ result: { status: '0x1', blockNumber: intToHex(100), gasUsed: '0x5208' } })
-      expect(provider.send.mock.calls.map(([payload]: any[]) => payload.method)).toEqual([
-        'eth_getTransactionReceipt'
-      ])
+      const sendCalls = provider.send.mock.calls as Array<[{ method: string }]>
+      expect(sendCalls.map(([payload]) => payload.method)).toEqual(['eth_getTransactionReceipt'])
       expect(storeState().main.activity[hash].status).toBe('submitted')
 
       storeState().selectProfile(DEFAULT_PROFILE_ID)

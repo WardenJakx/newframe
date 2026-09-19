@@ -94,7 +94,7 @@ beforeAll(async () => {
 })
 
 function createAccount(profileActive = true) {
-  return new Account(
+  const created: Record<string, any> = new Account(
     accountState as any,
     accounts as any,
     store,
@@ -115,6 +115,7 @@ function createAccount(profileActive = true) {
     requestLifecycle,
     profileActive
   )
+  return created
 }
 
 beforeEach(() => {
@@ -194,7 +195,9 @@ describe('#addRequest', () => {
 
     const canonical = store.getState().main.accounts[account.id].requests[request.handlerId]
     expect(canonical.recognizedActions[0].update).toBeUndefined()
-    expect(() => structuredClone(canonical)).not.toThrow()
+    expect(() => {
+      structuredClone(canonical)
+    }).not.toThrow()
 
     expect(account.approveRequest(request.handlerId, 'approveGasLimit', {})).toBe(true)
     expect(account.requests[request.handlerId].approvals[0].approved).toBe(true)
@@ -244,9 +247,9 @@ describe('#addRequest', () => {
       expect(account.requests[request.handlerId].recognizedActions).toEqual([
         { id: 'erc20:approve', data: { amount: '0x1' } }
       ])
-      expect(() =>
+      expect(() => {
         account.updateRecognizedAction(request.handlerId, 'erc20:approve', { amount: '0x2' })
-      ).not.toThrow()
+      }).not.toThrow()
       expect(account.requests[request.handlerId].data.data).toBe('encoded:0x2')
       expect(account.requests[request.handlerId].recognizedActions[0].data.amount).toBe('0x2')
     })
@@ -305,7 +308,9 @@ describe('#addRequest', () => {
 describe('creation-block listener lifecycle', () => {
   it('removes the provider listener after resolving the creation block', () => {
     const listener = providerMock.on.mock.calls.find(([event]) => event === 'connect')?.[1]
-    providerMock.send.mockImplementationOnce((_payload, respond) => respond({ result: '0x64' }))
+    providerMock.send.mockImplementationOnce((_payload, respond) => {
+      respond({ result: '0x64' })
+    })
 
     listener()
 
@@ -323,10 +328,14 @@ describe('creation-block listener lifecycle', () => {
 
   it('ignores a late creation-block response after canonical removal', () => {
     const listener = providerMock.on.mock.calls.find(([event]) => event === 'connect')?.[1]
-    providerMock.send.mockImplementationOnce((_payload, respond) => respond({ result: '0x64' }))
+    providerMock.send.mockImplementationOnce((_payload, respond) => {
+      respond({ result: '0x64' })
+    })
     store.getState().removeAccount(account.id)
 
-    expect(() => listener()).not.toThrow()
+    expect(() => {
+      listener()
+    }).not.toThrow()
     expect(providerMock.off).toHaveBeenCalledWith('connect', listener)
   })
 
@@ -450,9 +459,15 @@ it('rejects every Safe signing method even when an owner signer is associated', 
     signTransaction: signed
   })
   for (const sign of [
-    (callback: any) => account.signMessage('0x1234', callback),
-    (callback: any) => account.signTypedData({ data: {} }, callback),
-    (callback: any) => account.signTransaction({ from: account.address }, callback)
+    (callback: any) => {
+      account.signMessage('0x1234', callback)
+    },
+    (callback: any) => {
+      account.signTypedData({ data: {} }, callback)
+    },
+    (callback: any) => {
+      account.signTransaction({ from: account.address }, callback)
+    }
   ]) {
     expect(
       new Promise((resolve, reject) => {

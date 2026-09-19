@@ -176,9 +176,12 @@ const state = {
 }
 
 await mock.module('../../connections/main/provider/connection', () => ({
-  createJsonRpcProvider: (target: any) => (mockConnections as any)[target].connection,
+  createJsonRpcProvider: (target: string) => mockConnectionFor(target),
   listenForProviderClose: mock(),
-  sendRpcPayload: (provider: any, payload: any) => provider.send(payload.method, payload.params ?? [])
+  sendRpcPayload: (
+    provider: { send(method: string, params: unknown[]): Promise<unknown> },
+    payload: { method: string; params?: unknown[] }
+  ) => provider.send(payload.method, payload.params ?? [])
 }))
 await mock.module('../../../platform/state-store/state', () => () => state)
 await mock.module('../../accounts/main', () => ({ updatePendingFees: mock() }))
@@ -199,6 +202,14 @@ const mockConnections = {
     name: 'arbitrum',
     connection: new MockConnection(42161)
   }
+}
+
+function mockConnectionFor(target: string) {
+  const connection = Object.entries(mockConnections).find(([url]) => url === target)?.[1]
+  if (!connection) {
+    throw new Error(`Unknown mock connection: ${target}`)
+  }
+  return connection.connection
 }
 
 let chains: any
@@ -228,7 +239,9 @@ beforeAll(async () => {
   chains.start()
 })
 
-afterAll(() => chains.dispose())
+afterAll(() => {
+  chains.dispose()
+})
 
 beforeEach(() => {
   resetChainState()

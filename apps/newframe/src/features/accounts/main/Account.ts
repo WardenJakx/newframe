@@ -36,8 +36,10 @@ import type { AccountsRuntime } from './runtime.js'
 
 function cloneSerializable<T>(value: T): T {
   return JSON.parse(
-    JSON.stringify(value, (_key, nextValue) => (typeof nextValue === 'function' ? undefined : nextValue))
-  )
+    JSON.stringify(value, (_key, nextValue: unknown) =>
+      typeof nextValue === 'function' ? undefined : nextValue
+    )
+  ) as T
 }
 
 interface SignerOptions {
@@ -620,10 +622,13 @@ class FrameAccount {
       const accountOpen = this.store.getState().main.currentAccount === account
 
       // Does the current panel nav include a 'requestView'
-      const panelNav = (this.store.getState().windows.panel.nav || []) as any[]
+      const panelNav = (this.store.getState().windows.panel.nav || []) as Array<{
+        view?: unknown
+        data?: { id?: unknown }
+      }>
       const inExpandedRequestsView =
         panelNav[0]?.view === 'expandedModule' && panelNav[0]?.data?.id === 'requests'
-      const inRequestView = panelNav.map((crumb: any) => crumb.view).includes('requestView')
+      const inRequestView = panelNav.map((crumb) => crumb.view).includes('requestView')
 
       if (!accountOpen) {
         this.store.getState().setAccount({ id: this.id })

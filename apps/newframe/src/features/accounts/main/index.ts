@@ -62,20 +62,20 @@ function isBalanceChange(effect: TransactionEffect) {
   )
 }
 
-function cloneForActivity(value: any) {
+function cloneForActivity<T>(value: T): T | undefined {
   if (value === undefined) {
     return undefined
   }
 
   try {
     return JSON.parse(
-      JSON.stringify(value, (_key, nextValue) => {
+      JSON.stringify(value, (_key, nextValue: unknown) => {
         if (typeof nextValue === 'function') {
           return undefined
         }
         return nextValue
       })
-    )
+    ) as T
   } catch {
     return undefined
   }
@@ -341,7 +341,9 @@ export class Accounts extends EventEmitter {
 
   private getTransactionNativeSymbol(req: TransactionRequest) {
     const chain = this.getTransactionChain(req)
-    const network = chain ? (this.store.getState().main.networks.ethereum[chain.id] as any) : undefined
+    const network = chain
+      ? (this.store.getState().main.networks.ethereum[chain.id] as { symbol?: string } | undefined)
+      : undefined
     const metadata = chain ? this.store.getState().main.networksMeta.ethereum[chain.id] : undefined
 
     return network?.symbol ?? metadata?.nativeCurrency.symbol ?? 'ETH'
@@ -751,15 +753,18 @@ export class Accounts extends EventEmitter {
   }
 
   private activityChainId(activity: ActivityRecord) {
-    return normalizeChainId(activity.chainId ?? (activity.data as any)?.chainId)
+    const data = activity.data as { chainId?: string | number } | undefined
+    return normalizeChainId(activity.chainId ?? data?.chainId)
   }
 
   private activityNonce(activity: ActivityRecord) {
-    return normalizeQuantity(activity.nonce ?? (activity.data as any)?.nonce)
+    const data = activity.data as { nonce?: string | number } | undefined
+    return normalizeQuantity(activity.nonce ?? data?.nonce)
   }
 
   private activityAccount(activity: ActivityRecord) {
-    return (activity.account ?? activity.address ?? (activity.data as any)?.from ?? '').toLowerCase()
+    const data = activity.data as { from?: string } | undefined
+    return (activity.account ?? activity.address ?? data?.from ?? '').toLowerCase()
   }
 
   private isNonTerminalActivity(activity?: ActivityRecord) {

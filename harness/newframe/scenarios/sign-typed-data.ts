@@ -45,7 +45,7 @@ const TYPED_TYPES = {
   Mail: TYPED_DATA.types.Mail
 }
 
-let frame: any
+let frame: ReturnType<typeof createFrameProvider>
 let provider: BrowserProvider
 
 const waitForFrameConnect = () =>
@@ -74,7 +74,8 @@ async function main() {
   try {
     await waitForFrameConnect()
     provider = new BrowserProvider({
-      request: ({ method, params }: { method: string; params?: any[] }) => frame.request({ method, params })
+      request: ({ method, params }: { method: string; params?: any[] }) =>
+        frame.request<unknown>({ method, params })
     })
 
     const [address] = await provider.send('eth_requestAccounts', [])

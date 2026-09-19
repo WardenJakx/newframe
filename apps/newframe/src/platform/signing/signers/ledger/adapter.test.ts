@@ -63,7 +63,14 @@ const TransportNodeHidSingletonMock = {
   listen: mock(() => ({ unsubscribe: mock() }))
 }
 
-let connectedHids: any[] = []
+interface ConnectedHid {
+  interface: number
+  path: string
+  product: string
+  usagePage: number
+}
+
+let connectedHids: ConnectedHid[] = []
 
 await mock.module('./dependencies.js', () => ({
   getLedgerDevices: () => connectedHids,
@@ -75,12 +82,12 @@ await mock.module('./Ledger/index.js', () => ({
   Status
 }))
 
-function simulateLedgerConnection(path: any) {
+function simulateLedgerConnection(path: string) {
   connectedHids.push({ interface: 0, product: 'Nano S', usagePage: 0xffa0, path })
 }
 
-function simulateLedgerDisconnection(path: any) {
-  const hidIndex = connectedHids.findIndex((hid: any) => hid.path === path)
+function simulateLedgerDisconnection(path: string) {
+  const hidIndex = connectedHids.findIndex((hid) => hid.path === path)
   connectedHids.splice(hidIndex, 1)
 }
 
@@ -308,15 +315,15 @@ it('connects a Ledger after startup without changing navigation', async () => {
 })
 
 it('creates a new Ledger when one is already attached', () => {
-  const addedLedgers: any = []
-  adapter.on('add', (ledger: any) => addedLedgers.push(ledger))
+  const addedLedgers: LedgerMock[] = []
+  adapter.on('add', (ledger: LedgerMock) => addedLedgers.push(ledger))
 
   simulateLedgerConnection('connected-nano-s-path')
   adapter.handleDeviceChanges()
   simulateLedgerConnection('new-nano-s-path')
   adapter.handleDeviceChanges()
 
-  expect(addedLedgers.map(({ devicePath }: any) => devicePath)).toEqual([
+  expect(addedLedgers.map(({ devicePath }) => devicePath)).toEqual([
     'connected-nano-s-path',
     'new-nano-s-path'
   ])

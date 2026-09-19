@@ -76,7 +76,7 @@ describe('#getFeeHistory', () => {
 })
 
 // helper functions
-function fillEmptySlots(arr: any, targetLength: any, value: any) {
+function fillEmptySlots<T>(arr: T[], targetLength: number, value: T): T[] {
   const target = arr.slice()
   let i = 0
 

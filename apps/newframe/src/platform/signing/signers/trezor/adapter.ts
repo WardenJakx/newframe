@@ -3,6 +3,7 @@ import log from 'electron-log'
 
 import type canonicalStore from '../../../state-store/index.js'
 import { SignerAdapter } from '../adapters.js'
+import type { Derivation } from '../Signer/derive.js'
 import TrezorBridge from './bridge.js'
 import Trezor, { Status } from './Trezor.js'
 
@@ -37,7 +38,7 @@ export default class TrezorSignerAdapter extends SignerAdapter {
 
     this.unsubscribeDerivation?.()
     this.unsubscribeDerivation = this.store.subscribe(
-      (state) => state.main.trezor.derivation,
+      (state) => state.main.trezor.derivation as Derivation,
       (trezorDerivation) => {
         Object.values(this.knownSigners).forEach((signerInfo) => {
           const trezor = signerInfo.signer

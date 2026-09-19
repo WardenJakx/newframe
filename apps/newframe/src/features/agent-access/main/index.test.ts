@@ -38,7 +38,7 @@ function response() {
 it('characterizes agent prompt timeout, disconnect, approval idempotency, and dispose cleanup', async () => {
   timers.useFakeTimers()
   try {
-    const requests: Record<string, any> = {}
+    const requests: Record<string, Record<string, any>> = {}
     const continuations = new Map<string, (response: RPCResponsePayload) => void>()
     const requestLifecycle = {
       bind: mock(),

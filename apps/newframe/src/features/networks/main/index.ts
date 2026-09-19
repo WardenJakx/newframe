@@ -70,7 +70,7 @@ const normalizeRpcError = (error: any) => {
   if (error instanceof Error) {
     return { message: error.message, code: (error as any).code ?? -1, data: (error as any).data }
   }
-  return error
+  return error as unknown
 }
 
 const resError = (error: any, payload: any, res: (response: any) => void) =>

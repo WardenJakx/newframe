@@ -127,8 +127,8 @@ describe('#createGasCalculator', () => {
       ]
 
       const rewards = feeHistory.reduce(
-        (acc: any[], { rewards }) => (rewards.length ? acc.concat(intToHex(rewards[0])) : acc),
-        [] as any[]
+        (acc: string[], { rewards }) => (rewards.length ? acc.concat(intToHex(rewards[0])) : acc),
+        [] as string[]
       )
 
       const { maxPriorityFeePerGas } = await gasCalculator.calculateGas(feeHistory)

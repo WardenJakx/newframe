@@ -13,7 +13,7 @@ import {
 
 class FakeProvider extends EventEmitter implements NameResolutionProviderPort {
   chainId = ''
-  readonly requests: any[] = []
+  readonly requests: Array<{ method: string; params?: unknown[]; chainId?: string }> = []
   respond: (payload: any) => Promise<any> = async () => {
     throw new Error('No response configured')
   }
@@ -22,7 +22,7 @@ class FakeProvider extends EventEmitter implements NameResolutionProviderPort {
     this.chainId = chainId
   }
 
-  async request<T>(payload: any) {
+  async request<T>(payload: { method: string; params?: unknown[]; chainId?: string }) {
     this.requests.push(payload)
     return (await this.respond(payload)) as T
   }
@@ -43,7 +43,10 @@ let provider: FakeProvider
 let nameResolution: ReturnType<typeof createNameResolutionService>
 
 function callsTo(address: string) {
-  return provider.requests.filter((payload) => payload.params?.[0]?.to === address)
+  return provider.requests.filter((payload) => {
+    const target = payload.params?.[0]
+    return typeof target === 'object' && target !== null && 'to' in target && target.to === address
+  })
 }
 
 function mockNameRequests({

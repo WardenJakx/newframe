@@ -41,17 +41,26 @@ describe('#createBalance', () => {
 })
 
 describe('#sortByTotalValue', () => {
-  const mockBalance = (totalValue: any, balance = 0, decimals = 0) => ({
+  const mockBalance = (totalValue: number, balance = 0, decimals = 0) => ({
+    address: '0x1111111111111111111111111111111111111111',
     totalValue,
+    chainId: 1,
     decimals,
-    balance
+    balance: String(balance),
+    displayBalance: String(balance),
+    displayValue: String(totalValue),
+    hasPrice: true,
+    name: 'Test token',
+    price: '1',
+    priceChange: false as const,
+    symbol: 'TEST'
   })
 
   it('should sort balances in descending order by total value', () => {
     const values = [10, 100, 60]
-    const unsorted: any[] = values.map(mockBalance as any)
+    const unsorted = values.map((value) => mockBalance(value))
 
-    const sortedValues = unsorted.sort(byTotalValue as any).map((b) => b.totalValue)
+    const sortedValues = unsorted.sort(byTotalValue).map((b) => b.totalValue)
 
     expect(sortedValues).toStrictEqual([100, 60, 10])
   })
@@ -60,9 +69,9 @@ describe('#sortByTotalValue', () => {
     const values = [10, 100, 60]
     const unsorted = values.map((value) => mockBalance(10, value))
 
-    const sortedValues = unsorted.sort(byTotalValue as any).map((b) => b.balance)
+    const sortedValues = unsorted.sort(byTotalValue).map((b) => b.balance)
 
-    expect(sortedValues).toStrictEqual([100, 60, 10])
+    expect(sortedValues).toStrictEqual(['100', '60', '10'])
   })
 
   it('should sort balances in descending order by totalValue and balance', () => {
@@ -72,7 +81,7 @@ describe('#sortByTotalValue', () => {
     const bal4 = mockBalance(100, 989)
 
     const unsorted = [bal1, bal2, bal3, bal4]
-    const sortedValues = unsorted.sort(byTotalValue as any)
+    const sortedValues = unsorted.sort(byTotalValue)
 
     expect(sortedValues).toStrictEqual([bal2, bal4, bal1, bal3])
   })

@@ -49,17 +49,19 @@ function token(index: number, chainId = 10) {
   }
 }
 
-function storedToken(token: any, custom = false) {
+type TestToken = ReturnType<typeof token>
+
+function storedToken(token: TestToken, custom = false) {
   return {
     ...token,
     custom,
     curated: false,
-    sources: [custom ? 'custom' : 'onchain'],
+    sources: [custom ? 'custom' : 'onchain'] as Array<'custom' | 'onchain'>,
     updatedAt: 0
   }
 }
 
-function catalogFor(known: any[], custom: any[] = []) {
+function catalogFor(known: TestToken[], custom: TestToken[] = []) {
   const records = [
     ...known.map((item) => storedToken(item)),
     ...custom.map((item) => storedToken(item, true))

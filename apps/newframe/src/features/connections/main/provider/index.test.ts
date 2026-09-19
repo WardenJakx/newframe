@@ -41,7 +41,7 @@ let accountRequests: any = []
 let provider: any
 const accounts: any = {}
 let connection: any
-let store: any
+let store: typeof import('../../../../platform/state-store').default
 let accountRequestHook: ((request: any, respond?: (response: any) => void) => void) | undefined
 const lookupChainIcon = mock(async (_chainId: number) => '')
 const requestContinuations = {
@@ -67,7 +67,7 @@ const storeState = () => store.getState()
 const setOrigin = (id: string, origin: any) => {
   store.setState((state: any) => {
     state.main.origins[id] = origin
-  })
+  }) as any
 }
 const setOrigins = (origins: Record<string, any>) => {
   store.setState((state: any) => {
@@ -156,7 +156,7 @@ beforeAll(async () => {
 
   const connectionModule = (await import('../../../networks/main')) as any
   connection = connectionModule.default ?? connectionModule
-  store = (await import('../../../../platform/state-store')).default as any
+  store = (await import('../../../../platform/state-store')).default
   accounts.getAccounts = () => [address]
   accounts.current = () => ({ id: address, getAccounts: () => [address] })
   accounts.get = () => undefined
@@ -193,7 +193,7 @@ beforeAll(async () => {
     store,
     reveal: { resolveEntityType: mock(async () => 'unknown' as const) },
     requests: requestContinuations
-  }) as any
+  })
   provider.start()
 })
 
@@ -258,8 +258,13 @@ describe('#send', () => {
     })
   })
 
-  const send = (request: any, cb: any = mock(), requestPrincipal = principal) =>
+  const send = (
+    request: any,
+    cb: RPCRequestCallback = mock<RPCRequestCallback>(),
+    requestPrincipal = principal
+  ) => {
     provider.send({ ...request, _origin: '8073729a-5e59-53b7-9e69-5d9bcff94087' }, cb, requestPrincipal)
+  }
   const sendResult = (request: any, requestPrincipal = principal) =>
     new Promise<any>((resolve) => send(request, resolve, requestPrincipal))
 
@@ -385,8 +390,9 @@ describe('#send', () => {
   })
 
   describe('#wallet_addEthereumChain', () => {
-    const sendRequest = (chain: any, cb: any) =>
+    const sendRequest = (chain: any, cb: RPCRequestCallback) => {
       send({ method: 'wallet_addEthereumChain', params: [chain] }, cb)
+    }
     const chainRequest = (overrides: Record<string, unknown> = {}) => ({
       chainId: '0x1234',
       chainName: 'Bizarro Polygon',
@@ -535,14 +541,14 @@ describe('#send', () => {
 
   describe('#wallet_requestPermissions', () => {
     it('returns the requested permissions', async () => {
-      const permissions = (
+      const permissions: Array<{ date: number; parentCapability: string }> = (
         await sendResult({
           method: 'wallet_requestPermissions',
           params: [{ eth_accounts: {} }, { eth_signTransaction: {} }]
         })
       ).result
       expect(
-        permissions.map(({ parentCapability, date }: any) => [parentCapability, Number.isInteger(date)])
+        permissions.map(({ parentCapability, date }) => [parentCapability, Number.isInteger(date)])
       ).toEqual([
         ['eth_accounts', true],
         ['eth_signTransaction', true]
@@ -673,9 +679,13 @@ describe('#send', () => {
         }
       })
 
-      const response = await sendResult({ method: 'wallet_getEthereumChains', id: 14, jsonrpc: '2.0' })
+      const response: { id: number; jsonrpc: string; result: Array<{ chainId: number }> } = await sendResult({
+        method: 'wallet_getEthereumChains',
+        id: 14,
+        jsonrpc: '2.0'
+      })
       expect(response).toMatchObject({ id: 14, jsonrpc: '2.0' })
-      expect(response.result.map(({ chainId }: any) => chainId)).toEqual([1])
+      expect(response.result.map(({ chainId }) => chainId)).toEqual([1])
     })
   })
 
@@ -748,7 +758,7 @@ describe('#send', () => {
         expect(targetChain.id).toBe(chain)
         expect(payload.params[0]).toBe(txHash)
 
-        return res({ result: blockResult })
+        res({ result: blockResult })
       })
     })
 
@@ -917,9 +927,9 @@ describe('#send', () => {
     })
 
     it('releases its response handler when a sign request is rejected', async () => {
-      await expectQueuedRequestRejection((callback) =>
+      await expectQueuedRequestRejection((callback) => {
         send({ method: 'eth_sign', params: [address, hexMessage] }, callback)
-      )
+      })
     })
 
     it('does not submit a request from an account other than the current one', async () => {
@@ -1002,9 +1012,9 @@ describe('#send', () => {
     })
 
     it('returns typed-data rejection and releases its response handler', async () => {
-      await expectQueuedRequestRejection((callback) =>
+      await expectQueuedRequestRejection((callback) => {
         send({ method: 'eth_signTypedData_v4', params: [address, typedData] }, callback)
-      )
+      })
     })
 
     beforeEach(() => {
@@ -1191,7 +1201,9 @@ describe('#signAndSend', () => {
   let tx = {},
     request = {}
 
-  const signAndSend = (cb: any = mock()) => provider.signAndSend(request, cb)
+  const signAndSend = (cb: any = mock()) => {
+    provider.signAndSend(request as any, cb)
+  }
 
   beforeEach(() => {
     tx = {}
@@ -1275,7 +1287,9 @@ describe('#signAndSend', () => {
     const txHash = '0x6e8b1de115105ceab599b4d99604797b961cfd1f46b85e10f23a81974baae3d5'
 
     beforeEach(() => {
-      accounts.signTransaction.mockImplementation((_: any, cb: any) => cb(null, signedTx))
+      accounts.signTransaction.mockImplementation((_: any, cb: any) => {
+        cb(null, signedTx)
+      })
       accounts.setTxSigned.mockImplementation((reqId: any, cb: any) => {
         expect(reqId).toBe((request as any).handlerId)
         cb()

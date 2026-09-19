@@ -16,18 +16,20 @@ import log from 'electron-log'
 import { callbackResult } from '../../callback.test-support.ts'
 import { Derivation } from '../../Signer/derive'
 
-let ethInstance: any
+const createEthInstanceMock = () => ({
+  close: mock(async () => undefined),
+  deriveAddresses: mock(),
+  getAddress: mock(),
+  getAppConfiguration: mock(),
+  signMessage: mock(),
+  signTransaction: mock(),
+  signTypedData: mock()
+})
+
+let ethInstance: ReturnType<typeof createEthInstanceMock>
 
 const EthMock = mock(function (this: any) {
-  ethInstance = {
-    close: mock(async () => undefined),
-    deriveAddresses: mock(),
-    getAddress: mock(),
-    getAppConfiguration: mock(),
-    signMessage: mock(),
-    signTransaction: mock(),
-    signTypedData: mock()
-  }
+  ethInstance = createEthInstanceMock()
   return ethInstance
 })
 const TransportNodeHidMock = { open: mock(async () => ({ close: mock() })) }
@@ -163,9 +165,11 @@ describe('#connect', () => {
 
     expect(ledger.addresses).toEqual(addresses)
     ethInstance.signMessage.mockResolvedValue(signature)
-    expect(queuedResult<string>((done) => ledger.signMessage(0, 'hello, Frame!', done))).resolves.toBe(
-      signature
-    )
+    expect(
+      queuedResult<string>((done) => {
+        ledger.signMessage(0, 'hello, Frame!', done)
+      })
+    ).resolves.toBe(signature)
   })
 })
 
@@ -218,7 +222,9 @@ describe('#verifyAddress', () => {
     let updates = 0
     ledger.on('update', () => updates++)
     expect(
-      queuedResult<boolean>((done) => ledger.verifyAddress(9, addresses[0], false, done))
+      queuedResult<boolean>((done) => {
+        ledger.verifyAddress(9, addresses[0], false, done)
+      })
     ).resolves.toBeTrue()
     expect({ status: ledger.status, updates }).toEqual({ status: Status.OK, updates: 0 })
   })
@@ -228,12 +234,16 @@ describe('#verifyAddress', () => {
     [
       'the verification request is rejected by the user',
       'Verify request rejected by user',
-      () => ethInstance.getAddress.mockRejectedValue({ statusCode: 27013 })
+      () => {
+        ethInstance.getAddress.mockRejectedValue({ statusCode: 27013 })
+      }
     ],
     [
       'there is a communication error',
       'Verify address error',
-      () => ethInstance.getAddress.mockRejectedValue({ statusCode: -1 })
+      () => {
+        ethInstance.getAddress.mockRejectedValue({ statusCode: -1 })
+      }
     ],
     ['the eth app is not initialized', 'Verify address error', () => (ledger.eth = undefined)],
     ['the derivation type is not initialized', 'Verify address error', () => (ledger.derivation = undefined)]
@@ -243,16 +253,16 @@ describe('#verifyAddress', () => {
     it(`fails if ${testCase}`, async () => {
       setup()
       expect(
-        queuedResult((done) =>
+        queuedResult((done) => {
           ledger.verifyAddress(1, '0xe9d6f5779cf6936de03c0bec631f3bb3e336d98d', false, done)
-        )
+        })
       ).rejects.toThrow(message)
       expect(ledger.status).toBe(Status.NEEDS_RECONNECTION)
     })
   }
 })
 
-for (const signingMethod of ['signMessage', 'signTransaction']) {
+for (const signingMethod of ['signMessage', 'signTransaction'] as const) {
   const signType = signingMethod.substring(4).toLowerCase()
 
   describe(`#${signingMethod}`, () => {
@@ -263,7 +273,11 @@ for (const signingMethod of ['signMessage', 'signTransaction']) {
       let updates = 0
       ledger.on('update', () => updates++)
 
-      expect(queuedResult((done) => ledger[signingMethod](3, 'hello, Frame!', done))).resolves.toBe(signature)
+      expect(
+        queuedResult((done) => {
+          ledger[signingMethod](3, 'hello, Frame!', done)
+        })
+      ).resolves.toBe(signature)
       expect({ status: ledger.status, updates }).toEqual({ status: Status.OK, updates: 0 })
     })
 
@@ -274,25 +288,31 @@ for (const signingMethod of ['signMessage', 'signTransaction']) {
       ledger.on('update', () => updates++)
       ledger.on('close', () => closes++)
 
-      expect(queuedResult((done) => ledger[signingMethod](3, 'hello, Frame!', done))).rejects.toThrow(
-        'Sign request rejected by user'
-      )
+      expect(
+        queuedResult((done) => {
+          ledger[signingMethod](3, 'hello, Frame!', done)
+        })
+      ).rejects.toThrow('Sign request rejected by user')
       expect({ status: ledger.status, updates, closes }).toEqual({ status: Status.OK, updates: 0, closes: 0 })
     })
 
     for (const [testCase, setup] of [
       [
         'there is a communication error',
-        () => ethInstance[signingMethod].mockRejectedValue({ statusCode: -1 })
+        () => {
+          ethInstance[signingMethod].mockRejectedValue({ statusCode: -1 })
+        }
       ],
       ['the eth app is not initialized', () => (ledger.eth = undefined)],
       ['the derivation type is not initialized', () => (ledger.derivation = undefined)]
     ] as const) {
       it(`fails if ${testCase}`, async () => {
         setup()
-        expect(queuedResult((done) => ledger[signingMethod](3, 'hello, Frame!', done))).rejects.toThrow(
-          `Sign ${signType} error`
-        )
+        expect(
+          queuedResult((done) => {
+            ledger[signingMethod](3, 'hello, Frame!', done)
+          })
+        ).rejects.toThrow(`Sign ${signType} error`)
         expect(ledger.status).toBe(Status.NEEDS_RECONNECTION)
       })
     }
@@ -307,26 +327,36 @@ describe('#signTypedData', () => {
     let updates = 0
     ledger.on('update', () => updates++)
 
-    expect(queuedResult((done) => ledger.signTypedData(5, typedData, done))).resolves.toBe(signature)
+    expect(
+      queuedResult((done) => {
+        ledger.signTypedData(5, typedData, done)
+      })
+    ).resolves.toBe(signature)
     expect({ status: ledger.status, updates }).toEqual({ status: Status.OK, updates: 0 })
   })
 
   for (const [testCase, setup, message, expectedStatus] of [
     [
       'the user rejects signing',
-      () => ethInstance.signTypedData.mockRejectedValue({ statusCode: 27013 }),
+      () => {
+        ethInstance.signTypedData.mockRejectedValue({ statusCode: 27013 })
+      },
       'Sign request rejected by user',
       'OK'
     ],
     [
       'the signing request is invalid',
-      () => ethInstance.signTypedData.mockRejectedValue({ statusCode: 99901, message: 'Invalid typed data' }),
+      () => {
+        ethInstance.signTypedData.mockRejectedValue({ statusCode: 99901, message: 'Invalid typed data' })
+      },
       'Sign message error',
       'OK'
     ],
     [
       'there is a communication error',
-      () => ethInstance.signTypedData.mockRejectedValue({ statusCode: -1 }),
+      () => {
+        ethInstance.signTypedData.mockRejectedValue({ statusCode: -1 })
+      },
       'Sign message error',
       'NEEDS_RECONNECTION'
     ],
@@ -345,7 +375,11 @@ describe('#signTypedData', () => {
   ] as const) {
     it(`fails if ${testCase}`, async () => {
       setup()
-      expect(queuedResult((done) => ledger.signTypedData(5, typedData, done))).rejects.toThrow(message)
+      expect(
+        queuedResult((done) => {
+          ledger.signTypedData(5, typedData, done)
+        })
+      ).rejects.toThrow(message)
       expect(ledger.status).toBe(Status[expectedStatus])
     })
   }

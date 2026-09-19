@@ -230,16 +230,24 @@ describe('signing and verification', () => {
     lattice.addresses = ['addr1', 'addr2', 'addr3', 'addr4', 'addr5']
     lattice.accountLimit = 5
     lattice.connection = { getAddresses: mock(), getAppName: () => 'frame-test' }
-    expect(await callbackResult((done) => lattice.verifyAddress(2, 'addr3', false, done))).toBeTrue()
-    expect(callbackResult((done) => lattice.verifyAddress(2, 'addrX', false, done))).rejects.toThrow(
-      'Address does not match device'
-    )
+    expect(
+      await callbackResult((done) => {
+        lattice.verifyAddress(2, 'addr3', false, done)
+      })
+    ).toBeTrue()
+    expect(
+      callbackResult((done) => {
+        lattice.verifyAddress(2, 'addrX', false, done)
+      })
+    ).rejects.toThrow('Address does not match device')
 
     lattice.addresses = []
     lattice.connection.getAddresses.mockRejectedValue(new Error('error!'))
-    expect(callbackResult((done) => lattice.verifyAddress(2, 'addr3', false, done))).rejects.toThrow(
-      'Verify Address Error'
-    )
+    expect(
+      callbackResult((done) => {
+        lattice.verifyAddress(2, 'addr3', false, done)
+      })
+    ).rejects.toThrow('Verify Address Error')
   })
 
   it('signs personal and typed messages and rejects the wrong path', async () => {
@@ -258,16 +266,28 @@ describe('signing and verification', () => {
         }
       })
     }
-    expect(await callbackResult<string>((done) => lattice.signMessage(4, 'sign this please', done))).toBe(
-      '0x9af6cbabcd0401'
-    )
-    expect(callbackResult((done) => lattice.signMessage(3, 'sign this please', done))).rejects.toBeTruthy()
+    expect(
+      await callbackResult<string>((done) => {
+        lattice.signMessage(4, 'sign this please', done)
+      })
+    ).toBe('0x9af6cbabcd0401')
+    expect(
+      callbackResult((done) => {
+        lattice.signMessage(3, 'sign this please', done)
+      })
+    ).rejects.toBeTruthy()
 
     const typed = { version: SignTypedDataVersion.V4, data: 'typed data' }
-    expect(await callbackResult<string>((done) => lattice.signTypedData(2, typed, done))).toBe(
-      '0x3ea8cdabcd0401'
-    )
-    expect(callbackResult((done) => lattice.signTypedData(3, typed, done))).rejects.toBeTruthy()
+    expect(
+      await callbackResult<string>((done) => {
+        lattice.signTypedData(2, typed, done)
+      })
+    ).toBe('0x3ea8cdabcd0401')
+    expect(
+      callbackResult((done) => {
+        lattice.signTypedData(3, typed, done)
+      })
+    ).rejects.toBeTruthy()
   })
 
   it('signs legacy and EIP-1559 transactions with their exact wire shapes', async () => {
@@ -288,7 +308,9 @@ describe('signing and verification', () => {
       ['0x2', '0x02d3818980808080808080c080833ea8cd8396f7a0', 2]
     ] as const) {
       expect(
-        await callbackResult<string>((done) => lattice.signTransaction(4, { chainId: '0x89', type }, done))
+        await callbackResult<string>((done) => {
+          lattice.signTransaction(4, { chainId: '0x89', type }, done)
+        })
       ).toBe(expected)
       expect(wireTypes.at(-1)).toBe(wireType)
     }

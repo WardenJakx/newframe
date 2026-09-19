@@ -25,9 +25,9 @@ describe('registerShortcut', () => {
   })
 
   it('should register the new shortcut', () => {
-    ;(globalShortcut.register as any).mockImplementationOnce((accelerator: any, handlerFn: any) =>
-      handlerFn(accelerator)
-    )
+    ;(globalShortcut.register as any).mockImplementationOnce((accelerator: string, handlerFn: () => void) => {
+      handlerFn()
+    })
 
     return new Promise<void>((resolve) => {
       const handlerFn = (accelerator: any) => {

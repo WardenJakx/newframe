@@ -22,7 +22,10 @@ type CreateLattice = (deviceId: string, deviceName: string, tag: string) => Latt
 
 function getLatticeSettings(store: typeof canonicalStore, deviceId: string): LatticeSettings {
   const { baseUrl, derivation, accountLimit } = getGlobalLatticeSettings(store)
-  const device = store.getState().main.lattice[deviceId]
+  const device = store.getState().main.lattice[deviceId] as Pick<
+    LatticeSettings,
+    'deviceName' | 'tag' | 'privKey' | 'paired'
+  >
 
   return { ...device, baseUrl, derivation, accountLimit }
 }
@@ -67,7 +70,7 @@ export default class LatticeAdapter extends SignerAdapter {
 
     this.unsubscribeSettings?.()
     this.unsubscribeSettings = this.store.subscribe(
-      (state) => state.main.latticeSettings,
+      (state) => state.main.latticeSettings as unknown,
       () => {
         const { baseUrl, derivation, accountLimit } = getGlobalLatticeSettings(this.store)
 
