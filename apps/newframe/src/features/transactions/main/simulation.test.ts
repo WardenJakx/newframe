@@ -40,7 +40,7 @@ function trace(overrides: Partial<TraceCall> = {}): TraceCall {
   return { type: 'CALL', from: account, to: testContract, value: '0x0', input: '0x', ...overrides }
 }
 function effectMatching(effect: Partial<TransactionEffect>): TransactionEffect {
-  return expect.objectContaining(effect)
+  return expect.objectContaining(effect) as TransactionEffect
 }
 function request(): TransactionRequest {
   return {

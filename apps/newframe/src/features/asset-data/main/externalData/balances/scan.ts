@@ -136,9 +136,9 @@ export default function (eth: Eip1193Provider) {
       const tokensByChain = tokens.reduce(groupByChain, {} as TokensByChain)
 
       const tokenBalances = await Promise.all(
-        Object.entries(tokensByChain).map(([chain, chainTokens]) => {
+        Object.keys(tokensByChain).map((chain) => {
           const chainId = parseInt(chain)
-          const tokens: TokenDefinition[] = chainTokens
+          const tokens = tokensByChain[chainId] ?? []
 
           return multicallSupportsChain(chainId)
             ? getTokenBalancesFromMulticall(owner, tokens, chainId)

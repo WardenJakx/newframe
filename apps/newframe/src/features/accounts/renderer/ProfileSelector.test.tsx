@@ -7,6 +7,8 @@ import { walletState } from '../../../platform/state-sync/renderer/fixtures.test
 import { createAccountsCapabilityFake, type AccountsCapabilityFake } from './accountsCapability.test-support'
 import { ProfileSelector } from './ProfileSelector'
 
+const anyString = expect.any(String) as string
+
 const fixture = registerTestRuntimeFixture()
 let capability: AccountsCapabilityFake
 const profiles = [
@@ -67,7 +69,7 @@ describe('ProfileSelector', () => {
 
     await user.click(screen.getByRole('button', { name: 'Switch to Work' }))
     expect(capability.selectProfile.mock.calls.at(-1)?.[0]).toEqual({
-      operationId: expect.any(String),
+      operationId: anyString,
       profileId: 'work'
     })
     const command = capability.selectProfile.mock.calls.at(-1)![0]
@@ -97,7 +99,7 @@ describe('ProfileSelector', () => {
     await user.click(screen.getByRole('button', { name: 'Create profile' }))
 
     expect(capability.createProfile.mock.calls.at(-1)?.[0]).toEqual({
-      operationId: expect.any(String),
+      operationId: anyString,
       name: 'Travel',
       accountIds: ['account-1']
     })
@@ -140,7 +142,7 @@ describe('ProfileSelector', () => {
     await user.type(screen.getByLabelText('New profile name'), 'Travel')
     await user.click(screen.getByRole('button', { name: 'Create profile' }))
     expect(capability.createProfile.mock.calls.at(-1)?.[0]).toEqual({
-      operationId: expect.any(String),
+      operationId: anyString,
       name: 'Travel'
     })
     const command = capability.createProfile.mock.calls.at(-1)![0]
@@ -162,7 +164,7 @@ describe('ProfileSelector', () => {
     await user.clear(input)
     await user.type(input, 'Archive{Enter}')
     expect(capability.updateProfile.mock.calls.at(-1)?.[0]).toEqual({
-      operationId: expect.any(String),
+      operationId: anyString,
       profileId: 'empty',
       name: 'Archive'
     })
@@ -194,7 +196,7 @@ describe('ProfileSelector', () => {
 
     await waitFor(() => {
       expect(capability.deleteProfile.mock.calls.at(-1)?.[0]).toEqual({
-        operationId: expect.any(String),
+        operationId: anyString,
         profileId: 'empty'
       })
     })

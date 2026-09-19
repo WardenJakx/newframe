@@ -4,17 +4,15 @@ import { intToHex } from '@ethereumjs/util'
 
 import GasMonitor from './gasMonitor'
 
-type RequestHandler = (params: unknown[]) => unknown
-
-let requestHandlers: Record<string, RequestHandler>
+let requestHandlers: Record<string, (params: readonly unknown[]) => unknown>
 const testConnection = {
-  send: mock((method: string, params: unknown[]) => {
+  async send<T>(method: string, params: readonly unknown[]): Promise<T> {
     if (method in requestHandlers) {
-      return Promise.resolve(requestHandlers[method](params))
+      return Promise.resolve(requestHandlers[method](params)) as Promise<T>
     }
 
-    return Promise.reject('unsupported method: ' + method)
-  })
+    throw new Error('unsupported method: ' + method)
+  }
 }
 
 describe('#getGasPrices', () => {
@@ -53,7 +51,7 @@ describe('#getFeeHistory', () => {
     blockRewards = []
 
     requestHandlers = {
-      eth_feeHistory: (feeHistoryHandler = mock((params: unknown[]) => {
+      eth_feeHistory: (feeHistoryHandler = mock((params: readonly unknown[]) => {
         const blockCount = params[0]
         const numBlocks = typeof blockCount === 'string' ? parseInt(blockCount, 16) : 0
 

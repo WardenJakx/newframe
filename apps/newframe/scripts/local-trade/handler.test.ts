@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, jest as timers, spyOn, type Mock } from 'bun:test'
 
-import { JsonRpcProvider, Wallet, type TransactionResponse } from 'ethers'
+import { JsonRpcProvider, Wallet } from 'ethers'
 
 import {
   FLASH_ANVIL_CHAIN_ID,
@@ -15,19 +15,17 @@ import { handleLocalTradeRequest, resetLocalTradeState, subscribeLocalTradeOrder
 const FUNDER_ADDRESS = '0x0000000000000000000000000000000000000001'
 const ZERO_ALLOWANCE = `0x${'0'.repeat(64)}`
 
-interface LocalOrderResponse {
+interface OrderView {
   cancellable: boolean
   contraAsset: { chain: { id: string } }
   normalizedStatus: string
   open: boolean
-  orderId: string
   quoteId: string
   targetAsset: { chain: { id: string } }
-  [key: string]: unknown
 }
 
-interface LocalTradeBody {
-  actions: { approval: null | { kind: string }; wrap?: unknown }
+interface JsonBody {
+  actions: { approval: { kind: string } | null; wrap: unknown }
   bridgeQuoteId: string
   chainId: number
   contraAsset: string
@@ -35,21 +33,20 @@ interface LocalTradeBody {
   evm: { approveTx: unknown; orderTypedData: string }
   expiresAt: string
   fillTransactionHash: string
-  from: { asset: string; amount: string; notional: string }
+  from: { asset: string }
   local: Record<string, unknown>
   message: string
   ok: boolean
-  order: LocalOrderResponse
+  order: OrderView
   orderId: string
-  orders: LocalOrderResponse[]
+  orders: OrderView[]
   quoteId: string
   receiveAsset: { chainId: number }
   spentAsset: { chainId: number }
-  steps: Array<{ kind: string; label: string }>
+  steps: Array<{ kind: string; label?: string }>
   targetAsset: string
-  to: { asset: string; amount: string; notional: string }
+  to: { asset: string }
   wrap: unknown
-  [key: string]: unknown
 }
 
 interface OrderTypedDataJson {
@@ -108,7 +105,7 @@ const post = (path: string, body: unknown) =>
   )
 
 async function json(response: Response) {
-  return (await response.json()) as unknown as LocalTradeBody
+  return response.json() as Promise<JsonBody>
 }
 
 describe('local trade service handler', () => {
@@ -122,7 +119,7 @@ describe('local trade service handler', () => {
     sendTransaction = spyOn(Wallet.prototype, 'sendTransaction').mockResolvedValue({
       hash: `0x${'1'.repeat(64)}`,
       wait: async () => ({ status: 1 })
-    } as unknown as TransactionResponse)
+    } as unknown as Awaited<ReturnType<Wallet['sendTransaction']>>)
   })
 
   afterEach(() => {
@@ -365,9 +362,15 @@ describe('local trade service handler', () => {
       quoteId: mismatchedQuote.body.quoteId,
       evmOrderTypedData: mismatchedQuote.body.evm.orderTypedData
     })
+    const malformedQuoteReference = await post('/v1/order', {
+      ...submitBody,
+      quoteId: { invalid: true }
+    })
 
     expect(mismatched.status).toBe(400)
     expect(quoteOnlyField.status).toBe(400)
+    expect(malformedQuoteReference.status).toBe(404)
+    expect((await json(malformedQuoteReference)).message).toBe('Unknown local Flash quote: ')
   })
 
   it('mirrors official funder lookup and canonical cancellation requirements', async () => {
@@ -421,10 +424,8 @@ describe('local trade service handler', () => {
     }
   ]) {
     it(`keeps a ${direction.name} market order accepted until signed cancellation`, async () => {
-      const published: LocalOrderResponse[] = []
-      const unsubscribe = subscribeLocalTradeOrders((order) =>
-        published.push(order as unknown as LocalOrderResponse)
-      )
+      const published: Record<string, unknown>[] = []
+      const unsubscribe = subscribeLocalTradeOrders((order) => published.push(order))
       const request = quoteRequest({
         contraAsset: direction.contraAsset,
         contraChain: direction.contraChain,
@@ -579,5 +580,27 @@ describe('local trade service handler', () => {
 
     expect(quote.status).toBe(500)
     expect(quoteBody.message).toContain('Unsupported local Flash target asset')
+  })
+
+  it('rejects object-valued chain, asset, and order type fields with domain errors', async () => {
+    for (const { overrides, message } of [
+      {
+        overrides: { targetChain: {} },
+        message: 'Unsupported local Flash target chain'
+      },
+      {
+        overrides: { targetAsset: {} },
+        message: 'Unsupported local Flash target asset'
+      },
+      {
+        overrides: { orderType: {} },
+        message: 'Unsupported local Flash order type'
+      }
+    ]) {
+      const result = await requestQuote(overrides)
+
+      expect(result.response.status).toBe(500)
+      expect(result.body.message).toBe(message)
+    }
   })
 })

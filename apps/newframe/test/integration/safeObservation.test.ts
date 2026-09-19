@@ -20,7 +20,7 @@ it('projects the paginated local Safe service through public observation capabil
     threshold: 1,
     version: '1.5.0'
   })
-  const server = Bun.serve({ hostname: '127.0.0.1', port: 0, fetch: handler.fetch })
+  const server = Bun.serve({ hostname: '127.0.0.1', port: 0, fetch: (request) => handler.fetch(request) })
   const base = createTestStore()
   const selectors = createStore(subscribeWithSelector(() => base.getState()))
   const unsubscribe = base.store.subscribe((state) => selectors.setState(state, true))

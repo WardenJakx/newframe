@@ -11,18 +11,7 @@ import type { TransactionData } from '../../../transactions/domain/index.js'
 import { usesBaseFee, GasFeesSource } from '../../../transactions/domain/index.js'
 import isUtf8 from './isUtf8.js'
 
-const permission = (date: number, method: string) => ({
-  parentCapability: method,
-  date
-})
-
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-}
-
-export function stringValue(value: unknown): string | undefined {
-  return typeof value === 'string' ? value : undefined
-}
+const permission = (date: number, method: string) => ({ parentCapability: method, date })
 
 export function encodePersonalSignMessage(rawMessage: string) {
   return isHexString(rawMessage) ? rawMessage : bytesToHex(utf8ToBytes(rawMessage))
@@ -156,13 +145,7 @@ export function getSignedAddress(signed: string, message: string, cb: Callback<s
   )
 
   try {
-    cb(
-      null,
-      recoverPersonalSignature({
-        data: message,
-        signature: normalizedSignature
-      })
-    )
+    cb(null, recoverPersonalSignature({ data: message, signature: normalizedSignature }))
   } catch (e) {
     cb(e as Error)
   }
@@ -180,23 +163,18 @@ export function requestPermissions(payload: JSONRPCRequestPayload, res: RPCReque
   // we already require the user to grant permission to call this method so
   // we just need to return permission objects for the requested operations
   const now = new Date().getTime()
-  const requestedOperations = payload.params.flatMap((param) => {
-    if (!isRecord(param)) {
-      return []
-    }
-    const method = Object.keys(param)[0]
-    return method ? [permission(now, method)] : []
-  })
+  const requestedOperations = (payload.params || []).map((param) =>
+    permission(now, Object.keys(param as Record<string, unknown>)[0])
+  )
 
   res({ id: payload.id, jsonrpc: '2.0', result: requestedOperations })
 }
 
 export function ecRecover(payload: JSONRPCRequestPayload, res: RPCRequestCallback) {
-  const [message, signed] = payload.params
-
-  if (typeof message !== 'string' || typeof signed !== 'string') {
-    return resError('personal_ecRecover requires message and signature strings', payload, res)
-  }
+  const messageValue: unknown = payload.params[0]
+  const signedValue: unknown = payload.params[1]
+  const message = typeof messageValue === 'string' ? messageValue : ''
+  const signed = typeof signedValue === 'string' ? signedValue : ''
 
   getSignedAddress(signed, message, (err, verifiedAddress) => {
     if (err) {

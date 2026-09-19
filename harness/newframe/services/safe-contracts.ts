@@ -4,10 +4,9 @@ import {
   Contract,
   ContractFactory,
   Interface,
+  TransactionResponse,
   ZeroAddress,
   getAddress,
-  isAddress,
-  type ContractTransactionResponse,
   type JsonRpcProvider,
   type NonceManager
 } from 'ethers'
@@ -21,13 +20,6 @@ export type SafeSeedManifest = {
   threshold: number
   nonce: string
   version: string
-}
-
-function requireAddress(value: unknown, label: string) {
-  if (typeof value !== 'string' || !isAddress(value)) {
-    throw new Error(`${label} returned an invalid address`)
-  }
-  return getAddress(value)
 }
 
 export async function seedSafe(
@@ -44,7 +36,7 @@ export async function seedSafe(
     if (receipt?.status !== 1 || !receipt.contractAddress) {
       throw new Error('Safe contract deployment failed')
     }
-    return requireAddress(receipt.contractAddress, 'Safe contract deployment')
+    return receipt.contractAddress
   }
   const singleton = await deploy(safeArtifact)
   const factory = await deploy(factoryArtifact)
@@ -60,9 +52,10 @@ export async function seedSafe(
     ZeroAddress
   ])
   const proxyFactory = new Contract(factory, factoryArtifact.abi, signer)
-  const transaction: ContractTransactionResponse = await proxyFactory
-    .getFunction('createProxyWithNonce')
-    .send(singleton, initializer, 20260908)
+  const transaction: unknown = await proxyFactory.createProxyWithNonce(singleton, initializer, 20260908)
+  if (!(transaction instanceof TransactionResponse)) {
+    throw new Error('Safe proxy creation returned an invalid transaction')
+  }
   const receipt = await transaction.wait(1)
   if (receipt?.status !== 1) {
     throw new Error('Safe proxy creation failed')
@@ -74,7 +67,11 @@ export async function seedSafe(
     }
     const event = proxyFactory.interface.parseLog(log)
     if (event?.name === 'ProxyCreation') {
-      safe = requireAddress(event.args.proxy, 'ProxyCreation')
+      const proxy: unknown = event.args.proxy
+      if (typeof proxy !== 'string') {
+        throw new Error('Safe proxy receipt contained an invalid proxy address')
+      }
+      safe = getAddress(proxy)
     }
   }
   if (!safe) {

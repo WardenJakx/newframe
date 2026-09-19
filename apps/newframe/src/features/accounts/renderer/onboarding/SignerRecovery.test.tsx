@@ -28,7 +28,7 @@ it('owns hardware recovery sessions, inputs, retry, completion, and external can
   await view.user.click(screen.getByRole('button', { name: 'Retry Connection' }))
   const reload = capability.refreshSigner.mock.calls.at(-1)![0]
   expect(reload).toEqual({
-    operationId: expect.any(String),
+    operationId: expect.any(String) as string,
     signerId: 'ledger-1'
   })
   expect(capability.finishSignerSession.mock.calls.map(([input]) => input)).toContainEqual({
@@ -62,7 +62,7 @@ it('owns hardware recovery sessions, inputs, retry, completion, and external can
 
   expect(capability.inputSignerSession.mock.calls.map(([input]) => input)).toContainEqual({
     operationId: trezorSession.operationId,
-    actionId: expect.any(String),
+    actionId: expect.any(String) as string,
     signerId: 'trezor-1',
     input: 'pin',
     value: '12'

@@ -7,6 +7,8 @@ import type { SecurityCapability } from '../../../features/security/renderer/sec
 import type { OperationRecord } from '../../../platform/operations/operation'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
 
+const anyString = expect.any(String) as string
+
 Object.defineProperty(global.navigator, 'keyboard', {
   configurable: true,
   value: { getLayoutMap: async () => new Map() }
@@ -87,7 +89,7 @@ describe('tray security operations', () => {
 
       const command = unlock.mock.calls.at(-1)![0]
       expect(command).toEqual({
-        operationId: expect.any(String),
+        operationId: anyString,
         method: 'password',
         password: 'secret-password'
       })
@@ -127,7 +129,7 @@ describe('tray security operations', () => {
       )
       await user.click(await screen.findByRole('button', { name: 'Unlock with biometrics' }))
       expect(unlock.mock.calls.at(-1)![0]).toEqual({
-        operationId: expect.any(String),
+        operationId: anyString,
         method: 'native'
       })
       const nativeCommand = unlock.mock.calls.at(-1)![0]
@@ -163,7 +165,7 @@ describe('tray security operations', () => {
       )
       await user.click(await screen.findByRole('button', { name: 'Unlock with biometrics' }))
       expect(unlock.mock.calls.at(-1)![0]).toEqual({
-        operationId: expect.any(String),
+        operationId: anyString,
         method: 'webauthn',
         secret: 'd'.repeat(32)
       })

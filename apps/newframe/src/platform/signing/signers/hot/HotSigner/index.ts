@@ -2,6 +2,8 @@ import { randomBytes } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { Common, createCustomCommon, Holesky, Mainnet, Sepolia, type ChainConfig } from '@ethereumjs/common'
+import { createTx, type TypedTxData } from '@ethereumjs/tx'
 import { bytesToHex } from '@ethereumjs/util'
 import { personalSign, recoverPersonalSignature, signTypedData } from '@metamask/eth-sig-util'
 import { app } from 'electron'
@@ -9,13 +11,20 @@ import log from 'electron-log'
 
 import type { TypedMessage } from '../../../../../features/requests/contract/requests.js'
 import type { TransactionData } from '../../../../../features/transactions/domain/index.js'
-import { createUnsignedTransaction } from '../../../../../features/transactions/main/index.js'
 import Signer from '../../Signer/index.js'
 
 export type VaultAccess = { getKey(): string | null }
 
 const USER_DATA = app ? app.getPath('userData') : path.resolve(import.meta.dirname, '../.userData')
 const SIGNERS_PATH = path.resolve(USER_DATA, 'signers')
+const knownChains: Record<number, ChainConfig> = { 1: Mainnet, 17000: Holesky, 11155111: Sepolia }
+
+function chainConfig(chain: number, hardfork: string) {
+  return chain in knownChains
+    ? new Common({ chain: knownChains[chain], hardfork })
+    : createCustomCommon({ chainId: chain }, Mainnet, { hardfork })
+}
+
 abstract class HotSigner extends Signer {
   network?: string
 
@@ -114,7 +123,9 @@ abstract class HotSigner extends Signer {
       if (!rawTx.chainId) {
         throw new Error('could not determine chain id for transaction')
       }
-      const tx = createUnsignedTransaction(rawTx)
+      const chainId = Number.parseInt(String(rawTx.chainId), 16)
+      const hardfork = Number.parseInt(String(rawTx.type)) === 2 ? 'london' : 'berlin'
+      const tx = createTx(rawTx as TypedTxData, { common: chainConfig(chainId, hardfork) })
       return bytesToHex(tx.sign(privateKey).serialize())
     })
   }

@@ -43,7 +43,7 @@ export type RequestCommandRequest = {
 export interface RequestCommandProps {
   adjustments?: TransactionApprovalAdjustments
   feeNoticeDismissed?: boolean
-  dismissFeeNotice?(): void
+  dismissFeeNotice?: () => void
   capabilities: Pick<RequestRendererCapabilities, 'external' | 'review' | 'transaction'>
   notify: RequestCommandNotifier
   req: RequestCommandRequest

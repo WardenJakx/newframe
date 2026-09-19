@@ -29,6 +29,14 @@ const single = (hex: string, type = 'crypto-hdkey') =>
   UREncoder.encodeSinglePart(new UR(Buffer.from(hex, 'hex'), type))
 const sessionId = '00000000-0000-4000-8000-000000000001'
 
+function encodedSignature(signature: Buffer, uuid?: Buffer) {
+  const encoded: unknown = new ETHSignature(signature, uuid).toCBOR()
+  if (!Buffer.isBuffer(encoded)) {
+    throw new Error('Expected an encoded signature buffer')
+  }
+  return encoded
+}
+
 it('restores the observed public export, stable identity and standard children', () => {
   const decoder = new AirGapUrAssembler('crypto-hdkey')
   expect(decoder.receive(vectors.export.ur[1].toUpperCase())).toBeUndefined()
@@ -139,16 +147,11 @@ it('rejects invalid scalars and over-wide or invalid v without accepting a missi
     Buffer.from(vectors.messages[0].signature.slice(0, 128) + '02', 'hex'),
     Buffer.from(vectors.messages[0].signature.slice(0, 128) + '001b', 'hex')
   ]) {
-    const cbor = new ETHSignature(signature, uuid).toCBOR() as Buffer
+    const cbor = encodedSignature(signature, uuid)
     expect(() => decodeSignature(cbor, sessionId, DataType.personalMessage, 1)).toThrow()
   }
   expect(() =>
-    decodeSignature(
-      new ETHSignature(Buffer.alloc(65, 1)).toCBOR() as Buffer,
-      sessionId,
-      DataType.personalMessage,
-      1
-    )
+    decodeSignature(encodedSignature(Buffer.alloc(65, 1)), sessionId, DataType.personalMessage, 1)
   ).toThrow()
 })
 

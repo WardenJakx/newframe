@@ -1,6 +1,6 @@
 import EventEmitter from 'events'
 
-import type { JsonRpcApiProvider } from 'ethers'
+import type { JsonRpcApiProvider, JsonRpcPayload } from 'ethers'
 import { FetchRequest, JsonRpcProvider, WebSocketProvider } from 'ethers'
 import WebSocket from 'ws'
 
@@ -70,9 +70,14 @@ export function isRpcResponsePayload(value: unknown): value is RpcResult | Subsc
 
 export type EthersRpcProvider = JsonRpcApiProvider
 
+interface CloseAwareSocket {
+  on?(event: 'close', listener: () => void): unknown
+  onclose?: (...args: unknown[]) => unknown
+}
+
 function normalizeParams(params?: RpcParams) {
   if (Array.isArray(params)) {
-    return [...params]
+    return Array.from(params as readonly unknown[])
   }
   return params ?? []
 }
@@ -181,16 +186,13 @@ export function listenForProviderClose(provider: EthersRpcProvider, onClose: () 
   }
 
   try {
-    const socket: unknown = provider.websocket
-
-    if (isRecord(socket) && typeof socket.on === 'function') {
+    const socket = provider.websocket as CloseAwareSocket
+    if (typeof socket.on === 'function') {
       socket.on('close', onClose)
-    } else if (isRecord(socket) && ('onclose' in socket || Object.isExtensible(socket))) {
+    } else {
       const previousClose = socket.onclose
       socket.onclose = (...args: unknown[]) => {
-        if (typeof previousClose === 'function') {
-          previousClose(...args)
-        }
+        previousClose?.(...args)
         onClose()
       }
     }
@@ -204,16 +206,7 @@ export function sendRpcPayload<T = unknown>(provider: EthersRpcProvider, payload
 }
 
 export async function sendRawPayload<T = unknown>(provider: EthersRpcProvider, payload: RpcPayload) {
-  const id = typeof payload.id === 'number' ? payload.id : Number(payload.id)
-  if (!Number.isSafeInteger(id)) {
-    throw new Error('Invalid JSON-RPC request ID')
-  }
-  const [response] = await provider._send({
-    id,
-    jsonrpc: payload.jsonrpc,
-    method: payload.method,
-    params: normalizeParams(payload.params)
-  })
+  const [response] = await provider._send(payload as unknown as JsonRpcPayload)
 
   if ('error' in response) {
     throw createError(response.error)

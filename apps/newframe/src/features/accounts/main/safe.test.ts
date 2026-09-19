@@ -102,7 +102,7 @@ it('imports through real HTTP, merges chains, retains queue on later-page failur
       networks: { '1': `${server.url}api`, '100': `${server.url}api` }
     })
   })
-  cleanup.push(service.dispose)
+  cleanup.push(() => service.dispose())
   const add = (chainId: number) =>
     service.import(
       { type: 'account.create', source: 'safe', operationId: `import-${chainId}`, address, chainId },
@@ -128,7 +128,7 @@ it('imports through real HTTP, merges chains, retains queue on later-page failur
   expect(store.getState().main.accounts[address].safe!['1']).toMatchObject({
     pending: snapshot.pending,
     refreshedAt: snapshot.refreshedAt,
-    error: expect.any(String)
+    error: expect.any(String) as unknown
   })
   store.getState().setAccount({ id: address })
   await Bun.sleep(10)
@@ -144,7 +144,7 @@ it('creates nothing for invalid info and rejects cross-profile imports', async (
     operations,
     client: createSafeClient({ request: fetch, networks: { '1': `${server.url}api` } })
   })
-  cleanup.push(service.dispose)
+  cleanup.push(() => service.dispose())
   service.import({ type: 'account.create', source: 'safe', operationId: 'bad', address, chainId: 1 }, owner)
   await until(() => store.getState().operations.bad?.operation.status === 'failed')
   expect(store.getState().main.accounts[address]).toBeUndefined()
@@ -158,9 +158,10 @@ it('invalidates delayed work after remove/re-add, profile switch, and disposal',
   for (const change of ['remove', 'profile', 'dispose']) {
     const { store, operations, accounts } = setup()
     const config: SafeConfiguration = { owners: [ownerAddress], threshold: 1, nonce: '0' }
-    store
-      .getState()
-      .upsertAccount({ id: address, safe: { '1': { chainId: 1, address, configuration: config } } })
+    store.getState().upsertAccount({
+      id: address,
+      safe: { '1': { chainId: 1, address, configuration: config } }
+    })
     let release!: (value: Pick<SafeConfiguration, 'nonce'>) => void
     const service = createSafeService({
       accounts,
@@ -176,7 +177,7 @@ it('invalidates delayed work after remove/re-add, profile switch, and disposal',
         pending: async () => []
       }
     })
-    cleanup.push(service.dispose)
+    cleanup.push(() => service.dispose())
     const refreshing = service.refresh({
       type: 'account.refresh',
       accountId: address,
@@ -216,7 +217,7 @@ it('imports valid configuration when the initial queue fails, leaving pending un
     operations,
     client: createSafeClient({ request: fetch, networks: { '1': `${server.url}api` } })
   })
-  cleanup.push(service.dispose)
+  cleanup.push(() => service.dispose())
   service.import(
     { type: 'account.create', source: 'safe', operationId: 'partial', address, chainId: 1 },
     owner
@@ -262,7 +263,7 @@ it('probes all configured chains, retains successes and discards stale discovery
       }
     }
   })
-  cleanup.push(service.dispose)
+  cleanup.push(() => service.dispose())
   expect(await service.discoverNetworks(address)).toEqual([
     { chainId: found.id, name: found.name, supported: true }
   ])
@@ -340,7 +341,7 @@ it('fetches owners at import and reuses them across queue refreshes and account 
     client: { ...context.client, configuration, queueState, pending },
     now: () => now
   })
-  cleanup.push(service.dispose)
+  cleanup.push(() => service.dispose())
   service.import(
     { type: 'account.create', source: 'safe', operationId: 'import', address, chainId: 1 },
     owner
@@ -370,7 +371,7 @@ it('retains configuration observed during simulation even when the preview is un
       return { status: 'unavailable', error: 'Proposal nonce has already passed.' }
     }
   })
-  cleanup.push(service.dispose)
+  cleanup.push(() => service.dispose())
   expect(await service.simulate(context.query)).toMatchObject({
     status: 'unavailable',
     error: 'Proposal nonce has already passed.'
@@ -397,7 +398,7 @@ it('does not replace a newer configuration with an older concurrent simulation o
       return new Promise(() => {})
     }
   })
-  cleanup.push(service.dispose)
+  cleanup.push(() => service.dispose())
   const first = service.simulate(context.query)
   const second = service.simulate({ ...context.query, safeTxHash: other.safeTxHash })
   await Promise.resolve()
@@ -423,7 +424,7 @@ it('simulates the canonical unsigned proposal without a signer and coalesces equ
       })
     }
   })
-  cleanup.push(service.dispose)
+  cleanup.push(() => service.dispose())
   const first = service.simulate(context.query)
   const duplicate = service.simulate(context.query)
   expect(first).toBe(duplicate)
@@ -470,7 +471,7 @@ it('settles in-flight simulations on semantic proposal changes, account lifetime
         return new Promise(() => {})
       }
     })
-    cleanup.push(service.dispose)
+    cleanup.push(() => service.dispose())
     const pending = service.simulate(context.query)
     await Promise.resolve()
     const old = context.store.getState().main.accounts[address]
@@ -492,7 +493,7 @@ it('settles in-flight simulations on semantic proposal changes, account lifetime
     }
     expect(await pending).toMatchObject({
       status: 'unavailable',
-      error: expect.stringContaining('cancelled')
+      error: expect.stringContaining('cancelled') as unknown
     })
     expect(signal.aborted).toBeTrue()
     const before = context.store.getState().main.accounts[address].safe

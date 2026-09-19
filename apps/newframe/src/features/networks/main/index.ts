@@ -29,13 +29,21 @@ export interface Chain {
 }
 
 type Priority = 'primary' | 'secondary'
+type ConnectionStatus =
+  | 'chain mismatch'
+  | 'connected'
+  | 'disconnected'
+  | 'error'
+  | 'loading'
+  | 'off'
+  | 'standby'
 
 type StoredConnection = {
   connected: boolean
   current: string
   custom: string
   on: boolean
-  status: string
+  status: ConnectionStatus
 }
 
 type StoredChainSettings = {
@@ -67,7 +75,7 @@ const selectConnectionSettings = (chain: StoredChainSettings | null | undefined)
 }
 
 interface ConnectionState {
-  status: string
+  status: ConnectionStatus
   network: string
   type: string
   connected: boolean
@@ -212,7 +220,7 @@ class ChainConnection extends EventEmitter {
 
   private async connectProvider(priority: Priority, provider: EthersRpcProvider) {
     try {
-      const chainId = await provider.send('eth_chainId', [])
+      const chainId: unknown = await provider.send('eth_chainId', [])
 
       if (this[priority].provider !== provider) {
         return
@@ -285,7 +293,7 @@ class ChainConnection extends EventEmitter {
     }
   }
 
-  _updateStatus(priority: Priority, status: string) {
+  _updateStatus(priority: Priority, status: ConnectionStatus) {
     log.debug('Chains.updateStatus', { priority, status })
 
     this[priority].status = status
@@ -294,7 +302,7 @@ class ChainConnection extends EventEmitter {
     this.emit('update', { type: 'status', status })
   }
 
-  resetConnection(priority: Priority, status: string, target?: string) {
+  resetConnection(priority: Priority, status: ConnectionStatus, target?: string) {
     log.debug('resetConnection', { priority, status, target })
 
     const provider = this[priority].provider
@@ -338,10 +346,11 @@ class ChainConnection extends EventEmitter {
 
   connect(chain: StoredChainSettings) {
     const connection = chain.connection
+    const nextNetwork = typeof connection.network === 'string' ? connection.network : ''
 
     log.info(this.type + ':' + this.chainId + "'s connection has been updated")
 
-    if (this.network !== connection.network) {
+    if (this.network !== nextNetwork) {
       this.killProvider(this.primary.provider)
       this.primary.provider = null
       this.killProvider(this.secondary.provider)
@@ -360,13 +369,13 @@ class ChainConnection extends EventEmitter {
       }
       this.update('primary')
       this.update('secondary')
-      log.info('Network changed from ' + this.network + ' to ' + connection.network)
-      this.network = connection.network
+      log.info('Network changed from ' + this.network + ' to ' + nextNetwork)
+      this.network = nextNetwork
     }
 
     const currentPresets: Record<string, string> = {
       ...NETWORK_PRESETS.ethereum.default,
-      ...(NETWORK_PRESETS.ethereum as Record<string, any>)[this.chainId]
+      ...(NETWORK_PRESETS.ethereum as Record<string, Record<string, string>>)[this.chainId]
     }
 
     const { primary, secondary } =

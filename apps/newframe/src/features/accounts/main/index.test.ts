@@ -312,9 +312,7 @@ describe('#routeRequest', () => {
     expect(Accounts.routeRequest(principal, routedRequest)).toBe(true)
     expect(canonicalRequest()).toMatchObject({
       authorization: {
-        actionId: expect.any(String),
         decision: 'prompt',
-        decidedAt: expect.any(Number),
         principal: {
           kind: 'rpc',
           transport: 'http',
@@ -323,6 +321,8 @@ describe('#routeRequest', () => {
         }
       }
     })
+    expect(typeof canonicalRequest().authorization?.actionId).toBe('string')
+    expect(typeof canonicalRequest().authorization?.decidedAt).toBe('number')
   })
 
   it('rejects an unminted principal without queueing the request', () => {
@@ -362,11 +362,8 @@ describe('#routeRequest', () => {
     requestLifecycle.create(mock(), request.handlerId)
 
     expect(Accounts.routeRequest(principal, routedRequest, execute)).toBe(true)
-    expect(execute).toHaveBeenCalledWith(
-      expect.objectContaining({
-        authorization: expect.objectContaining({ decision: 'autonomous' })
-      })
-    )
+    expect(execute).toHaveBeenCalled()
+    expect(execute.mock.calls[0]?.[0]).toMatchObject({ authorization: { decision: 'autonomous' } })
     expect(canonicalRequest()).toBeUndefined()
   })
 

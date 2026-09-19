@@ -207,7 +207,7 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
     attemptRestart()
   }
 
-  function runWhenReady(fn: () => any) {
+  function runWhenReady(fn: () => unknown) {
     if (workerController?.isRunning()) {
       // worker is running, start the scan
       fn()

@@ -3,10 +3,10 @@ import type { PersistenceLifecycle, PersistenceSchedulerPort } from './ports.js'
 
 export interface PersistenceServiceDependencies {
   adapter: PersistenceAdapter
-  hydrate(): Promise<void>
+  hydrate: () => Promise<void>
   scheduler: PersistenceSchedulerPort
   flushIntervalMs?: number
-  onScheduledFlushError?(error: unknown): void
+  onScheduledFlushError?: (error: unknown) => void
 }
 
 export function createPersistenceService({

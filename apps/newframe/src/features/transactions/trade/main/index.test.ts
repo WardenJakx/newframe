@@ -65,16 +65,29 @@ const queuedJsonResponses = (payloads: unknown[]) => {
     return jsonResponse(payload)
   }
 }
-function installFetch(implementation: any) {
+type FetchImplementation = (...args: Parameters<typeof fetch>) => ReturnType<typeof fetch>
+function installFetch(implementation: FetchImplementation) {
   const fetchMock = mock(implementation)
   globalThis.fetch = fetchMock as unknown as typeof fetch
   return fetchMock
 }
-function flashWithFetch(implementation: any, overrides: Record<string, unknown> = {}) {
+function flashWithFetch(implementation: FetchImplementation, overrides: Record<string, unknown> = {}) {
   const fetchMock = installFetch(implementation)
   const flash = createFlashService({ assetRateService, store, ...overrides })
   services.push(flash)
   return { fetchMock, flash }
+}
+function fetchUrl(input: Parameters<typeof fetch>[0] | undefined) {
+  if (typeof input === 'string') {
+    return input
+  }
+  if (input instanceof URL) {
+    return input.href
+  }
+  if (input instanceof Request) {
+    return input.url
+  }
+  throw new Error('Expected a fetch URL')
 }
 class FakeFlashWebSocket extends EventEmitter {
   readyState: number = WebSocket.CONNECTING
@@ -82,8 +95,16 @@ class FakeFlashWebSocket extends EventEmitter {
     this.readyState = WebSocket.OPEN
     this.emit('open')
   }
-  receive(payload: unknown) {
-    this.emit('message', Buffer.from(JSON.stringify(payload)))
+  receive(payload: unknown, encoding: 'array-buffer' | 'buffer' | 'buffer-array' = 'buffer') {
+    const bytes = Buffer.from(JSON.stringify(payload))
+    if (encoding === 'array-buffer') {
+      this.emit('message', Uint8Array.from(bytes).buffer)
+    } else if (encoding === 'buffer-array') {
+      const midpoint = Math.floor(bytes.length / 2)
+      this.emit('message', [bytes.subarray(0, midpoint), bytes.subarray(midpoint)])
+    } else {
+      this.emit('message', bytes)
+    }
   }
   send(_message: string) {
     // Tests inject server frames directly.
@@ -219,7 +240,7 @@ describe('main Flash facade helpers', () => {
       'dpka_513a2bd7_57a2_46d2_927b_2a3857fe271b'
     ]
   ])('uses %s endpoints and packaged auth', (profile, baseUrl, webSocketUrl, apiKey) => {
-    process.env.FRAME_PROFILE = profile as any
+    Object.assign(process.env, { FRAME_PROFILE: profile })
     expect(flashBaseUrl()).toBe(baseUrl)
     expect(flashWebSocketUrl()).toBe(webSocketUrl)
     expect(flashHeaders()['x-definitive-api-key'] || undefined).toBe(apiKey)
@@ -278,6 +299,23 @@ describe('main Flash facade helpers', () => {
     expect(omitted).not.toHaveProperty('maxPriceImpact')
     expect(zero).toMatchObject({ maxSlippage: '0', maxPriceImpact: '0' })
   })
+  it('uses string fallbacks instead of object stringification in quote responses', () => {
+    const quote = normalizedQuote({
+      quoteId: { value: 'quote-object' },
+      from: { asset: {}, amount: {}, notional: {} },
+      to: { asset: {}, amount: {}, notional: {} }
+    })
+
+    expect(quote).toMatchObject({
+      id: '',
+      inputAmount: '',
+      inputNotional: '',
+      outputAmount: '0',
+      outputNotional: '',
+      from: { asset: 'target' },
+      to: { asset: 'contra' }
+    })
+  })
   it('accepts mainnet when the packaged runtime has no explicit environment', () => {
     delete (process.env as Partial<NodeJS.ProcessEnv>).NODE_ENV
     delete (process.env as Partial<NodeJS.ProcessEnv>).FRAME_PROFILE
@@ -303,7 +341,7 @@ describe('main Flash facade helpers', () => {
   ])(
     'preserves the live %s cross-chain quote and submit contract',
     (_label, sourceChainId, targetChainId) => {
-      process.env.FRAME_PROFILE = 'prod' as any
+      Object.assign(process.env, { FRAME_PROFILE: 'prod' })
       const contraAsset = getFlashAssetsForChain(sourceChainId).find((asset) => asset.symbol === 'USDC')!
       const targetAsset = getFlashAssetsForChain(targetChainId).find((asset) => asset.symbol === 'WETH')!
       const bridgeQuoteId = `bridge-${sourceChainId}-${targetChainId}`
@@ -378,7 +416,7 @@ describe('main Flash facade helpers', () => {
     }
   )
   it('rejects cross-chain advanced orders before contacting Flash', () => {
-    process.env.FRAME_PROFILE = 'prod' as any
+    Object.assign(process.env, { FRAME_PROFILE: 'prod' })
     const targetAsset = getFlashAssetsForChain(1).find((asset) => asset.symbol === 'WETH')!
     const contraAsset = getFlashAssetsForChain(8453).find((asset) => asset.symbol === 'USDC')!
     expect(() =>
@@ -549,7 +587,7 @@ describe('main Flash facade helpers', () => {
       status: ['partially-filled', 'ORDER_STATUS_CANCELLED']
     })
     const order = result.orders[0]
-    const url = new URL(String(fetchMock.mock.calls[0]?.[0]))
+    const url = new URL(fetchUrl(fetchMock.mock.calls[0]?.[0]))
     expect(url.pathname).toBe('/v1/orders')
     expect(url.searchParams.get('funderAddress')).toBe(accountAddress)
     expect(url.searchParams.get('statuses')).toBe('ORDER_STATUS_PARTIALLY_FILLED,ORDER_STATUS_CANCELLED')
@@ -622,6 +660,19 @@ describe('main Flash facade helpers', () => {
       open: false
     })
   })
+  it('treats object-valued statuses as terminated and missing statuses as accepted', async () => {
+    const orders = [
+      officialOrder({ orderId: 'object-status', status: {} }),
+      officialOrder({ orderId: 'missing-status', status: undefined })
+    ]
+    const { flash } = flashWithFetch(async () => jsonResponse({ orders }))
+    const result = await flash.listOrders({ accountAddress })
+
+    expect(Object.fromEntries(result.orders.map(({ orderId, status }) => [orderId, status]))).toEqual({
+      'missing-status': 'accepted',
+      'object-status': 'terminated'
+    })
+  })
   it('uses official get and cancel request shapes with root order responses', async () => {
     const orderId = '00000000-0000-4000-8000-000000000002'
     const accountAddress = '0x0000000000000000000000000000000000000002'
@@ -640,7 +691,7 @@ describe('main Flash facade helpers', () => {
     ]
     const { flash, fetchMock } = flashWithFetch(queuedJsonResponses(responses))
     const detail = await flash.getOrder({ accountAddress, orderId })
-    const getUrl = new URL(String(fetchMock.mock.calls[0]?.[0]))
+    const getUrl = new URL(fetchUrl(fetchMock.mock.calls[0]?.[0]))
     expect(getUrl.pathname).toBe(`/v1/orders/${orderId}`)
     expect(getUrl.searchParams.get('funderAddress')).toBe(accountAddress)
     expect(detail.order).toMatchObject({
@@ -653,10 +704,13 @@ describe('main Flash facade helpers', () => {
       receiveAsset: { symbol: 'WETH' }
     })
     const cancelled = await flash.cancelOrder({ orderId, signature: '0xcancel-signature' })
-    const cancelUrl = new URL(String(fetchMock.mock.calls[1]?.[0]))
+    const cancelUrl = new URL(fetchUrl(fetchMock.mock.calls[1]?.[0]))
     const cancelInit = fetchMock.mock.calls[1]?.[1] as RequestInit
+    if (typeof cancelInit.body !== 'string') {
+      throw new Error('Expected a JSON request body')
+    }
     expect(cancelUrl.pathname).toBe(`/v1/orders/${orderId}/cancel`)
-    expect(JSON.parse(String(cancelInit.body))).toEqual({
+    expect(JSON.parse(cancelInit.body)).toEqual({
       cancelMessage: `Definitive Flash v1 — Cancel Order\nOrder: ${orderId}`,
       userSignature: '0xcancel-signature'
     })
@@ -816,17 +870,29 @@ describe('main Flash facade helpers', () => {
     const persistedOrder = () => store.getState().main.orders[orderId]
     const notification = () => store.getState().view.notifications[`flash-order:${orderId}`]
     socket.open()
-    socket.receive({
-      channel: 'subscriptions',
-      type: 'ack',
-      subscriptions: ['orders', 'heartbeats']
-    })
-    sendOfficialOrder(socket, 'snapshot', {
-      orderId,
-      funderAddress: accountAddress,
-      status: 'ORDER_STATUS_ACCEPTED',
-      filled: null
-    })
+    socket.receive(
+      {
+        channel: 'subscriptions',
+        type: 'ack',
+        subscriptions: ['orders', 'heartbeats']
+      },
+      'array-buffer'
+    )
+    socket.receive(
+      {
+        channel: 'orders',
+        type: 'snapshot',
+        orders: [
+          officialOrder({
+            orderId,
+            funderAddress: accountAddress,
+            status: 'ORDER_STATUS_ACCEPTED',
+            filled: null
+          })
+        ]
+      },
+      'buffer-array'
+    )
     await Bun.sleep(0)
     expect(persistedOrder()).toMatchObject({ accountAddress, status: 'accepted', open: true })
     expect(notification()).toMatchObject({ state: 'pending', metadata: { orderId, status: 'accepted' } })

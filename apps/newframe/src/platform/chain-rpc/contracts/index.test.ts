@@ -224,7 +224,7 @@ describe('#decodeCallDataWithSelectorRegistry', () => {
   })
 })
 
-function mockContractSource(source: any) {
+function mockContractSource(source: string) {
   return {
     abi: JSON.stringify(mockAbi),
     name: `mock ${source} abi`,

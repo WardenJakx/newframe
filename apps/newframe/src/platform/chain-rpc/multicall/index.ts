@@ -39,22 +39,16 @@ function buildCallData<R, T>(calls: Call<R, T>[]) {
   })
 }
 
-function isBytesLike(value: unknown): value is BytesLike {
-  return typeof value === 'string' || value instanceof Uint8Array
-}
-
-function getResultData<R>(results: unknown, call: string[], target: string): R[] | undefined {
+function getResultData(results: BytesLike, call: string[], target: string): readonly unknown[] {
   const [fnSignature] = call
   const callInterface = memoizedInterfaces[fnSignature]
   const fnName = getFunctionNameFromSignature(fnSignature)
   try {
-    if (!isBytesLike(results)) {
-      throw new Error(`Invalid ${fnName} result`)
-    }
     return callInterface.decodeFunctionResult(fnName, results)
   } catch (e) {
     log.warn(`Failed to decode ${fnName},`, { target, results })
-    return undefined
+    const outputs = callInterface.getFunction(fnName)?.outputs ?? []
+    return outputs.map(() => null)
   }
 }
 
@@ -82,28 +76,30 @@ export async function aggregate3<R, T>(
 ) {
   const aggData = buildCallData(calls)
   const data = multicallInterface.encodeFunctionData('aggregate3', [aggData])
-  const decoded = multicallInterface.decodeFunctionResult('aggregate3', await execute(data))
-  const returnData: Array<{ success: boolean; returnData: BytesLike }> = decoded[0]
-  if (returnData.length !== calls.length) {
+  const response = multicallInterface.decodeFunctionResult('aggregate3', await execute(data))
+  const rawReturnData: unknown = response[0]
+  if (!Array.isArray(rawReturnData) || rawReturnData.length !== calls.length) {
     throw new Error('Invalid Multicall3 result count')
   }
 
   return calls.map(({ call, returns, target }, i) => {
-    const results = returnData[i]
+    const resultValue: unknown = (rawReturnData as unknown[])[i]
+    if (!resultValue || typeof resultValue !== 'object') {
+      return { success: false, returnValues: [] }
+    }
+    const results = resultValue as { success?: unknown; returnData?: unknown }
 
     if (!results.success) {
       return { success: false, returnValues: [] }
     }
 
-    const resultData = getResultData<R>(results.returnData, call, target)
-    if (!resultData) {
+    if (typeof results.returnData !== 'string' && !(results.returnData instanceof Uint8Array)) {
       return { success: false, returnValues: [] }
     }
 
-    return {
-      success: true,
-      returnValues: returns.map((handler, j) => handler(resultData[j]))
-    }
+    const resultData = getResultData(results.returnData, call, target)
+
+    return { success: true, returnValues: returns.map((handler, j) => handler(resultData[j] as R)) }
   })
 }
 
@@ -140,10 +136,7 @@ export default function (chainId: number, eth: Eip1193Provider) {
             )}`,
             e
           )
-          return [...Array(batchCalls.length).keys()].map(() => ({
-            success: false,
-            returnValues: []
-          }))
+          return [...Array(batchCalls.length).keys()].map(() => ({ success: false, returnValues: [] }))
         }
       })
 

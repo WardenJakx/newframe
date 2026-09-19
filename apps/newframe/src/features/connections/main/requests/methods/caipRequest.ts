@@ -17,7 +17,7 @@ const caipRequestParams = z.object({
   session: sessionMatcher,
   request: z.object({
     method: z.string(),
-    params: z.any()
+    params: z.array(z.unknown())
   })
 })
 

@@ -3,10 +3,10 @@ import { beforeEach, describe, expect, it } from 'bun:test'
 import { accountSort as byCreation, hasAddress } from './index'
 
 const makeMockAccount = (address: string, timestamp = Date.now(), block = 0, name = address) => ({
-  address,
   id: address,
-  name,
+  address,
   lastSignerType: 'address',
+  name,
   created: block ? `${block}:${timestamp}` : `new:${timestamp}`
 })
 

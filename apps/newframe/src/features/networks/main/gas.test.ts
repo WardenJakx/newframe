@@ -133,12 +133,13 @@ describe('#createGasCalculator', () => {
       ]
 
       const rewards = feeHistory.reduce(
-        (acc: any[], { rewards }) => (rewards.length ? acc.concat(intToHex(rewards[0])) : acc),
-        [] as any[]
+        (acc: string[], { rewards }) => (rewards.length ? acc.concat(intToHex(rewards[0])) : acc),
+        [] as string[]
       )
 
       const { maxPriorityFeePerGas } = await gasCalculator.calculateGas(feeHistory)
-      expect(rewards.includes(maxPriorityFeePerGas)).toBe(true)
+      expect(maxPriorityFeePerGas).toBeDefined()
+      expect(rewards.includes(maxPriorityFeePerGas!)).toBe(true)
     })
 
     it('uses the priority fee from the latest block when no eligible blocks are available', async () => {

@@ -35,14 +35,11 @@ import type { AccountChainRpcPort } from './providerPort.js'
 import type { AccountsRuntime } from './runtime.js'
 
 function cloneSerializable<T>(value: T): T {
-  const serialized = JSON.stringify(value, (_key, nextValue) =>
-    typeof nextValue === 'function' ? undefined : nextValue
-  )
-  return JSON.parse(serialized) as T
-}
-
-type RuntimeAccountRequest = AccountRequest & {
-  recognizedActions?: Action<unknown>[]
+  return JSON.parse(
+    JSON.stringify(value, (_key, nextValue: unknown) =>
+      typeof nextValue === 'function' ? undefined : nextValue
+    )
+  ) as T
 }
 
 interface SignerOptions {
@@ -54,7 +51,7 @@ interface AccountOptions {
   name: string
   ensName?: string
   created?: string
-  lastSignerType?: string
+  lastSignerType?: SignerType
   options?: SignerOptions
 }
 
@@ -247,11 +244,7 @@ class FrameAccount {
       // Permissions do not live inside the account summary
       if (access) {
         const { name } = this.store.getState().main.origins[origin]
-        this.store.getState().setPermission(targetAddress, {
-          handlerId,
-          origin: name,
-          provider: true
-        })
+        this.store.getState().setPermission(targetAddress, { handlerId, origin: name, provider: true })
       } else {
         this.store.getState().revokePermission(this.address, handlerId)
       }
@@ -348,14 +341,14 @@ class FrameAccount {
     return true
   }
 
-  updateRecognizedAction(reqId: string, actionId: string, data: unknown) {
+  updateRecognizedAction(reqId: string, actionId: string, data: Record<string, unknown>) {
     const runtimeAction = this.actionUpdateHandlers.get(reqId)?.get(actionId)
     if (!runtimeAction?.update) {
       return false
     }
 
     this.patchRequest<TransactionRequest>(reqId, (request) => {
-      runtimeAction.update?.(request, data && typeof data === 'object' ? data : {})
+      runtimeAction.update?.(request, data)
       const canonicalAction = request.recognizedActions.find((action) => action.id === actionId)
       if (canonicalAction) {
         canonicalAction.data = cloneSerializable(runtimeAction.data)
@@ -446,12 +439,7 @@ class FrameAccount {
         }
       }
     } catch (e) {
-      log.warn('unable to fetch erc20 token metadata', {
-        handlerId: req.handlerId,
-        to,
-        chainId,
-        error: e
-      })
+      log.warn('unable to fetch erc20 token metadata', { handlerId: req.handlerId, to, chainId, error: e })
     }
   }
 
@@ -543,10 +531,7 @@ class FrameAccount {
         request.erc7730 = erc7730
       })
     } catch (error) {
-      log.warn('unable to decode ERC-7730 typed message', {
-        error,
-        handlerId: req.handlerId
-      })
+      log.warn('unable to decode ERC-7730 typed message', { error, handlerId: req.handlerId })
     }
   }
 
@@ -582,19 +567,13 @@ class FrameAccount {
           tokenData,
           permit: {
             ...permit,
-            verifyingContract: {
-              ...permit.verifyingContract,
-              ...contractIdentity
-            },
+            verifyingContract: { ...permit.verifyingContract, ...contractIdentity },
             spender: { ...permit.spender, ...spenderIdentity }
           }
         })
       })
     } catch (error) {
-      log.warn('unable to decode typed message', {
-        error,
-        handlerId: req.handlerId
-      })
+      log.warn('unable to decode typed message', { error, handlerId: req.handlerId })
     }
   }
 
@@ -621,7 +600,7 @@ class FrameAccount {
   }
 
   addRequest(value: unknown, _response?: unknown) {
-    const req = value as RuntimeAccountRequest
+    const req = value as AccountRequest & { recognizedActions?: Action<unknown>[] }
     const add = (r: AccountRequest) => {
       const actionHandlers = new Map<string, Action<unknown>>()
       ;(req.recognizedActions ?? []).forEach((action) => {
@@ -766,9 +745,7 @@ class FrameAccount {
           this.creationBlockLookupPending = false
           if (typeof response.result === 'string' && response.result) {
             if (this.store.getState().main.accounts[this.id]) {
-              this.patch({
-                created: `${parseInt(response.result, 16)}:${createdSuffix}`
-              })
+              this.patch({ created: `${parseInt(response.result, 16)}:${createdSuffix}` })
             }
             this.stopCreationBlockLookup()
           } else if (this.profileActive && !this.providerConnectListener) {

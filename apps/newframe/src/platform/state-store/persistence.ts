@@ -67,10 +67,9 @@ function persistedAccounts(accounts: UnknownRecord) {
 }
 
 function persistedNetworks(networks: UnknownRecord) {
-  const ethereum = unknownRecord(networks.ethereum)
   return {
     ethereum: Object.fromEntries(
-      Object.entries(ethereum).map(([id, value]) => {
+      Object.entries(unknownRecord(networks.ethereum)).map(([id, value]) => {
         const network = unknownRecord(value)
         const connection = unknownRecord(network.connection)
         const cleanConnection = (candidate: UnknownRecord = {}) => ({
@@ -97,15 +96,13 @@ function persistedNetworks(networks: UnknownRecord) {
 }
 
 function persistedNetworkMetadata(networksMeta: UnknownRecord) {
-  const ethereum = unknownRecord(networksMeta.ethereum)
   return {
     ethereum: Object.fromEntries(
-      Object.entries(ethereum).map(([id, value]) => {
+      Object.entries(unknownRecord(networksMeta.ethereum)).map(([id, value]) => {
         const metadata = unknownRecord(value)
         const { blockHeight: _legacyBlockHeight, ...durableMetadata } = metadata
         const { usd: _legacyUsd, ...nativeCurrency } = unknownRecord(metadata.nativeCurrency)
         const price = unknownRecord(unknownRecord(metadata.gas).price)
-        const levels = unknownRecord(price.levels)
 
         return [
           id,
@@ -120,9 +117,7 @@ function persistedNetworkMetadata(networksMeta: UnknownRecord) {
               samples: [],
               price: {
                 selected: price.selected ?? 'standard',
-                levels: {
-                  custom: typeof levels.custom === 'string' ? levels.custom : ''
-                }
+                levels: { custom: unknownRecord(price.levels).custom ?? '' }
               }
             }
           }
@@ -134,6 +129,12 @@ function persistedNetworkMetadata(networksMeta: UnknownRecord) {
 
 function unknownRecord(value: unknown): UnknownRecord {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as UnknownRecord) : {}
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? (value as unknown[]).filter((item): item is string => typeof item === 'string')
+    : []
 }
 
 function normalizeProfileState(main: UnknownRecord) {
@@ -154,37 +155,32 @@ function normalizeProfileState(main: UnknownRecord) {
   })
 
   if (Object.keys(profiles).length === 0) {
-    profiles[DEFAULT_PROFILE_ID] = {
-      id: DEFAULT_PROFILE_ID,
-      name: DEFAULT_PROFILE_NAME
-    }
+    profiles[DEFAULT_PROFILE_ID] = { id: DEFAULT_PROFILE_ID, name: DEFAULT_PROFILE_NAME }
     profileAliases[DEFAULT_PROFILE_ID] = DEFAULT_PROFILE_ID
   }
 
   const profileOrder: string[] = []
   const seenProfiles = new Set<string>()
-  ;[...(Array.isArray(main.profileOrder) ? main.profileOrder : []), ...Object.keys(profiles)].forEach(
-    (candidate) => {
-      const id = typeof candidate === 'string' ? profileAliases[candidate] || candidate : ''
-      if (profiles[id] && !seenProfiles.has(id)) {
-        seenProfiles.add(id)
-        profileOrder.push(id)
-      }
+  ;[...stringArray(main.profileOrder), ...Object.keys(profiles)].forEach((candidate) => {
+    const id = profileAliases[candidate] || candidate
+    if (profiles[id] && !seenProfiles.has(id)) {
+      seenProfiles.add(id)
+      profileOrder.push(id)
     }
-  )
+  })
 
-  const requestedOrderAccount = Array.isArray(main.accountOrder)
-    ? main.accountOrder.find((id): id is string => typeof id === 'string' && Boolean(sourceAccounts[id]))
-    : undefined
+  const requestedOrderAccount = stringArray(main.accountOrder).find((id) => sourceAccounts[id])
   const requestedAccount =
     (typeof main.currentAccount === 'string' && sourceAccounts[main.currentAccount]
       ? main.currentAccount
       : (Object.keys(sourceAccounts).find((id) => unknownRecord(sourceAccounts[id]).active) ??
         requestedOrderAccount ??
         Object.keys(sourceAccounts)[0])) ?? ''
-  const requestedProfileId = unknownRecord(sourceAccounts[requestedAccount]).profileId
+  const requestedAccountProfileValue = unknownRecord(sourceAccounts[requestedAccount]).profileId
   const requestedAccountProfile =
-    typeof requestedProfileId === 'string' ? profileAliases[requestedProfileId] : undefined
+    typeof requestedAccountProfileValue === 'string'
+      ? profileAliases[requestedAccountProfileValue]
+      : undefined
   const requestedProfile =
     typeof main.currentProfile === 'string' ? profileAliases[main.currentProfile] || main.currentProfile : ''
   let currentProfile = profileOrder[0] ?? DEFAULT_PROFILE_ID
@@ -194,49 +190,34 @@ function normalizeProfileState(main: UnknownRecord) {
     currentProfile = requestedProfile
   }
 
-  const accounts = Object.fromEntries(
+  const accounts: Record<string, UnknownRecord> = Object.fromEntries(
     Object.entries(sourceAccounts).map(([id, candidate]) => {
       const account = unknownRecord(candidate)
-      const candidateProfileId = typeof account.profileId === 'string' ? account.profileId : ''
-      const profileId = profileAliases[candidateProfileId] || candidateProfileId
-      return [
-        id,
-        {
-          ...account,
-          profileId: profiles[profileId] ? profileId : currentProfile
-        }
-      ]
+      const accountProfileId = typeof account.profileId === 'string' ? account.profileId : ''
+      const profileId = profileAliases[accountProfileId] || accountProfileId
+      return [id, { ...account, profileId: profiles[profileId] ? profileId : currentProfile }] as const
     })
   )
   const accountOrder: string[] = []
   const seenAccounts = new Set<string>()
-  ;[...(Array.isArray(main.accountOrder) ? main.accountOrder : []), ...Object.keys(accounts)].forEach(
-    (id) => {
-      if (typeof id === 'string' && accounts[id] && !seenAccounts.has(id)) {
-        seenAccounts.add(id)
-        accountOrder.push(id)
-      }
+  ;[...stringArray(main.accountOrder), ...Object.keys(accounts)].forEach((id) => {
+    if (accounts[id] && !seenAccounts.has(id)) {
+      seenAccounts.add(id)
+      accountOrder.push(id)
     }
-  )
+  })
 
-  const normalized = {
-    ...main,
-    accounts,
-    accountOrder,
-    profiles,
-    profileOrder,
-    currentProfile
-  }
+  const normalized = { ...main, accounts, accountOrder, profiles, profileOrder, currentProfile }
   const currentAccount =
-    requestedAccount && unknownRecord(accounts[requestedAccount]).profileId === currentProfile
+    requestedAccount && accounts[requestedAccount]?.profileId === currentProfile
       ? requestedAccount
-      : (accountOrder.find((id) => unknownRecord(accounts[id]).profileId === currentProfile) ?? '')
+      : (accountOrder.find((id) => accounts[id]?.profileId === currentProfile) ?? '')
 
   return { ...normalized, currentAccount }
 }
 
 export function selectPersistedState(state: CanonicalStore): PersistedCanonicalState {
-  const main = unknownRecord(state.main)
+  const main = state.main as UnknownRecord
   const {
     appLock: _appLock,
     focusedFrame: _focusedFrame,
@@ -313,8 +294,12 @@ function mergeRecord(current: unknown, persisted: unknown) {
 }
 
 function httpsImageSource(value: unknown) {
+  if (typeof value !== 'string') {
+    return ''
+  }
+
   try {
-    const url = new URL(String(value ?? '').trim())
+    const url = new URL(value.trim())
     return url.protocol === 'https:' ? url.toString() : ''
   } catch {
     return ''
@@ -322,7 +307,7 @@ function httpsImageSource(value: unknown) {
 }
 
 function matchingPersistedImage(value: unknown, sourceUrl: string) {
-  const image = unknownRecord(value)
+  const image = (value ?? {}) as UnknownRecord
   return sourceUrl && image.sourceUrl === sourceUrl ? value : undefined
 }
 
@@ -411,18 +396,16 @@ export function mergePersistedState(persistedValue: unknown, current: CanonicalS
     updater: mergeRecord(currentMain.updater, saved.updater)
   }
 
-  main.accounts = persistedAccounts(unknownRecord(main.accounts))
-  const accounts = unknownRecord(main.accounts)
+  const mergedAccounts = persistedAccounts(unknownRecord(main.accounts))
+  main.accounts = mergedAccounts
   const currentAccount = typeof main.currentAccount === 'string' ? main.currentAccount : ''
   const currentProfile = typeof main.currentProfile === 'string' ? main.currentProfile : ''
   main.currentAccount =
-    unknownRecord(accounts[currentAccount]).profileId === currentProfile
+    unknownRecord(mergedAccounts[currentAccount]).profileId === currentProfile
       ? currentAccount
-      : ((Array.isArray(main.accountOrder)
-          ? main.accountOrder.find(
-              (id) => typeof id === 'string' && unknownRecord(accounts[id]).profileId === currentProfile
-            )
-          : undefined) ?? '')
+      : (Object.keys(mergedAccounts).find(
+          (id) => unknownRecord(mergedAccounts[id]).profileId === currentProfile
+        ) ?? '')
 
   return {
     ...current,

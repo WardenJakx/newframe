@@ -46,7 +46,7 @@ async function main() {
     }
     console.log(JSON.stringify({ transactionHash: tx.hash }))
   } finally {
-    frame?.close()
+    frame.close()
   }
 }
 

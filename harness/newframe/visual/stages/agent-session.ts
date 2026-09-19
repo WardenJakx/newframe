@@ -17,56 +17,6 @@ type AgentCredentials = {
   expiresAt: number
 }
 
-type FlashQuote = {
-  contraAsset: string
-  targetAsset: string
-  quoteId: string
-  evm: {
-    orderTypedData: string
-  }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-}
-
-function requireAgentCredentials(value: unknown): AgentCredentials {
-  if (
-    !isRecord(value) ||
-    typeof value.sessionId !== 'string' ||
-    typeof value.sessionToken !== 'string' ||
-    typeof value.account !== 'string' ||
-    typeof value.expiresAt !== 'number'
-  ) {
-    throw new Error('Agent connection returned invalid credentials')
-  }
-  return {
-    sessionId: value.sessionId,
-    sessionToken: value.sessionToken,
-    account: value.account,
-    expiresAt: value.expiresAt
-  }
-}
-
-function requireFlashQuote(value: unknown): FlashQuote {
-  if (
-    !isRecord(value) ||
-    typeof value.contraAsset !== 'string' ||
-    typeof value.targetAsset !== 'string' ||
-    typeof value.quoteId !== 'string' ||
-    !isRecord(value.evm) ||
-    typeof value.evm.orderTypedData !== 'string'
-  ) {
-    throw new Error('Local Flash quote returned invalid data')
-  }
-  return {
-    contraAsset: value.contraAsset,
-    targetAsset: value.targetAsset,
-    quoteId: value.quoteId,
-    evm: { orderTypedData: value.evm.orderTypedData }
-  }
-}
-
 async function connectAgent() {
   const response = await fetch(`${newframeRpcUrl}/agent/session`, {
     method: 'POST',
@@ -79,15 +29,11 @@ async function connectAgent() {
       durationSeconds: 600
     })
   })
-  const body: unknown = await response.json()
+  const body = (await response.json()) as AgentCredentials & { error?: string }
   if (!response.ok) {
-    throw new Error(
-      isRecord(body) && typeof body.error === 'string'
-        ? body.error
-        : `Agent connection failed with ${response.status}`
-    )
+    throw new Error(body.error ?? `Agent connection failed with ${response.status}`)
   }
-  return requireAgentCredentials(body)
+  return body
 }
 
 async function agentRpc(credentials: AgentCredentials, payload: Record<string, unknown>) {
@@ -100,10 +46,12 @@ async function agentRpc(credentials: AgentCredentials, payload: Record<string, u
     },
     body: JSON.stringify(payload)
   })
-  const body: unknown = await response.json()
-  const error = isRecord(body) && isRecord(body.error) ? body.error.message : undefined
-  if (!response.ok || !isRecord(body) || typeof body.result !== 'string') {
-    throw new Error(typeof error === 'string' ? error : `Agent request failed with ${response.status}`)
+  const body = (await response.json()) as {
+    result?: string
+    error?: { message?: string }
+  }
+  if (!response.ok || body.error || !body.result) {
+    throw new Error(body.error?.message ?? `Agent request failed with ${response.status}`)
   }
   return body.result
 }
@@ -155,16 +103,11 @@ async function flashRequest(path: string, init: RequestInit) {
     ...init,
     headers
   })
-  const body: unknown = await response.json()
+  const body = (await response.json()) as Record<string, unknown>
   if (!response.ok) {
     throw new Error(
-      isRecord(body) && typeof body.message === 'string'
-        ? body.message
-        : `Local Flash request failed with ${response.status}`
+      typeof body.message === 'string' ? body.message : `Local Flash request failed with ${response.status}`
     )
-  }
-  if (!isRecord(body)) {
-    throw new Error(`Local Flash request returned invalid JSON with ${response.status}`)
   }
   return body
 }
@@ -183,23 +126,23 @@ async function submitExternalFlashOrder(credentials: AgentCredentials) {
     targetAsset: FLASH_WETH_ADDRESS,
     targetChain: 'anvil'
   }
-  const quote = requireFlashQuote(
-    await flashRequest('/v1/quote', {
-      method: 'POST',
-      body: JSON.stringify(quoteRequest)
-    })
+  const quote = await flashRequest('/v1/quote', {
+    method: 'POST',
+    body: JSON.stringify(quoteRequest)
+  })
+  const evm = quote.evm
+  const evmOrderTypedData = String(
+    evm && typeof evm === 'object' && 'orderTypedData' in evm ? evm.orderTypedData : ''
   )
-  const evmOrderTypedData = quote.evm.orderTypedData
-  const orderTypedData: unknown = JSON.parse(evmOrderTypedData)
-  if (!isRecord(orderTypedData)) {
-    throw new Error('Local Flash quote returned invalid order typed data')
+  if (!evmOrderTypedData) {
+    throw new Error('Local Flash quote omitted its order typed data')
   }
 
   const userSignature = await agentRpc(credentials, {
     id: 'visual-agent-flash-order-sign',
     jsonrpc: '2.0',
     method: 'eth_signTypedData_v4',
-    params: [credentials.account, orderTypedData]
+    params: [credentials.account, JSON.parse(evmOrderTypedData)]
   })
   const submitted = await flashRequest('/v1/order', {
     method: 'POST',
@@ -212,10 +155,11 @@ async function submitExternalFlashOrder(credentials: AgentCredentials) {
       evmOrderTypedData
     })
   })
-  if (typeof submitted.orderId !== 'string' || !submitted.orderId) {
+  const orderId = typeof submitted.orderId === 'string' ? submitted.orderId : ''
+  if (!orderId) {
     throw new Error('Local Flash submit omitted its order id')
   }
-  return submitted.orderId
+  return orderId
 }
 
 async function cancelExternalFlashOrder(credentials: AgentCredentials, orderId: string) {

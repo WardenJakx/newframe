@@ -119,6 +119,7 @@ export default class InjectedFrameProvider extends EventEmitter {
   private providerChainId?: string
   private checkConnectionRunning = false
   private checkConnectionTimer?: ReturnType<typeof setTimeout>
+  private readonly resumeSubscriptionsHandler = () => this.resumeSubscriptions()
 
   nextId = 1
   connected = false
@@ -163,7 +164,7 @@ export default class InjectedFrameProvider extends EventEmitter {
       assetsChanged: (assets) => this.emit('assetsChanged', assets)
     }
 
-    this.on('connect', this.resumeSubscriptions)
+    this.on('connect', this.resumeSubscriptionsHandler)
     this.on('newListener', (event: string | symbol) => this.handleNewListener(event))
 
     this.connection.on('connect', () => {
@@ -331,7 +332,7 @@ export default class InjectedFrameProvider extends EventEmitter {
 
   close() {
     this.connection.close?.()
-    this.off('connect', this.resumeSubscriptions)
+    this.off('connect', this.resumeSubscriptionsHandler)
     this.connected = false
 
     const error = new Error('Provider closed, subscription lost, please subscribe again.')

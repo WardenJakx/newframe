@@ -1,8 +1,10 @@
 import { describe, expect, it, mock, type Mock } from 'bun:test'
 
-import { app, dialog } from 'electron'
-
+import { electronMock } from '../../../../test/support/electron.mock'
 import { showUnhandledExceptionDialog } from './dialog'
+
+const { quit, relaunch } = electronMock.app
+const { showErrorBox, showMessageBoxSync } = electronMock.dialog
 
 await mock.module('./', () => ({
   browserWindows: () => ({ panel: 'mock tray browserwindow' })
@@ -12,7 +14,7 @@ describe('#showUnhandledExceptionDialog', () => {
   it('displays the error message to the user', () => {
     showUnhandledExceptionDialog('something bad happened')
 
-    expect(dialog.showMessageBoxSync).toHaveBeenCalledWith(
+    expect(showMessageBoxSync).toHaveBeenCalledWith(
       undefined,
       expect.objectContaining({
         detail: 'something bad happened'
@@ -23,7 +25,7 @@ describe('#showUnhandledExceptionDialog', () => {
   it('gives the user an option to accept the error or quit Newframe', () => {
     showUnhandledExceptionDialog('something bad happened')
 
-    expect(dialog.showMessageBoxSync).toHaveBeenCalledWith(
+    expect(showMessageBoxSync).toHaveBeenCalledWith(
       undefined,
       expect.objectContaining({
         buttons: ['OK', 'Quit']
@@ -32,33 +34,33 @@ describe('#showUnhandledExceptionDialog', () => {
   })
 
   it('will relaunch the app when the user clicks OK', () => {
-    ;(dialog.showMessageBoxSync as unknown as Mock<typeof dialog.showMessageBoxSync>).mockImplementation(
-      () => 0
-    )
+    ;(
+      showMessageBoxSync as unknown as Mock<typeof import('electron').dialog.showMessageBoxSync>
+    ).mockImplementation(() => 0)
 
     showUnhandledExceptionDialog('something bad happened')
 
-    expect(app.relaunch).toHaveBeenCalled()
-    expect(app.quit).toHaveBeenCalled()
+    expect(relaunch).toHaveBeenCalled()
+    expect(quit).toHaveBeenCalled()
   })
 
   it('will not relaunch the app when the user clicks quit', () => {
-    ;(dialog.showMessageBoxSync as unknown as Mock<typeof dialog.showMessageBoxSync>).mockImplementation(
-      () => 1
-    )
+    ;(
+      showMessageBoxSync as unknown as Mock<typeof import('electron').dialog.showMessageBoxSync>
+    ).mockImplementation(() => 1)
 
     showUnhandledExceptionDialog('something bad happened')
 
-    expect(app.relaunch).not.toHaveBeenCalled()
-    expect(app.quit).toHaveBeenCalled()
+    expect(relaunch).not.toHaveBeenCalled()
+    expect(quit).toHaveBeenCalled()
   })
 
   it('shows a simple error box and quits for an EADDRINUSE error', () => {
     showUnhandledExceptionDialog('Newframe is already running', 'EADDRINUSE')
 
-    expect(dialog.showErrorBox).toHaveBeenCalled()
-    expect(dialog.showMessageBoxSync).not.toHaveBeenCalled()
-    expect(app.relaunch).not.toHaveBeenCalled()
-    expect(app.quit).toHaveBeenCalled()
+    expect(showErrorBox).toHaveBeenCalled()
+    expect(showMessageBoxSync).not.toHaveBeenCalled()
+    expect(relaunch).not.toHaveBeenCalled()
+    expect(quit).toHaveBeenCalled()
   })
 })

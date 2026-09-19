@@ -4,126 +4,120 @@ import { subscribeWithSelector } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import { createStore } from 'zustand/vanilla'
 
-import {
-  createCanonicalActions,
-  type CanonicalActions,
-  type CanonicalStore
-} from '../../src/platform/state-store/actions'
+import { createCanonicalActions } from '../../src/platform/state-store/actions'
 import type { CanonicalGet, CanonicalSet } from '../../src/platform/state-store/actions.panel'
-import createInitialState from '../../src/platform/state-store/state'
 
-const defaultState = () =>
-  Object.assign(createInitialState(), {
-    operations: {},
-    platform: process.platform,
-    main: {
-      accounts: {},
-      accountOrder: [],
-      accountsMeta: {},
-      activity: {},
-      balances: {},
-      currentAccount: '',
-      knownExtensions: {},
-      lattice: {},
-      latticeSettings: {
-        accountLimit: 5,
-        derivation: 'standard',
-        endpointMode: 'default',
-        endpointCustom: ''
-      },
-      ledger: {
-        derivation: 'live',
-        liveAccountLimit: 5
-      },
-      trezor: {
-        derivation: 'standard'
-      },
-      networks: { ethereum: {} },
-      networksMeta: {
-        ethereum: {
-          1: {
-            gas: {
-              samples: [],
-              price: {
-                selected: 'standard',
-                levels: { slow: '', standard: '', fast: '', asap: '', custom: '' }
-              }
-            },
-            nativeCurrency: {
-              symbol: 'ETH',
-              icon: '',
-              name: 'Ether',
-              decimals: 18
-            },
+type CanonicalActions = ReturnType<typeof createCanonicalActions>
+
+const defaultState = () => ({
+  main: {
+    accounts: {},
+    accountOrder: [],
+    accountsMeta: {},
+    activity: {},
+    balances: {},
+    currentAccount: '',
+    knownExtensions: {},
+    lattice: {},
+    latticeSettings: {
+      accountLimit: 5,
+      derivation: 'standard',
+      endpointMode: 'default',
+      endpointCustom: ''
+    },
+    ledger: {
+      derivation: 'live',
+      liveAccountLimit: 5
+    },
+    trezor: {
+      derivation: 'standard'
+    },
+    networks: { ethereum: {} },
+    networksMeta: {
+      ethereum: {
+        1: {
+          gas: {
+            samples: [],
+            price: {
+              selected: 'standard',
+              levels: { slow: '', standard: '', fast: '', asap: '', custom: '' }
+            }
+          },
+          nativeCurrency: {
+            symbol: 'ETH',
             icon: '',
-            primaryColor: 'accent1'
-          }
+            name: 'Ether',
+            decimals: 18
+          },
+          icon: '',
+          primaryColor: 'accent1'
         }
-      },
-      orders: {},
-      origins: {},
-      permissions: {},
-      portfolioApiKey: '',
-      autoDiscoverTokens: false,
-      assetRates: {},
-      signers: {},
-      tokens: {
-        byId: {},
-        accountTokenIds: {}
-      },
-      updater: {
-        dontRemind: [],
-        lastChecked: 0
       }
     },
-    selected: {
-      minimized: false,
-      open: false
+    orders: {},
+    origins: {},
+    permissions: {},
+    portfolioApiKey: '',
+    autoDiscoverTokens: false,
+    assetRates: {},
+    signers: {},
+    tokens: {
+      byId: {},
+      accountTokenIds: {}
     },
-    tray: {
-      open: false,
-      initial: true,
-      homeCommand: null
-    },
-    view: {
-      badge: '',
-      notifications: {},
-      notify: '',
-      notifyData: {}
-    },
-    windows: {
-      panel: {
-        nav: [],
-        show: false
-      }
+    updater: {
+      dontRemind: [],
+      lastChecked: 0
     }
-  })
+  },
+  selected: {
+    minimized: false,
+    open: false
+  },
+  tray: {
+    open: false,
+    initial: true,
+    homeCommand: null
+  },
+  view: {
+    badge: '',
+    notifications: {},
+    notify: '',
+    notifyData: {}
+  },
+  windows: {
+    panel: {
+      nav: [],
+      show: false
+    }
+  }
+})
 
-let actionImplementations = {} as CanonicalActions
-let actionMocks: Record<string, ReturnType<typeof mock>> = {}
+let actionMocks: Partial<Record<keyof CanonicalActions, ReturnType<typeof mock>>> = {}
 
 const createMockActions = (set: CanonicalSet, get: CanonicalGet) => {
-  actionImplementations = createCanonicalActions(set, get)
+  const actionImplementations = createCanonicalActions(set, get)
   actionMocks = Object.fromEntries(
-    (Object.keys(actionImplementations) as Array<keyof CanonicalActions>).map((name) => [
+    Object.entries(actionImplementations).map(([name, action]) => [
       name,
-      mock((...args: unknown[]) => Reflect.apply(actionImplementations[name], undefined, args))
+      mock((...args: never[]): unknown => Reflect.apply(action, undefined, args) as unknown)
     ])
   )
 
-  return Object.assign({}, actionImplementations, actionMocks)
+  return actionMocks as CanonicalActions
 }
 
-export const storeMock = createStore<CanonicalStore>()(
+type MockStore = ReturnType<typeof defaultState> & CanonicalActions
+
+export const storeMock = createStore<MockStore>()(
   subscribeWithSelector(
-    immer((set, get) => {
-      const actions = createMockActions((update) => set(update), get)
-      return { ...defaultState(), ...actions }
-    })
+    immer((set, get) => ({
+      ...defaultState(),
+      ...createMockActions(set as unknown as CanonicalSet, get as unknown as CanonicalGet)
+    }))
   )
 )
 
 export const resetStoreState = () => {
-  const actions = Object.assign({}, actionImplementations, actionMocks)
-  storeMock.setState({ ...defaultState(), ...actions }, true)
+  storeMock.setState({ ...defaultState(), ...actionMocks } as MockStore, true)
 }

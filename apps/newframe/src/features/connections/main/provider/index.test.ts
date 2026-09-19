@@ -69,11 +69,18 @@ interface TestAccount extends TestCurrentAccount {
   lastSignerType: string
 }
 
+const frameAccountFixture = (overrides: Partial<TestCurrentAccount> = {}): TestCurrentAccount => ({
+  id: address,
+  getAccounts: () => [address],
+  ...overrides
+})
+
 const createCurrentMock = () => mock((): TestCurrentAccount | null => null)
 const createGetMock = () => mock((_address: string): TestAccount | undefined => undefined)
 const createSignTransactionMock = () =>
   mock((_tx: TransactionData, _cb: Callback<string>, _context?: SigningUiContext) => {})
 const createSetTxSignedMock = () => mock((_handlerId: string, _cb: Callback<void>) => {})
+const createSetSignerMock = () => mock((_id: string, _cb: Callback<TestAccount>) => {})
 
 interface TestAccounts {
   clearRequestsByOrigin: ReturnType<typeof mock>
@@ -86,7 +93,7 @@ interface TestAccounts {
     request: AccountRequest,
     executeAutonomously?: (request: AccountRequest) => void
   ): boolean
-  setSigner: ReturnType<typeof mock>
+  setSigner: ReturnType<typeof createSetSignerMock>
   setTxSigned: ReturnType<typeof createSetTxSignedMock>
   signTransaction: ReturnType<typeof createSignTransactionMock>
 }
@@ -134,7 +141,7 @@ const accounts: TestAccounts = {
   getAccounts: () => [],
   lockRequest: mock(),
   routeRequest: () => false,
-  setSigner: mock(),
+  setSigner: createSetSignerMock(),
   setTxSigned: createSetTxSignedMock(),
   signTransaction: createSignTransactionMock()
 }
@@ -381,7 +388,13 @@ beforeEach(() => {
 
   requestContinuations.callbacks.clear()
 
-  const eventTypes = ['accountsChanged', 'chainChanged', 'chainsChanged', 'assetsChanged', 'networkChanged']
+  const eventTypes = [
+    'accountsChanged',
+    'chainChanged',
+    'chainsChanged',
+    'assetsChanged',
+    'networkChanged'
+  ] as const
   eventTypes.forEach((eventType) => (provider.subscriptions[eventType] = []))
 
   accountRequests = []
@@ -464,24 +477,22 @@ describe('#send', () => {
       callback
     )
 
-    expect(callback).toHaveBeenCalledWith(
-      expect.objectContaining({
-        error: expect.objectContaining({
-          code: 4100,
-          message: 'Wallet action is missing a trusted request source'
-        })
-      })
-    )
+    expect(callback).toHaveBeenCalled()
+    expect(callback.mock.calls[0]?.[0]).toMatchObject({
+      error: { code: 4100, message: 'Wallet action is missing a trusted request source' }
+    })
     expect(accountRequests).toHaveLength(0)
   })
 
   describe('#eth_chainId', () => {
-    ;[
-      ['current', 1],
-      ['target', 5]
-    ].forEach(([description, chain]) => {
+    ;(
+      [
+        ['current', 1],
+        ['target', 5]
+      ] as const
+    ).forEach(([description, chain]) => {
       it(`returns the ${description} chain id from the store`, async () => {
-        setNetwork(chain as number, { id: chain, on: true })
+        setNetwork(chain, { id: chain, on: true })
         expect((await sendResult({ method: 'eth_chainId', chainId: `0x${chain}` })).result).toBe(`0x${chain}`)
       })
     })
@@ -585,7 +596,6 @@ describe('#send', () => {
       expect(lookupChainIcon).toHaveBeenCalledWith(4660)
       expect(accountRequests[0]).toEqual(
         expect.objectContaining({
-          handlerId: expect.any(String),
           type: 'addChain',
           chain: {
             type: 'ethereum',
@@ -600,6 +610,7 @@ describe('#send', () => {
           }
         }) as unknown as AccountRequest
       )
+      expect(typeof accountRequests[0].handlerId).toBe('string')
     })
 
     it('rejects unsafe RPC and block explorer URLs', () => {
@@ -712,16 +723,14 @@ describe('#send', () => {
 
   describe('#wallet_requestPermissions', () => {
     it('returns the requested permissions', async () => {
-      const permissions = (
+      const permissions = rpcResult<Array<{ parentCapability: string; date: number }>>(
         await sendResult({
           method: 'wallet_requestPermissions',
           params: [{ eth_accounts: {} }, { eth_signTransaction: {} }]
         })
-      ).result
+      )
       expect(
-        (permissions as Array<{ parentCapability: string; date: number }>).map(
-          ({ parentCapability, date }) => [parentCapability, Number.isInteger(date)]
-        )
+        permissions.map(({ parentCapability, date }) => [parentCapability, Number.isInteger(date)])
       ).toEqual([
         ['eth_accounts', true],
         ['eth_signTransaction', true]
@@ -749,6 +758,7 @@ describe('#send', () => {
       })
 
       request = {
+        _origin: '8073729a-5e59-53b7-9e69-5d9bcff94087',
         id: 10,
         jsonrpc: '2.0',
         method: 'wallet_watchAsset',
@@ -761,8 +771,7 @@ describe('#send', () => {
             decimals: 18,
             image: 'https://badgerdao.io/icon.jpg'
           }
-        },
-        _origin: '8073729a-5e59-53b7-9e69-5d9bcff94087'
+        }
       }
     })
 
@@ -816,10 +825,9 @@ describe('#send', () => {
     networkCases.forEach(([description, network]) => {
       it(`rejects a request when the chain ${description}`, async () => {
         setNetwork(1, network)
-        expect((await sendResult(request)).error).toMatchObject({
-          code: -1,
-          message: expect.stringContaining('not connected')
-        })
+        const error = responseError(await sendResult(request))
+        expect(error.code).toBe(-1)
+        expect(error.message).toContain('not connected')
         expect(accountRequests).toHaveLength(0)
       })
     })
@@ -829,10 +837,9 @@ describe('#send', () => {
     ].forEach(([description, type]) => {
       it(`rejects a request whose type is ${description}`, async () => {
         request.params.type = type
-        expect((await sendResult(request)).error).toMatchObject({
-          code: -1,
-          message: expect.stringContaining('only ERC-20 tokens are supported')
-        })
+        const error = responseError(await sendResult(request))
+        expect(error.code).toBe(-1)
+        expect(error.message).toContain('only ERC-20 tokens are supported')
         expect(accountRequests).toHaveLength(0)
       })
     })
@@ -1061,7 +1068,7 @@ describe('#send', () => {
             }
           : undefined
       )
-      accounts.setSigner = mock((id, cb) => {
+      accounts.setSigner = mock((id: string, cb: Callback<TestAccount>) => {
         currentAddress = id
         cb(null, { id, address: id, lastSignerType: 'ring' })
       })
@@ -1143,7 +1150,7 @@ describe('#send', () => {
     const password = 'supersecret'
     const hexMessage = addHexPrefix(Buffer.from(message, 'utf-8').toString('hex'))
 
-    ;[
+    const personalSignCases: ReadonlyArray<readonly [string, readonly string[], string]> = [
       ['address first', [address, hexMessage, password], hexMessage],
       ['message first', [hexMessage, address, password], hexMessage],
       [
@@ -1151,13 +1158,14 @@ describe('#send', () => {
         ['0x6672616d652e7368206973206772656174212121', address, password],
         '0x6672616d652e7368206973206772656174212121'
       ]
-    ].forEach(([description, params, expectedMessage]) => {
+    ]
+    personalSignCases.forEach(([description, params, expectedMessage]) => {
       it(`submits a request with the ${description}`, () => {
         send({ method: 'personal_sign', params })
         expect(accountRequests[0]).toMatchObject({
-          handlerId: expect.any(String),
           payload: { params: [address, expectedMessage, password] }
         })
+        expect(typeof accountRequests[0].handlerId).toBe('string')
       })
     })
 
@@ -1220,7 +1228,7 @@ describe('#send', () => {
     })
 
     beforeEach(() => {
-      accounts.current.mockReturnValue({ id: address })
+      accounts.current.mockReturnValue(frameAccountFixture())
     })
 
     it('handles typed data as a stringified json param', () => {
@@ -1249,7 +1257,9 @@ describe('#send', () => {
     })
 
     it('does not submit a request to the wrong account', async () => {
-      accounts.current.mockReturnValueOnce({ id: '0xa4581bfe76201f3aa147cce8e360140582260441' })
+      accounts.current.mockReturnValueOnce(
+        frameAccountFixture({ id: '0xa4581bfe76201f3aa147cce8e360140582260441' })
+      )
       expect(
         (await sendResult({ method: 'eth_signTypedData_v3', params: [address, typedData] })).error
       ).toEqual({
@@ -1413,11 +1423,10 @@ describe('#executeAgentTransaction', () => {
     signTransaction.mock.calls[0][1](null, '0xsigned')
 
     expect(connection.send).not.toHaveBeenCalled()
-    expect(respond).toHaveBeenCalledWith(
-      expect.objectContaining({
-        error: expect.objectContaining({ message: 'Agent session is revoked or unavailable' })
-      })
-    )
+    expect(respond).toHaveBeenCalled()
+    expect(respond.mock.calls[0]?.[0]).toMatchObject({
+      error: { message: 'Agent session is revoked or unavailable' }
+    })
   })
 })
 

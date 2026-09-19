@@ -10,8 +10,7 @@ import type { AccountRequest, CanonicalAccountRequest, TypedMessage } from '../.
 import { RequestMode, RequestStatus } from '../../requests/contract/requests'
 import { ApprovalType } from '../../requests/domain/approval'
 import { GasFeesSource, type TransactionData } from '../../transactions/domain'
-import type { Accounts } from './index'
-import type { AccountChainRpcPort } from './providerPort'
+import type { RevealService } from '../../transactions/main/reveal'
 
 const revealMock = {
   recog: mock(),
@@ -22,7 +21,13 @@ const revealMock = {
 }
 const fetchContractMock = mock()
 const simulateTransactionEffectsMock = mock()
-const providerMock = { on: mock(), off: mock(), send: mock(), getL1GasCost: mock() }
+const providerMock = {
+  on: mock<(event: string | symbol, listener: (...args: never[]) => void) => void>(),
+  off: mock<(event: string | symbol, listener: (...args: never[]) => void) => void>(),
+  send: mock<(payload: RPCRequestPayload, callback: RPCRequestCallback) => void>(),
+  sendAsync: mock<(payload: RPCRequestPayload, callback: Callback<RPCResponsePayload>) => void>(),
+  getL1GasCost: mock(async (_transaction: TransactionData) => 0n)
+}
 const signersMock = { get: mock() }
 const windowsMock = { showTray: mock() }
 const navMock = { forward: mock(), back: mock() }
@@ -121,9 +126,9 @@ beforeAll(async () => {
 function createAccount(profileActive = true) {
   return new Account(
     accountState,
-    accounts as unknown as Accounts,
+    accounts as unknown as ConstructorParameters<typeof Account>[1],
     store,
-    providerMock as unknown as AccountChainRpcPort,
+    providerMock,
     { simulateTransactionEffects: simulateTransactionEffectsMock },
     nameResolution,
     revealMock,
@@ -190,7 +195,7 @@ describe('#addRequest', () => {
     }
     Object.assign(request, { authorization: decision.authorization })
 
-    requestLifecycle.bind(request as any)
+    requestLifecycle.bind(request)
     account.addRequest(request)
 
     expect(navMock.forward).toHaveBeenCalledTimes(1)
@@ -283,9 +288,12 @@ describe('#addRequest', () => {
     })
 
     it('waits for token recognition before simulating the transaction', async () => {
-      let resolveRecognition: (actions: any[]) => void = () => {}
+      let resolveRecognition: (actions: Awaited<ReturnType<RevealService['recog']>>) => void = () => {}
       revealMock.recog.mockImplementationOnce(
-        () => new Promise<any[]>((resolve) => (resolveRecognition = resolve))
+        () =>
+          new Promise<Awaited<ReturnType<RevealService['recog']>>>(
+            (resolve) => (resolveRecognition = resolve)
+          )
       )
       revealMock.decode.mockResolvedValueOnce(undefined)
 
@@ -336,7 +344,12 @@ describe('#addRequest', () => {
 describe('creation-block listener lifecycle', () => {
   it('removes the provider listener after resolving the creation block', () => {
     const listener = providerMock.on.mock.calls.find(([event]) => event === 'connect')?.[1]
-    providerMock.send.mockImplementationOnce((_payload, respond) => respond({ result: '0x64' }))
+    if (!listener) {
+      throw new Error('Expected a provider connect listener')
+    }
+    providerMock.send.mockImplementationOnce((payload, respond) =>
+      respond({ id: payload.id, jsonrpc: payload.jsonrpc, result: '0x64' })
+    )
 
     listener()
 
@@ -346,6 +359,9 @@ describe('creation-block listener lifecycle', () => {
 
   it('removes the provider listener when the account handle closes', () => {
     const listener = providerMock.on.mock.calls.find(([event]) => event === 'connect')?.[1]
+    if (!listener) {
+      throw new Error('Expected a provider connect listener')
+    }
 
     account.close()
 
@@ -354,10 +370,17 @@ describe('creation-block listener lifecycle', () => {
 
   it('ignores a late creation-block response after canonical removal', () => {
     const listener = providerMock.on.mock.calls.find(([event]) => event === 'connect')?.[1]
-    providerMock.send.mockImplementationOnce((_payload, respond) => respond({ result: '0x64' }))
+    if (!listener) {
+      throw new Error('Expected a provider connect listener')
+    }
+    providerMock.send.mockImplementationOnce((payload, respond) =>
+      respond({ id: payload.id, jsonrpc: payload.jsonrpc, result: '0x64' })
+    )
     store.getState().removeAccount(account.id)
 
-    expect(() => listener()).not.toThrow()
+    expect(() => {
+      listener()
+    }).not.toThrow()
     expect(providerMock.off).toHaveBeenCalledWith('connect', listener)
   })
 
@@ -491,9 +514,9 @@ it('rejects every Safe signing method even when an owner signer is associated', 
     signTransaction: signed
   })
   for (const sign of [
-    (callback: Callback<string>) => account.signMessage('0x1234', callback),
-    (callback: Callback<string>) => account.signTypedData(validTypedMessage(), callback),
-    (callback: Callback<string>) =>
+    (callback: Callback<unknown>) => account.signMessage('0x1234', callback),
+    (callback: Callback<unknown>) => account.signTypedData(validTypedMessage(), callback),
+    (callback: Callback<unknown>) =>
       account.signTransaction(
         {
           chainId: '0x1',

@@ -2,7 +2,7 @@ import EventEmitter from 'events'
 
 import { GNS_CONTRACT, gnsAbi, isGwei, normalizeName } from '@donnoh/gns-utils'
 import { Interface, ZeroAddress, dnsEncode, ensNormalize, getAddress, isAddress, namehash } from 'ethers'
-import type { BytesLike, Result } from 'ethers'
+import type { Result } from 'ethers'
 
 import { createProxyProvider } from '../../connections/main/provider/connection.js'
 import type { ProviderProxyConnection } from '../../connections/main/provider/proxy.js'
@@ -19,12 +19,36 @@ const universalResolverInterface = new Interface([
 const resolverInterface = new Interface(['function addr(bytes32 node) view returns (address)'])
 const gnsInterface = new Interface(gnsAbi)
 
+function resultValue(result: Result, index: number): unknown {
+  return result[index] as unknown
+}
+
+function decodedString(result: Result, index: number, label: string) {
+  const value = resultValue(result, index)
+  if (typeof value !== 'string') {
+    throw new Error(`Invalid ${label} response`)
+  }
+  return value
+}
+
+function decodedBigInt(result: Result, index: number, label: string) {
+  const value = resultValue(result, index)
+  if (typeof value !== 'bigint') {
+    throw new Error(`Invalid ${label} response`)
+  }
+  return value
+}
+
 export interface NameResolutionProviderPort {
   setChain(chainId: string): void
-  on(event: string, listener: (...args: any[]) => void): unknown
-  once(event: string, listener: (...args: any[]) => void): unknown
-  off(event: string, listener: (...args: any[]) => void): unknown
-  request<T>(payload: { method: string; params?: unknown[]; chainId?: string }): Promise<T>
+  on(event: string, listener: (...args: never[]) => void): unknown
+  once(event: string, listener: (...args: never[]) => void): unknown
+  off(event: string, listener: (...args: never[]) => void): unknown
+  request<T>(payload: {
+    method: string
+    params?: readonly unknown[] | Record<string, unknown>
+    chainId?: string
+  }): Promise<T>
 }
 
 export interface NameResolutionService {
@@ -110,50 +134,42 @@ export function createNameResolutionService(
     return gnsInterface.decodeFunctionResult(functionName, result)
   }
 
-  const resultValue = (result: Result, index: number): unknown => result[index]
-  const isBytesLike = (value: unknown): value is BytesLike =>
-    typeof value === 'string' || value instanceof Uint8Array
-
   function isGnsName(name: string) {
     const input = name.trim()
     return !!input && (isGwei(input) || !input.includes('.'))
   }
 
-  async function resolveGnsAddress(name: string) {
+  async function resolveGnsAddress(name: string): Promise<string> {
     try {
-      const tokenId = resultValue(await readGns('computeId', [normalizeName(name)]), 0)
-      if (typeof tokenId !== 'bigint') {
-        return ''
-      }
+      const computeResult = await readGns('computeId', [normalizeName(name)])
+      const tokenId = decodedBigInt(computeResult, 0, 'GNS computeId')
       if (tokenId === 0n) {
         return ''
       }
 
-      const address = resultValue(await readGns('resolve', [tokenId]), 0)
-      if (typeof address !== 'string') {
-        return ''
-      }
+      const resolveResult = await readGns('resolve', [tokenId])
+      const address = decodedString(resolveResult, 0, 'GNS resolve')
       return address === ZeroAddress ? '' : getAddress(address)
     } catch {
       return ''
     }
   }
 
-  async function resolveEnsAddress(name: string) {
+  async function resolveEnsAddress(name: string): Promise<string> {
     const normalized = ensNormalize(name)
     const node = namehash(normalized)
     const data = resolverInterface.encodeFunctionData('addr', [node])
-    const result = resultValue(
-      await readUniversalResolver('resolveWithGateways', [dnsEncode(normalized), data, GATEWAYS]),
-      0
+    const universalResult = await readUniversalResolver('resolveWithGateways', [
+      dnsEncode(normalized),
+      data,
+      GATEWAYS
+    ])
+    const result = decodedString(universalResult, 0, 'ENS universal resolver')
+    const address = decodedString(
+      resolverInterface.decodeFunctionResult('addr', result),
+      0,
+      'ENS address resolver'
     )
-    if (!isBytesLike(result)) {
-      return ''
-    }
-    const address = resultValue(resolverInterface.decodeFunctionResult('addr', result), 0)
-    if (typeof address !== 'string') {
-      return ''
-    }
 
     return address === ZeroAddress ? '' : getAddress(address)
   }
@@ -166,33 +182,34 @@ export function createNameResolutionService(
     return isGnsName(input) ? resolveGnsAddress(input) : resolveEnsAddress(input)
   }
 
-  async function reverseGnsLookup(address: string) {
+  async function reverseGnsLookup(address: string): Promise<string> {
     try {
       if (!isAddress(address)) {
         return ''
       }
-      const primary = resultValue(await readGns('reverseResolve', [getAddress(address)]), 0)
-      return typeof primary === 'string' ? primary : ''
+      const result = await readGns('reverseResolve', [getAddress(address)])
+      return decodedString(result, 0, 'GNS reverseResolve')
     } catch {
       return ''
     }
   }
 
-  async function reverseEnsLookup(address: string) {
+  async function reverseEnsLookup(address: string): Promise<string> {
     if (!isAddress(address)) {
       return ''
     }
-    const primary = resultValue(
-      await readUniversalResolver('reverseWithGateways', [getAddress(address), ETH_COIN_TYPE, GATEWAYS]),
-      0
-    )
-    return typeof primary === 'string' ? primary : ''
+    const result = await readUniversalResolver('reverseWithGateways', [
+      getAddress(address),
+      ETH_COIN_TYPE,
+      GATEWAYS
+    ])
+    return decodedString(result, 0, 'ENS reverse resolver')
   }
 
   async function reverseLookup(address: string) {
-    const gnsName = await reverseGnsLookup(address)
+    const gnsName: unknown = await reverseGnsLookup(address)
     if (gnsName) {
-      return gnsName
+      return typeof gnsName === 'string' ? gnsName : ''
     }
     return reverseEnsLookup(address)
   }
@@ -233,5 +250,7 @@ export function createNameResolutionService(
 }
 
 export function createProductionNameResolutionService(proxy: ProviderProxyConnection) {
-  return createNameResolutionService(() => createProxyProvider(proxy))
+  return createNameResolutionService(
+    () => createProxyProvider(proxy) as unknown as NameResolutionProviderPort
+  )
 }

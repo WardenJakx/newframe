@@ -13,7 +13,7 @@ import {
 } from './index'
 
 function effectMatching(effect: Partial<TransactionEffect>): TransactionEffect {
-  return expect.objectContaining(effect)
+  return expect.objectContaining(effect) as TransactionEffect
 }
 
 describe('#typeSupportsBaseFee', () => {
