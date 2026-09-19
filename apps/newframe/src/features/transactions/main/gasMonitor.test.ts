@@ -4,9 +4,9 @@ import { intToHex } from '@ethereumjs/util'
 
 import GasMonitor from './gasMonitor'
 
-let requestHandlers: any
+let requestHandlers: Record<string, (params: unknown[]) => unknown>
 const testConnection = {
-  send: mock((method, params) => {
+  send: mock((method: string, params: unknown[]) => {
     if (method in requestHandlers) {
       return Promise.resolve(requestHandlers[method](params))
     }
@@ -41,7 +41,9 @@ describe('#getGasPrices', () => {
 describe('#getFeeHistory', () => {
   const nextBlockBaseFee = '0xb6'
 
-  let gasUsedRatios: any, blockRewards: any
+  let gasUsedRatios: number[]
+  let blockRewards: string[][]
+  let feeHistoryHandler: ReturnType<typeof mock>
 
   beforeEach(() => {
     // default to all blocks being ineligible for priority fee calculation
@@ -49,8 +51,9 @@ describe('#getFeeHistory', () => {
     blockRewards = []
 
     requestHandlers = {
-      eth_feeHistory: mock((params) => {
-        const numBlocks = parseInt(params[0] ?? '0x', 16)
+      eth_feeHistory: (feeHistoryHandler = mock((params: unknown[]) => {
+        const blockCount = params[0]
+        const numBlocks = typeof blockCount === 'string' ? parseInt(blockCount, 16) : 0
 
         return {
           // base fees include the requested number of blocks plus the next block
@@ -59,7 +62,7 @@ describe('#getFeeHistory', () => {
           oldestBlock: '0x89502f',
           reward: fillEmptySlots(blockRewards, numBlocks, ['0x0']).reverse()
         }
-      })
+      }))
     }
   })
 
@@ -67,7 +70,7 @@ describe('#getFeeHistory', () => {
     const monitor = new GasMonitor(testConnection)
     const feeHistory = await monitor.getFeeHistory(1, [10, 20, 30])
 
-    expect(requestHandlers['eth_feeHistory']).toHaveBeenCalledWith([intToHex(1), 'pending', [10, 20, 30]])
+    expect(feeHistoryHandler).toHaveBeenCalledWith([intToHex(1), 'pending', [10, 20, 30]])
     expect(feeHistory).toHaveLength(2)
     expect(feeHistory[0]).toEqual({ baseFee: 8, gasUsedRatio: 0, rewards: [0] })
     expect(feeHistory[1]).toMatchObject({ baseFee: 182, rewards: [] })
@@ -76,7 +79,7 @@ describe('#getFeeHistory', () => {
 })
 
 // helper functions
-function fillEmptySlots(arr: any, targetLength: any, value: any) {
+function fillEmptySlots<T>(arr: T[], targetLength: number, value: T) {
   const target = arr.slice()
   let i = 0
 

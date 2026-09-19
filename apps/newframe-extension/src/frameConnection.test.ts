@@ -242,7 +242,8 @@ describe('FrameBackgroundProvider health check', () => {
     timers.advanceTimersByTime(1000)
     expect(sockets).toHaveLength(4)
     sockets[3]!.open()
-    expect(JSON.parse(sockets[3]!.sent[0]!).method).toBe('eth_chainId')
+    const reconnectRequest = JSON.parse(sockets[3]!.sent[0]!) as { method?: unknown }
+    expect(reconnectRequest.method).toBe('eth_chainId')
     provider.close()
     await flushPromises()
   })

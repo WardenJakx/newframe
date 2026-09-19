@@ -56,8 +56,8 @@ const main = async () => {
       TYPED_DATA
     ])
     console.log({ signedTypedDataAsObject })
-  } catch (e: any) {
-    if (e.message === 'Unexpected end of JSON input') {
+  } catch (e: unknown) {
+    if (e instanceof Error && e.message === 'Unexpected end of JSON input') {
       console.log('Cannot connect to Frame. Is Frame running?')
     } else {
       console.log(e)

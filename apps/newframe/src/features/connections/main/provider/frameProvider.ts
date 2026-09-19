@@ -43,7 +43,11 @@ function resolveTargets(targets?: string | string[]) {
 }
 
 abstract class EventedRequestProvider extends EventEmitter implements Eip1193Provider {
+  accounts: string[] = []
+  coinbase?: string
   connected = false
+  networkVersion?: unknown
+  selectedAddress?: string
 
   protected manualChainId?: string
   protected providerChainId?: string
@@ -165,17 +169,19 @@ abstract class EventedRequestProvider extends EventEmitter implements Eip1193Pro
     if (method === 'eth_chainId' && typeof result === 'string') {
       this.providerChainId = result
     } else if (['eth_accounts', 'eth_requestAccounts'].includes(method)) {
-      const accounts = (result ?? []) as string[]
-      ;(this as any).accounts = accounts
-      ;(this as any).selectedAddress = accounts[0]
-      ;(this as any).coinbase = accounts[0]
+      const accounts = Array.isArray(result)
+        ? result.filter((account): account is string => typeof account === 'string')
+        : []
+      this.accounts = accounts
+      this.selectedAddress = accounts[0]
+      this.coinbase = accounts[0]
     }
   }
 
   private handleProviderEvent(event: string, result: unknown) {
     if (event === 'networkChanged') {
-      ;(this as any).networkVersion = typeof result === 'string' ? parseInt(result) : result
-      this.emit('networkChanged', (this as any).networkVersion)
+      this.networkVersion = typeof result === 'string' ? parseInt(result) : result
+      this.emit('networkChanged', this.networkVersion)
     } else if (event === 'chainChanged') {
       this.providerChainId = result as string
       if (!this.manualChainId) {
