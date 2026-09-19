@@ -4,7 +4,7 @@ import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import log from 'electron-log'
 
 import type { TypedMessage } from '../../../../features/requests/contract/requests'
-import type { TransactionData } from '../../../../features/transactions/domain'
+import { GasFeesSource, type TransactionData } from '../../../../features/transactions/domain'
 import { callbackResult } from '../callback.test-support.ts'
 import { Derivation } from '../Signer/derive'
 import type LatticeSigner from './Lattice'
@@ -61,7 +61,7 @@ type TestLattice = Omit<PublicLattice, 'connection' | 'signTransaction'> & {
   connection: TestConnection
   signTransaction(
     index: number,
-    transaction: Pick<TransactionData, 'chainId' | 'type'>,
+    transaction: Pick<TransactionData, 'chainId' | 'gasFeesSource' | 'type'>,
     cb: Callback<string>
   ): void
 }
@@ -147,15 +147,17 @@ describe('#connect', () => {
 
 describe('#pair', () => {
   const pairingCode = 'JG7F9XS3'
+  let pair: ReturnType<typeof mock<(code: string) => Promise<boolean>>>
 
   beforeEach(() => {
+    pair = mock(async (code: string) => {
+      if (code === pairingCode) {
+        return true
+      }
+      throw new Error('Error from device: Pairing failed')
+    })
     lattice.connection = testConnection({
-      pair: mock(async (code: string) => {
-        if (code === pairingCode) {
-          return true
-        }
-        throw new Error('Error from device: Pairing failed')
-      })
+      pair
     })
   })
 
@@ -169,7 +171,7 @@ describe('#pair', () => {
     expect(statuses).toEqual(['Pairing'])
     expect(paired.at(-1)).toBeTrue()
 
-    lattice.connection.pair.mockResolvedValue(false)
+    pair.mockResolvedValue(false)
     expect(await lattice.pair(pairingCode)).toBeFalse()
     expect(paired.at(-1)).toBeFalse()
   })
@@ -184,36 +186,39 @@ describe('#pair', () => {
 })
 
 describe('#deriveAddresses', () => {
+  let getAddresses: ReturnType<typeof mock<(options: AddressOptions) => Promise<string[]>>>
+
   beforeEach(() => {
     lattice.accountLimit = 5
+    getAddresses = mock(async (options: AddressOptions) =>
+      Array.from({ length: options.n }, (_, index) => `addr${(options.startPath.at(-1) ?? 0) + index}`)
+    )
     lattice.connection = testConnection({
       getAppName: () => 'frame-test',
-      getAddresses: mock(async (options: AddressOptions) =>
-        Array.from({ length: options.n }, (_, index) => `addr${(options.startPath.at(-1) ?? 0) + index}`)
-      )
+      getAddresses
     })
   })
 
   it('uses the standard, legacy, and Live derivation paths', async () => {
     await lattice.deriveAddresses(Derivation.standard)
-    expect(lattice.connection.getAddresses).toHaveBeenLastCalledWith(
+    expect(getAddresses).toHaveBeenLastCalledWith(
       expect.objectContaining({ startPath: [0x8000002c, 0x8000003c, 0x80000000, 0, 0] })
     )
 
     lattice.addresses = ['addr1', 'addr2', 'addr3', 'addr4', 'addr5']
     lattice.accountLimit = 10
     await lattice.deriveAddresses(Derivation.legacy)
-    expect(lattice.connection.getAddresses).toHaveBeenLastCalledWith(
+    expect(getAddresses).toHaveBeenLastCalledWith(
       expect.objectContaining({ startPath: [0x8000002c, 0x8000003c, 0x80000000, 5] })
     )
 
     lattice.addresses = []
     lattice.accountLimit = 5
-    lattice.connection.getAddresses.mockClear()
+    getAddresses.mockClear()
     await lattice.deriveAddresses(Derivation.live)
-    expect(lattice.connection.getAddresses).toHaveBeenCalledTimes(5)
+    expect(getAddresses).toHaveBeenCalledTimes(5)
     for (let index = 0; index < 5; index++) {
-      expect(lattice.connection.getAddresses).toHaveBeenNthCalledWith(
+      expect(getAddresses).toHaveBeenNthCalledWith(
         index + 1,
         expect.objectContaining({
           startPath: [0x8000002c, 0x8000003c, 0x80000000 + index, 0, 0]
@@ -234,10 +239,10 @@ describe('#deriveAddresses', () => {
     await lattice.deriveAddresses()
     expect(lattice.addresses).toEqual(Array.from({ length: 10 }, (_, index) => `0xaddr${index}`))
 
-    lattice.connection.getAddresses.mockClear()
+    getAddresses.mockClear()
     lattice.accountLimit = 5
     await lattice.deriveAddresses()
-    expect(lattice.connection.getAddresses).not.toHaveBeenCalled()
+    expect(getAddresses).not.toHaveBeenCalled()
     expect(lattice.addresses).toHaveLength(10)
   })
 
@@ -245,7 +250,7 @@ describe('#deriveAddresses', () => {
     let requests = 0
     let errors = 0
     lattice.on('error', () => errors++)
-    lattice.connection.getAddresses.mockImplementation(async () => {
+    getAddresses.mockImplementation(async () => {
       if (++requests === 1) {
         throw new Error('Error from device: Getting addresses failed')
       }
@@ -262,9 +267,7 @@ describe('#deriveAddresses', () => {
   })
 
   it('publishes a terminal error after retries are exhausted', async () => {
-    lattice.connection.getAddresses.mockRejectedValue(
-      new Error('Error from device: Getting addresses failed')
-    )
+    getAddresses.mockRejectedValue(new Error('Error from device: Getting addresses failed'))
     let errors = 0
     lattice.on('error', () => errors++)
     await lattice.deriveAddresses(Derivation.standard, 0)
@@ -365,7 +368,9 @@ describe('signing and verification', () => {
       ['0x2', '0x02d3818980808080808080c080833ea8cd8396f7a0', 2]
     ] as const) {
       expect(
-        await callbackResult<string>((done) => lattice.signTransaction(4, { chainId: '0x89', type }, done))
+        await callbackResult<string>((done) => {
+          void lattice.signTransaction(4, { chainId: '0x89', type, gasFeesSource: GasFeesSource.Dapp }, done)
+        })
       ).toBe(expected)
       expect(wireTypes.at(-1)).toBe(wireType)
     }

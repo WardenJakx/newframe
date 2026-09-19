@@ -270,7 +270,7 @@ const expectQueuedRequestRejection = (sendRequest: (callback: RPCRequestCallback
     const callback = mock()
     accountRequestHook = (request, respond) => {
       try {
-        expect(respond).toEqual(expect.any(Function))
+        expect(typeof respond).toBe('function')
         expect(requestContinuations.callbacks.has(request.handlerId)).toBe(true)
         const rejection = {
           id: request.payload.id,
@@ -562,7 +562,7 @@ describe('#send', () => {
         expect(result.connected).toBe(false)
         expect(result.address).toBe('')
         expect(storeState().main.permissions[address][originId]).toBeUndefined()
-        expect(storeState().main.origins[originId].session.endedAt).toEqual(expect.any(Number))
+        expect(typeof storeState().main.origins[originId].session.endedAt).toBe('number')
         expect(accounts.clearRequestsByOrigin).toHaveBeenCalledWith(address, originId)
         const params = subscriptionEvent.params as { subscription: string; result: unknown }
         expect(params.subscription).toBe(subscription.id)
@@ -608,9 +608,9 @@ describe('#send', () => {
             secondaryRpc: undefined,
             explorer: 'https://explorer.example.com'
           }
-        })
+        }) as unknown as AccountRequest
       )
-      expect(accountRequests[0].handlerId).toEqual(expect.any(String))
+      expect(typeof accountRequests[0].handlerId).toBe('string')
     })
 
     it('rejects unsafe RPC and block explorer URLs', () => {
@@ -792,7 +792,7 @@ describe('#send', () => {
             logoURI: 'https://badgerdao.io/icon.jpg'
           },
           payload: request
-        })
+        }) as unknown as AccountRequest
       )
     })
 
@@ -1165,7 +1165,7 @@ describe('#send', () => {
         expect(accountRequests[0]).toMatchObject({
           payload: { params: [address, expectedMessage, password] }
         })
-        expect(accountRequests[0].handlerId).toEqual(expect.any(String))
+        expect(typeof accountRequests[0].handlerId).toBe('string')
       })
     })
 
@@ -1550,7 +1550,7 @@ describe('#signAndSend', () => {
               id: request.payload.id,
               method: 'eth_sendRawTransaction',
               params: [signedTx]
-            })
+            }) as unknown as RPCRequestPayload
           )
 
           cb({ id: payload.id, jsonrpc: payload.jsonrpc, result: txHash })

@@ -61,6 +61,20 @@ declare namespace RPC {
     }
   }
 
+  namespace BlockNumber {
+    interface Response extends Omit<RPCResponsePayload, 'result'> {
+      result?: string
+    }
+  }
+
+  namespace GetTransactionReceipt {
+    interface Response extends Omit<RPCResponsePayload, 'result'> {
+      result?: import('../../features/requests/contract/requests.js').TransactionReceipt & {
+        status?: string
+      }
+    }
+  }
+
   namespace GetAssets {
     interface Balance {
       chainId: number

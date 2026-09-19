@@ -5,7 +5,6 @@ import log from 'electron-log'
 import { v5 as uuid } from 'uuid'
 
 import store from '../../../state-store'
-import type LedgerSignerAdapterType from './adapter'
 
 const ns = '3bbcee75-cecc-5b56-8031-b6641c1ed1f1'
 
@@ -60,30 +59,30 @@ class LedgerMock extends EventEmitter {
   }
 }
 
+type TestLedgerDevice = {
+  interface: number
+  product: string
+  usagePage: number
+  path: string
+}
+
+interface TestLedgerSignerAdapter extends EventEmitter {
+  knownSigners: Record<string, LedgerMock>
+  disconnections: Array<{ device: LedgerMock; timeout: NodeJS.Timeout }>
+  open(): void
+  close(): void
+  reload(ledger: LedgerMock): void
+  handleDeviceChanges(): void
+  handleDisconnectedDevice(ledger: LedgerMock): void
+}
+
+type TestLedgerSignerAdapterConstructor = new (canonicalStore: typeof store) => TestLedgerSignerAdapter
+
 const TransportNodeHidSingletonMock = {
   listen: mock(() => ({ unsubscribe: mock() }))
 }
 
-interface ConnectedHid {
-  interface: number
-  path: string
-  product: string
-  usagePage: number
-}
-
-type PublicAdapter = {
-  [Key in keyof LedgerSignerAdapterType]: LedgerSignerAdapterType[Key]
-}
-
-type TestAdapter = Omit<PublicAdapter, 'reload'> & {
-  disconnections: Array<{ device: LedgerMock; timeout: NodeJS.Timeout }>
-  handleDeviceChanges(): void
-  handleDisconnectedDevice(device: LedgerMock): void
-  knownSigners: Record<string, LedgerMock>
-  reload(device: LedgerMock): void
-}
-
-let connectedHids: ConnectedHid[] = []
+let connectedHids: TestLedgerDevice[] = []
 
 await mock.module('./dependencies.js', () => ({
   getLedgerDevices: () => connectedHids,
@@ -104,21 +103,21 @@ function simulateLedgerDisconnection(path: string) {
   connectedHids.splice(hidIndex, 1)
 }
 
-let LedgerSignerAdapter: typeof LedgerSignerAdapterType
-let adapter: TestAdapter
+let LedgerSignerAdapter: TestLedgerSignerAdapterConstructor
+let adapter: TestLedgerSignerAdapter
 
 beforeAll(async () => {
   timers.useFakeTimers()
   log.transports.console.level = false
 
-  LedgerSignerAdapter = (await import('./adapter')).default
+  LedgerSignerAdapter = (await import('./adapter')).default as unknown as TestLedgerSignerAdapterConstructor
 })
 
 beforeEach(() => {
   connectedHids = []
   store.getState().clearHomeCommand()
 
-  adapter = new LedgerSignerAdapter(store) as unknown as TestAdapter
+  adapter = new LedgerSignerAdapter(store)
   adapter.open()
 })
 

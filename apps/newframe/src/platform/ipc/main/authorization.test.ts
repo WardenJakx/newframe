@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { pathToFileURL } from 'url'
 
-import type { IpcMainInvokeEvent, WebContents } from 'electron'
+import type { IpcMainInvokeEvent, WebContents, WebFrameMain } from 'electron'
 
 import { createRendererAuthorizationRegistry, type RendererAuthorizationRegistry } from './authorization'
 
@@ -13,7 +13,7 @@ function renderer(
   clientType: 'wallet-ui' | 'sidetray',
   registry = authorization
 ) {
-  const frame: { parent: object | null; url: string } = {
+  const frame: { parent: WebFrameMain | null; url: string } = {
     parent: null,
     url: pathToFileURL(`/app/bundle/${entrypoint}.html`).toString()
   }
@@ -21,19 +21,23 @@ function renderer(
   const webContents = {
     id: nextId++,
     isDestroyed: mock(() => false),
-    mainFrame: frame,
+    mainFrame: frame as unknown as WebFrameMain,
     once: mock((event: string, handler: () => void) => {
       if (event === 'destroyed') {
         destroyed = handler
       }
     })
-  }
+  } as unknown as WebContents
+  const event = {
+    sender: webContents,
+    senderFrame: frame as unknown as WebFrameMain
+  } as unknown as IpcMainInvokeEvent
 
-  registry.registerRenderer(webContents as unknown as WebContents, clientType, entrypoint)
+  registry.registerRenderer(webContents, clientType, entrypoint)
 
   return {
     destroy: () => destroyed?.(),
-    event: { sender: webContents, senderFrame: frame } as unknown as IpcMainInvokeEvent,
+    event,
     frame,
     webContents
   }
@@ -60,7 +64,7 @@ describe('renderer authorization', () => {
 
   it('rejects subframes and unexpected renderer URLs', () => {
     const wallet = renderer('tray', 'wallet-ui')
-    wallet.frame.parent = {}
+    wallet.frame.parent = {} as unknown as WebFrameMain
     expect(authorization.authorizeRenderer(wallet.event)).toBeUndefined()
 
     wallet.frame.parent = null

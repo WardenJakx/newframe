@@ -139,7 +139,7 @@ it('resolves catalog and native artwork from wallet state for real Flash asset i
 
   render(<OrderDetails capability={ordersCapability} onBack={() => {}} orderId='image-order' />)
 
-  expect(Array.from(document.querySelectorAll('img')).map((image) => image.getAttribute('src'))).toEqual(
-    expect.arrayContaining(['data:image/png;base64,d2V0aA==', 'data:image/png;base64,ZXRo'])
-  )
+  const imageSources = Array.from(document.querySelectorAll('img')).map((image) => image.getAttribute('src'))
+  expect(imageSources).toContain('data:image/png;base64,d2V0aA==')
+  expect(imageSources).toContain('data:image/png;base64,ZXRo')
 })

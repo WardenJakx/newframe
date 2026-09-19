@@ -300,9 +300,10 @@ test('discovers contracts through the requested chain and imports configuration 
     call: async (chainId, address, data) => {
       expect(chainId).toBe(8453)
       expect(address).toBe(multicallAddress)
-      const [batch] = multicall.decodeFunctionData('aggregate3', data)
+      const [decodedBatch] = multicall.decodeFunctionData('aggregate3', data)
+      const batch = decodedBatch as Array<{ target: string; callData: string }>
       return multicall.encodeFunctionResult('aggregate3', [
-        Array.from(batch, (entry: { target: string; callData: string }) => {
+        Array.from(batch, (entry) => {
           expect(entry.target).toBe(safe)
           const method = abi.getFunction(entry.callData.slice(0, 10))!.name
           calls.push(method)

@@ -46,6 +46,28 @@ export interface SubscriptionPayload {
   }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+export function isRpcResponsePayload(value: unknown): value is RpcResult | SubscriptionPayload {
+  if (!isRecord(value)) {
+    return false
+  }
+  if (value.method === 'eth_subscription') {
+    return (
+      value.jsonrpc === '2.0' &&
+      isRecord(value.params) &&
+      typeof value.params.subscription === 'string' &&
+      'result' in value.params
+    )
+  }
+  return (
+    (typeof value.id === 'string' || typeof value.id === 'number') &&
+    (!value.jsonrpc || value.jsonrpc === '2.0')
+  )
+}
+
 export type EthersRpcProvider = JsonRpcApiProvider
 
 interface CloseAwareSocket {
@@ -112,9 +134,9 @@ export class FrameWebSocketProvider extends WebSocketProvider {
 
   override async _processMessage(message: string) {
     try {
-      const payload = JSON.parse(message) as SubscriptionPayload
+      const payload: unknown = JSON.parse(message)
 
-      if (payload?.method === 'eth_subscription') {
+      if (isRpcResponsePayload(payload) && 'method' in payload) {
         this.frameEvents.emit('subscription', payload)
       }
     } catch {

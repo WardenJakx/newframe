@@ -60,7 +60,7 @@ export function NetworkSelector({ label, onSelect, options }: NetworkSelectorPro
       label={label}
       menuAlign='end'
       menuWidth='wide'
-      onOpenChange={(nextOpen) => {
+      onOpenChange={(nextOpen: boolean) => {
         setOpen(nextOpen)
         if (!nextOpen) {
           setQuery('')

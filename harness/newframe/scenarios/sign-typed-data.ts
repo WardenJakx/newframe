@@ -48,6 +48,20 @@ const TYPED_TYPES = {
 let frame: ReturnType<typeof createFrameProvider>
 let provider: BrowserProvider
 
+function requireString(value: unknown, label: string) {
+  if (typeof value !== 'string') {
+    throw new Error(`${label} returned a non-string value`)
+  }
+  return value
+}
+
+function requireFirstAddress(value: unknown) {
+  if (!Array.isArray(value) || typeof value[0] !== 'string') {
+    throw new Error('eth_requestAccounts returned no address')
+  }
+  return value[0]
+}
+
 const waitForFrameConnect = () =>
   new Promise<void>((resolve, reject) => {
     if (frame.connected) {
@@ -78,16 +92,12 @@ async function main() {
         frame.request({ method, params })
     })
 
-    const accounts: unknown = await provider.send('eth_requestAccounts', [])
-    if (!Array.isArray(accounts) || typeof accounts[0] !== 'string') {
-      throw new Error('No account available')
-    }
-    const address = accounts[0]
+    const address = requireFirstAddress(await provider.send('eth_requestAccounts', []))
     const expectedDigest = TypedDataEncoder.hash(TYPED_DATA.domain, TYPED_TYPES, TYPED_DATA.message)
     const signaturePromise = provider.send('eth_signTypedData_v4', [address, JSON.stringify(TYPED_DATA)])
     console.log(JSON.stringify({ address, expectedDigest, label: 'EIP-712 Digest' }))
 
-    const signature = String(await signaturePromise)
+    const signature = requireString(await signaturePromise, 'eth_signTypedData_v4')
     const recovered = verifyTypedData(TYPED_DATA.domain, TYPED_TYPES, TYPED_DATA.message, signature)
     if (!/^0x[0-9a-fA-F]{130}$/.test(signature)) {
       throw new Error('Invalid typed-data signature')

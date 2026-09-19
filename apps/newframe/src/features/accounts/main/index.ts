@@ -5,6 +5,7 @@ import log from 'electron-log'
 import { v5 as uuidv5 } from 'uuid'
 
 import { getProfileAccountIds } from '../../../app/contracts/state/main.js'
+import { getSignerType } from '../../../platform/signing/domain/index.js'
 import type { SigningApprovalContext } from '../../../platform/signing/signers/Signer/index.js'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
 import type { ActivityRecord, Token } from '../../../platform/state-store/state/index.js'
@@ -211,8 +212,9 @@ export class Accounts extends EventEmitter {
 
     Object.entries(this.storeApi.getAccounts()).forEach(([id, account]) => {
       if (!this.accounts[id]) {
+        const clonedAccount = cloneForActivity(account) ?? account
         this.accounts[id] = new FrameAccount(
-          JSON.parse(JSON.stringify(account)),
+          { ...clonedAccount, lastSignerType: getSignerType(clonedAccount.lastSignerType) },
           this,
           this.store,
           this.dependencies.chainRpc,
@@ -261,8 +263,9 @@ export class Accounts extends EventEmitter {
     }
 
     if (!this.accounts[id]) {
+      const clonedAccount = cloneForActivity(account) ?? account
       this.accounts[id] = new FrameAccount(
-        JSON.parse(JSON.stringify(account)),
+        { ...clonedAccount, lastSignerType: getSignerType(clonedAccount.lastSignerType) },
         this,
         this.store,
         this.dependencies.chainRpc,

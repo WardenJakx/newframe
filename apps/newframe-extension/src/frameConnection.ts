@@ -19,7 +19,12 @@ export interface JsonRpcResponse {
   result?: unknown
   error?: unknown
   method?: string
-  params?: readonly unknown[] | { subscription: string; result: unknown }
+  params?: JsonRpcParams | SubscriptionParams
+}
+
+interface SubscriptionParams {
+  subscription: string
+  result: unknown
 }
 
 interface PendingRequest {
@@ -62,23 +67,35 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
+function isJsonRpcId(value: unknown): value is number | string {
+  return typeof value === 'number' || typeof value === 'string'
+}
+
+function isSubscriptionParams(value: unknown): value is SubscriptionParams {
+  return isRecord(value) && typeof value.subscription === 'string' && 'result' in value
+}
+
 function isJsonRpcResponse(value: unknown): value is JsonRpcResponse {
-  if (!isRecord(value) || (!('id' in value) && !('method' in value))) {
+  if (!isRecord(value)) {
     return false
   }
-  if (value.id !== undefined && typeof value.id !== 'number' && typeof value.id !== 'string') {
+
+  if ('id' in value && value.id !== undefined && !isJsonRpcId(value.id)) {
     return false
   }
-  if (value.jsonrpc !== undefined && value.jsonrpc !== '2.0') {
+  if ('jsonrpc' in value && value.jsonrpc !== undefined && value.jsonrpc !== '2.0') {
     return false
   }
-  if (value.method !== undefined && typeof value.method !== 'string') {
+  if ('method' in value && value.method !== undefined && typeof value.method !== 'string') {
     return false
   }
-  if (value.params === undefined || Array.isArray(value.params)) {
-    return true
+  if ('params' in value && value.params !== undefined) {
+    if (!Array.isArray(value.params) && !isSubscriptionParams(value.params)) {
+      return false
+    }
   }
-  return isRecord(value.params) && typeof value.params.subscription === 'string'
+
+  return value.id !== undefined || (typeof value.method === 'string' && isSubscriptionParams(value.params))
 }
 
 function normalizeParams(params?: JsonRpcParams) {
@@ -315,8 +332,6 @@ export class RawFrameConnection extends EventEmitter {
       payloads.forEach((load) => {
         if (isJsonRpcResponse(load)) {
           this.emit('payload', load)
-        } else {
-          this.handleError(new Error('Received an invalid JSON-RPC payload'))
         }
       })
     } catch (e) {
@@ -394,7 +409,7 @@ export default class FrameBackgroundProvider extends EventEmitter {
   connection: RawFrameConnection
   nextId = 1
 
-  private promises: Record<number, PendingRequest> = {}
+  private promises: Record<number | string, PendingRequest> = {}
   private attemptedSubscriptions = new Set<ProviderEvent>()
   private subscriptionEvents = new Map<string, ProviderEvent>()
   private checkConnectionRunning = false
@@ -411,8 +426,8 @@ export default class FrameBackgroundProvider extends EventEmitter {
       this.checkConnection().catch(console.error)
     })
     this.connection.on('close', () => this.handleClose())
-    this.connection.on('payload', (payload) => this.handlePayload(payload))
-    this.on('newListener', (event) => this.handleNewListener(event))
+    this.connection.on('payload', (payload: JsonRpcResponse) => this.handlePayload(payload))
+    this.on('newListener', (event: string | symbol) => this.handleNewListener(event))
   }
 
   request<T = unknown>(payload: JsonRpcPayload) {
@@ -500,8 +515,9 @@ export default class FrameBackgroundProvider extends EventEmitter {
     const send = () =>
       new Promise<T>((resolve, reject) => {
         try {
-          const payload = createPayload(method, normalizeParams(params), this.nextId++, targetChain, options)
-          this.promises[payload.id as number] = {
+          const id = this.nextId++
+          const payload = createPayload(method, normalizeParams(params), id, targetChain, options)
+          this.promises[id] = {
             method,
             resolve: (value) => resolve(value as T),
             reject
@@ -532,12 +548,12 @@ export default class FrameBackgroundProvider extends EventEmitter {
 
   private handlePayload(payload: JsonRpcResponse) {
     if (typeof payload.id !== 'undefined') {
-      const pending = this.promises[payload.id as number]
+      const pending = this.promises[payload.id]
       if (!pending) {
         return
       }
 
-      delete this.promises[payload.id as number]
+      delete this.promises[payload.id]
       if (payload.error) {
         pending.reject(payload.error)
       } else {
@@ -546,11 +562,7 @@ export default class FrameBackgroundProvider extends EventEmitter {
       return
     }
 
-    if (
-      !payload.method?.includes('_subscription') ||
-      !isRecord(payload.params) ||
-      typeof payload.params.subscription !== 'string'
-    ) {
+    if (!payload.method?.includes('_subscription') || !isSubscriptionParams(payload.params)) {
       return
     }
 

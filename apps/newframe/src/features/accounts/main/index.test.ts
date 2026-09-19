@@ -321,8 +321,8 @@ describe('#routeRequest', () => {
         }
       }
     })
-    expect(canonicalRequest().authorization?.actionId).toEqual(expect.any(String))
-    expect(canonicalRequest().authorization?.decidedAt).toEqual(expect.any(Number))
+    expect(typeof canonicalRequest().authorization?.actionId).toBe('string')
+    expect(typeof canonicalRequest().authorization?.decidedAt).toBe('number')
   })
 
   it('rejects an unminted principal without queueing the request', () => {
@@ -334,9 +334,14 @@ describe('#routeRequest', () => {
       entrypoint: 'tray',
       webContentsId: 1,
       windowInstanceId: 'forged'
-    } as unknown as TrustedPrincipal
+    }
 
-    expect(Accounts.routeRequest(forgedPrincipal, { ...request, account: account.address })).toBe(false)
+    expect(
+      Accounts.routeRequest(forgedPrincipal as unknown as TrustedPrincipal, {
+        ...request,
+        account: account.address
+      })
+    ).toBe(false)
     expect(canonicalRequest()).toBeUndefined()
     expect(respond).toHaveBeenCalledWith({
       id: request.payload.id,
@@ -557,7 +562,11 @@ describe('#startDataScanner', () => {
 
     expect(accounts.refreshPositions(account.address, 31337, [token])).toBe(true)
     const tokenId = `${token.chainId}:${token.address}`
-    expect(storeState().main.tokens.byId[tokenId]).toEqual(expect.objectContaining(token))
+    expect(storeState().main.tokens.byId[tokenId]).toEqual(
+      expect.objectContaining(token) as unknown as NonNullable<
+        ReturnType<typeof storeState>['main']['tokens']['byId'][string]
+      >
+    )
     expect(storeState().main.tokens.accountTokenIds[account.address]).toContain(tokenId)
     expect(externalDataScannerMock.refreshPositions).toHaveBeenCalledWith(account.address, 31337, [token])
 
@@ -741,7 +750,11 @@ describe('#setTxSent', () => {
       symbol: 'USDC'
     }
     const tokenId = `1:${expectedToken.address}`
-    expect(storeState().main.tokens.byId[tokenId]).toEqual(expect.objectContaining(expectedToken))
+    expect(storeState().main.tokens.byId[tokenId]).toEqual(
+      expect.objectContaining(expectedToken) as unknown as NonNullable<
+        ReturnType<typeof storeState>['main']['tokens']['byId'][string]
+      >
+    )
     expect(storeState().main.tokens.accountTokenIds[account.address]).toContain(tokenId)
 
     timers.advanceTimersByTime(1000)
@@ -749,9 +762,11 @@ describe('#setTxSent', () => {
 
     expect(externalDataScannerMock.refreshPositions).toHaveBeenCalledTimes(1)
     expect(externalDataScannerMock.refreshPositions).toHaveBeenCalledWith(account.address, 1, [
-      expect.objectContaining(expectedToken)
+      expect.objectContaining(expectedToken) as unknown as typeof expectedToken
     ])
-    expect(storeState().main.activity[hash].positionsRefreshedAt).toEqual(expect.any(Number))
+    expect(storeState().main.activity[hash].positionsRefreshedAt).toEqual(
+      expect.any(Number) as unknown as number
+    )
     expect(storeState().main.activity[hash].balanceChanges).toEqual(
       (simulation.effects ?? []) as NonNullable<ActivityRecord['balanceChanges']>
     )
@@ -959,7 +974,7 @@ describe('#setTxSent', () => {
       expect.objectContaining({
         status: 'succeeded',
         confirmations: TRANSACTION_CONFIRMATION_TARGET
-      })
+      }) as unknown as ActivityRecord
     )
 
     accounts.close()
@@ -1074,6 +1089,6 @@ describe('#clearRequestsByOrigin', () => {
 
   it('should remove any request from a given origin', () => {
     Accounts.clearRequestsByOrigin(account.id, request.origin)
-    expect(Object.keys(Accounts.accounts[account.id].requests)).toHaveLength(1)
+    expect(Object.keys(Accounts.accounts[account.id].requests as Record<string, unknown>)).toHaveLength(1)
   })
 })

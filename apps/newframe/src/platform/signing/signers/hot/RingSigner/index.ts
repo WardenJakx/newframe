@@ -20,6 +20,38 @@ type V1Keystore = {
   Version: string
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function isV1Keystore(value: unknown): value is V1Keystore {
+  if (!isRecord(value) || value.Version !== '1' || !isRecord(value.Crypto)) {
+    return false
+  }
+
+  const crypto = value.Crypto
+  if (!isRecord(crypto.KeyHeader) || !isRecord(crypto.KeyHeader.KdfParams)) {
+    return false
+  }
+
+  const params = crypto.KeyHeader.KdfParams
+  return (
+    typeof crypto.CipherText === 'string' &&
+    typeof crypto.IV === 'string' &&
+    typeof crypto.KeyHeader.Kdf === 'string' &&
+    typeof params.DkLen === 'number' &&
+    typeof params.N === 'number' &&
+    typeof params.P === 'number' &&
+    typeof params.R === 'number' &&
+    typeof crypto.MAC === 'string' &&
+    typeof crypto.Salt === 'string'
+  )
+}
+
+function keystoreVersion(keystore: Record<string, unknown>) {
+  return keystore.version ?? Number(keystore.Version)
+}
+
 const addHexPrefix = (value: string) => (value.startsWith('0x') ? value : `0x${value}`)
 const stripHexPrefix = (value: string) => (value.startsWith('0x') ? value.slice(2) : value)
 const hexToBuffer = (value: string) => Buffer.from(stripHexPrefix(value), 'hex')
@@ -149,13 +181,16 @@ class RingSigner extends HotSigner {
   ) {
     let privateKey: Buffer | undefined
     try {
-      if (!keystore || typeof keystore !== 'object' || Array.isArray(keystore)) {
-        return cb(new Error('Invalid keystore version'), undefined)
+      if (!isRecord(keystore)) {
+        return cb(new Error('Invalid keystore'), undefined)
       }
-      const candidate = keystore as { version?: unknown; Version?: unknown }
-      const version = candidate.version ?? Number(candidate.Version)
+
+      const version = keystoreVersion(keystore)
       if (version === 1) {
-        privateKey = await decryptV1Keystore(keystore as V1Keystore, keystorePassword)
+        if (!isV1Keystore(keystore)) {
+          return cb(new Error('Invalid V1 keystore'), undefined)
+        }
+        privateKey = await decryptV1Keystore(keystore, keystorePassword)
       } else if (version === 3) {
         const wallet = await Wallet.fromEncryptedJson(JSON.stringify(keystore), keystorePassword)
         privateKey = hexToBuffer(wallet.privateKey)

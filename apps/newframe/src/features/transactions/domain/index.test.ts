@@ -1,25 +1,20 @@
 import { describe, expect, it } from 'bun:test'
 
 import {
-  getPaidTransactionFee as getPaidTransactionFeeTyped,
-  getTransactionEffects as getTransactionEffectsTyped,
-  getTransactionIntent as getTransactionIntentTyped,
-  getTransactionPositionTokens as getTransactionPositionTokensTyped,
-  normalizeChainId as normalizeChainIdTyped,
+  getPaidTransactionFee,
+  getTransactionEffects,
+  getTransactionIntent,
+  getTransactionPositionTokens,
+  normalizeChainId,
+  type TransactionData,
+  type TransactionEffect,
   typeSupportsBaseFee,
   usesBaseFee
 } from './index'
 
-const getPaidTransactionFee = (request: unknown) =>
-  getPaidTransactionFeeTyped(request as Parameters<typeof getPaidTransactionFeeTyped>[0])
-const getTransactionEffects = (request: unknown) =>
-  getTransactionEffectsTyped(request as Parameters<typeof getTransactionEffectsTyped>[0])
-const getTransactionIntent = (request: unknown) =>
-  getTransactionIntentTyped(request as Parameters<typeof getTransactionIntentTyped>[0])
-const getTransactionPositionTokens = (request: unknown) =>
-  getTransactionPositionTokensTyped(request as Parameters<typeof getTransactionPositionTokensTyped>[0])
-const normalizeChainId = (transaction: unknown, chainId?: number): unknown =>
-  normalizeChainIdTyped(transaction as RPC.SendTransaction.TxParams, chainId)
+function effectMatching(effect: Partial<TransactionEffect>): TransactionEffect {
+  return expect.objectContaining(effect) as TransactionEffect
+}
 
 describe('#typeSupportsBaseFee', () => {
   it('does not support a base fee for type 0', () => {
@@ -41,7 +36,7 @@ describe('#usesBaseFee', () => {
       type: '0x0'
     }
 
-    expect(usesBaseFee(tx as Parameters<typeof usesBaseFee>[0])).toBe(false)
+    expect(usesBaseFee(tx as unknown as TransactionData)).toBe(false)
   })
 
   it('does not use a base fee for transaction type 1', () => {
@@ -49,7 +44,7 @@ describe('#usesBaseFee', () => {
       type: '0x1'
     }
 
-    expect(usesBaseFee(tx as Parameters<typeof usesBaseFee>[0])).toBe(false)
+    expect(usesBaseFee(tx as unknown as TransactionData)).toBe(false)
   })
 
   it('uses a base fee for transaction type 2', () => {
@@ -57,7 +52,7 @@ describe('#usesBaseFee', () => {
       type: '0x2'
     }
 
-    expect(usesBaseFee(tx as Parameters<typeof usesBaseFee>[0])).toBe(true)
+    expect(usesBaseFee(tx as unknown as TransactionData)).toBe(true)
   })
 })
 
@@ -65,13 +60,13 @@ describe('#normalizeChainId', () => {
   it('does not modify a transaction with no chain id', () => {
     const tx = { to: '0xframe' }
 
-    expect(normalizeChainId(tx as Parameters<typeof normalizeChainId>[0])).toStrictEqual(tx)
+    expect(normalizeChainId(tx as unknown as RPC.SendTransaction.TxParams) as unknown).toStrictEqual(tx)
   })
 
   it('normalizes a hex-prefixed chain id', () => {
     const tx = { to: '0xframe', chainId: '0xa' }
 
-    expect(normalizeChainId(tx as Parameters<typeof normalizeChainId>[0])).toStrictEqual({
+    expect(normalizeChainId(tx as unknown as RPC.SendTransaction.TxParams)).toStrictEqual({
       to: '0xframe',
       chainId: '0xa'
     })
@@ -80,7 +75,7 @@ describe('#normalizeChainId', () => {
   it('does not handle a hex chain id with no prefix', () => {
     const tx = { to: '0xframe', chainId: 'a' }
 
-    expect(() => normalizeChainId(tx as Parameters<typeof normalizeChainId>[0])).toThrow(
+    expect(() => normalizeChainId(tx as unknown as RPC.SendTransaction.TxParams)).toThrow(
       /chain for transaction.*is not a hex-prefixed string/i
     )
   })
@@ -88,7 +83,7 @@ describe('#normalizeChainId', () => {
   it('normalizes a numeric chain id', () => {
     const tx = { to: '0xframe', chainId: 14 }
 
-    expect(normalizeChainId(tx as Parameters<typeof normalizeChainId>[0])).toStrictEqual({
+    expect(normalizeChainId(tx as unknown as RPC.SendTransaction.TxParams)).toStrictEqual({
       to: '0xframe',
       chainId: '0xe'
     })
@@ -97,7 +92,7 @@ describe('#normalizeChainId', () => {
   it('normalizes a numeric string chain id', () => {
     const tx = { to: '0xframe', chainId: '100' }
 
-    expect(normalizeChainId(tx as Parameters<typeof normalizeChainId>[0])).toStrictEqual({
+    expect(normalizeChainId(tx as unknown as RPC.SendTransaction.TxParams)).toStrictEqual({
       to: '0xframe',
       chainId: '0x64'
     })
@@ -136,10 +131,7 @@ describe('#getTransactionIntent', () => {
       recognizedActions: [{ id: 'erc20:transfer', data: {} }]
     }
 
-    expect(getTransactionIntent(req)).toEqual({
-      title: 'Send USDC',
-      subtitle: 'USD Coin'
-    })
+    expect(getTransactionIntent(req)).toEqual({ title: 'Send USDC', subtitle: 'USD Coin' })
   })
 
   it('falls back to decoded contract calls', () => {
@@ -388,7 +380,7 @@ describe('#getTransactionEffects', () => {
     const token = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
     const spender = '0x0000000000000000000000000000000000001337'
     const otherSpender = '0x0000000000000000000000000000000000002222'
-    const observed = {
+    const observed: TransactionEffect = {
       id: 'observed-1',
       kind: 'allowance',
       direction: 'neutral',
@@ -406,12 +398,7 @@ describe('#getTransactionEffects', () => {
       },
       recognizedActions: [spender, otherSpender].map((address) => ({
         id: 'erc20:approve',
-        data: {
-          contract: token,
-          spender: { address },
-          amount: '0x5',
-          symbol: 'USDC'
-        }
+        data: { contract: token, spender: { address }, amount: '0x5', symbol: 'USDC' }
       })),
       decodedData: {
         method: 'approve',
@@ -422,10 +409,7 @@ describe('#getTransactionEffects', () => {
     expect(effects).toEqual([
       observed,
       { ...observed, id: 'observed-2', amount: '0x5' },
-      expect.objectContaining({
-        id: 'erc20-approval-1',
-        spenderAddress: otherSpender
-      })
+      effectMatching({ id: 'erc20-approval-1', spenderAddress: otherSpender })
     ])
   })
 
@@ -455,9 +439,7 @@ describe('#getTransactionEffects', () => {
             amount: '0x7ed6b40',
             decimals: 6,
             symbol: 'USDC',
-            recipient: {
-              address: '0x0000000000000000000000000000000000001337'
-            }
+            recipient: { address: '0x0000000000000000000000000000000000001337' }
           }
         }
       ]
@@ -470,7 +452,7 @@ describe('#getTransactionEffects', () => {
 describe('#getTransactionPositionTokens', () => {
   it('returns unique ERC-20 balance deltas with account-position metadata', () => {
     const usdc = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
-    const req = {
+    const req: Parameters<typeof getTransactionPositionTokens>[0] = {
       data: { chainId: '0xa' },
       simulation: {
         status: 'success',
@@ -479,12 +461,14 @@ describe('#getTransactionPositionTokens', () => {
             id: 'native-out',
             kind: 'native',
             direction: 'out',
+            label: 'Native transfer',
             symbol: 'ETH'
           },
           {
             id: 'usdc-in',
             kind: 'erc20',
             direction: 'in',
+            label: 'Token received',
             decimals: 6,
             symbol: 'USDC',
             assetAddress: usdc,
@@ -494,6 +478,7 @@ describe('#getTransactionPositionTokens', () => {
             id: 'usdc-out',
             kind: 'erc20',
             direction: 'out',
+            label: 'Token sent',
             decimals: 6,
             symbol: 'USDC',
             assetAddress: usdc
@@ -502,6 +487,7 @@ describe('#getTransactionPositionTokens', () => {
             id: 'allowance',
             kind: 'erc20',
             direction: 'neutral',
+            label: 'Ignored allowance',
             decimals: 18,
             symbol: 'IGNORED',
             assetAddress: '0x0000000000000000000000000000000000001337'

@@ -10,7 +10,12 @@ import { RequestStatus } from '../../features/requests/contract/requests'
 import { customTokens, tokensForAccount } from '../../features/tokens/domain'
 import { NATIVE_CURRENCY } from '../../features/tokens/domain/constants'
 import type { Token, TokenCatalog, TokenRecord } from '../../features/tokens/domain/state/token'
+import type { CanonicalStore } from './actions'
 import createInitialState from './state'
+import type { ActivityRecord } from './state'
+
+type AccountRecord = CanonicalStore['main']['accounts'][string]
+type StatusNotification = CanonicalStore['view']['notifications'][string]
 
 beforeAll(() => {
   log.transports.console.level = false
@@ -289,7 +294,11 @@ describe('#upsertTokens', () => {
     actions.upsertTokens([testTokens.badger], { custom: true, source: 'custom' })
 
     expect(customTokens(getState().main.tokens)).toEqual([
-      expect.objectContaining({ ...testTokens.badger, custom: true, sources: ['custom'] })
+      expect.objectContaining({
+        ...testTokens.badger,
+        custom: true,
+        sources: ['custom']
+      }) as unknown as TokenRecord
     ])
   })
 
@@ -305,7 +314,10 @@ describe('#upsertTokens', () => {
 
     expect(Object.keys(getState().main.tokens.byId)).toHaveLength(1)
     expect(tokensForAccount(getState().main.tokens, account)).toEqual([
-      expect.objectContaining({ symbol: 'BAD', sources: ['onchain', 'portfolio'] })
+      expect.objectContaining({
+        symbol: 'BAD',
+        sources: ['onchain', 'portfolio']
+      }) as unknown as TokenRecord
     ])
   })
 
@@ -885,7 +897,9 @@ describe('#resetSavedData', () => {
     actions.resetSavedData()
     const main = getState().main
 
-    expect(customTokens(main.tokens)).toEqual([expect.objectContaining(testTokens.zrx)])
+    expect(customTokens(main.tokens)).toEqual([
+      expect.objectContaining(testTokens.zrx) as unknown as TokenRecord
+    ])
     expect(main.tokens.accountTokenIds).toStrictEqual({})
     expect(main.balances[owner]).toStrictEqual([storedBalance(testTokens.zrx, '0x1')])
     expect(main.balances[otherOwner]).toStrictEqual([])
@@ -971,7 +985,7 @@ describe('#activity actions', () => {
         status: 'confirming',
         confirmations: 2,
         updatedAt: confirmingAt.getTime()
-      })
+      }) as unknown as ActivityRecord
     )
 
     setSystemTime(completedAt)
@@ -983,7 +997,7 @@ describe('#activity actions', () => {
         completedAt: completedAt.getTime(),
         updatedAt: completedAt.getTime(),
         receipt: { status: '0x1' }
-      })
+      }) as unknown as ActivityRecord
     )
 
     actions.pruneActivity('tx-1')
@@ -1031,7 +1045,7 @@ describe('#status notification actions', () => {
         detail: 'Confirmed',
         expiresAt,
         updatedAt: resolvedAt.getTime()
-      })
+      }) as unknown as StatusNotification
     )
 
     setSystemTime(dismissedAt)
@@ -1042,7 +1056,7 @@ describe('#status notification actions', () => {
         hidden: true,
         dismissedAt: dismissedAt.getTime(),
         updatedAt: dismissedAt.getTime()
-      })
+      }) as unknown as StatusNotification
     )
 
     actions.expireNotification('notification-1')
@@ -1125,7 +1139,7 @@ describe('#canonical action boundaries', () => {
         name: 'After',
         id: accountId,
         address: accountId
-      })
+      }) as unknown as AccountRecord
     )
     expect(harness.getState().main.accounts[accountId].requests['request-1']).toMatchObject({
       status: 'pending',

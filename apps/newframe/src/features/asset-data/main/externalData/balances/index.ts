@@ -143,6 +143,28 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
   const pendingScans = new Set<NodeJS.Timeout>()
   const readyContinuations = new Map<() => void, BalancesWorkerController>()
 
+  const isCurrencyBalance = (value: unknown): value is CurrencyBalance =>
+    !!value &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    'chainId' in value &&
+    typeof value.chainId === 'number' &&
+    'balance' in value &&
+    typeof value.balance === 'string' &&
+    'displayBalance' in value &&
+    typeof value.displayBalance === 'string'
+
+  const isTokenBalance = (value: unknown): value is TokenBalance =>
+    isCurrencyBalance(value) &&
+    'address' in value &&
+    typeof value.address === 'string' &&
+    'decimals' in value &&
+    typeof value.decimals === 'number' &&
+    'name' in value &&
+    typeof value.name === 'string' &&
+    'symbol' in value &&
+    typeof value.symbol === 'string'
+
   function attemptRestart() {
     log.warn(`balances controller stopped, restarting in ${RESTART_WAIT} seconds`)
     stop()
@@ -224,12 +246,16 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
     }
 
     workerController.once('close', handleClose)
-    workerController.on('chainBalances', (address, balances) => {
-      handleUpdate(address, handleChainBalanceUpdate.bind(null, balances))
+    workerController.on('chainBalances', (address: unknown, balances: unknown) => {
+      if (typeof address === 'string' && Array.isArray(balances) && balances.every(isCurrencyBalance)) {
+        handleUpdate(address, handleChainBalanceUpdate.bind(null, balances))
+      }
     })
 
-    workerController.on('tokenBalances', (address, balances) => {
-      handleUpdate(address, handleTokenBalanceUpdate.bind(null, balances))
+    workerController.on('tokenBalances', (address: unknown, balances: unknown) => {
+      if (typeof address === 'string' && Array.isArray(balances) && balances.every(isTokenBalance)) {
+        handleUpdate(address, handleTokenBalanceUpdate.bind(null, balances))
+      }
     })
 
     return true
@@ -493,7 +519,10 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
       const unknownBalances = changedBalances.filter((b) => parseInt(b.balance) > 0 && !isKnown(b))
 
       if (unknownBalances.length > 0) {
-        store.getState().upsertTokens(unknownBalances, { account: address, source: 'onchain' })
+        store.getState().upsertTokens(unknownBalances, {
+          account: address,
+          source: 'onchain'
+        })
       }
 
       // remove zero balances from the list of known tokens
@@ -554,5 +583,15 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
     runWhenReady(() => workerController?.updateKnownTokenBalances(address, trackedTokens))
   }
 
-  return { start, stop, resume, pause, refresh, refreshPositions, setAddress, addNetworks, addTokens }
+  return {
+    start,
+    stop,
+    resume,
+    pause,
+    refresh,
+    refreshPositions,
+    setAddress,
+    addNetworks,
+    addTokens
+  }
 }

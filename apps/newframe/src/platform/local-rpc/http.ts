@@ -142,7 +142,7 @@ export function createHttpRpcTransport({
       return
     }
 
-    const body: Buffer[] = []
+    const body: Buffer<ArrayBufferLike>[] = []
     const processRequest = async () => {
       res.on('error', (error) => log.error('HTTP response error', error))
       const data = Buffer.concat(body).toString()
@@ -252,7 +252,7 @@ export function createHttpRpcTransport({
       })
     }
     req
-      .on('data', (chunk) => body.push(Buffer.from(chunk)))
+      .on('data', (chunk: string | Uint8Array) => body.push(Buffer.from(chunk)))
       .on('end', () => {
         // Request failures are converted to HTTP responses inside processRequest.
         void processRequest()

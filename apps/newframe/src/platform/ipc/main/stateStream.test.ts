@@ -8,10 +8,14 @@ import { projectRendererState } from '../../state-sync/main/projections'
 import type { AuthorizationContext } from './authorization'
 import { createStateStream, type StateStream } from './stateStream'
 
-type TestProjectedState = {
+type ProjectedRecord = Record<string, unknown>
+type ProjectedAccount = ProjectedRecord & {
+  requests?: Record<string, ProjectedRecord>
+}
+type TestProjectedState = ProjectedRecord & {
   assetRates: Record<string, unknown>
   accountOrder: string[]
-  accounts: Record<string, Record<string, unknown> & { requests?: Record<string, Record<string, unknown>> }>
+  accounts: Record<string, ProjectedAccount>
   networksMeta: { ethereum: Record<number, Record<string, unknown>> }
   operations: Record<string, unknown>
   orders: Record<string, unknown>
@@ -72,7 +76,7 @@ function renderer(id = 1) {
   const sender = {
     id,
     isDestroyed: mock(() => false),
-    once: mock(),
+    once: mock((_event: string, _listener: () => void) => {}),
     send: mock((_channel: string, _message: TestStateMessage) => {})
   }
 
@@ -206,7 +210,7 @@ describe('renderer state stream', () => {
     const [channel, snapshot] = sender.send.mock.calls[0]
     expect(channel).toBe(StateMessageChannel)
     expect(snapshot).toMatchObject({ revision: 0, state: { currentAccount: '' } })
-    expect(snapshot.streamId).toEqual(expect.any(String))
+    expect(typeof snapshot.streamId).toBe('string')
     expect(snapshot.state).not.toHaveProperty('main')
     expect(snapshot.state).not.toHaveProperty('lattice')
     expect(snapshot.state).not.toHaveProperty('futureCredential')
@@ -545,7 +549,7 @@ describe('renderer state stream', () => {
     authorizeRenderer.mockReturnValue(authorization('wallet-ui', sender.id))
     expect(connectState(event)).toEqual({ ok: true })
 
-    const destroyed = sender.once.mock.calls[0][1] as () => void
+    const destroyed = sender.once.mock.calls[0][1]
     destroyed()
     store.getState().setAssetRates({
       token: { usdRate: 2, source: 'zerion', observedAt: 2 }
