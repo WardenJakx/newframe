@@ -71,6 +71,7 @@ export default function MessageToSign({
     return (
       <Surface padding='large' tone='transparent'>
         <Stack gap='medium'>
+          <RequestOrigin originName={requester} favicon={favicon} description='wants you to sign a message' />
           {message.includes('wants you to sign in with your Ethereum account') ? (
             <Text tone='danger' variant='supporting'>
               This message resembles a sign-in request but has an invalid format. Review the full message.
