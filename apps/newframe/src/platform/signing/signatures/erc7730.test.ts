@@ -129,6 +129,33 @@ describe('ERC-7730 typed data clear signing', () => {
     ])
   })
 
+  test('uses the default token threshold message when the descriptor message is not a string', () => {
+    const fields = DESCRIPTOR.display.formats[
+      'Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)'
+    ].fields.map((field) =>
+      field.path === 'value'
+        ? { ...field, params: { threshold: 1_000_000, message: { label: 'Approve all' } } }
+        : field
+    )
+    const descriptor = {
+      ...DESCRIPTOR,
+      display: {
+        formats: {
+          'Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)': {
+            ...DESCRIPTOR.display.formats[
+              'Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)'
+            ],
+            fields
+          }
+        }
+      }
+    }
+
+    const display = formatErc7730TypedData({ data: TYPED_DATA, version: SignTypedDataVersion.V4 }, descriptor)
+
+    expect(display?.rows.find((row) => row.path === 'value')?.value).toBe('Unlimited USDC')
+  })
+
   test('does not apply a descriptor bound to a different domain', () => {
     const display = formatErc7730TypedData(
       { data: TYPED_DATA, version: SignTypedDataVersion.V4 },
@@ -152,7 +179,14 @@ describe('ERC-7730 typed data clear signing', () => {
     const descriptorPath = 'registry/test/eip712-permit.json'
     const encodeTypeHash = getEip712EncodeTypeHash(TYPED_DATA.types, TYPED_DATA.primaryType)
     const fetcher = async (url: string | URL | Request) => {
-      const href = url.toString()
+      let href: string
+      if (typeof url === 'string') {
+        href = url
+      } else if (url instanceof URL) {
+        href = url.href
+      } else {
+        href = url.url
+      }
       if (href.endsWith('/index.eip712.json')) {
         return new Response(
           JSON.stringify({

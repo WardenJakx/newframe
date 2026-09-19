@@ -3,10 +3,16 @@ export const FLASH_MAX_TWAP_DURATION_SECONDS = 2_592_000
 export const FLASH_MIN_TWAP_BUCKET_COUNT = 2
 export const FLASH_MAX_TWAP_BUCKET_COUNT = 2_560
 
-export const cleanFlashDecimal = (value: unknown = '') =>
-  String(value ?? '')
-    .trim()
-    .replace(/,/g, '')
+export const cleanFlashDecimal = (value: unknown = '') => {
+  let decimal = ''
+  if (typeof value === 'string') {
+    decimal = value
+  } else if (typeof value === 'number') {
+    decimal = String(value)
+  }
+
+  return decimal.trim().replace(/,/g, '')
+}
 
 export function positiveFlashNumber(value: unknown = '') {
   const parsed = Number(cleanFlashDecimal(value))
