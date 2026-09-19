@@ -5,6 +5,7 @@
     "src/preload/index.ts!",
     "src/features/asset-data/main/externalData/balances/worker.ts!",
     "scripts/*.ts",
+    "scripts/*.mjs",
     "build/**/*.ts",
     "{src,scripts}/**/*.{test,spec}.{ts,tsx}",
     "test/extension/**/*.{test,spec}.{ts,tsx}",

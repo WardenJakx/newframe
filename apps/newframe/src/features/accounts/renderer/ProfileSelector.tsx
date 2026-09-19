@@ -48,10 +48,6 @@ function isCurrentSubmission(ref: React.RefObject<ProfileSubmission | null>, ope
   return ref.current?.operationId === operationId
 }
 
-const selectorRecipe = cva({
-  base: { flex: '1 1 0', minWidth: 0, marginInline: '4' }
-})
-
 const menuRecipe = cva({
   base: {
     position: 'absolute',
@@ -500,7 +496,6 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
 
   return (
     <div
-      className={selectorRecipe()}
       ref={rootRef}
       onBlur={(event) => {
         if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) {

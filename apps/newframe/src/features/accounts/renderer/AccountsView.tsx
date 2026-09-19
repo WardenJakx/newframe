@@ -36,6 +36,10 @@ const headerRecipe = cva({
   base: { position: 'relative', zIndex: 'header' }
 })
 
+const profileSelectorSlotRecipe = cva({
+  base: { flex: '1 1 0', minWidth: 0, paddingInline: '4' }
+})
+
 const toolsRecipe = cva({
   base: {
     display: 'flex',
@@ -301,7 +305,7 @@ export function AccountsView(props: AccountsViewProps) {
             <Heading level={1} variant='title'>
               Accounts
             </Heading>
-            {props.profileSelector}
+            <div className={profileSelectorSlotRecipe()}>{props.profileSelector}</div>
             <IconButton icon='close' label='Close accounts' onPress={props.onClose} />
           </HeaderBar>
         </div>

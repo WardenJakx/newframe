@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["unicorn"],
+  "jsPlugins": ["./apps/newframe/scripts/oxlint-plugin-newframe.mjs"],
   "options": {
     "typeAware": true
   },
@@ -127,7 +128,8 @@
     "unicorn/error-message": "error",
     "curly": "error",
     "no-nested-ternary": "error",
-    "no-script-url": "error"
+    "no-script-url": "error",
+    "newframe/no-component-root-margin": "error"
   },
   "overrides": [
     {
