@@ -45,7 +45,7 @@ describe('subscription permissions', () => {
     }
     store.setState((state) => {
       state.main.permissions[address] = {
-        permission: { origin, provider: true, handlerId: 'handler' }
+        permission: { origin, provider: true, handlerId: 'test-handler' }
       }
     })
 

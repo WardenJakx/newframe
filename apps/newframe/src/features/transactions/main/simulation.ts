@@ -12,7 +12,6 @@ import type { TransactionRequest } from '../../requests/contract/requests.js'
 import { NATIVE_CURRENCY } from '../../tokens/domain/constants.js'
 import { tokenImageSource } from '../../tokens/domain/index.js'
 import type { TransactionEffect, TransactionSimulation } from '../domain/index.js'
-import type { ApproveAction, TransferAction } from './actions/erc20.js'
 
 const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
 const APPROVAL_TOPIC = '0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925'
@@ -181,18 +180,19 @@ export function isTraceCall(value: unknown): value is TraceCall {
         if (!event || typeof event !== 'object' || Array.isArray(event)) {
           return false
         }
-        if (typeof event.address !== 'string' || !normalizeAddress(event.address)) {
+        const traceEvent = event as Record<string, unknown>
+        if (typeof traceEvent.address !== 'string' || !normalizeAddress(traceEvent.address)) {
           return false
         }
         if (
-          !Array.isArray(event.topics) ||
-          !event.topics.every(
+          !Array.isArray(traceEvent.topics) ||
+          !traceEvent.topics.every(
             (topic: unknown) => typeof topic === 'string' && /^0x[0-9a-f]{64}$/i.test(topic)
           )
         ) {
           return false
         }
-        if (!bytes(event.data)) {
+        if (!bytes(traceEvent.data)) {
           return false
         }
       }
@@ -365,22 +365,33 @@ function tokenFromRequest(
     }
   }
 
-  const matchingAction = ((req.recognizedActions ?? []) as Array<ApproveAction | TransferAction>).find(
-    (action) => {
-      const contract = action.data?.contract
-      return sameAddress(typeof contract === 'string' ? contract : contract?.address, address)
+  const matchingAction = (req.recognizedActions ?? []).find((action) => {
+    if (!action.data || typeof action.data !== 'object' || Array.isArray(action.data)) {
+      return false
     }
-  )
+    const data = action.data as Record<string, unknown>
+    const contract = data.contract
+    const contractAddress =
+      contract && typeof contract === 'object' && !Array.isArray(contract)
+        ? (contract as Record<string, unknown>).address
+        : contract
+    return typeof contractAddress === 'string' && sameAddress(contractAddress, address)
+  })
 
-  if (matchingAction?.data) {
-    const actionData = matchingAction.data as typeof matchingAction.data & { logoURI?: string }
+  if (
+    matchingAction?.data &&
+    typeof matchingAction.data === 'object' &&
+    !Array.isArray(matchingAction.data)
+  ) {
+    const data = matchingAction.data as Record<string, unknown>
+    const symbol = typeof data.symbol === 'string' ? data.symbol : 'Token'
     return {
       address,
       chainId,
-      decimals: matchingAction.data.decimals,
-      logoURI: actionData.logoURI,
-      name: matchingAction.data.name ?? matchingAction.data.symbol ?? 'Token',
-      symbol: matchingAction.data.symbol ?? 'Token'
+      decimals: typeof data.decimals === 'number' ? data.decimals : undefined,
+      logoURI: typeof data.logoURI === 'string' ? data.logoURI : undefined,
+      name: typeof data.name === 'string' ? data.name : symbol,
+      symbol
     }
   }
 }
@@ -419,11 +430,10 @@ async function resolveTokenMetadata(
   }
 
   try {
-    const loaded = (await import('../../../platform/chain-rpc/contracts/erc20.js')).default as
-      | typeof import('../../../platform/chain-rpc/contracts/erc20.js').default
-      | { default: typeof import('../../../platform/chain-rpc/contracts/erc20.js').default }
-    const Erc20Contract =
+    const loaded = (await import('../../../platform/chain-rpc/contracts/erc20.js')).default as unknown
+    const Erc20Contract = (
       loaded && typeof loaded === 'object' && 'default' in loaded ? loaded.default : loaded
+    ) as typeof import('../../../platform/chain-rpc/contracts/erc20.js').default
     const tokenData = await new Erc20Contract(address, chainId, provider).getTokenData()
     return {
       ...tokenData,

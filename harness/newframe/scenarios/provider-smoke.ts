@@ -1,4 +1,4 @@
-import { BrowserProvider, hexlify, toUtf8Bytes, type Eip1193Provider } from 'ethers'
+import { BrowserProvider, hexlify, toUtf8Bytes } from 'ethers'
 
 import createFrameProvider from '../../../apps/newframe/src/features/connections/main/provider/connection.ts'
 
@@ -65,7 +65,7 @@ async function main() {
   try {
     await waitForFrameConnect()
     provider = new BrowserProvider({
-      request: ({ method, params }: Parameters<Eip1193Provider['request']>[0]) =>
+      request: ({ method, params }: { method: string; params?: readonly unknown[] }) =>
         frame.request({ method, params })
     })
     await provider.send('eth_accounts', [])

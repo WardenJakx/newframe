@@ -44,16 +44,8 @@ interface PendingRequest {
   tabId: number
   payloadId: number
   method: string
-  params: NonNullable<JsonRpcPayload['params']>
+  params: unknown
   origin: string
-}
-
-interface DappPayload {
-  id?: number | string
-  method?: string
-  params?: readonly unknown[] | { subscription: string; result?: unknown }
-  result?: unknown
-  type?: string
 }
 
 interface Subscription {
@@ -61,6 +53,31 @@ interface Subscription {
   send: (subload: DappPayload) => void
   type: string
 }
+
+interface DappPayload {
+  id?: number | string
+  jsonrpc?: string
+  method?: string
+  params?: unknown
+  result?: unknown
+  type?: string
+}
+
+interface ExtensionPayload {
+  id?: number
+  location?: unknown
+  method: string
+  params?: unknown[]
+  src?: string
+  tab?: chrome.tabs.Tab
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value)
+
+const isDappPayload = (value: unknown): value is DappPayload => isRecord(value)
+const isExtensionPayload = (value: unknown): value is ExtensionPayload =>
+  isRecord(value) && typeof value.method === 'string'
 
 const subs: Record<string, Subscription> = {}
 const pending: Record<string, PendingRequest> = {}
@@ -82,17 +99,15 @@ const originFromUrl = (url?: string) => {
   const path = url.split('/')
   return `${path[0]}//${path[2]}`
 }
-const getOrigin = (sender: string | { url?: string } = {}) =>
-  originFromUrl(typeof sender === 'string' ? undefined : sender.url)
+const getOrigin = (sender: { url?: string } = {}) => originFromUrl(sender.url)
 const isInjectedUrl = (url = '') => url.startsWith('http') || url.startsWith('file')
 
 const subType = (pendingPayload: PendingRequest) => {
-  try {
-    const type = pendingPayload.params[0]
-    return typeof type === 'string' && subTypes.includes(type) ? type : 'unknown'
-  } catch (e) {
+  if (!Array.isArray(pendingPayload.params)) {
     return 'unknown'
   }
+  const type = pendingPayload.params[0]
+  return typeof type === 'string' && subTypes.includes(type) ? type : 'unknown'
 }
 
 const unsubscribeTab = (tabId: number) => {
@@ -310,7 +325,7 @@ function initProvider(requestApproval = false) {
     sendEvent('close').catch(console.error)
   })
 
-  provider.on('chainsChanged', (chains = []) => {
+  provider.on('chainsChanged', (chains: AvailableChain[] = []) => {
     if (chains[0] && typeof chains[0] === 'object') {
       setChains(chains)
     }
@@ -320,13 +335,16 @@ function initProvider(requestApproval = false) {
     refreshActiveOriginStatus().catch(console.error)
   })
 
-  async function handleDappPayload(payload: DappPayload) {
+  async function handleDappPayload(value: unknown) {
+    if (!isDappPayload(value)) {
+      return
+    }
+    const payload = value
     if (typeof payload.id !== 'undefined') {
-      const pendingRequest = pending[payload.id]
-      if (pendingRequest) {
-        const { tabId, payloadId } = pendingRequest
-        if (pendingRequest.method === 'eth_subscribe' && payload.result) {
-          subs[payload.result as string] = {
+      if (pending[payload.id]) {
+        const { tabId, payloadId } = pending[payload.id]!
+        if (pending[payload.id]!.method === 'eth_subscribe' && typeof payload.result === 'string') {
+          subs[payload.result] = {
             tabId,
             send: (subload) => {
               chrome.tabs.sendMessage(tabId, subload).catch((error: unknown) => {
@@ -336,23 +354,27 @@ function initProvider(requestApproval = false) {
                 console.error('Error sending subscription payload', error)
               })
             },
-            type: subType(pendingRequest)
+            type: subType(pending[payload.id]!)
           }
-        } else if (pendingRequest.method === 'eth_unsubscribe') {
-          const params: unknown[] = payload.params ? ([] as unknown[]).concat(payload.params) : []
-          params.forEach((sub) => delete subs[sub as string])
+        } else if (pending[payload.id]!.method === 'eth_unsubscribe') {
+          const params = Array.isArray(payload.params) ? payload.params : [payload.params]
+          params.forEach((sub) => {
+            if (typeof sub === 'string') {
+              delete subs[sub]
+            }
+          })
         }
         chrome.tabs
           .sendMessage(tabId, Object.assign({}, payload, { id: payloadId, type: 'eth:payload' }))
           .catch(() => {})
-        if (pendingRequest.method === 'eth_chainId' && pendingRequest.tabId === activeTabId) {
-          const payloadOrigin = pendingRequest.origin
+        if (pending[payload.id]!.method === 'eth_chainId' && pending[payload.id]!.tabId === activeTabId) {
+          const payloadOrigin = pending[payload.id]!.origin
           const activeTab = await chrome.tabs.get(activeTabId)
           const activeTabOrigin = originFromUrl(activeTab.url)
           if (activeTabOrigin === payloadOrigin) {
             const chainId = payload.result
-            if (chainId) {
-              setCurrentChain(chainId as string)
+            if (typeof chainId === 'string') {
+              setCurrentChain(chainId)
             }
           }
         }
@@ -360,19 +382,20 @@ function initProvider(requestApproval = false) {
         delete pending[payload.id]
       }
     } else if (
-      payload.method &&
+      typeof payload.method === 'string' &&
       payload.method.indexOf('_subscription') > -1 &&
-      subs[(payload.params as { subscription: string }).subscription]
+      isRecord(payload.params) &&
+      typeof payload.params.subscription === 'string' &&
+      subs[payload.params.subscription]
     ) {
       // Emit subscription result to tab
-      const subscriptionParams = payload.params as { subscription: string; result?: unknown }
-      const sub = subs[subscriptionParams.subscription]!
+      const sub = subs[payload.params.subscription]!
       payload.type = 'eth:payload'
       sub.send(payload)
       if (sub.type === 'chainChanged' && sub.tabId === activeTabId) {
-        const chainId = subscriptionParams.result
-        if (chainId) {
-          setCurrentChain(chainId as string)
+        const chainId = payload.params.result
+        if (typeof chainId === 'string') {
+          setCurrentChain(chainId)
         }
       }
     }
@@ -391,29 +414,39 @@ function destroyProvider() {
 
 function addStateListeners() {
   function setMediaBlob(blobUrl: string, location: unknown, message?: string) {
-    const setter = Reflect.get(window, '__setMediaBlob__') as typeof setMediaBlob
-    setter(blobUrl, location, message)
+    const mediaWindow = window as Window & {
+      __setMediaBlob__?(blobUrl: string, location: unknown, message?: string): void
+    }
+    mediaWindow.__setMediaBlob__!(blobUrl, location, message)
   }
 
-  async function handleMessage(
-    extensionPayload: Parameters<Parameters<typeof chrome.runtime.onMessage.addListener>[0]>[0],
-    sender: chrome.runtime.MessageSender
-  ) {
+  async function handleMessage(extensionPayload: unknown, sender: chrome.runtime.MessageSender) {
     await connectionReady
+    if (!isExtensionPayload(extensionPayload)) {
+      return
+    }
     const { tab, ...payload } = extensionPayload
-    const { method, params } = payload
+    const { method, params = [] } = payload
 
     console.debug('Message received from tab', { tab, payload })
 
     if (payload.method === 'embedded_action_res') {
       const [action, res] = params
-      if (action.type === 'getChainId' && res.chainId) {
+      if (
+        isRecord(action) &&
+        action.type === 'getChainId' &&
+        isRecord(res) &&
+        typeof res.chainId === 'string'
+      ) {
         return setCurrentChain(res.chainId)
       }
     } else if (payload.method === 'media_blob') {
       const location = payload.location
 
       try {
+        if (typeof payload.src !== 'string') {
+          return
+        }
         const res = await fetch(payload.src)
         const blob = await res.blob()
         const blobURL = URL.createObjectURL(blob)
@@ -515,15 +548,19 @@ function addStateListeners() {
     if (!origin) {
       return console.error('No origin found for sender')
     }
+    const tabId = sender.tab?.id ?? tab?.id
+    if (tabId === undefined || typeof payload.id !== 'number') {
+      return
+    }
     pending[id] = {
-      tabId: sender?.tab?.id ?? tab.id,
+      tabId,
       payloadId: payload.id,
       method,
       params,
       origin
     }
 
-    const load = {
+    const load: JsonRpcPayload & { __frameFavicon?: string } = {
       ...payload,
       jsonrpc: '2.0',
       id,
@@ -569,7 +606,12 @@ async function addTabListeners() {
   }
 
   // Create an object to store the last known origin for each tab
-  const tabOrigins = Object.fromEntries(tabs.map((tab) => [tab.id, originFromUrl(tab.url)]))
+  const tabOrigins: Record<number, string> = {}
+  tabs.forEach((tab) => {
+    if (tab.id !== undefined) {
+      tabOrigins[tab.id] = originFromUrl(tab.url)
+    }
+  })
 
   chrome.tabs.onRemoved.addListener((tabId) => {
     delete tabOrigins[tabId]
@@ -596,7 +638,7 @@ async function addTabListeners() {
     activeTabId = tabId
 
     const tab = await chrome.tabs.get(tabId)
-    const tabOrigin = getOrigin(tab.url)
+    const tabOrigin = getOrigin()
     if (tabOrigin.startsWith('http') || tabOrigin.startsWith('file')) {
       chrome.tabs
         .sendMessage(tabId, { type: 'embedded:action', action: { type: 'getChainId' } })

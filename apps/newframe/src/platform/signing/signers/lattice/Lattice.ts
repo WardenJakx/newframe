@@ -27,6 +27,22 @@ type LatticeSignature = {
   v?: bigint
 }
 
+interface LatticeUnsignedTransaction {
+  chainId: string
+  currency?: 'BTC' | 'ETH' | 'ETH_MSG'
+  data?: string
+  gasLimit: number
+  gasPrice?: number
+  maxFeePerGas?: number
+  maxPriorityFeePerGas?: number
+  nonce: number
+  signerPath: number[]
+  to?: string
+  type?: number
+  useEIP155: boolean
+  value?: string
+}
+
 type LatticeResponseError = {
   name: 'LatticeResponseError'
   responseCode: number
@@ -35,22 +51,6 @@ type LatticeResponseError = {
 
 type SigningPayload = Parameters<InstanceType<typeof Client>['sign']>[0]['data']
 type SignProtocol = 'eip712' | 'signPersonal'
-type TransactionJson = ReturnType<TypedTransaction['toJSON']>
-type LatticeUnsignedTransaction = {
-  to: TransactionJson['to']
-  value: TransactionJson['value']
-  data: TransactionJson['data']
-  chainId: string
-  nonce: number
-  gasLimit: number
-  useEIP155: true
-  signerPath: number[]
-  type?: number
-  gasPrice?: number
-  maxFeePerGas?: number
-  maxPriorityFeePerGas?: number
-  currency?: never
-}
 
 const Status = {
   OK: 'ok',
@@ -315,9 +315,7 @@ export default class Lattice extends Signer {
         const unsignedTx = this.createTransaction(index, rawTx.type, latticeTx.chainId, tx)
         const signingOptions = await this.createTransactionSigningOptions(tx, unsignedTx)
 
-        const signedTx = await connection.sign(
-          signingOptions as Parameters<InstanceType<typeof Client>['sign']>[0]
-        )
+        const signedTx = await connection.sign(signingOptions as Parameters<Client['sign']>[0])
         const sig = signedTx?.sig as LatticeSignature | undefined
 
         if (sig?.v === undefined) {

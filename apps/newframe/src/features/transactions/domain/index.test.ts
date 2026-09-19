@@ -10,10 +10,14 @@ import {
   usesBaseFee
 } from './index'
 
-const getPaidTransactionFee = (request: unknown) => getPaidTransactionFeeTyped(request)
-const getTransactionEffects = (request: unknown) => getTransactionEffectsTyped(request)
-const getTransactionIntent = (request: unknown) => getTransactionIntentTyped(request)
-const getTransactionPositionTokens = (request: unknown) => getTransactionPositionTokensTyped(request)
+const getPaidTransactionFee = (request: unknown) =>
+  getPaidTransactionFeeTyped(request as Parameters<typeof getPaidTransactionFeeTyped>[0])
+const getTransactionEffects = (request: unknown) =>
+  getTransactionEffectsTyped(request as Parameters<typeof getTransactionEffectsTyped>[0])
+const getTransactionIntent = (request: unknown) =>
+  getTransactionIntentTyped(request as Parameters<typeof getTransactionIntentTyped>[0])
+const getTransactionPositionTokens = (request: unknown) =>
+  getTransactionPositionTokensTyped(request as Parameters<typeof getTransactionPositionTokensTyped>[0])
 const normalizeChainId = (transaction: unknown, chainId?: number): unknown =>
   normalizeChainIdTyped(transaction as RPC.SendTransaction.TxParams, chainId)
 

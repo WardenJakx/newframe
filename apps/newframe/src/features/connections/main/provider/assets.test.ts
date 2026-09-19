@@ -1,9 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest as timers, mock } from 'bun:test'
 
-import type { Draft } from 'immer'
-
 import store from '../../../../platform/state-store'
-import type { CanonicalStore } from '../../../../platform/state-store'
+import { AccountSchema } from '../../../accounts/domain/state/account'
 import { createObserver, loadAssets } from './assets'
 
 const account = '0x3ba7bd5cd1c19f678d9c8edfa043de5a57570e06'
@@ -29,12 +27,11 @@ const nativeCurrency = () => ({
   symbol: 'ETH'
 })
 
-type MutableStore = Draft<CanonicalStore>
-
-const accountBalances = (state: MutableStore) =>
-  state.main.accounts[account].balances as { lastUpdated: Date }
-
-function setToken(state: MutableStore, balance: { address: string; chainId: number }, symbol: string) {
+function setToken(
+  state: ReturnType<typeof store.getState>,
+  balance: { address: string; chainId: number },
+  symbol: string
+) {
   state.main.tokens.byId[`${balance.chainId}:${balance.address}`] = {
     address: balance.address,
     chainId: balance.chainId,
@@ -48,7 +45,11 @@ function setToken(state: MutableStore, balance: { address: string; chainId: numb
   }
 }
 
-function setTokenBalance(state: MutableStore, balance = tokenBalance, withPrice = false) {
+function setTokenBalance(
+  state: ReturnType<typeof store.getState>,
+  balance = tokenBalance,
+  withPrice = false
+) {
   state.main.balances[account] = [balance]
   setToken(state, balance, balance.symbol)
   if (withPrice) {
@@ -60,14 +61,31 @@ function setTokenBalance(state: MutableStore, balance = tokenBalance, withPrice 
   }
 }
 
+function setAccountLastUpdated(
+  state: ReturnType<typeof store.getState>,
+  accountId: string,
+  lastUpdated: Date
+) {
+  state.main.accounts[accountId] = AccountSchema.parse({
+    id: accountId,
+    profileId: 'test-profile',
+    address: accountId,
+    name: 'Test account',
+    lastSignerType: 'ring',
+    status: 'ok',
+    signer: 'test-signer',
+    requests: {},
+    created: new Date(0).toISOString(),
+    balances: { lastUpdated }
+  })
+}
+
 beforeEach(() => {
   timers.useFakeTimers()
 
   // ensure that the balances have been updated within the range to not be considered stale
   store.setState((state) => {
-    state.main.accounts[account] = {
-      balances: { lastUpdated: new Date() }
-    } as unknown as (typeof state.main.accounts)[string]
+    setAccountLastUpdated(state, account, new Date())
     state.main.tokens.byId = {}
   })
 })
@@ -80,8 +98,9 @@ describe('#loadAssets', () => {
   it('loads native currency assets', () => {
     store.setState((state) => {
       state.main.networksMeta.ethereum[1] = {
+        ...state.main.networksMeta.ethereum[1],
         nativeCurrency: nativeCurrency()
-      } as unknown as (typeof state.main.networksMeta.ethereum)[number]
+      }
       state.main.balances[account] = [nativeBalance]
     })
 
@@ -142,17 +161,14 @@ describe('#loadAssets', () => {
       delete state.main.networksMeta.ethereum[31337]
     })
 
-    expect(loadAssets(store, account)).toEqual({
-      nativeCurrency: [],
-      erc20: []
-    })
+    expect(loadAssets(store, account)).toEqual({ nativeCurrency: [], erc20: [] })
   })
 
   it('throws an error if assets have not been updated in the last 5 minutes', () => {
     const tooOld = new Date(Date.now() - 6 * 60 * 1000)
 
     store.setState((state) => {
-      accountBalances(state).lastUpdated = tooOld
+      setAccountLastUpdated(state, account, tooOld)
     })
 
     expect(() => loadAssets(store, account)).toThrow(/assets not known/)
@@ -182,8 +198,9 @@ describe('#createObserver', () => {
   it('invokes the handler when the account is holding native currency assets', () => {
     store.setState((state) => {
       state.main.networksMeta.ethereum[1] = {
+        ...state.main.networksMeta.ethereum[1],
         nativeCurrency: nativeCurrency()
-      } as unknown as (typeof state.main.networksMeta.ethereum)[number]
+      }
       state.main.balances[account] = [nativeBalance]
     })
 
@@ -203,16 +220,23 @@ describe('#createObserver', () => {
 
     expect(handler.assetsChanged).toHaveBeenCalledWith(account, expected)
   })
-  ;[
-    ['no account is selected', (state: MutableStore) => void (state.main.currentAccount = '')],
-    ['no assets are present', (state: MutableStore) => void (state.main.balances[account] = [])],
+  const arrangements: Array<[string, (state: ReturnType<typeof store.getState>) => void]> = [
+    [
+      'no account is selected',
+      (state: ReturnType<typeof store.getState>) => void (state.main.currentAccount = '')
+    ],
+    [
+      'no assets are present',
+      (state: ReturnType<typeof store.getState>) => void (state.main.balances[account] = [])
+    ],
     [
       'asset scanning is stale',
-      (state: MutableStore) => void (accountBalances(state).lastUpdated = new Date(0))
+      (state: ReturnType<typeof store.getState>) => setAccountLastUpdated(state, account, new Date(0))
     ]
-  ].forEach(([description, arrange]) => {
+  ]
+  arrangements.forEach(([description, arrange]) => {
     it(`does not invoke the handler when ${description}`, () => {
-      store.setState(arrange as (state: MutableStore) => void)
+      store.setState(arrange)
       fireObserver()
       expect(handler.assetsChanged).not.toHaveBeenCalled()
     })
@@ -230,17 +254,16 @@ describe('#createObserver', () => {
     const nextBalance = {
       address: '0x3333333333333333333333333333333333333333',
       balance: '0x2',
-      chainId: 1
+      chainId: 1,
+      displayBalance: '2'
     }
 
     observer()
     timers.advanceTimersByTime(400)
     store.setState((state) => {
       state.main.currentAccount = nextAccount
-      state.main.accounts[nextAccount] = {
-        balances: { lastUpdated: new Date() }
-      } as unknown as (typeof state.main.accounts)[string]
-      state.main.balances[nextAccount] = [nextBalance] as unknown as (typeof state.main.balances)[string]
+      setAccountLastUpdated(state, nextAccount, new Date())
+      state.main.balances[nextAccount] = [nextBalance]
       setToken(state, nextBalance, 'NEXT')
     })
     observer()

@@ -9,7 +9,7 @@ import log from 'electron-log'
 import { shallow } from 'zustand/vanilla/shallow'
 
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
-import type { Chain as StoredChain, GasFees } from '../../../platform/state-store/state/index.js'
+import type { GasFees } from '../../../platform/state-store/state/index.js'
 import {
   createJsonRpcProvider,
   listenForProviderClose,
@@ -28,14 +28,34 @@ export interface Chain {
   type: 'ethereum'
 }
 
-type StringRPCResponsePayload = Omit<RPCResponsePayload, 'result'> & { result: string }
-
 type Priority = 'primary' | 'secondary'
-type ConnectedChain = StoredChain & {
-  connection: StoredChain['connection'] & { network?: string }
+type ConnectionStatus =
+  | 'chain mismatch'
+  | 'connected'
+  | 'disconnected'
+  | 'error'
+  | 'loading'
+  | 'off'
+  | 'standby'
+
+type StoredConnection = {
+  connected: boolean
+  current: string
+  custom: string
+  on: boolean
+  status: ConnectionStatus
 }
 
-const selectConnectionSettings = (chain: ConnectedChain | undefined) => {
+type StoredChainSettings = {
+  connection: {
+    network?: string
+    primary: StoredConnection
+    secondary: StoredConnection
+  }
+  on: boolean
+}
+
+const selectConnectionSettings = (chain: StoredChainSettings | null | undefined) => {
   if (!chain) {
     return null
   }
@@ -55,7 +75,7 @@ const selectConnectionSettings = (chain: ConnectedChain | undefined) => {
 }
 
 interface ConnectionState {
-  status: string
+  status: ConnectionStatus
   network: string
   type: string
   connected: boolean
@@ -69,13 +89,18 @@ interface ConnectionState {
 // and ethereumjs/common to determine the state of various EIPs
 const legacyChains = [250, 4002]
 
-const normalizeRpcError = (error: unknown) => {
+const normalizeRpcError = (error: unknown): EVMError => {
   if (typeof error === 'string') {
     return { message: error, code: -1 }
   }
   if (error instanceof Error) {
-    const rpcError = error as Error & { code?: number; data?: unknown }
-    return { message: error.message, code: rpcError.code ?? -1, data: rpcError.data }
+    const details = error as Error & { code?: unknown; data?: unknown }
+    const normalized = {
+      message: error.message,
+      code: typeof details.code === 'number' ? details.code : -1,
+      data: details.data
+    }
+    return normalized
   }
   return error as EVMError
 }
@@ -250,28 +275,16 @@ class ChainConnection extends EventEmitter {
       const { status, connected, type, network } = this.primary
       const details = { status, connected, type, network }
       log.info(`Updating primary connection for chain ${this.chainId}`, details)
-      this.store
-        .getState()
-        .setPrimary(
-          this.type,
-          Number(this.chainId),
-          details as Parameters<ReturnType<CanonicalStoreApi['getState']>['setPrimary']>[2]
-        )
+      this.store.getState().setPrimary(this.type, Number(this.chainId), details)
     } else if (priority === 'secondary') {
       const { status, connected, type, network } = this.secondary
       const details = { status, connected, type, network }
       log.info(`Updating secondary connection for chain ${this.chainId}`, details)
-      this.store
-        .getState()
-        .setSecondary(
-          this.type,
-          Number(this.chainId),
-          details as Parameters<ReturnType<CanonicalStoreApi['getState']>['setSecondary']>[2]
-        )
+      this.store.getState().setSecondary(this.type, Number(this.chainId), details)
     }
   }
 
-  _updateStatus(priority: Priority, status: string) {
+  _updateStatus(priority: Priority, status: ConnectionStatus) {
     log.debug('Chains.updateStatus', { priority, status })
 
     this[priority].status = status
@@ -280,7 +293,7 @@ class ChainConnection extends EventEmitter {
     this.emit('update', { type: 'status', status })
   }
 
-  resetConnection(priority: Priority, status: string, target?: string) {
+  resetConnection(priority: Priority, status: ConnectionStatus, target?: string) {
     log.debug('resetConnection', { priority, status, target })
 
     const provider = this[priority].provider
@@ -322,7 +335,7 @@ class ChainConnection extends EventEmitter {
     }
   }
 
-  connect(chain: ConnectedChain) {
+  connect(chain: StoredChainSettings) {
     const connection = chain.connection
 
     log.info(this.type + ':' + this.chainId + "'s connection has been updated")
@@ -465,7 +478,7 @@ class ChainConnection extends EventEmitter {
 
     if (feeMarket) {
       const gasPrice =
-        parseInt(feeMarket.maxBaseFeePerGas ?? '0x0') + parseInt(feeMarket.maxPriorityFeePerGas ?? '0x0')
+        parseInt(feeMarket.maxBaseFeePerGas ?? '') + parseInt(feeMarket.maxPriorityFeePerGas ?? '')
 
       this.store.getState().setGasPrices(this.type, chainId, { fast: addHexPrefix(gasPrice.toString(16)) })
       this.store.getState().setGasDefault(this.type, chainId, 'fast')
@@ -686,30 +699,19 @@ export class Chains extends EventEmitter {
     this.removeAllListeners()
   }
 
-  send(
-    payload: JSONRPCRequestPayload & { method: 'eth_getTransactionCount' },
-    res: RPCCallback<StringRPCResponsePayload>,
-    targetChain?: Chain
-  ): void
-  send(payload: JSONRPCRequestPayload, res: RPCRequestCallback, targetChain?: Chain): void
-  send(
-    payload: JSONRPCRequestPayload,
-    res: RPCRequestCallback | RPCCallback<StringRPCResponsePayload>,
-    targetChain?: Chain
-  ) {
-    const respond = res as RPCRequestCallback
+  send(payload: JSONRPCRequestPayload, res: RPCRequestCallback, targetChain?: Chain) {
     if (!targetChain) {
-      resError({ message: `Target chain did not exist for send`, code: -32601 }, payload, respond)
+      resError({ message: `Target chain did not exist for send`, code: -32601 }, payload, res)
     }
     const { type, id } = targetChain as Chain
     if (!this.connections[type]?.[id]) {
       resError(
         { message: `Connection for ${type} chain with chainId ${id} did not exist for send`, code: -32601 },
         payload,
-        respond
+        res
       )
     } else {
-      this.connections[type][id].send(payload, respond)
+      this.connections[type][id].send(payload, res)
     }
   }
 

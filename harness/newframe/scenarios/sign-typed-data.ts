@@ -1,4 +1,4 @@
-import { BrowserProvider, TypedDataEncoder, verifyTypedData, type Eip1193Provider } from 'ethers'
+import { BrowserProvider, TypedDataEncoder, verifyTypedData } from 'ethers'
 
 import createFrameProvider from '../../../apps/newframe/src/features/connections/main/provider/connection.ts'
 
@@ -74,16 +74,20 @@ async function main() {
   try {
     await waitForFrameConnect()
     provider = new BrowserProvider({
-      request: ({ method, params }: Parameters<Eip1193Provider['request']>[0]) =>
+      request: ({ method, params }: { method: string; params?: readonly unknown[] }) =>
         frame.request({ method, params })
     })
 
-    const [address] = await provider.send('eth_requestAccounts', [])
+    const accounts: unknown = await provider.send('eth_requestAccounts', [])
+    if (!Array.isArray(accounts) || typeof accounts[0] !== 'string') {
+      throw new Error('No account available')
+    }
+    const address = accounts[0]
     const expectedDigest = TypedDataEncoder.hash(TYPED_DATA.domain, TYPED_TYPES, TYPED_DATA.message)
     const signaturePromise = provider.send('eth_signTypedData_v4', [address, JSON.stringify(TYPED_DATA)])
     console.log(JSON.stringify({ address, expectedDigest, label: 'EIP-712 Digest' }))
 
-    const signature = await signaturePromise
+    const signature = String(await signaturePromise)
     const recovered = verifyTypedData(TYPED_DATA.domain, TYPED_TYPES, TYPED_DATA.message, signature)
     if (!/^0x[0-9a-fA-F]{130}$/.test(signature)) {
       throw new Error('Invalid typed-data signature')

@@ -246,7 +246,7 @@
         "typescript/no-unsafe-assignment": "warn",
         "typescript/no-unsafe-argument": "warn",
         "typescript/no-unsafe-call": "warn",
-        "typescript/no-unsafe-member-access": "warn",
+        "typescript/no-unsafe-member-access": "error",
         "typescript/no-unsafe-return": "warn",
         "typescript/unbound-method": "warn",
         "typescript/only-throw-error": "error",
@@ -360,7 +360,7 @@
         "typescript/no-unsafe-assignment": "warn",
         "typescript/no-unsafe-argument": "warn",
         "typescript/no-unsafe-call": "warn",
-        "typescript/no-unsafe-member-access": "warn",
+        "typescript/no-unsafe-member-access": "error",
         "typescript/no-unsafe-return": "warn",
         "typescript/unbound-method": "warn",
         "typescript/only-throw-error": "error",
@@ -626,7 +626,7 @@
             "disallowTypeAnnotations": false
           }
         ],
-        "typescript/no-floating-promises": "warn",
+        "typescript/no-floating-promises": "error",
         "typescript/no-misused-promises": "warn",
         "eslint/no-else-return": "error"
       },

@@ -16,53 +16,51 @@ class MockConnection extends EventEmitter {
   constructor(chainId: number) {
     super()
     this.chainId = addHexPrefix(chainId.toString(16))
-    this.connect = () => {
-      if (!this.connected) {
-        this.connected = true
-        process.nextTick(() => this.emit('connect'))
-      }
-    }
-    this.close = () => {
-      if (this.connected) {
-        this.connected = false
-        this.emit('close')
-      }
-    }
-    this.destroy = this.close
-    this.send = (methodOrPayload: string | { method: string }, _params?: unknown) => {
-      return new Promise((resolve, reject) => {
-        const method = typeof methodOrPayload === 'string' ? methodOrPayload : methodOrPayload.method
+  }
 
-        if (method === 'eth_chainId') {
-          this.connected = true
-          return resolve(addHexPrefix(chainId.toString(16)))
-        } else if (method === 'eth_gasPrice') {
-          return resolve(gasPrice)
-        } else if (method === 'eth_feeHistory') {
-          if (feeHistoryError) {
-            return reject(feeHistoryError)
-          }
-
-          return resolve({
-            baseFeePerGas: [gweiToHex(15), gweiToHex(8), gweiToHex(9), gweiToHex(8), gweiToHex(7)],
-            gasUsedRatio: [0.11, 0.8, 0.2, 0.5],
-            reward: [[gweiToHex(32)], [gweiToHex(32)], [gweiToHex(32)], [gweiToHex(32)]]
-          })
-        }
-
-        return reject('unknown method!')
-      })
+  connect = () => {
+    if (!this.connected) {
+      this.connected = true
+      process.nextTick(() => this.emit('connect'))
     }
   }
 
-  connect: () => void
-  close: () => void
-  destroy: () => void
-  send: (methodOrPayload: string | { method: string }, params?: unknown) => Promise<unknown>
+  close = () => {
+    if (this.connected) {
+      this.connected = false
+      this.emit('close')
+    }
+  }
+
+  destroy = this.close
+
+  send = (methodOrPayload: string | { method: string }, _params?: readonly unknown[]) => {
+    return new Promise((resolve, reject) => {
+      const method = typeof methodOrPayload === 'string' ? methodOrPayload : methodOrPayload.method
+
+      if (method === 'eth_chainId') {
+        this.connected = true
+        return resolve(this.chainId)
+      } else if (method === 'eth_gasPrice') {
+        return resolve(gasPrice)
+      } else if (method === 'eth_feeHistory') {
+        if (feeHistoryError) {
+          return reject(feeHistoryError)
+        }
+
+        return resolve({
+          baseFeePerGas: [gweiToHex(15), gweiToHex(8), gweiToHex(9), gweiToHex(8), gweiToHex(7)],
+          gasUsedRatio: [0.11, 0.8, 0.2, 0.5],
+          reward: [[gweiToHex(32)], [gweiToHex(32)], [gweiToHex(32)], [gweiToHex(32)]]
+        })
+      }
+
+      return reject('unknown method!')
+    })
+  }
 }
 
-let feeHistoryError: Error | undefined
-let gasPrice: string
+let feeHistoryError: Error | undefined, gasPrice: string
 
 const state = {
   main: {
@@ -186,7 +184,7 @@ const state = {
 await mock.module('../../connections/main/provider/connection', () => ({
   createJsonRpcProvider: (target: keyof typeof mockConnections) => mockConnections[target].connection,
   listenForProviderClose: mock(),
-  sendRpcPayload: (provider: MockConnection, payload: { method: string; params?: unknown }) =>
+  sendRpcPayload: (provider: MockConnection, payload: RPCRequestPayload) =>
     provider.send(payload.method, payload.params ?? [])
 }))
 await mock.module('../../../platform/state-store/state', () => () => state)
@@ -210,7 +208,7 @@ const mockConnections = {
   }
 }
 
-let chains: InstanceType<typeof import('./index').Chains>
+let chains: import('./index').Chains
 
 const resetChainState = () => {
   store.setState((current) => {
@@ -223,7 +221,7 @@ const waitForConnection = async () => {
   await Promise.resolve()
 }
 
-const connectChain = async (chain: (typeof mockConnections)[keyof typeof mockConnections]) => {
+const connectChain = async (chain: { id: string }) => {
   store.getState().toggleConnection('ethereum', Number(chain.id), 'primary', true)
   await waitForConnection()
 }
@@ -256,7 +254,7 @@ afterEach((done) => {
     return done()
   }
 
-  chains.once('close', ({ id }: { id: string | number }) => {
+  chains.once('close', ({ id }: { id: string }) => {
     if (id === activeConnection.id) {
       done()
     } else {

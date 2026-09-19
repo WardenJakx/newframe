@@ -17,10 +17,6 @@ type AgentCredentials = {
   expiresAt: number
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
-
 async function connectAgent() {
   const response = await fetch(`${newframeRpcUrl}/agent/session`, {
     method: 'POST',
@@ -134,8 +130,10 @@ async function submitExternalFlashOrder(credentials: AgentCredentials) {
     method: 'POST',
     body: JSON.stringify(quoteRequest)
   })
-  const evm = isRecord(quote.evm) ? quote.evm : {}
-  const evmOrderTypedData = String(evm.orderTypedData ?? '')
+  const evm = quote.evm
+  const evmOrderTypedData = String(
+    evm && typeof evm === 'object' && 'orderTypedData' in evm ? evm.orderTypedData : ''
+  )
   if (!evmOrderTypedData) {
     throw new Error('Local Flash quote omitted its order typed data')
   }

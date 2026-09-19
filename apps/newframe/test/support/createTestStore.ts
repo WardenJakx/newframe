@@ -23,7 +23,11 @@ export function createTestStore(
     windows: {
       ...defaults.windows,
       ...initial.windows,
-      panel: { ...defaults.windows.panel, footer: { height: 40 }, ...initial.windows?.panel }
+      panel: {
+        ...defaults.windows.panel,
+        footer: { height: 40 },
+        ...(initial.windows as { panel?: Record<string, unknown> } | undefined)?.panel
+      }
     },
     view: { ...defaults.view, ...initial.view },
     main: { ...defaults.main, ...initial.main }

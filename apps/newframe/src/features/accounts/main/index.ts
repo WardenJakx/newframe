@@ -81,6 +81,10 @@ function cloneForActivity(value: unknown) {
   }
 }
 
+function unknownRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
+}
+
 function transactionActivityId(hash: string) {
   return hash
 }
@@ -308,7 +312,9 @@ export class Accounts extends EventEmitter {
 
   private getTransactionActivityDisplay(req: TransactionRequest, chain?: Chain) {
     const value = req.data?.value
-    const network = chain ? this.store.getState().main.networks.ethereum[chain.id] : undefined
+    const network = chain
+      ? (this.store.getState().main.networks.ethereum[chain.id] as { symbol?: string })
+      : undefined
     const chainSymbol =
       network?.symbol ??
       (chain ? this.store.getState().main.networksMeta.ethereum[chain.id].nativeCurrency.symbol : '') ??
@@ -341,7 +347,9 @@ export class Accounts extends EventEmitter {
 
   private getTransactionNativeSymbol(req: TransactionRequest) {
     const chain = this.getTransactionChain(req)
-    const network = chain ? this.store.getState().main.networks.ethereum[chain.id] : undefined
+    const network = chain
+      ? (this.store.getState().main.networks.ethereum[chain.id] as { symbol?: string })
+      : undefined
     const metadata = chain ? this.store.getState().main.networksMeta.ethereum[chain.id] : undefined
 
     return network?.symbol ?? metadata?.nativeCurrency.symbol ?? 'ETH'
@@ -639,7 +647,7 @@ export class Accounts extends EventEmitter {
     }
 
     const receipt = cloneForActivity(req.tx?.receipt)
-    const receiptStatus = req.tx?.receipt?.status
+    const receiptStatus = unknownRecord(req.tx?.receipt).status
 
     if (receiptStatus === '0x0') {
       return this.finalizeTransactionActivity(req, 'reverted', {
@@ -668,7 +676,12 @@ export class Accounts extends EventEmitter {
   private finalizeTransactionActivity(
     req: TransactionRequest,
     status: 'succeeded' | 'reverted',
-    update: Partial<ActivityRecord> = {}
+    update: {
+      completedAt?: number
+      confirmations?: number
+      receipt?: unknown
+      updatedAt?: number
+    } = {}
   ) {
     const hash = req.tx?.hash
     if (!hash) {
@@ -730,7 +743,7 @@ export class Accounts extends EventEmitter {
   }
 
   private receiptWasReverted(req: TransactionRequest) {
-    return req.tx?.receipt?.status === '0x0'
+    return unknownRecord(req.tx?.receipt).status === '0x0'
   }
 
   private transactionChainId(req: TransactionRequest) {
@@ -751,18 +764,28 @@ export class Accounts extends EventEmitter {
   }
 
   private activityChainId(activity: ActivityRecord) {
-    const data = activity.data as Partial<TransactionData> | undefined
-    return normalizeChainId(activity.chainId ?? data?.chainId)
+    const dataChainId = unknownRecord(activity.data).chainId
+    return normalizeChainId(
+      activity.chainId ??
+        (typeof dataChainId === 'string' || typeof dataChainId === 'number' ? dataChainId : undefined)
+    )
   }
 
   private activityNonce(activity: ActivityRecord) {
-    const data = activity.data as Partial<TransactionData> | undefined
-    return normalizeQuantity(activity.nonce ?? data?.nonce)
+    const dataNonce = unknownRecord(activity.data).nonce
+    return normalizeQuantity(
+      activity.nonce ??
+        (typeof dataNonce === 'string' || typeof dataNonce === 'number' ? dataNonce : undefined)
+    )
   }
 
   private activityAccount(activity: ActivityRecord) {
-    const data = activity.data as Partial<TransactionData> | undefined
-    return (activity.account ?? activity.address ?? data?.from ?? '').toLowerCase()
+    const dataFrom = unknownRecord(activity.data).from
+    return (
+      activity.account ??
+      activity.address ??
+      (typeof dataFrom === 'string' ? dataFrom : '')
+    ).toLowerCase()
   }
 
   private isNonTerminalActivity(activity?: ActivityRecord) {
@@ -783,7 +806,7 @@ export class Accounts extends EventEmitter {
 
   private toActivityRequest(activity: ActivityRecord): TransactionRequest {
     const chainId = this.activityChainId(activity)
-    const activityData = (activity.data ?? {}) as Partial<TransactionData>
+    const activityData = unknownRecord(activity.data)
     const data = {
       ...activityData,
       chainId: activityData.chainId ?? (chainId ? addHexPrefix(chainId.toString(16)) : undefined),
@@ -990,7 +1013,7 @@ export class Accounts extends EventEmitter {
 
         this.pruneSameNonceActivityLosers(currentActivity)
 
-        if (receipt.status === '0x0') {
+        if (unknownRecord(receipt).status === '0x0') {
           this.finalizeTransactionActivity(txRequest, 'reverted', { confirmations, receipt })
           return this.stopActivityMonitor(activity.id)
         }
@@ -1036,7 +1059,7 @@ export class Accounts extends EventEmitter {
   }
 
   private openNextActionableRequest(account: FrameAccount) {
-    const panelNav = this.store.getState().windows.panel.nav || []
+    const panelNav = (this.store.getState().windows.panel.nav || []) as Array<{ view?: string }>
     if (panelNav[0]?.view === 'requestView') {
       return
     }
@@ -1204,7 +1227,7 @@ export class Accounts extends EventEmitter {
 
       const txRequest = this.getTransactionRequest(currentAccount, id)
 
-      const data = JSON.parse(JSON.stringify(txRequest.data))
+      const data = JSON.parse(JSON.stringify(txRequest.data)) as TransactionData
       const targetChain = { type: 'ethereum', id: parseInt(data.chainId, 16) }
       const { levels } = this.store.getState().main.networksMeta.ethereum[targetChain.id].gas.price
 
@@ -1632,8 +1655,10 @@ export class Accounts extends EventEmitter {
               if (!isCurrentMonitor()) {
                 return
               }
-              const params = payload.params as { subscription?: string }
-              if (payload.method === 'eth_subscription' && params.subscription === headSub) {
+              if (
+                payload.method === 'eth_subscription' &&
+                unknownRecord(payload.params).subscription === headSub
+              ) {
                 // const newHead = payload.params.result
                 let confirmations
                 try {

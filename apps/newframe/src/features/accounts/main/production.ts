@@ -57,7 +57,7 @@ function addressHasTransactions(
           return done(null, null)
         }
         try {
-          done(null, BigInt(response.result) > 0n)
+          done(null, BigInt(response.result as string) > 0n)
         } catch {
           done(null, null)
         }

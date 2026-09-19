@@ -29,10 +29,11 @@ function createEip1193Wrapper(chainId: number, provider: Erc20ProviderPort) {
         } as const
 
         provider.sendAsync(wrappedPayload, (error, response) => {
-          if (error || !response || response.error) {
-            return reject(error ?? response?.error)
+          const responseError = response?.error
+          if (error || responseError) {
+            return reject(error ?? responseError)
           }
-          resolve(response.result)
+          resolve(response?.result)
         })
       })
   }

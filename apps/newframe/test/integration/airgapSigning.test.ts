@@ -96,7 +96,7 @@ function integrationFixture({
   const proxy = createProviderProxyConnection()
   const reveal = createRevealService(proxy, names)
   const chains = new Chains(f.store)
-  chains.send = rpc.send.bind(rpc) as unknown as typeof chains.send
+  chains.send = rpc.send.bind(rpc)
   const accounts = new Accounts(f.store, {
     chainRpc: {
       send: rpc.send,

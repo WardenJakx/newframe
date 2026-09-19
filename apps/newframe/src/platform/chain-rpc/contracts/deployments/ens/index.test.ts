@@ -9,9 +9,11 @@ const to = '0x388C818CA8B9251b393131C08a736A67ccB19297'
 const tokenId = '79233663829379634837589865448569342784712482819484549289560981379859480642508'
 
 describe('registrar', () => {
-  const registrar = ensContracts.find((c) => c.name.toLowerCase().includes('permanent registrar'))
+  const registrar = ensContracts.find((contract) =>
+    contract.name.toLowerCase().includes('permanent registrar')
+  )
   if (!registrar) {
-    throw new Error('permanent registrar fixture missing')
+    throw new Error('ENS registrar deployment missing')
   }
 
   const registrarInterface = new Interface([
@@ -61,9 +63,11 @@ describe('registrar', () => {
 })
 
 describe('registrar controller', () => {
-  const registrarController = ensContracts.find((c) => c.name.toLowerCase().includes('controller'))
+  const registrarController = ensContracts.find((contract) =>
+    contract.name.toLowerCase().includes('controller')
+  )
   if (!registrarController) {
-    throw new Error('registrar controller fixture missing')
+    throw new Error('ENS registrar controller deployment missing')
   }
 
   const registrarControllerInterface = new Interface([
@@ -113,7 +117,7 @@ describe('registrar controller', () => {
       ])
       const action = registrarController.decode(calldata)
 
-      expect((action as { data: { name: string } }).data.name).toBe('frame.eth')
+      expect(action?.data).toEqual(expect.objectContaining({ name: 'frame.eth' }))
     })
   })
 

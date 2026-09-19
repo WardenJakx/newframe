@@ -688,7 +688,7 @@ describe('main Flash facade helpers', () => {
       orderResponse('cancelled', '1500')
     ]
     const track = mock()
-    const refresh = mock()
+    const refresh = mock((_update: { chainId: number }) => {})
     const { flash, fetchMock } = flashWithFetch(queuedJsonResponses(responses), {
       positionSync: { track, refresh }
     })
@@ -720,7 +720,7 @@ describe('main Flash facade helpers', () => {
   it('syncs each participating chain once and attributes filled notifications to the receive chain', async () => {
     const socket = new FakeFlashWebSocket()
     const track = mock()
-    const refresh = mock()
+    const refresh = mock((_update: { chainId: number }) => {})
     const funderAddress = '0x00000000000000000000000000000000000000c1'
     const orderId = 'cross-chain-order'
     const targetAsset = { ...FLASH_WETH_ASSET, id: `1:${FLASH_WETH_ASSET.address}`, chainId: 1 }
@@ -793,7 +793,7 @@ describe('main Flash facade helpers', () => {
   it('hydrates external WebSocket orders through the canonical order, notification, and position path', async () => {
     const sockets: FakeFlashWebSocket[] = []
     const track = mock()
-    const refresh = mock()
+    const refresh = mock((_update: { chainId: number }) => {})
     const accountAddress = '0x00000000000000000000000000000000000000a1'
     const orderId = 'websocket-agent-order'
     const flash = createFlashService({

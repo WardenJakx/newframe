@@ -2,19 +2,11 @@ import { beforeEach, describe, expect, it } from 'bun:test'
 
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 
+import type { TypedMessage } from '../../../features/requests/contract/requests'
 import * as signatureParser from './index'
 
 describe('#identify', () => {
-  type PermitMessage = {
-    version: SignTypedDataVersion
-    data: {
-      types: Record<string, Array<{ name: string; type: string }>>
-      primaryType: string
-      domain: { name: string; verifyingContract: string; chainId?: number; version: string }
-      message: Record<string, string | number>
-    }
-  }
-  let typedMessage: PermitMessage
+  let typedMessage: TypedMessage<SignTypedDataVersion.V4>
 
   beforeEach(() => {
     typedMessage = {
@@ -54,32 +46,24 @@ describe('#identify', () => {
   })
 
   it('should successfully identify erc-20 permit signature requests', () => {
-    expect(signatureParser.identify(typedMessage as Parameters<typeof signatureParser.identify>[0])).toBe(
-      'signErc20Permit'
-    )
+    expect(signatureParser.identify(typedMessage)).toBe('signErc20Permit')
   })
 
   it('should not identify erc-20 permit signature requests with missing domain entries', () => {
     delete typedMessage.data.domain.chainId
 
-    expect(signatureParser.identify(typedMessage as Parameters<typeof signatureParser.identify>[0])).toBe(
-      'signTypedData'
-    )
+    expect(signatureParser.identify(typedMessage)).toBe('signTypedData')
   })
 
   it('should return the base typed signature type when unable to identify a request', () => {
     typedMessage.data.types.Permit.pop()
 
-    expect(signatureParser.identify(typedMessage as Parameters<typeof signatureParser.identify>[0])).toBe(
-      'signTypedData'
-    )
+    expect(signatureParser.identify(typedMessage)).toBe('signTypedData')
   })
 
   it('should successfully identfy empty types arrays', () => {
-    typedMessage.data.types = [] as unknown as PermitMessage['data']['types']
+    typedMessage.data.types = { EIP712Domain: [], Permit: [] }
 
-    expect(signatureParser.identify(typedMessage as Parameters<typeof signatureParser.identify>[0])).toBe(
-      'signTypedData'
-    )
+    expect(signatureParser.identify(typedMessage)).toBe('signTypedData')
   })
 })

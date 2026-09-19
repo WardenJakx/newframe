@@ -4,23 +4,21 @@ import type { Mock } from 'bun:test'
 import { render, screen } from '../../../../test/support/componentSetup'
 
 let KeyboardShortcutConfigurator: typeof import('./KeyboardShortcutConfigurator').default
-let mockLayoutGetKey: Mock<(key: string) => string | undefined>
+let mockLayoutGetKey: Mock<(key: string) => string>
 const setShortcut = mock()
 
 beforeEach(async () => {
   setShortcut.mockReset()
   mockLayoutGetKey = mock()
-  const navigator = global.navigator as Navigator & {
-    keyboard: { getLayoutMap: () => Promise<{ get: (key: string) => string | undefined }> }
+  const keyboard = global.navigator as Navigator & {
+    keyboard: { getLayoutMap: () => Promise<{ get: (key: string) => string }> }
   }
-  navigator.keyboard = {
-    getLayoutMap: mock().mockResolvedValue({ get: mockLayoutGetKey })
-  }
-  navigator.keyboard.getLayoutMap = mock().mockResolvedValue({
+  keyboard.keyboard = {} as (typeof keyboard)['keyboard']
+  keyboard.keyboard.getLayoutMap = mock().mockResolvedValue({
     get: mockLayoutGetKey
   })
   KeyboardShortcutConfigurator = (await import('./KeyboardShortcutConfigurator')).default
-  mockLayoutGetKey.mockImplementation((key: string) => {
+  mockLayoutGetKey.mockImplementation((key) => {
     const keyMap: Record<string, string> = {
       Slash: '/'
     }

@@ -5,7 +5,7 @@ import log from 'electron-log'
 
 import store from '../../../../../platform/state-store'
 import { NATIVE_CURRENCY } from '../../../../tokens/domain/constants'
-import type { Token, TokenCatalog, TokenRecord } from '../../../../tokens/domain/state/token'
+import type { TokenRecord } from '../../../../tokens/domain/state/token'
 import BalancesScanner from './index'
 
 const controllerEvents = new EventEmitter()
@@ -17,7 +17,7 @@ const balancesControllerMock = {
   on: controllerEvents.on.bind(controllerEvents),
   once: controllerEvents.once.bind(controllerEvents),
   updateChainBalances: mock(),
-  updateKnownTokenBalances: mock()
+  updateKnownTokenBalances: mock((_address: string, _tokens: Array<ReturnType<typeof token>>) => {})
 }
 
 await mock.module('./controller', () => ({
@@ -50,17 +50,26 @@ function token(index: number, chainId = 10) {
   }
 }
 
-function storedToken(token: Token, custom = false): TokenRecord {
+function storedToken(input: ReturnType<typeof token>, custom = false): TokenRecord {
   return {
-    ...token,
+    ...input,
     custom,
     curated: false,
-    sources: [custom ? ('custom' as const) : ('onchain' as const)],
+    sources: [custom ? 'custom' : 'onchain'],
     updatedAt: 0
   }
 }
 
-function catalogFor(known: Token[], custom: Token[] = []): TokenCatalog {
+type TestMainState = {
+  accounts: Record<string, { address: string; id: string; requests: Record<string, unknown> }>
+  assetRates: Record<string, { observedAt: number; source: string; usdRate: number }>
+  balances: Record<string, Array<Record<string, unknown>>>
+  networks: { ethereum: Record<number, Record<string, unknown>> }
+  networksMeta: { ethereum: Record<number, Record<string, unknown>> }
+  tokens: ReturnType<typeof catalogFor>
+}
+
+function catalogFor(known: Array<ReturnType<typeof token>>, custom: Array<ReturnType<typeof token>> = []) {
   const records = [
     ...known.map((item) => storedToken(item)),
     ...custom.map((item) => storedToken(item, true))
@@ -83,17 +92,17 @@ beforeEach(() => {
   timers.useFakeTimers()
   controllerEvents.removeAllListeners()
   store.setState((state) => {
-    const main = state.main
+    const main = state.main as unknown as TestMainState
     main.tokens = catalogFor(knownTokens)
     main.networks.ethereum[10] = {
       id: 10,
       name: 'Optimism',
       on: true,
       connection: { primary: { connected: true } }
-    } as unknown as (typeof main.networks.ethereum)[number]
+    }
     main.networksMeta.ethereum[10] = {
       nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 }
-    } as unknown as (typeof main.networksMeta.ethereum)[number]
+    }
     main.balances[address] = [
       {
         ...knownTokens[0],
@@ -102,7 +111,7 @@ beforeEach(() => {
         displayBalance: '1',
         name: 'Optimism'
       }
-    ] as unknown as (typeof main.balances)[string]
+    ]
     main.assetRates[`10:${knownTokens[0].address}`] = {
       usdRate: 2,
       source: 'zerion',
@@ -199,7 +208,7 @@ it('only manually refreshes non-dust valued tokens and curated blue chips', () =
   const oneToken = '0xde0b6b3a7640000'
 
   store.setState((state) => {
-    const main = state.main
+    const main = state.main as unknown as TestMainState
     main.tokens = catalogFor(tokens, [custom])
     main.balances[address] = [...tokens, custom].map((trackedToken) => ({
       ...trackedToken,
@@ -316,12 +325,8 @@ it('caps direct token update scans', () => {
 
 it('stores native worker balances without duplicating currency metadata', () => {
   store.setState((state) => {
-    const main = state.main
-    main.accounts[address] = {
-      id: address,
-      address,
-      requests: {}
-    } as unknown as (typeof main.accounts)[string]
+    const main = state.main as unknown as TestMainState
+    main.accounts[address] = { id: address, address, requests: {} }
   })
 
   balancesController.emit('chainBalances', address, [{ chainId: 10, balance: '0x2', displayBalance: '2' }])
@@ -336,12 +341,8 @@ it('stores native worker balances without duplicating currency metadata', () => 
 
 it('ignores a late worker update after its network has been removed', () => {
   store.setState((state) => {
-    const main = state.main
-    main.accounts[address] = {
-      id: address,
-      address,
-      requests: {}
-    } as unknown as (typeof main.accounts)[string]
+    const main = state.main as unknown as TestMainState
+    main.accounts[address] = { id: address, address, requests: {} }
     delete main.networks.ethereum[10]
     delete main.networksMeta.ethereum[10]
   })

@@ -13,6 +13,7 @@ import {
   id,
   toBeHex,
   toQuantity,
+  type ContractTransactionResponse,
   type InterfaceAbi
 } from 'ethers'
 import { subscribeWithSelector } from 'zustand/middleware'
@@ -220,7 +221,8 @@ beforeAll(async () => {
   ).deploy()
   await deployedBatch.waitForDeployment()
   multiSend = await deployedBatch.getAddress()
-  await (await token.mint(seed.safe, 1_000_000n)).wait()
+  const mintTransaction = (await token.mint(seed.safe, 1_000_000n)) as ContractTransactionResponse
+  await mintTransaction.wait()
   await provider.send('anvil_setBalance', [seed.safe, toQuantity(10n ** 18n)])
   // A rejecting guard demonstrates the preview does not require an extension-free Safe.
   await provider.send('anvil_setCode', [guard, '0x60006000fd'])
@@ -333,7 +335,7 @@ beforeAll(async () => {
   const handler = createSafeHandler({ ...seed, proposals: Object.values(proposals) })
   rpc = createSafeSimulationRpc({
     send(payload, callback) {
-      const respond = callback as unknown as RPCRequestCallback
+      const respond = callback
       requests.push(payload.method)
       if (payload.method === 'debug_traceCall' && traceMode === 'unavailable') {
         respond({ id: payload.id, jsonrpc: '2.0', error: { code: -32601, message: 'Tracing disabled' } })

@@ -3,7 +3,7 @@ import { afterAll, beforeAll, beforeEach, expect, it } from 'bun:test'
 import validatePayloadTyped from './validPayload'
 
 // real function under test, exercised with invalid payloads
-const validatePayload = (value: unknown): unknown => validatePayloadTyped(value as string)
+const validatePayload = validatePayloadTyped as (payload: unknown) => ReturnType<typeof validatePayloadTyped>
 
 import log from 'electron-log'
 
@@ -15,7 +15,14 @@ afterAll(() => {
   log.transports.console.level = 'debug'
 })
 
-let payload: Record<string, unknown>
+interface TestPayload {
+  id?: unknown
+  jsonrpc?: unknown
+  method?: unknown
+  params?: unknown
+}
+
+let payload: TestPayload
 
 beforeEach(() => {
   // this payload is valid
@@ -31,27 +38,27 @@ it('returns a valid payload with a string id', () => {
   payload.id = '12'
   const result = validatePayload(JSON.stringify(payload))
 
-  expect(result).toStrictEqual(payload)
+  expect(result as unknown).toStrictEqual(payload)
 })
 
 it('returns a valid payload with array params', () => {
   const result = validatePayload(JSON.stringify(payload))
 
-  expect(result).toStrictEqual(payload)
+  expect(result as unknown).toStrictEqual(payload)
 })
 
 it('returns a valid payload with object params', () => {
   payload.params = { asset: { address: '0x912a' } }
   const result = validatePayload(JSON.stringify(payload))
 
-  expect(result).toStrictEqual(payload)
+  expect(result as unknown).toStrictEqual(payload)
 })
 
 it('changes missing params to an empty array', () => {
   delete payload.params
   const result = validatePayload(JSON.stringify(payload))
 
-  expect(result).toStrictEqual({
+  expect(result as unknown).toStrictEqual({
     ...payload,
     params: []
   })

@@ -14,8 +14,10 @@ import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import log from 'electron-log'
 
 import type { TypedMessage } from '../../../../../features/requests/contract/requests'
+import { GasFeesSource, type TransactionData } from '../../../../../features/transactions/domain'
 import { callbackResult } from '../../callback.test-support.ts'
 import { Derivation } from '../../Signer/derive'
+import type LedgerSigner from './index'
 
 const createEthInstance = () => ({
   close: mock(async () => undefined),
@@ -26,10 +28,13 @@ const createEthInstance = () => ({
   signTransaction: mock(),
   signTypedData: mock()
 })
+
 type EthInstance = ReturnType<typeof createEthInstance>
+type TestLedger = Omit<LedgerSigner, 'eth'> & { eth?: EthInstance }
+
 let ethInstance: EthInstance
 
-const EthMock = mock(function (this: object) {
+const EthMock = mock(function () {
   ethInstance = createEthInstance()
   return ethInstance
 })
@@ -38,19 +43,26 @@ const TransportNodeHidMock = { open: mock(async () => ({ close: mock() })) }
 await mock.module('./eth.js', () => ({ default: EthMock }))
 await mock.module('../dependencies.js', () => ({ TransportNodeHidNoEvents: TransportNodeHidMock }))
 
-let Ledger: typeof import('./index').default
+let Ledger: typeof LedgerSigner
 let Status: typeof import('./index').Status
-let Eth: typeof EthMock
-type LedgerInstance = InstanceType<typeof import('./index').default>
-type LedgerTestView = Omit<LedgerInstance, never> & { eth: EthInstance | undefined }
-let ledger: LedgerTestView
+let ledger: TestLedger
 const addresses = ['0xf10326c1c6884b094e03d616cc8c7b920e3f73e0', '0xa16002db5438b5862270a9e404346e3c3b059eeb']
 const signature =
   '0x724e7dfa6ee0fd0dd84c5d8a84eb57be29ff20ed253b3249de2e3d6b119d7b1e6a211ce0c48f93c5e399ac8cd7c6fe56e36fa960b6da92de2c435814928f2f8c1b'
-const typedData = {
+const typedData: TypedMessage<SignTypedDataVersion.V4> = {
   version: SignTypedDataVersion.V4,
-  data: 'typed data'
-} as unknown as TypedMessage<SignTypedDataVersion.V4>
+  data: {
+    types: { EIP712Domain: [], Message: [{ name: 'contents', type: 'string' }] },
+    primaryType: 'Message',
+    domain: {},
+    message: { contents: 'typed data' }
+  }
+}
+const signingTransaction: TransactionData = {
+  chainId: '0x1',
+  type: '0x0',
+  gasFeesSource: GasFeesSource.Dapp
+}
 
 const runNextRequest = () => timers.advanceTimersByTime(200)
 
@@ -95,12 +107,11 @@ beforeAll(async () => {
   const ledgerModule = await import('./index')
   Ledger = ledgerModule.default
   Status = ledgerModule.Status
-  Eth = (await import('./eth')).default as unknown as typeof EthMock
 })
 
 beforeEach(async () => {
-  Eth.mockClear()
-  ledger = new Ledger('usb-path', 'Nano S') as unknown as LedgerTestView
+  EthMock.mockClear()
+  ledger = new Ledger('usb-path', 'Nano S') as unknown as TestLedger
   ledger.derivation = Derivation.legacy
   await ledger.open()
   ethInstance.deriveAddresses.mockResolvedValue(addresses)
@@ -126,7 +137,7 @@ describe('#connect', () => {
   it('detects that the app is locked', async () => {
     ethInstance.getAppConfiguration.mockResolvedValue({ version: '1.9.2' })
     ethInstance.getAddress.mockRejectedValue({ statusCode: 27404 })
-    const statuses: string[] = []
+    const statuses: unknown[] = []
     ledger.on('update', () => statuses.push(ledger.status))
     const locked = waitForEvent('lock')
 
@@ -140,7 +151,7 @@ describe('#connect', () => {
 
   it('derives addresses after connecting', async () => {
     ethInstance.getAppConfiguration.mockResolvedValue({ version: '1.9.2' })
-    const statuses: string[] = []
+    const statuses: unknown[] = []
     ledger.on('update', () => statuses.push(ledger.status))
     const connected = waitForEvent('update', () => ledger.status === Status.OK)
 
@@ -184,7 +195,7 @@ describe('#deriveAddress', () => {
   beforeEach(connectEthApp)
 
   it('derives hardware addresses with ordered status transitions', async () => {
-    const statuses: string[] = []
+    const statuses: unknown[] = []
     ledger.on('update', () => {
       statuses.push(ledger.status)
       if (ledger.status === Status.DERIVING) {
@@ -263,12 +274,8 @@ describe('#verifyAddress', () => {
   }
 })
 
-const signingMethods = ['signMessage', 'signTransaction'] as const
-type TestSigningMethod = (index: number, payload: string, done: Callback<string>) => void
-
-for (const signingMethod of signingMethods) {
+for (const signingMethod of ['signMessage', 'signTransaction'] as const) {
   const signType = signingMethod.substring(4).toLowerCase()
-  const signingLedger = () => ledger as unknown as Record<(typeof signingMethods)[number], TestSigningMethod>
 
   describe(`#${signingMethod}`, () => {
     beforeEach(connectEthApp)
@@ -278,9 +285,12 @@ for (const signingMethod of signingMethods) {
       let updates = 0
       ledger.on('update', () => updates++)
 
-      expect(queuedResult((done) => signingLedger()[signingMethod](3, 'hello, Frame!', done))).resolves.toBe(
-        signature
+      const result = queuedResult<string>((done) =>
+        signingMethod === 'signMessage'
+          ? ledger.signMessage(3, 'hello, Frame!', done)
+          : ledger.signTransaction(3, signingTransaction, done)
       )
+      expect(result).resolves.toBe(signature)
       expect({ status: ledger.status, updates }).toEqual({ status: Status.OK, updates: 0 })
     })
 
@@ -291,9 +301,12 @@ for (const signingMethod of signingMethods) {
       ledger.on('update', () => updates++)
       ledger.on('close', () => closes++)
 
-      expect(
-        queuedResult((done) => signingLedger()[signingMethod](3, 'hello, Frame!', done))
-      ).rejects.toThrow('Sign request rejected by user')
+      const result = queuedResult<string>((done) =>
+        signingMethod === 'signMessage'
+          ? ledger.signMessage(3, 'hello, Frame!', done)
+          : ledger.signTransaction(3, signingTransaction, done)
+      )
+      expect(result).rejects.toThrow('Sign request rejected by user')
       expect({ status: ledger.status, updates, closes }).toEqual({ status: Status.OK, updates: 0, closes: 0 })
     })
 
@@ -307,9 +320,12 @@ for (const signingMethod of signingMethods) {
     ] as const) {
       it(`fails if ${testCase}`, async () => {
         setup()
-        expect(
-          queuedResult((done) => signingLedger()[signingMethod](3, 'hello, Frame!', done))
-        ).rejects.toThrow(`Sign ${signType} error`)
+        const result = queuedResult<string>((done) =>
+          signingMethod === 'signMessage'
+            ? ledger.signMessage(3, 'hello, Frame!', done)
+            : ledger.signTransaction(3, signingTransaction, done)
+        )
+        expect(result).rejects.toThrow(`Sign ${signType} error`)
         expect(ledger.status).toBe(Status.NEEDS_RECONNECTION)
       })
     }

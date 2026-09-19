@@ -1,5 +1,6 @@
 import { expect } from 'bun:test'
 
+import { GasFeesSource } from '../../../features/transactions/domain'
 import type HotSigner from './hot/HotSigner'
 
 export function callbackResult<T>(start: (done: Callback<T>) => void): Promise<T> {
@@ -23,8 +24,10 @@ export async function exerciseHotSignerContract(signer: HotSigner, vault: { lock
         gasLimit: '0x30000',
         to: '0xfa3caabc8eefec2b5e2895e5afbf79379e7268a7',
         value: '0x0',
-        chainId: '0x1'
-      } as unknown as Parameters<HotSigner['signTransaction']>[1],
+        chainId: '0x1',
+        type: '0x0',
+        gasFeesSource: GasFeesSource.Dapp
+      },
       done
     )
   )
@@ -33,7 +36,7 @@ export async function exerciseHotSignerContract(signer: HotSigner, vault: { lock
   expect(
     await callbackResult<boolean>((done) => signer.verifyAddress(0, signer.addresses[0], false, done))
   ).toBeTrue()
-  expect(callbackResult((done) => signer.verifyAddress(0, '0xabcdef', false, done))).rejects.toThrow(
+  expect(callbackResult<boolean>((done) => signer.verifyAddress(0, '0xabcdef', false, done))).rejects.toThrow(
     'Unable to verify address'
   )
 

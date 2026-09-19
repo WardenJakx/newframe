@@ -2,12 +2,11 @@ import { describe, expect, it } from 'bun:test'
 
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 
+import type { TypedData, TypedMessage } from '../../../requests/contract/requests'
 import { getVersionFromTypedData } from './typedData'
 
 describe('#getVersionFromTypedData', () => {
-  const versionFor = (data: unknown): unknown =>
-    getVersionFromTypedData(data as Parameters<typeof getVersionFromTypedData>[0])
-  const typedData = {
+  const typedData: TypedData = {
     types: {
       EIP712Domain: [],
       Mail: [{ name: 'contents', type: 'string' }]
@@ -24,7 +23,7 @@ describe('#getVersionFromTypedData', () => {
     }
   }
 
-  ;[
+  const cases: Array<[string, TypedMessage['data'], SignTypedDataVersion]> = [
     [
       'legacy arrays',
       [{ type: 'string', name: 'fullName', value: 'Satoshi Nakamoto' }],
@@ -34,9 +33,10 @@ describe('#getVersionFromTypedData', () => {
     ['EIP-712 arrays', typedDataWithArrays, SignTypedDataVersion.V4],
     ['undefined properties', { ...typedData, message: {} }, SignTypedDataVersion.V3],
     ['malformed EIP-712 data', { ...typedData, primaryType: 'missing' }, SignTypedDataVersion.V4]
-  ].forEach(([description, data, version]) => {
+  ]
+  cases.forEach(([description, data, version]) => {
     it(`returns ${version} for ${description}`, () => {
-      expect(versionFor(data)).toBe(version)
+      expect(getVersionFromTypedData(data)).toBe(version)
     })
   })
 })

@@ -170,13 +170,14 @@ function normalizeProfileState(main: UnknownRecord) {
     }
   )
 
+  const requestedOrderAccount = Array.isArray(main.accountOrder)
+    ? main.accountOrder.find((id): id is string => typeof id === 'string' && Boolean(sourceAccounts[id]))
+    : undefined
   const requestedAccount =
     (typeof main.currentAccount === 'string' && sourceAccounts[main.currentAccount]
       ? main.currentAccount
       : (Object.keys(sourceAccounts).find((id) => unknownRecord(sourceAccounts[id]).active) ??
-        (Array.isArray(main.accountOrder)
-          ? main.accountOrder.find((id) => typeof id === 'string' && sourceAccounts[id])
-          : undefined) ??
+        requestedOrderAccount ??
         Object.keys(sourceAccounts)[0])) ?? ''
   const requestedProfileId = unknownRecord(sourceAccounts[requestedAccount]).profileId
   const requestedAccountProfile =

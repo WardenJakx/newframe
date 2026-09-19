@@ -219,7 +219,7 @@ export default class Trezor extends Signer {
 
         const firstAccount = accounts[0] || ''
 
-        this.verifyAddress(0, firstAccount, false, (err) => {
+        void this.verifyAddress(0, firstAccount, false, (err) => {
           if (!err) {
             this.status = Status.OK
             this.addresses = accounts
