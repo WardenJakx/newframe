@@ -541,6 +541,26 @@ function addStateListeners() {
       return
     }
 
+    if (payload.method === 'frame_switch_origin_chain') {
+      if (sender.tab || !tab || !provider?.isConnected()) {
+        return
+      }
+      const [chainId] = params
+      const origin = originFromUrl(tab.url)
+      if (!origin || typeof chainId !== 'string' || !/^0x[0-9a-f]+$/i.test(chainId)) {
+        throw new Error('Invalid chain switch request')
+      }
+
+      await provider.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId }],
+        __frameOrigin: origin,
+        __extensionConnecting: true
+      })
+      await refreshActiveOriginStatus(tab)
+      return
+    }
+
     if (payload.method === 'frame_summon') {
       return provider?.connection.send({ jsonrpc: '2.0', id: 1, method, params })
     }
