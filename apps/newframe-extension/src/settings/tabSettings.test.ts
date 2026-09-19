@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, it, mock } from 'bun:test'
 
-import { getMetaMaskSetting, isSupportedTab, refreshCurrentChain, toggleMetaMaskSetting } from './tabSettings'
+import {
+  getMetaMaskSetting,
+  isSupportedTab,
+  normalizeChainId,
+  refreshCurrentChain,
+  switchOriginChain,
+  toggleMetaMaskSetting
+} from './tabSettings'
 
 const originals = new Map<string, PropertyDescriptor | undefined>()
 function stubGlobal(name: string, value: unknown) {
@@ -80,5 +87,22 @@ describe('tab settings', () => {
     await refreshCurrentChain(7)
     expect(toggleMetaMaskSetting(7)).rejects.toThrow('Cannot access this page')
     expect(close).not.toHaveBeenCalled()
+  })
+
+  it('sends a normalized chain switch for the active origin', async () => {
+    const sendMessage = mock(async () => undefined)
+    stubGlobal('chrome', { runtime: { sendMessage } })
+    const tab = { id: 7, url: 'https://app.example' } as chrome.tabs.Tab
+
+    await switchOriginChain(tab, 8453)
+
+    expect(sendMessage).toHaveBeenCalledWith({
+      tab,
+      method: 'frame_switch_origin_chain',
+      params: ['0x2105']
+    })
+    expect(normalizeChainId('0x2105')).toBe('0x2105')
+    expect(normalizeChainId('8453')).toBe('0x2105')
+    expect(normalizeChainId('invalid')).toBeUndefined()
   })
 })
