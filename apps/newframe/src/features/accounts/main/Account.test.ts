@@ -10,6 +10,12 @@ import type { AccountRequest, CanonicalAccountRequest, TypedMessage } from '../.
 import { RequestMode, RequestStatus } from '../../requests/contract/requests'
 import { ApprovalType } from '../../requests/domain/approval'
 import { GasFeesSource, type TransactionData } from '../../transactions/domain'
+import type { AccountChainRpcPort } from './providerPort'
+
+type ProviderRequest = Parameters<AccountChainRpcPort['send']>[0]
+type ProviderResponse = Parameters<Parameters<AccountChainRpcPort['send']>[1]>[0]
+type ProviderRespond = (response: Partial<ProviderResponse> & { result?: unknown; error?: EVMError }) => void
+type ProviderListener = Parameters<AccountChainRpcPort['on']>[1]
 
 const revealMock = {
   recog: mock(),
@@ -333,8 +339,10 @@ describe('#addRequest', () => {
 
 describe('creation-block listener lifecycle', () => {
   it('removes the provider listener after resolving the creation block', () => {
-    const listener = providerMock.on.mock.calls.find(([event]) => event === 'connect')?.[1]
-    providerMock.send.mockImplementationOnce((_payload, respond) => {
+    const listener = providerMock.on.mock.calls.find(
+      ([event]) => event === 'connect'
+    )?.[1] as ProviderListener
+    providerMock.send.mockImplementationOnce((_payload: ProviderRequest, respond: ProviderRespond) => {
       respond({ result: '0x64' })
     })
 
@@ -345,7 +353,9 @@ describe('creation-block listener lifecycle', () => {
   })
 
   it('removes the provider listener when the account handle closes', () => {
-    const listener = providerMock.on.mock.calls.find(([event]) => event === 'connect')?.[1]
+    const listener = providerMock.on.mock.calls.find(
+      ([event]) => event === 'connect'
+    )?.[1] as ProviderListener
 
     account.close()
 
@@ -353,8 +363,10 @@ describe('creation-block listener lifecycle', () => {
   })
 
   it('ignores a late creation-block response after canonical removal', () => {
-    const listener = providerMock.on.mock.calls.find(([event]) => event === 'connect')?.[1]
-    providerMock.send.mockImplementationOnce((_payload, respond) => {
+    const listener = providerMock.on.mock.calls.find(
+      ([event]) => event === 'connect'
+    )?.[1] as ProviderListener
+    providerMock.send.mockImplementationOnce((_payload: ProviderRequest, respond: ProviderRespond) => {
       respond({ result: '0x64' })
     })
     store.getState().removeAccount(account.id)

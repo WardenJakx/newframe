@@ -298,8 +298,12 @@ function mergeRecord(current: unknown, persisted: unknown) {
 }
 
 function httpsImageSource(value: unknown) {
+  if (typeof value !== 'string') {
+    return ''
+  }
+
   try {
-    const url = new URL(String(value ?? '').trim())
+    const url = new URL(value.trim())
     return url.protocol === 'https:' ? url.toString() : ''
   } catch {
     return ''

@@ -105,6 +105,19 @@ describe('flash domain helpers', () => {
     expect(token.symbol).toBe('USDC')
   })
 
+  it('rejects object-valued token symbols and falls back from object-valued names', () => {
+    const balance = {
+      address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+      chainId: 1,
+      decimals: 6
+    }
+
+    expect(() => balanceSummaryToFlashAsset({ ...balance, symbol: {} })).toThrow(
+      'Invalid Flash balance symbol'
+    )
+    expect(balanceSummaryToFlashAsset({ ...balance, name: {}, symbol: 'USDC' }).name).toBe('USDC')
+  })
+
   it('uses the preferred balance priority for the default sell contra asset', () => {
     const targetAsset = {
       id: `${FLASH_ANVIL_CHAIN_ID}:0x0000000000000000000000000000000000000001`,

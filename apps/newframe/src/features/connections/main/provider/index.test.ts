@@ -74,6 +74,7 @@ const createGetMock = () => mock((_address: string): TestAccount | undefined => 
 const createSignTransactionMock = () =>
   mock((_tx: TransactionData, _cb: Callback<string>, _context?: SigningUiContext) => {})
 const createSetTxSignedMock = () => mock((_handlerId: string, _cb: Callback<void>) => {})
+const createSetSignerMock = () => mock((_id: string, _cb: Callback<TestAccount>) => {})
 
 interface TestAccounts {
   clearRequestsByOrigin: ReturnType<typeof mock>
@@ -86,7 +87,7 @@ interface TestAccounts {
     request: AccountRequest,
     executeAutonomously?: (request: AccountRequest) => void
   ): boolean
-  setSigner: ReturnType<typeof mock>
+  setSigner: ReturnType<typeof createSetSignerMock>
   setTxSigned: ReturnType<typeof createSetTxSignedMock>
   signTransaction: ReturnType<typeof createSignTransactionMock>
 }
@@ -134,7 +135,7 @@ const accounts: TestAccounts = {
   getAccounts: () => [],
   lockRequest: mock(),
   routeRequest: () => false,
-  setSigner: mock(),
+  setSigner: createSetSignerMock(),
   setTxSigned: createSetTxSignedMock(),
   signTransaction: createSignTransactionMock()
 }
