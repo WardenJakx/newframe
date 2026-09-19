@@ -22,15 +22,16 @@ Newframe is a web3 platform that creates a secure system-wide interface to your 
 
 ## Features
 
+- **First-class Safe wallet support:** Import your existing safe wallets with added security of proposals due to local re-computation of safe transaction service data to prevent
+  malicious proposals.
 - **First-class hardware signer support:** use your GridPlus, Ledger, and Trezor accounts with any dapp.
-- **Extensive software signer support:** use a mnemonic phrase, keystore.json, or standalone private keys to create and back up accounts.
-- **Permissions:** control which dapps can access Newframe and monitor requests with full transparency.
-- **Omnichain routing:** let dapps use multiple chains at the same time for truly multichain experiences.
-- **Transaction decoding:** decode calldata with verified contract ABIs so transactions can be reviewed before signing.
-- **Custom Ethereum connections:** bring your own RPC endpoints instead of relying on a centralized gateway.
-- **Menu bar support:** keep Newframe available without taking over your desktop.
+- **Agentic trading without private keys:** Enabled hot-wallets enable agentic access to autonomously sign and send transactions without ever handling private keys or RPCs.
+- **Developer friendly:** Connect into hardhat and foundry when doing deployments. No more manually securing and passing in deployer wallet private keys.
+- **Know what you sign:** ERC-7730 clear-signing and ERC-8213 digest display for all signatures and transactions.
+- **Built in trading:** Create market, limit, take profit, stop loss, dca, across any chain without leaving your wallet, powered by Definitive Flash.
+- **Profiles:** Organize your wallet clusters with profiles
 - **Cross-platform desktop app:** run Newframe on macOS, Windows, and Linux.
-- **Browser companion extension:** connect Chrome, Brave, Firefox, and other supported browsers to the desktop app.
+- **Browser companion extension:** connect Newframe to any dApp on Chrome, Brave, Firefox, and other supported browsers.
 
 ## Download and get started
 
@@ -91,24 +92,13 @@ Run `bun run check` after installing dependencies in a clean checkout. It checks
 formatting, generates shared UI declarations and styles during typechecking, then
 runs typed lint, Knip, and tests.
 
-Run `bun run typecheck` for TypeScript 7.0.2 and `bun run test` for tests.
+Run `bun run typecheck` and `bun run test`.
 Standalone `bun run lint` needs current build/typecheck artifacts, so run
 `bun run typecheck` first when those are missing or stale. Lint shows warnings and
 reports unused suppression comments as errors. `bun run lint:warn` is an alias for
 `bun run lint`; `bun run lint:fix` applies fixes.
 Oxfmt handles formatting with `bun run format`;
 `bun run format:check` checks formatting without writing files.
-
-Oxlint's native rules cover JavaScript, TypeScript, React, React Hooks, and React
-Compiler checks. Testing Library rules use its JavaScript plugin support, which is
-currently alpha. The config preserves the previous rule scopes and ignores. Typed
-rules check deprecated APIs, floating and misused promises, and exhaustive switches.
-The desktop portable scope also checks indexed access and exact optional properties.
-
-All workspaces depend directly on TypeScript 7.0.2 for builds and typechecks.
-Panda CSS installs its own TypeScript 6.0.2 dependency because its config loader
-uses compiler APIs such as `resolveModuleName`, which TypeScript 7 does not expose.
-Do not override that transitive dependency to TypeScript 7.
 
 ## Project surfaces
 
