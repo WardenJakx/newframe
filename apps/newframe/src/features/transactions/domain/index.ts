@@ -131,9 +131,6 @@ function safeBigInt(value?: string | number | bigint | null) {
   if (value === undefined || value === null || value === '') {
     return 0n
   }
-  if (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'bigint') {
-    return 0n
-  }
 
   try {
     return BigInt(value)
@@ -162,7 +159,7 @@ function contractAddress(contract: RecognizedActionData['contract']) {
 }
 
 function isUnlimitedApproval(amount?: string) {
-  return amount?.toLowerCase() === MAX_HEX.toLowerCase()
+  return amount?.toLowerCase?.() === MAX_HEX.toLowerCase()
 }
 
 function erc20TokenData(req: TransactionSummaryInput) {
@@ -194,18 +191,16 @@ function hasRecognizedErc20Action(req: TransactionSummaryInput) {
 function isDecodedErc20Approve(req: TransactionSummaryInput) {
   return (
     !hasRecognizedErc20Action(req) &&
-    isRecord(decodedData) &&
-    decodedData.signature === 'approve(address,uint256)' &&
-    decodedData.method === 'approve'
+    req?.decodedData?.signature === 'approve(address,uint256)' &&
+    req?.decodedData?.method === 'approve'
   )
 }
 
 function isDecodedErc20Transfer(req: TransactionSummaryInput) {
   return (
     !hasRecognizedErc20Action(req) &&
-    isRecord(decodedData) &&
-    decodedData.signature === 'transfer(address,uint256)' &&
-    decodedData.method === 'transfer'
+    req?.decodedData?.signature === 'transfer(address,uint256)' &&
+    req?.decodedData?.method === 'transfer'
   )
 }
 
@@ -260,8 +255,8 @@ export function getTransactionIntent(req: TransactionSummaryInput, nativeSymbol 
       return { title: 'Deploy contract', subtitle: 'Contract creation' }
     case 'CONTRACT_CALL':
       return {
-        title: optionalString(decodedData.method) ?? 'Call contract',
-        subtitle: optionalString(decodedData.contractName) ?? 'Contract interaction'
+        title: req?.decodedData?.method ?? 'Call contract',
+        subtitle: req?.decodedData?.contractName ?? 'Contract interaction'
       }
     case 'SEND_DATA':
       return { title: 'Send data', subtitle: 'Data transaction' }
@@ -343,12 +338,10 @@ function getDeterministicTransactionEffects(
   })
 
   if (isDecodedErc20Approve(req)) {
-    const spender = optionalString(decodedArg(req, 0))
+    const spender = decodedArg(req, 0)
     const amount = decodedArg(req, 1)
     const revoke = safeBigInt(amount) === 0n
     const token = erc20TokenData(req)
-    const decimals = token?.decimals
-    const assetAddress = optionalString(data.to)
 
     effects.push({
       id: 'decoded-erc20-approval',
@@ -367,11 +360,9 @@ function getDeterministicTransactionEffects(
   }
 
   if (isDecodedErc20Transfer(req)) {
-    const recipient = optionalString(decodedArg(req, 0))
+    const recipient = decodedArg(req, 0)
     const amount = decodedArg(req, 1)
     const token = erc20TokenData(req)
-    const decimals = token?.decimals
-    const assetAddress = optionalString(data.to)
 
     effects.push({
       id: 'decoded-erc20-transfer',
@@ -396,10 +387,9 @@ export function getTransactionEffects(
   nativeSymbol = 'ETH'
 ): TransactionEffect[] {
   const deterministicEffects = getDeterministicTransactionEffects(req, nativeSymbol)
-  const simulation = isRecord(request.simulation) ? request.simulation : {}
   const simulatedEffects =
-    simulation.status === 'success' && Array.isArray(simulation.effects)
-      ? simulation.effects.filter(isTransactionEffect)
+    req?.simulation?.status === 'success' && Array.isArray(req.simulation.effects)
+      ? req.simulation.effects
       : []
 
   if (!simulatedEffects.length) {
@@ -455,13 +445,8 @@ export function getTransactionPositionTokens(req: TransactionSummaryInput): Tran
   }
 
   const tokens = new Map<string, TransactionPositionToken>()
-  const simulation = isRecord(request.simulation) ? request.simulation : {}
-  const rawSimulationEffects =
-    simulation.status === 'success' && Array.isArray(simulation.effects)
-      ? simulation.effects.filter(isPositionEffect)
-      : []
 
-  ;[...getTransactionEffects(req), ...rawSimulationEffects].forEach((effect) => {
+  getTransactionEffects(req).forEach((effect) => {
     const address = (effect.assetAddress ?? '').trim().toLowerCase()
     if (effect.kind !== 'erc20' || effect.direction === 'neutral') {
       return

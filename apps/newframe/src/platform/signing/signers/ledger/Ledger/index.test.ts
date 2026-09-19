@@ -185,11 +185,9 @@ describe('#connect', () => {
 
     expect(ledger.addresses).toEqual(addresses)
     ethInstance.signMessage.mockResolvedValue(signature)
-    expect(
-      queuedResult<string>((done) => {
-        ledger.signMessage(0, 'hello, Frame!', done)
-      })
-    ).resolves.toBe(signature)
+    expect(queuedResult<string>((done) => ledger.signMessage(0, 'hello, Frame!', done))).resolves.toBe(
+      signature
+    )
   })
 })
 
@@ -242,9 +240,7 @@ describe('#verifyAddress', () => {
     let updates = 0
     ledger.on('update', () => updates++)
     expect(
-      queuedResult<boolean>((done) => {
-        ledger.verifyAddress(9, addresses[0], false, done)
-      })
+      queuedResult<boolean>((done) => ledger.verifyAddress(9, addresses[0], false, done))
     ).resolves.toBeTrue()
     expect({ status: ledger.status, updates }).toEqual({ status: Status.OK, updates: 0 })
   })
@@ -254,16 +250,12 @@ describe('#verifyAddress', () => {
     [
       'the verification request is rejected by the user',
       'Verify request rejected by user',
-      () => {
-        ethInstance.getAddress.mockRejectedValue({ statusCode: 27013 })
-      }
+      () => ethInstance.getAddress.mockRejectedValue({ statusCode: 27013 })
     ],
     [
       'there is a communication error',
       'Verify address error',
-      () => {
-        ethInstance.getAddress.mockRejectedValue({ statusCode: -1 })
-      }
+      () => ethInstance.getAddress.mockRejectedValue({ statusCode: -1 })
     ],
     ['the eth app is not initialized', 'Verify address error', () => (ledger.eth = undefined)],
     ['the derivation type is not initialized', 'Verify address error', () => (ledger.derivation = undefined)]
@@ -273,9 +265,9 @@ describe('#verifyAddress', () => {
     it(`fails if ${testCase}`, async () => {
       setup()
       expect(
-        queuedResult((done) => {
+        queuedResult((done) =>
           ledger.verifyAddress(1, '0xe9d6f5779cf6936de03c0bec631f3bb3e336d98d', false, done)
-        })
+        )
       ).rejects.toThrow(message)
       expect(ledger.status).toBe(Status.NEEDS_RECONNECTION)
     })
@@ -321,9 +313,7 @@ for (const signingMethod of ['signMessage', 'signTransaction'] as const) {
     for (const [testCase, setup] of [
       [
         'there is a communication error',
-        () => {
-          ethInstance[signingMethod].mockRejectedValue({ statusCode: -1 })
-        }
+        () => ethInstance[signingMethod].mockRejectedValue({ statusCode: -1 })
       ],
       ['the eth app is not initialized', () => (ledger.eth = undefined)],
       ['the derivation type is not initialized', () => (ledger.derivation = undefined)]
@@ -350,36 +340,26 @@ describe('#signTypedData', () => {
     let updates = 0
     ledger.on('update', () => updates++)
 
-    expect(
-      queuedResult((done) => {
-        ledger.signTypedData(5, typedData, done)
-      })
-    ).resolves.toBe(signature)
+    expect(queuedResult((done) => ledger.signTypedData(5, typedData, done))).resolves.toBe(signature)
     expect({ status: ledger.status, updates }).toEqual({ status: Status.OK, updates: 0 })
   })
 
   for (const [testCase, setup, message, expectedStatus] of [
     [
       'the user rejects signing',
-      () => {
-        ethInstance.signTypedData.mockRejectedValue({ statusCode: 27013 })
-      },
+      () => ethInstance.signTypedData.mockRejectedValue({ statusCode: 27013 }),
       'Sign request rejected by user',
       'OK'
     ],
     [
       'the signing request is invalid',
-      () => {
-        ethInstance.signTypedData.mockRejectedValue({ statusCode: 99901, message: 'Invalid typed data' })
-      },
+      () => ethInstance.signTypedData.mockRejectedValue({ statusCode: 99901, message: 'Invalid typed data' }),
       'Sign message error',
       'OK'
     ],
     [
       'there is a communication error',
-      () => {
-        ethInstance.signTypedData.mockRejectedValue({ statusCode: -1 })
-      },
+      () => ethInstance.signTypedData.mockRejectedValue({ statusCode: -1 }),
       'Sign message error',
       'NEEDS_RECONNECTION'
     ],
@@ -398,11 +378,7 @@ describe('#signTypedData', () => {
   ] as const) {
     it(`fails if ${testCase}`, async () => {
       setup()
-      expect(
-        queuedResult((done) => {
-          ledger.signTypedData(5, typedData, done)
-        })
-      ).rejects.toThrow(message)
+      expect(queuedResult((done) => ledger.signTypedData(5, typedData, done))).rejects.toThrow(message)
       expect(ledger.status).toBe(Status[expectedStatus])
     })
   }

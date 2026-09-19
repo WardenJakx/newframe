@@ -138,7 +138,7 @@ const simulationMock = {
 }
 
 function createAccounts(chainRpc = providerMock) {
-  const accounts: Record<string, any> = new AccountsClass(store, {
+  return new AccountsClass(store, {
     chainRpc,
     transactionPolicy: transactionMock,
     simulation: simulationMock,
@@ -157,7 +157,6 @@ function createAccounts(chainRpc = providerMock) {
       windows: windowsMock
     }
   })
-  return accounts
 }
 
 const storeState = () => store.getState()
@@ -535,9 +534,7 @@ describe('#startDataScanner', () => {
     accounts.refreshBalances(account.address)
     expect(externalDataScannerFactoryMock).not.toHaveBeenCalled()
     expect(externalDataScannerMock.refreshBalances).not.toHaveBeenCalled()
-    expect(() => {
-      accounts.close()
-    }).not.toThrow()
+    expect(() => accounts.close()).not.toThrow()
     expect(externalDataScannerMock.close).not.toHaveBeenCalled()
 
     const startedAccounts = createAccounts()

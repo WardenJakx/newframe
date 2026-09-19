@@ -235,9 +235,7 @@ beforeAll(async () => {
   chains.start()
 })
 
-afterAll(() => {
-  chains.dispose()
-})
+afterAll(() => chains.dispose())
 
 beforeEach(() => {
   resetChainState()

@@ -24,28 +24,7 @@ interface DeriveOptions {
 type LatticeSignature = {
   r: string
   s: string
-  v: bigint
-}
-
-interface LatticeUnsignedTransaction {
-  to: unknown
-  value: unknown
-  data: unknown
-  chainId: string
-  nonce: number
-  gasLimit: number
-  useEIP155: true
-  signerPath: number[]
-  currency?: 'ETH'
-  type?: number
-  gasPrice?: number
-  maxFeePerGas?: number
-  maxPriorityFeePerGas?: number
-}
-
-type LatticeSigningOptions = {
-  currency?: 'ETH' | 'ETH_MSG'
-  data: SigningPayload | LatticeUnsignedTransaction
+  v?: bigint
 }
 
 interface LatticeUnsignedTransaction {
@@ -73,36 +52,11 @@ type LatticeResponseError = {
 type SigningPayload = Parameters<InstanceType<typeof Client>['sign']>[0]['data']
 type SignProtocol = 'eip712' | 'signPersonal'
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-}
-
 function booleanResponse(value: unknown, operation: string) {
   if (typeof value !== 'boolean') {
     throw new Error(`Lattice returned an invalid ${operation} response`)
   }
   return value
-}
-
-function signatureResponse(value: unknown): LatticeSignature {
-  if (!isRecord(value) || !isRecord(value.sig)) {
-    throw new Error('Lattice returned an incomplete signature')
-  }
-
-  const { r, s, v } = value.sig
-  if (typeof r !== 'string' || typeof s !== 'string' || typeof v !== 'bigint') {
-    throw new Error('Lattice returned an incomplete signature')
-  }
-  return { r, s, v }
-}
-
-async function requestSignature(connection: Client, options: LatticeSigningOptions) {
-  const sign: unknown = Reflect.get(connection, 'sign')
-  if (typeof sign !== 'function') {
-    throw new Error('Lattice signing client is unavailable')
-  }
-  const result: unknown = await Reflect.apply(sign, connection, [options])
-  return signatureResponse(result)
 }
 
 const Status = {
@@ -418,7 +372,12 @@ export default class Lattice extends Signer {
       data: data
     }
 
-    const sig = await requestSignature(connection, signOpts)
+    const result = await connection.sign(signOpts)
+    const sig = result?.sig as LatticeSignature | undefined
+
+    if (sig?.v === undefined) {
+      throw new Error('Lattice returned an incomplete signature')
+    }
 
     const signature = [stripHexPrefix(sig.r), stripHexPrefix(sig.s), padToEven(sig.v.toString(16))].join('')
 
@@ -470,7 +429,7 @@ export default class Lattice extends Signer {
         ? await Utils.fetchCalldataDecoder(tx.data, to, unsignedTx.chainId)
         : undefined
 
-      const data: SigningPayload = {
+      const data = {
         payload,
         curveType: Constants.SIGNING.CURVES.SECP256K1,
         hashType: Constants.SIGNING.HASHES.KECCAK256,

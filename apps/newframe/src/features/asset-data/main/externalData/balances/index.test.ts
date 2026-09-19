@@ -55,7 +55,7 @@ function storedToken(input: ReturnType<typeof token>, custom = false): TokenReco
     ...input,
     custom,
     curated: false,
-    sources: [custom ? 'custom' : 'onchain'] as Array<'custom' | 'onchain'>,
+    sources: [custom ? 'custom' : 'onchain'],
     updatedAt: 0
   }
 }

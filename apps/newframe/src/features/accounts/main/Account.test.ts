@@ -138,7 +138,6 @@ function createAccount(profileActive = true) {
     requestLifecycle,
     profileActive
   )
-  return created
 }
 
 beforeEach(() => {

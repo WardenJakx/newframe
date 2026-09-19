@@ -3,7 +3,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, jest as timers,
 import store from '../../../../platform/state-store'
 import createCanonicalStore from '../../../../platform/state-store/createCanonicalStore'
 
-const mockBalancesFactory = mock((): ReturnType<typeof createBalancesMock> => mockBalances)
+const mockBalancesFactory = mock(() => mockBalances)
 
 await mock.module('./balances', () => ({ default: mockBalancesFactory }))
 

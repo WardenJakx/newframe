@@ -365,9 +365,7 @@ describe('signing and verification', () => {
       ['0x2', '0x02d3818980808080808080c080833ea8cd8396f7a0', 2]
     ] as const) {
       expect(
-        await callbackResult<string>((done) => {
-          lattice.signTransaction(4, { chainId: '0x89', type }, done)
-        })
+        await callbackResult<string>((done) => lattice.signTransaction(4, { chainId: '0x89', type }, done))
       ).toBe(expected)
       expect(wireTypes.at(-1)).toBe(wireType)
     }

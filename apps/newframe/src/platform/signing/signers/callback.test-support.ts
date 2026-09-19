@@ -12,10 +12,10 @@ export function callbackResult<T>(start: (done: Callback<T>) => void): Promise<T
 export async function exerciseHotSignerContract(signer: HotSigner, vault: { lock(): void }) {
   const signature = await callbackResult<string>((done) =>
     signer.signMessage(0, '0x' + Buffer.from('test').toString('hex'), done)
-  })
+  )
   expect(signature).toHaveLength(132)
 
-  const transaction = await callbackResult<string>((done) => {
+  const transaction = await callbackResult<string>((done) =>
     signer.signTransaction(
       0,
       {
@@ -30,7 +30,7 @@ export async function exerciseHotSignerContract(signer: HotSigner, vault: { lock
       },
       done
     )
-  })
+  )
   expect(transaction).toStartWith('0x')
   expect(transaction.length).toBeGreaterThan(2)
   expect(
@@ -40,16 +40,10 @@ export async function exerciseHotSignerContract(signer: HotSigner, vault: { lock
     'Unable to verify address'
   )
 
-  const exported = await callbackResult<string>((done) => {
-    signer.exportPrivateKey(0, done)
-  })
+  const exported = await callbackResult<string>((done) => signer.exportPrivateKey(0, done))
   expect(exported).toMatch(/^0x[0-9a-f]{64}$/)
 
   vault.lock()
-  expect(
-    callbackResult((done) => {
-      signer.signMessage(0, 'test', done)
-    })
-  ).rejects.toThrow('Signer locked')
+  expect(callbackResult((done) => signer.signMessage(0, 'test', done))).rejects.toThrow('Signer locked')
   signer.close()
 }

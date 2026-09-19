@@ -25,8 +25,7 @@ import {
   flashBaseUrl,
   flashHeaders,
   flashWebSocketUrl,
-  normalizeFlashQuoteResponse,
-  type FlashPositionSync
+  normalizeFlashQuoteResponse
 } from './index'
 
 interface TestQuoteRaw {

@@ -153,9 +153,9 @@ describe('Seed signer', () => {
       ]
     ] as const
     for (const [chainId, expected] of chains) {
-      const signed = await callbackResult<string>((done) => {
+      const signed = await callbackResult<string>((done) =>
         fixed.signTransaction(0, { ...rawTx, chainId: chainId.toString(16) }, done)
-      })
+      )
       expect(signed).toBe(expected)
     }
     expect(

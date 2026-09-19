@@ -493,7 +493,7 @@ describe('local trade service handler', () => {
       })
       expect(cancelled.order).not.toHaveProperty('chainId')
       expect(published.map((order) => order.normalizedStatus)).toEqual(['accepted', 'cancelled'])
-      expect(published.every((order) => !order.hasChainId)).toBe(true)
+      expect(published.every((order) => !('chainId' in order))).toBe(true)
       unsubscribe()
     })
   }

@@ -712,7 +712,7 @@ describe('#send', () => {
 
   describe('#wallet_requestPermissions', () => {
     it('returns the requested permissions', async () => {
-      const permissions: Array<{ date: number; parentCapability: string }> = (
+      const permissions = (
         await sendResult({
           method: 'wallet_requestPermissions',
           params: [{ eth_accounts: {} }, { eth_signTransaction: {} }]
@@ -851,11 +851,7 @@ describe('#send', () => {
       setNetwork(1, { name: 'mainnet', on: true, connection: { primary: { connected: true } } })
       setNetwork(137, { name: 'polygon', on: false, connection: { primary: { connected: false } } })
 
-      const response: { id: number; jsonrpc: string; result: Array<{ chainId: number }> } = await sendResult({
-        method: 'wallet_getEthereumChains',
-        id: 14,
-        jsonrpc: '2.0'
-      })
+      const response = await sendResult({ method: 'wallet_getEthereumChains', id: 14, jsonrpc: '2.0' })
       expect(response).toMatchObject({ id: 14, jsonrpc: '2.0' })
       expect(rpcResult<Array<{ chainId: number }>>(response).map(({ chainId }) => chainId)).toEqual([1])
     })
@@ -1131,9 +1127,9 @@ describe('#send', () => {
     })
 
     it('releases its response handler when a sign request is rejected', async () => {
-      await expectQueuedRequestRejection((callback) => {
+      await expectQueuedRequestRejection((callback) =>
         send({ method: 'eth_sign', params: [address, hexMessage] }, callback)
-      })
+      )
     })
 
     it('does not submit a request from an account other than the current one', async () => {
@@ -1218,9 +1214,9 @@ describe('#send', () => {
     })
 
     it('returns typed-data rejection and releases its response handler', async () => {
-      await expectQueuedRequestRejection((callback) => {
+      await expectQueuedRequestRejection((callback) =>
         send({ method: 'eth_signTypedData_v4', params: [address, typedData] }, callback)
-      })
+      )
     })
 
     beforeEach(() => {
