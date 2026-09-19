@@ -180,18 +180,17 @@ export function isTraceCall(value: unknown): value is TraceCall {
         if (!event || typeof event !== 'object' || Array.isArray(event)) {
           return false
         }
-        if (typeof event.address !== 'string' || !normalizeAddress(event.address)) {
+        const log = event as Record<string, unknown>
+        if (typeof log.address !== 'string' || !normalizeAddress(log.address)) {
           return false
         }
         if (
-          !Array.isArray(event.topics) ||
-          !event.topics.every(
-            (topic: unknown) => typeof topic === 'string' && /^0x[0-9a-f]{64}$/i.test(topic)
-          )
+          !Array.isArray(log.topics) ||
+          !log.topics.every((topic: unknown) => typeof topic === 'string' && /^0x[0-9a-f]{64}$/i.test(topic))
         ) {
           return false
         }
-        if (!bytes(event.data)) {
+        if (!bytes(log.data)) {
           return false
         }
       }

@@ -8,6 +8,8 @@ import type { SigningApprovalContext, SignerRequestContext } from '../../../plat
 import { createRendererPrincipal, decideWalletAction } from '../../access-control/main/authority'
 import type { TypedMessage } from '../../requests/contract/requests'
 
+type TestRpcRespond = (response: { error?: EVMError; result?: unknown }) => void
+
 const revealMock = {
   recog: mock(),
   identity: mock(),
@@ -15,7 +17,12 @@ const revealMock = {
 }
 const fetchContractMock = mock()
 const simulateTransactionEffectsMock = mock()
-const providerMock = { on: mock(), off: mock(), send: mock(), getL1GasCost: mock() }
+const providerMock = {
+  on: mock((_event: string | symbol, _listener: (...args: never[]) => void) => undefined),
+  off: mock((_event: string | symbol, _listener: (...args: never[]) => void) => undefined),
+  send: mock((_payload: RPCRequestPayload, _respond: TestRpcRespond): void => undefined),
+  getL1GasCost: mock()
+}
 const signersMock = { get: mock() }
 const windowsMock = { showTray: mock() }
 const navMock = { forward: mock(), back: mock() }
@@ -34,12 +41,41 @@ await mock.module('../../name-resolution/main/nameResolution', () => ({
   }
 }))
 
-let account: any
-let Account: any
-let reveal: any
-let fetchContract: any
-let nav: any
-let store: any
+type AccountConstructor = typeof import('./Account').default
+type AccountInstance = InstanceType<AccountConstructor>
+
+interface AccountTestRequest {
+  approvals: Array<{ approved: boolean }>
+  data: Record<string, unknown>
+  recognizedActions: Array<{ data: Record<string, unknown>; id: string }>
+}
+
+interface AccountTestHandle extends Pick<
+  AccountInstance,
+  'address' | 'close' | 'created' | 'ensName' | 'id' | 'name'
+> {
+  actionUpdateHandlers: Map<unknown, unknown>
+  requests: Record<PropertyKey, AccountTestRequest>
+  addRequest(request: unknown): void
+  approveRequest(...args: unknown[]): boolean
+  clearRequest(...args: unknown[]): unknown
+  rejectRequest(...args: unknown[]): unknown
+  resolveRequest(...args: unknown[]): unknown
+  getRequest(...args: unknown[]): unknown
+  setAccess(...args: unknown[]): unknown
+  setProfileActive(active: boolean): void
+  signMessage(...args: unknown[]): unknown
+  signTransaction(...args: unknown[]): unknown
+  signTypedData(...args: unknown[]): unknown
+  updateRecognizedAction(...args: unknown[]): boolean
+}
+
+let account!: AccountTestHandle
+let Account!: AccountConstructor
+let reveal: typeof revealMock
+let fetchContract: typeof fetchContractMock
+let nav: typeof navMock
+let store!: typeof import('../../../platform/state-store').default
 const nameResolution = {
   off: mock(),
   ready: mock(() => true),
@@ -88,20 +124,28 @@ const accountState = {
 beforeAll(async () => {
   Account = (await import('./Account')).default
   reveal = revealMock
-  fetchContract = (await import('../../../platform/chain-rpc/contracts')).fetchContract
+  fetchContract = fetchContractMock
   nav = navMock
   store = (await import('../../../platform/state-store')).default
 })
 
 function createAccount(profileActive = true) {
   return new Account(
-    accountState as any,
-    accounts as any,
+    accountState,
+    accounts as Partial<
+      ConstructorParameters<AccountConstructor>[1]
+    > as ConstructorParameters<AccountConstructor>[1],
     store,
-    providerMock as any,
+    providerMock as Partial<
+      ConstructorParameters<AccountConstructor>[3]
+    > as ConstructorParameters<AccountConstructor>[3],
     { simulateTransactionEffects: simulateTransactionEffectsMock },
-    nameResolution,
-    revealMock,
+    nameResolution as Partial<
+      ConstructorParameters<AccountConstructor>[5]
+    > as ConstructorParameters<AccountConstructor>[5],
+    revealMock as Partial<
+      ConstructorParameters<AccountConstructor>[6]
+    > as ConstructorParameters<AccountConstructor>[6],
     {
       navigation: navMock,
       now: Date.now,
@@ -112,9 +156,11 @@ function createAccount(profileActive = true) {
       signers: signersMock,
       windows: windowsMock
     },
-    requestLifecycle,
+    requestLifecycle as Partial<
+      ConstructorParameters<AccountConstructor>[8]
+    > as ConstructorParameters<AccountConstructor>[8],
     profileActive
-  )
+  ) as Pick<AccountInstance, 'id'> as AccountTestHandle
 }
 
 beforeEach(() => {
@@ -192,7 +238,9 @@ describe('#addRequest', () => {
     expect(requestLifecycle.pending.has(request.handlerId)).toBe(true)
     expect('responseHandlers' in account).toBe(false)
 
-    const canonical = store.getState().main.accounts[account.id].requests[request.handlerId]
+    const canonical = store.getState().main.accounts[account.id].requests[request.handlerId] as {
+      recognizedActions: Array<{ update?: unknown }>
+    }
     expect(canonical.recognizedActions[0].update).toBeUndefined()
     expect(() => structuredClone(canonical)).not.toThrow()
 
@@ -307,6 +355,9 @@ describe('creation-block listener lifecycle', () => {
     const listener = providerMock.on.mock.calls.find(([event]) => event === 'connect')?.[1]
     providerMock.send.mockImplementationOnce((_payload, respond) => respond({ result: '0x64' }))
 
+    if (!listener) {
+      throw new Error('missing connect listener')
+    }
     listener()
 
     expect(account.created).toMatch(/^100:/)
@@ -326,6 +377,9 @@ describe('creation-block listener lifecycle', () => {
     providerMock.send.mockImplementationOnce((_payload, respond) => respond({ result: '0x64' }))
     store.getState().removeAccount(account.id)
 
+    if (!listener) {
+      throw new Error('missing connect listener')
+    }
     expect(() => listener()).not.toThrow()
     expect(providerMock.off).toHaveBeenCalledWith('connect', listener)
   })
@@ -387,7 +441,12 @@ describe('#clearRequest', () => {
       pendingRequest('confirmed', 0, { status: 'confirmed' }),
       pendingRequest('monitoring', 0, { mode: 'monitor', status: 'confirming' })
     ].forEach((request) => {
-      store.getState().upsertAccountRequest(account.id, request)
+      store
+        .getState()
+        .upsertAccountRequest(
+          account.id,
+          request as Parameters<ReturnType<typeof store.getState>['upsertAccountRequest']>[1]
+        )
     })
     store.setState((state: any) => {
       state.windows.panel.nav = [
@@ -465,7 +524,7 @@ it('rejects every Safe signing method even when an owner signer is associated', 
 it.each([true, false])(
   'settles the original access owner and grants only the selected target, approved=%s',
   (approved) => {
-    const ownerAccount = account as InstanceType<typeof import('./Account').default>
+    const ownerAccount = account
     const target = '0x0000000000000000000000000000000000000002'
     const origin = 'selected-target-test'
     const respond = mock<RPCRequestCallback>()
@@ -481,7 +540,11 @@ it.each([true, false])(
     store.getState().revokePermission(target, handlerId)
     ownerAccount.addRequest(request)
     ownerAccount.setAccess(request, approved, target)
-    expect(store.getState().main.permissions[target]?.[handlerId]?.provider).toBe(approved ? true : undefined)
+    if (approved) {
+      expect(store.getState().main.permissions[target]?.[handlerId]?.provider).toBe(true)
+    } else {
+      expect(store.getState().main.permissions[target]?.[handlerId]?.provider).toBeUndefined()
+    }
     expect(store.getState().main.permissions[ownerAccount.address]?.[handlerId]).toBeUndefined()
     expect(ownerAccount.getRequest(handlerId)).toBeUndefined()
     expect(respond).toHaveBeenCalledWith({ id: 19, jsonrpc: '2.0', result: approved ? target : undefined })

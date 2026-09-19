@@ -51,7 +51,8 @@ export async function seedSafe(
     ZeroAddress
   ])
   const proxyFactory = new Contract(factory, factoryArtifact.abi, signer)
-  const receipt = await (await proxyFactory.createProxyWithNonce(singleton, initializer, 20260908)).wait(1)
+  const createProxyWithNonce = proxyFactory.getFunction('createProxyWithNonce')
+  const receipt = await (await createProxyWithNonce.send(singleton, initializer, 20260908)).wait(1)
   if (receipt?.status !== 1) {
     throw new Error('Safe proxy creation failed')
   }

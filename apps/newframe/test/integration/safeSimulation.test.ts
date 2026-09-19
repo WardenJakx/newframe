@@ -13,6 +13,7 @@ import {
   id,
   toBeHex,
   toQuantity,
+  type ContractTransactionResponse,
   type InterfaceAbi
 } from 'ethers'
 import { subscribeWithSelector } from 'zustand/middleware'
@@ -59,7 +60,9 @@ const batchAbi = new Interface(['function multiSend(bytes) payable'])
 let anvil: ReturnType<typeof Bun.spawn> | undefined
 let provider: JsonRpcProvider
 let seed: SafeSeedManifest
-let token: Contract
+let token: Contract & {
+  mint(address: string, amount: bigint): Promise<ContractTransactionResponse>
+}
 let tokenAddress: string
 let multiSend: string
 let service: ReturnType<typeof createSafeService>
@@ -206,7 +209,7 @@ beforeAll(async () => {
   ).deploy()
   await deployedToken.waitForDeployment()
   tokenAddress = await deployedToken.getAddress()
-  token = new Contract(tokenAddress, tokenAbi, signer)
+  token = new Contract(tokenAddress, tokenAbi, signer) as typeof token
   const harnessRequire = createRequire(new URL('../../../../harness/package.json', import.meta.url))
   const multiSendArtifact = (await Bun.file(
     harnessRequire.resolve(

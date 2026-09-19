@@ -102,6 +102,33 @@ function shortAddress(address?: string) {
   return `${address.slice(0, 8)}...${address.slice(-6)}`
 }
 
+function recordValue(value: unknown): Record<string, unknown> | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined
+  }
+  return value as Record<string, unknown>
+}
+
+function stringValue(record: Record<string, unknown>, key: string): string | undefined {
+  const value = record[key]
+  return typeof value === 'string' ? value : undefined
+}
+
+function numberValue(record: Record<string, unknown>, key: string): number | undefined {
+  const value = record[key]
+  return typeof value === 'number' ? value : undefined
+}
+
+function addressValue(value: unknown): { address?: string; ens?: string } {
+  const record = recordValue(value)
+  const address = record ? stringValue(record, 'address') : undefined
+  const ens = record ? stringValue(record, 'ens') : undefined
+  return {
+    ...(address !== undefined ? { address } : {}),
+    ...(ens !== undefined ? { ens } : {})
+  }
+}
+
 function firstRecognizedAction(req: any) {
   return (req?.recognizedActions ?? [])[0]
 }
@@ -119,8 +146,16 @@ function decodedArg(req: any, index: number) {
 }
 
 function hasRecognizedErc20Action(req: any) {
-  return (req?.recognizedActions ?? []).some((action: any) =>
-    ['erc20:transfer', 'erc20:approve', 'erc20:revoke'].includes(action?.id)
+  const actions: unknown = req?.recognizedActions
+  return (
+    Array.isArray(actions) &&
+    actions.some((action: unknown) => {
+      if (!action || typeof action !== 'object' || Array.isArray(action)) {
+        return false
+      }
+      const id = (action as Record<string, unknown>).id
+      return typeof id === 'string' && ['erc20:transfer', 'erc20:approve', 'erc20:revoke'].includes(id)
+    })
   )
 }
 
@@ -142,7 +177,9 @@ function isDecodedErc20Transfer(req: any) {
 
 export function getTransactionIntent(req: any, nativeSymbol = 'ETH'): TransactionIntent {
   const action = firstRecognizedAction(req)
-  const [, actionType] = (action?.id ?? '').split(':')
+  const rawActionId: unknown = action?.id
+  const actionId = typeof rawActionId === 'string' ? rawActionId : ''
+  const [, actionType] = actionId.split(':')
   const token = erc20TokenData(req)
 
   if (action?.id === 'erc20:transfer') {
@@ -219,52 +256,61 @@ function getDeterministicTransactionEffects(req: any, nativeSymbol = 'ETH'): Tra
     })
   }
 
-  ;(req?.recognizedActions ?? []).forEach((action: any, index: number) => {
-    if (action?.id === 'erc20:transfer') {
-      const { amount, recipient } = action.data ?? {}
+  const recognizedActions: unknown = req?.recognizedActions
+  ;(Array.isArray(recognizedActions) ? recognizedActions : []).forEach((value: unknown, index: number) => {
+    const action = recordValue(value)
+    const id = action ? stringValue(action, 'id') : undefined
+    const data = recordValue(action?.data) ?? {}
+
+    if (id === 'erc20:transfer') {
+      const amount = stringValue(data, 'amount')
+      const recipient = addressValue(data.recipient)
       const token = erc20TokenData(req)
-      const decimals = token?.decimals ?? action.data?.decimals
-      const symbol = action.data?.symbol ?? token?.symbol
+      const decimals = token?.decimals ?? numberValue(data, 'decimals')
+      const symbol = stringValue(data, 'symbol') ?? token?.symbol
+      const contract = data.contract
+      const contractAddress = typeof contract === 'string' ? contract : addressValue(contract).address
+      const logoURI = stringValue(data, 'logoURI')
 
       effects.push({
         id: `erc20-transfer-${index}`,
         kind: 'erc20',
         direction: 'out',
         label: 'Asset out',
-        amount,
         decimals,
         symbol,
-        detail: recipient?.ens ?? shortAddress(recipient?.address),
-        ...(action.data?.contract || req?.data?.to
-          ? { assetAddress: action.data?.contract?.address ?? action.data?.contract ?? req.data.to }
-          : {}),
-        ...(action.data?.logoURI ? { logoURI: action.data.logoURI } : {})
+        detail: recipient.ens ?? shortAddress(recipient.address),
+        ...(amount !== undefined ? { amount } : {}),
+        ...(contractAddress || req?.data?.to ? { assetAddress: contractAddress ?? req.data.to } : {}),
+        ...(logoURI ? { logoURI } : {})
       })
     }
 
-    if (action?.id === 'erc20:approve' || action?.id === 'erc20:revoke') {
-      const { amount, spender } = action.data ?? {}
+    if (id === 'erc20:approve' || id === 'erc20:revoke') {
+      const amount = stringValue(data, 'amount')
+      const spender = addressValue(data.spender)
       const token = erc20TokenData(req)
-      const decimals = token?.decimals ?? action.data?.decimals
-      const symbol = action.data?.symbol ?? token?.symbol
-      const revoke = action?.id === 'erc20:revoke' || safeBigInt(amount) === 0n
+      const decimals = token?.decimals ?? numberValue(data, 'decimals')
+      const symbol = stringValue(data, 'symbol') ?? token?.symbol
+      const revoke = id === 'erc20:revoke' || safeBigInt(amount) === 0n
+      const contract = data.contract
+      const contractAddress = typeof contract === 'string' ? contract : addressValue(contract).address
+      const logoURI = stringValue(data, 'logoURI')
 
       effects.push({
         id: `erc20-approval-${index}`,
         kind: 'allowance',
         direction: 'neutral',
         label: revoke ? 'Allowance revoked' : 'Allowance change',
-        amount,
         decimals,
         symbol,
-        detail: `${revoke ? 'For' : 'For spender'} ${spender?.ens ?? shortAddress(spender?.address)}${
+        detail: `${revoke ? 'For' : 'For spender'} ${spender.ens ?? shortAddress(spender.address)}${
           isUnlimitedApproval(amount) ? ' (unlimited)' : ''
         }`,
-        ...(action.data?.contract || req?.data?.to
-          ? { assetAddress: action.data?.contract?.address ?? action.data?.contract ?? req.data.to }
-          : {}),
-        ...(spender?.address ? { spenderAddress: spender.address } : {}),
-        ...(action.data?.logoURI ? { logoURI: action.data.logoURI } : {})
+        ...(amount !== undefined ? { amount } : {}),
+        ...(contractAddress || req?.data?.to ? { assetAddress: contractAddress ?? req.data.to } : {}),
+        ...(spender.address ? { spenderAddress: spender.address } : {}),
+        ...(logoURI ? { logoURI } : {})
       })
     }
   })
@@ -312,7 +358,7 @@ function getDeterministicTransactionEffects(req: any, nativeSymbol = 'ETH'): Tra
 
 export function getTransactionEffects(req: any, nativeSymbol = 'ETH'): TransactionEffect[] {
   const deterministicEffects = getDeterministicTransactionEffects(req, nativeSymbol)
-  const simulatedEffects =
+  const simulatedEffects: TransactionEffect[] =
     req?.simulation?.status === 'success' && Array.isArray(req.simulation.effects)
       ? req.simulation.effects
       : []

@@ -1,4 +1,14 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it, jest as timers, mock } from 'bun:test'
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  jest as timers,
+  mock,
+  type Mock
+} from 'bun:test'
 
 import log from 'electron-log'
 
@@ -9,8 +19,8 @@ let fetchContract: typeof import('./index').fetchContract
 let decodeCallData: typeof import('./index').decodeCallData
 let decodeCallDataWithSelectorRegistry: typeof import('./index').decodeCallDataWithSelectorRegistry
 let clearFunctionSelectorCache: typeof import('./selectors').clearFunctionSelectorCache
-let fetchSourcifyContract: typeof import('./sources/sourcify').fetchSourcifyContract
-let fetchEtherscanContract: typeof import('./sources/etherscan').fetchEtherscanContract
+let fetchSourcifyContract: Mock<typeof import('./sources/sourcify').fetchSourcifyContract>
+let fetchEtherscanContract: Mock<typeof import('./sources/etherscan').fetchEtherscanContract>
 
 const originalFetch = globalThis.fetch
 
@@ -35,8 +45,12 @@ beforeAll(async () => {
   log.transports.console.level = false
   ;({ decodeCallData, decodeCallDataWithSelectorRegistry, fetchContract } = await import('./index'))
   ;({ clearFunctionSelectorCache } = await import('./selectors'))
-  ;({ fetchSourcifyContract } = await import('./sources/sourcify'))
-  ;({ fetchEtherscanContract } = await import('./sources/etherscan'))
+  ;({ fetchSourcifyContract } = (await import('./sources/sourcify')) as {
+    fetchSourcifyContract: Mock<typeof import('./sources/sourcify').fetchSourcifyContract>
+  })
+  ;({ fetchEtherscanContract } = (await import('./sources/etherscan')) as {
+    fetchEtherscanContract: Mock<typeof import('./sources/etherscan').fetchEtherscanContract>
+  })
 })
 
 afterEach(() => {
@@ -51,7 +65,7 @@ afterAll(() => {
 
 describe('#fetchContract', () => {
   it('retrieves a contract from sourcify', async () => {
-    ;(fetchSourcifyContract as any).mockResolvedValue(mockContractSource('sourcify'))
+    fetchSourcifyContract.mockResolvedValue(mockContractSource('sourcify'))
 
     return expect(fetchContract('0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0', 1)).resolves.toStrictEqual({
       abi: JSON.stringify(mockAbi),
@@ -61,8 +75,8 @@ describe('#fetchContract', () => {
   })
 
   it(`retrieves a contract from etherscan when sourcify returns no contract`, async () => {
-    ;(fetchSourcifyContract as any).mockResolvedValue(undefined)
-    ;(fetchEtherscanContract as any).mockResolvedValue(mockContractSource('etherscan'))
+    fetchSourcifyContract.mockResolvedValue(undefined)
+    fetchEtherscanContract.mockResolvedValue(mockContractSource('etherscan'))
 
     return expect(fetchContract('0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0', 1)).resolves.toStrictEqual({
       abi: JSON.stringify(mockAbi),
@@ -72,8 +86,8 @@ describe('#fetchContract', () => {
   })
 
   it('prioritizes a contract from sourcify when both sources return contracts', async () => {
-    ;(fetchSourcifyContract as any).mockResolvedValue(mockContractSource('sourcify'))
-    ;(fetchEtherscanContract as any).mockResolvedValue(mockContractSource('etherscan'))
+    fetchSourcifyContract.mockResolvedValue(mockContractSource('sourcify'))
+    fetchEtherscanContract.mockResolvedValue(mockContractSource('etherscan'))
 
     return expect(fetchContract('0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0', 1)).resolves.toStrictEqual({
       abi: JSON.stringify(mockAbi),
@@ -84,15 +98,15 @@ describe('#fetchContract', () => {
 
   it('waits for a contract from sourcify even if etherscan returns first', async () => {
     timers.useFakeTimers()
-    const sourcifyResponse = new Promise((resolve) =>
+    const sourcifyResponse: ReturnType<typeof fetchSourcifyContract> = new Promise((resolve) =>
       setTimeout(() => resolve(mockContractSource('sourcify')), 40)
     )
-    const etherscanResponse = new Promise((resolve) =>
+    const etherscanResponse: ReturnType<typeof fetchEtherscanContract> = new Promise((resolve) =>
       setTimeout(() => resolve(mockContractSource('etherscan')), 20)
     )
 
-    ;(fetchSourcifyContract as any).mockReturnValue(sourcifyResponse)
-    ;(fetchEtherscanContract as any).mockReturnValue(etherscanResponse)
+    fetchSourcifyContract.mockReturnValue(sourcifyResponse)
+    fetchEtherscanContract.mockReturnValue(etherscanResponse)
 
     const contract = fetchContract('0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0', 1)
     timers.advanceTimersByTime(40)
@@ -105,8 +119,8 @@ describe('#fetchContract', () => {
   })
 
   it(`does not retrieve a contract when no contracts are available from any sources`, async () => {
-    ;(fetchSourcifyContract as any).mockResolvedValue(undefined)
-    ;(fetchEtherscanContract as any).mockResolvedValue(undefined)
+    fetchSourcifyContract.mockResolvedValue(undefined)
+    fetchEtherscanContract.mockResolvedValue(undefined)
 
     return expect(fetchContract('0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0', 1)).resolves.toBeUndefined()
   })

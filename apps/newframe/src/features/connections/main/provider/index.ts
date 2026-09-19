@@ -404,7 +404,12 @@ export class Provider extends EventEmitter {
   }
 
   approveSign(req: AccountRequest, cb: Callback<string>, context?: SigningUiContext) {
-    const [address, rawMessage] = req.payload.params
+    const [rawAddress, rawMessage] = req.payload.params
+    if (typeof rawAddress !== 'string') {
+      cb(new TypeError('Sign request address must be a string'))
+      return
+    }
+    const address = rawAddress
     const message = encodePersonalSignMessage(rawMessage)
 
     this.accounts.signMessage(
@@ -430,7 +435,12 @@ export class Provider extends EventEmitter {
 
   approveSignTypedData(req: SignTypedDataRequest, cb: Callback<string>, context?: SigningUiContext) {
     const typedMessage = structuredClone(req.typedMessage)
-    const [address] = req.payload.params
+    const [rawAddress] = req.payload.params
+    if (typeof rawAddress !== 'string') {
+      cb(new TypeError('Typed data request address must be a string'))
+      return
+    }
+    const address = rawAddress
 
     this.accounts.signTypedData(
       address,
@@ -1113,7 +1123,11 @@ export class Provider extends EventEmitter {
       params: orderedParams
     }
 
-    const [from = '', rawTypedData, ...additionalParams] = payload.params
+    const [rawFrom = '', rawTypedData, ...additionalParams] = payload.params
+    if (typeof rawFrom !== 'string') {
+      return resError('Typed data account must be a string', payload, res)
+    }
+    const from = rawFrom
     let typedData = rawTypedData
 
     if (!typedData) {
@@ -1270,12 +1284,10 @@ export class Provider extends EventEmitter {
   private getOriginConnection(payload: RPCRequestPayload) {
     const originId = payload._origin
     const origin = this.store.getState().main.origins[originId]
-    const currentAccount = this.accounts.current() as any
+    const currentAccount = this.accounts.current()
     const rawAddress = currentAccount?.address ?? currentAccount?.id ?? ''
-    const address = rawAddress ? rawAddress.toLowerCase() : ''
-    const permissionAddresses = Array.from(
-      new Set([rawAddress, address].filter(Boolean).map((candidate) => candidate.toString()))
-    )
+    const address = rawAddress.toLowerCase()
+    const permissionAddresses = Array.from(new Set([rawAddress, address].filter(Boolean)))
 
     let permissionAddress = ''
     let permissionId = ''
@@ -1464,6 +1476,7 @@ export class Provider extends EventEmitter {
     }
 
     const handlerId = this.requests.create(res)
+    const normalizedChainName = typeof chainName === 'string' ? chainName.trim() : ''
     const requestChain = existing
       ? {
           id,
@@ -1476,7 +1489,7 @@ export class Provider extends EventEmitter {
       : {
           type,
           id,
-          name: chainName.trim(),
+          name: normalizedChainName,
           symbol: nativeCurrency.symbol,
           primaryRpc: rpcUrls[0],
           secondaryRpc: rpcUrls[1],
@@ -1500,11 +1513,20 @@ export class Provider extends EventEmitter {
     targetChain: Chain,
     principal: TrustedPrincipal
   ) {
-    const { type, options: tokenData } = (payload.params || {}) as any
+    const request: unknown = payload.params
+    if (!request || typeof request !== 'object' || Array.isArray(request)) {
+      return resError('tokens must define options', payload, cb)
+    }
+    const { type, options } = request as Record<string, unknown>
 
-    if ((type ?? '').toLowerCase() !== 'erc20') {
+    if (typeof type !== 'string' || type.toLowerCase() !== 'erc20') {
       return resError('only ERC-20 tokens are supported', payload, cb)
     }
+
+    if (!options || typeof options !== 'object' || Array.isArray(options)) {
+      return resError('tokens must define options', payload, cb)
+    }
+    const tokenData = options as Record<string, unknown>
 
     this.getChainId(
       payload,
@@ -1514,9 +1536,9 @@ export class Provider extends EventEmitter {
         }
 
         const chainId = parseInt(resp.result)
-        const address = (tokenData.address ?? '').toLowerCase()
-        const symbol = (tokenData.symbol ?? '').toUpperCase()
-        const decimals = parseInt(tokenData.decimals ?? '1')
+        const address = typeof tokenData.address === 'string' ? tokenData.address.toLowerCase() : ''
+        const symbol = typeof tokenData.symbol === 'string' ? tokenData.symbol.toUpperCase() : ''
+        const decimals = parseInt(String(tokenData.decimals ?? '1'))
 
         if (!address) {
           return resError('tokens must define an address', payload, cb)
@@ -1535,13 +1557,20 @@ export class Provider extends EventEmitter {
           return res({ id: payload.id, jsonrpc: '2.0', result: true })
         }
 
+        let logoURI = ''
+        if (typeof tokenData.image === 'string') {
+          logoURI = tokenData.image
+        } else if (typeof tokenData.logoURI === 'string') {
+          logoURI = tokenData.logoURI
+        }
+
         const token = {
           chainId,
-          name: tokenData.name ?? capitalize(symbol),
+          name: typeof tokenData.name === 'string' ? tokenData.name : capitalize(symbol),
           address,
           symbol,
           decimals,
-          logoURI: tokenData.image ?? tokenData.logoURI ?? ''
+          logoURI
         }
 
         const handlerId = this.requests.create(res)

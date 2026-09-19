@@ -1,8 +1,18 @@
 /* globals chrome */
-import FrameBackgroundProvider, { RawFrameConnection, type ConnectionRetryState } from './frameConnection'
+import FrameBackgroundProvider, {
+  RawFrameConnection,
+  type ConnectionRetryState,
+  type JsonRpcResponse
+} from './frameConnection'
 import { frameStateStore, type AvailableChain, type ConnectionStatus } from './frameState'
 
 type Provider = FrameBackgroundProvider
+
+declare global {
+  interface Window {
+    __setMediaBlob__(blobUrl: string, location: unknown, message?: string): void
+  }
+}
 
 const subTypes = [
   'chainChanged',
@@ -307,14 +317,14 @@ function initProvider(requestApproval = false) {
     refreshActiveOriginStatus().catch(console.error)
   })
 
-  async function handleDappPayload(payload: any) {
+  async function handleDappPayload(payload: JsonRpcResponse) {
     if (typeof payload.id !== 'undefined') {
       if (pending[payload.id]) {
         const { tabId, payloadId } = pending[payload.id]!
-        if (pending[payload.id]!.method === 'eth_subscribe' && payload.result) {
+        if (pending[payload.id]!.method === 'eth_subscribe' && typeof payload.result === 'string') {
           subs[payload.result] = {
             tabId,
-            send: (subload) => {
+            send: (subload: unknown) => {
               chrome.tabs.sendMessage(tabId, subload).catch((error: unknown) => {
                 if ((error as Error)?.message?.includes('Receiving end does not exist')) {
                   return
@@ -325,8 +335,17 @@ function initProvider(requestApproval = false) {
             type: subType(pending[payload.id]!)
           }
         } else if (pending[payload.id]!.method === 'eth_unsubscribe') {
-          const params: any[] = payload.params ? [].concat(payload.params) : []
-          params.forEach((sub) => delete subs[sub])
+          let params: unknown[] = []
+          if (Array.isArray(payload.params)) {
+            params = payload.params
+          } else if (payload.params) {
+            params = [payload.params]
+          }
+          params.forEach((sub) => {
+            if (typeof sub === 'string') {
+              delete subs[sub]
+            }
+          })
         }
         chrome.tabs
           .sendMessage(tabId, Object.assign({}, payload, { id: payloadId, type: 'eth:payload' }))
@@ -337,7 +356,7 @@ function initProvider(requestApproval = false) {
           const activeTabOrigin = originFromUrl(activeTab.url)
           if (activeTabOrigin === payloadOrigin) {
             const chainId = payload.result
-            if (chainId) {
+            if (typeof chainId === 'string') {
               setCurrentChain(chainId)
             }
           }
@@ -345,18 +364,18 @@ function initProvider(requestApproval = false) {
 
         delete pending[payload.id]
       }
-    } else if (
-      payload.method &&
-      payload.method.indexOf('_subscription') > -1 &&
-      subs[payload.params.subscription]
-    ) {
+    } else if (payload.method?.includes('_subscription') && payload.params) {
+      const subscription = payload.params.subscription
+      if (!subs[subscription]) {
+        return
+      }
       // Emit subscription result to tab
-      const sub = subs[payload.params.subscription]!
+      const sub = subs[subscription]
       payload.type = 'eth:payload'
       sub.send(payload)
       if (sub.type === 'chainChanged' && sub.tabId === activeTabId) {
-        const chainId = payload.params?.result
-        if (chainId) {
+        const chainId = payload.params.result
+        if (typeof chainId === 'string') {
           setCurrentChain(chainId)
         }
       }
@@ -375,8 +394,8 @@ function destroyProvider() {
 }
 
 function addStateListeners() {
-  function setMediaBlob(blobUrl: string, location: any, message?: string) {
-    ;(window as any).__setMediaBlob__(blobUrl, location, message)
+  function setMediaBlob(blobUrl: string, location: unknown, message?: string) {
+    window.__setMediaBlob__(blobUrl, location, message)
   }
 
   async function handleMessage(

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test'
 
 import chainConfigTyped from './config'
 
-const chainConfig = chainConfigTyped as any
+const chainConfig = (chainId: number, hardfork?: string) => chainConfigTyped(chainId, hardfork as string)
 
 describe('polygon', () => {
   it('sets the chain id', () => {

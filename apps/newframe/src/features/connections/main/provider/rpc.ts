@@ -48,6 +48,22 @@ export interface SubscriptionPayload {
 
 export type EthersRpcProvider = JsonRpcApiProvider
 
+interface EventEmitterCloseSocket {
+  on(event: 'close', listener: () => void): unknown
+}
+
+interface PropertyCloseSocket {
+  onclose: ((...args: unknown[]) => unknown) | null
+}
+
+function isEventEmitterCloseSocket(socket: unknown): socket is EventEmitterCloseSocket {
+  return typeof socket === 'object' && socket !== null && 'on' in socket && typeof socket.on === 'function'
+}
+
+function isPropertyCloseSocket(socket: unknown): socket is PropertyCloseSocket {
+  return typeof socket === 'object' && socket !== null && 'onclose' in socket
+}
+
 function normalizeParams(params?: RpcParams) {
   if (Array.isArray(params)) {
     return [...params]
@@ -159,11 +175,11 @@ export function listenForProviderClose(provider: EthersRpcProvider, onClose: () 
   }
 
   try {
-    const socket = provider.websocket as any
+    const socket: unknown = provider.websocket
 
-    if (typeof socket.on === 'function') {
+    if (isEventEmitterCloseSocket(socket)) {
       socket.on('close', onClose)
-    } else {
+    } else if (isPropertyCloseSocket(socket)) {
       const previousClose = socket.onclose
       socket.onclose = (...args: unknown[]) => {
         previousClose?.(...args)

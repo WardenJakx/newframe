@@ -114,6 +114,14 @@ function normalizeChainId(value?: string | number | null) {
   return Number.isFinite(chainId) ? chainId : undefined
 }
 
+function activityDataValue(activity: ActivityRecord, key: string): string | number | null | undefined {
+  if (!activity.data || typeof activity.data !== 'object' || Array.isArray(activity.data)) {
+    return undefined
+  }
+  const value = (activity.data as Record<string, unknown>)[key]
+  return typeof value === 'string' || typeof value === 'number' || value === null ? value : undefined
+}
+
 function toTransactionsByLayer(requests: Record<string, AccountRequest>, chainId?: number) {
   return Object.entries(requests)
     .filter(([_, req]) => req.type === 'transaction')
@@ -751,15 +759,16 @@ export class Accounts extends EventEmitter {
   }
 
   private activityChainId(activity: ActivityRecord) {
-    return normalizeChainId(activity.chainId ?? (activity.data as any)?.chainId)
+    return normalizeChainId(activity.chainId ?? activityDataValue(activity, 'chainId'))
   }
 
   private activityNonce(activity: ActivityRecord) {
-    return normalizeQuantity(activity.nonce ?? (activity.data as any)?.nonce)
+    return normalizeQuantity(activity.nonce ?? activityDataValue(activity, 'nonce'))
   }
 
   private activityAccount(activity: ActivityRecord) {
-    return (activity.account ?? activity.address ?? (activity.data as any)?.from ?? '').toLowerCase()
+    const from = activityDataValue(activity, 'from')
+    return (activity.account ?? activity.address ?? (typeof from === 'string' ? from : '')).toLowerCase()
   }
 
   private isNonTerminalActivity(activity?: ActivityRecord) {

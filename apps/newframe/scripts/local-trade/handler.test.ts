@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, jest as timers, spyOn } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, it, jest as timers, spyOn, type Mock } from 'bun:test'
 
 import { JsonRpcProvider, Wallet } from 'ethers'
 
@@ -48,8 +48,8 @@ async function json(response: Response) {
 }
 
 describe('local trade service handler', () => {
-  let allowanceCall: ReturnType<typeof spyOn>
-  let sendTransaction: ReturnType<typeof spyOn>
+  let allowanceCall: Mock<typeof JsonRpcProvider.prototype.call>
+  let sendTransaction: Mock<typeof Wallet.prototype.sendTransaction>
 
   beforeEach(() => {
     timers.useFakeTimers()
@@ -112,7 +112,9 @@ describe('local trade service handler', () => {
     expect(JSON.parse(body.evm.orderTypedData).message.quoteId).toBe(body.quoteId)
     expect(body.evm.approveTx).toBeTruthy()
     expect(body.actions.approval.kind).toBe('approve')
-    expect(body.steps.find((step: Record<string, unknown>) => step.kind === 'sign')?.label).toBe('Sign order')
+    expect((body.steps as Array<Record<string, unknown>>).find((step) => step.kind === 'sign')?.label).toBe(
+      'Sign order'
+    )
   })
 
   it('accepts limit expiry and optional trigger-limit prices', async () => {
@@ -377,7 +379,10 @@ describe('local trade service handler', () => {
       expect(quote.actions).toEqual({ approval: null, wrap: null })
       expect(quote.wrap).toBeNull()
       expect(quote.evm.approveTx).toBeNull()
-      expect(quote.steps.map((step: Record<string, unknown>) => step.kind)).toEqual(['sign', 'submit'])
+      expect((quote.steps as Array<Record<string, unknown>>).map((step) => step.kind)).toEqual([
+        'sign',
+        'submit'
+      ])
       expect(typedData.domain.chainId).toBe(direction.spentChainId)
       expect(typedData.message.settlementAsset).toBe('0x0000000000000000000000000000000000005e77')
       expect(quote.spentAsset.chainId).toBe(direction.spentChainId)

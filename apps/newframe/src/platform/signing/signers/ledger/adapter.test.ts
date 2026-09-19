@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, expect, it, jest as timers,
 import EventEmitter from 'events'
 
 import log from 'electron-log'
+import type { Device } from 'node-hid'
 import { v5 as uuid } from 'uuid'
 
 import store from '../../../state-store'
@@ -63,7 +64,7 @@ const TransportNodeHidSingletonMock = {
   listen: mock(() => ({ unsubscribe: mock() }))
 }
 
-let connectedHids: any[] = []
+let connectedHids: Device[] = []
 
 await mock.module('./dependencies.js', () => ({
   getLedgerDevices: () => connectedHids,
@@ -75,17 +76,51 @@ await mock.module('./Ledger/index.js', () => ({
   Status
 }))
 
-function simulateLedgerConnection(path: any) {
-  connectedHids.push({ interface: 0, product: 'Nano S', usagePage: 0xffa0, path })
+function simulateLedgerConnection(path: string) {
+  connectedHids.push({
+    interface: 0,
+    path,
+    product: 'Nano S',
+    productId: 0,
+    release: 0,
+    usagePage: 0xffa0,
+    vendorId: 0
+  })
 }
 
-function simulateLedgerDisconnection(path: any) {
-  const hidIndex = connectedHids.findIndex((hid: any) => hid.path === path)
+function simulateLedgerDisconnection(path: string) {
+  const hidIndex = connectedHids.findIndex((hid) => hid.path === path)
   connectedHids.splice(hidIndex, 1)
 }
 
-let LedgerSignerAdapter: any
-let adapter: any
+type LedgerSignerAdapterConstructor = typeof import('./adapter').default
+type ProductionLedgerSignerAdapter = InstanceType<LedgerSignerAdapterConstructor>
+type LedgerSignerAdapterTestAccess = Pick<
+  ProductionLedgerSignerAdapter,
+  'close' | 'off' | 'on' | 'once' | 'open'
+> & {
+  disconnections: Array<{ device: LedgerMock; timeout: NodeJS.Timeout }>
+  handleDeviceChanges(): void
+  handleDisconnectedDevice(ledger: LedgerMock): void
+  knownSigners: Record<string, LedgerMock>
+  reload(ledger: LedgerMock): void
+}
+
+let LedgerSignerAdapter: LedgerSignerAdapterConstructor
+let adapter: LedgerSignerAdapterTestAccess
+
+function hasTestAccess(
+  value: ProductionLedgerSignerAdapter
+): value is ProductionLedgerSignerAdapter & LedgerSignerAdapterTestAccess {
+  const knownSigners: unknown = Reflect.get(value, 'knownSigners')
+  return (
+    typeof knownSigners === 'object' &&
+    knownSigners !== null &&
+    Array.isArray(Reflect.get(value, 'disconnections')) &&
+    typeof Reflect.get(value, 'handleDeviceChanges') === 'function' &&
+    typeof Reflect.get(value, 'handleDisconnectedDevice') === 'function'
+  )
+}
 
 beforeAll(async () => {
   timers.useFakeTimers()
@@ -98,7 +133,11 @@ beforeEach(() => {
   connectedHids = []
   store.getState().clearHomeCommand()
 
-  adapter = new LedgerSignerAdapter(store)
+  const candidate = new LedgerSignerAdapter(store)
+  if (!hasTestAccess(candidate)) {
+    throw new Error('Ledger adapter test access is unavailable')
+  }
+  adapter = candidate
   adapter.open()
 })
 
@@ -112,7 +151,7 @@ afterAll(() => {
   log.transports.console.level = 'debug'
 })
 
-function nextEvent<T = any>(event: string, predicate: (value: T) => boolean = () => true) {
+function nextEvent<T = unknown>(event: string, predicate: (value: T) => boolean = () => true) {
   return new Promise<T>((resolve) => {
     const listener = (value: T) => {
       if (predicate(value)) {
@@ -308,22 +347,22 @@ it('connects a Ledger after startup without changing navigation', async () => {
 })
 
 it('creates a new Ledger when one is already attached', () => {
-  const addedLedgers: any = []
-  adapter.on('add', (ledger: any) => addedLedgers.push(ledger))
+  const addedLedgers: LedgerMock[] = []
+  adapter.on('add', (ledger: LedgerMock) => addedLedgers.push(ledger))
 
   simulateLedgerConnection('connected-nano-s-path')
   adapter.handleDeviceChanges()
   simulateLedgerConnection('new-nano-s-path')
   adapter.handleDeviceChanges()
 
-  expect(addedLedgers.map(({ devicePath }: any) => devicePath)).toEqual([
+  expect(addedLedgers.map(({ devicePath }) => devicePath)).toEqual([
     'connected-nano-s-path',
     'new-nano-s-path'
   ])
 })
 
 it('handles a disconnected Ledger', async () => {
-  const connected = nextEvent<any>('update', (ledger) => ledger.status === Status.OK)
+  const connected = nextEvent<LedgerMock>('update', (ledger) => ledger.status === Status.OK)
   simulateLedgerConnection('nano-x-discon-path')
   adapter.handleDeviceChanges()
   const ledger = await connected
@@ -393,7 +432,7 @@ for (const platform of ['Linux', 'Windows']) {
   const expectedReconnectionPath = platform === 'Linux' ? 'nano-x-eth-app-path' : 'nano-x2-eth-app-path'
 
   it(`updates an existing Ledger when the eth app is exited on ${platform}`, async () => {
-    const connected = nextEvent<any>('update', (ledger) => ledger.status === Status.OK)
+    const connected = nextEvent<LedgerMock>('update', (ledger) => ledger.status === Status.OK)
     simulateLedgerConnection('nano-x-eth-app-path')
     adapter.handleDeviceChanges()
     const ledger = await connected
@@ -402,8 +441,8 @@ for (const platform of ['Linux', 'Windows']) {
     let removals = 0
     adapter.on('add', () => additions++)
     adapter.on('remove', () => removals++)
-    adapter.on('update', (value: any) => statuses.push(value.status))
-    const reconnected = nextEvent<any>(
+    adapter.on('update', (value: LedgerMock) => statuses.push(value.status))
+    const reconnected = nextEvent<LedgerMock>(
       'update',
       (value) => statuses.includes(Status.DISCONNECTED) && value.status === Status.OK
     )

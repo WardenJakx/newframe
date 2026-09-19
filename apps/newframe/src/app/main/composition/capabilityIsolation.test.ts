@@ -1,5 +1,6 @@
 import { expect, it, mock } from 'bun:test'
 
+import type { AccountChainRpcPort } from '../../../features/accounts/main/providerPort'
 import createCanonicalStore from '../../../platform/state-store/createCanonicalStore'
 import {
   createProductionCapabilities,
@@ -59,9 +60,14 @@ it('keeps mutable state, listeners, and deferred capability ports graph-local', 
   first.capabilities.accounts.emit('isolated')
   second.capabilities.accounts.emit('isolated')
 
-  const connect = (value: string) => ({
+  const connect = (
+    value: string
+  ): Parameters<typeof first.capabilities.accountCapabilities.chainRpc.connect>[0] => ({
     send: mock(),
-    sendAsync: mock((_payload, callback) => callback(null, { id: 1, jsonrpc: '2.0', result: value })),
+    sendAsync: mock(
+      (_payload: RPCRequestPayload, callback: Parameters<AccountChainRpcPort['sendAsync']>[1]) =>
+        callback(null, { id: 1, jsonrpc: '2.0', result: value })
+    ),
     getL1GasCost: async () => 1n,
     on: mock(),
     off: mock()

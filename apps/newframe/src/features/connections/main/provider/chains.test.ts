@@ -74,9 +74,11 @@ describe('#getActiveChains', () => {
 })
 
 describe('#createChainsObserver', () => {
-  const handler = { chainsChanged: mock() }
+  const handler = {
+    chainsChanged: mock((_address: string, _chains: ReturnType<typeof getActiveChains>) => {})
+  }
   const optimism = network(10, 'Optimism', true, true, 'https://optimistic.etherscan.io')
-  let fireObserver: any
+  let fireObserver: () => void
 
   beforeEach(() => {
     const observer = createChainsObserver(store, handler)
@@ -86,7 +88,7 @@ describe('#createChainsObserver', () => {
       timers.runAllTimers()
     }
 
-    handler.chainsChanged = mock()
+    handler.chainsChanged = mock((_address: string, _chains: ReturnType<typeof getActiveChains>) => {})
   })
 
   it('invokes the handler with EVM chain objects', () => {
@@ -133,7 +135,7 @@ describe('#createChainsObserver', () => {
     it(`invokes the handler when a chain is ${description}`, () => {
       arrange()
       fireObserver()
-      expect(handler.chainsChanged.mock.calls[0][1].map((chain: any) => chain.chainId)).toEqual(expected)
+      expect(handler.chainsChanged.mock.calls[0][1].map((chain) => chain.chainId)).toEqual(expected)
     })
   })
 
@@ -146,7 +148,7 @@ describe('#createChainsObserver', () => {
 
 describe('#createOriginChainObserver', () => {
   const handler = { chainChanged: mock(), networkChanged: mock() }
-  let observer: any
+  let observer: ReturnType<typeof createOriginChainObserver>
 
   const originId = '8073729a-5e59-53b7-9e69-5d9bcff94087'
   const frameTestOrigin = {

@@ -4,7 +4,9 @@ import { EventEmitter } from 'events'
 import log from 'electron-log'
 
 import store from '../../../../../platform/state-store'
+import type { Token } from '../../../../../platform/state-store/state'
 import { NATIVE_CURRENCY } from '../../../../tokens/domain/constants'
+import type { TokenCatalog, TokenRecord } from '../../../../tokens/domain/state/token'
 import BalancesScanner from './index'
 
 const controllerEvents = new EventEmitter()
@@ -15,8 +17,8 @@ const balancesControllerMock = {
   off: controllerEvents.off.bind(controllerEvents),
   on: controllerEvents.on.bind(controllerEvents),
   once: controllerEvents.once.bind(controllerEvents),
-  updateChainBalances: mock(),
-  updateKnownTokenBalances: mock()
+  updateChainBalances: mock((_address: Address, _chains: number[]) => undefined),
+  updateKnownTokenBalances: mock((_address: Address, _tokens: Token[]) => undefined)
 }
 
 await mock.module('./controller', () => ({
@@ -25,7 +27,7 @@ await mock.module('./controller', () => ({
   ...balancesControllerMock
 }))
 
-const balancesController = balancesControllerMock as any
+const balancesController = balancesControllerMock
 
 const address = '0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5'
 
@@ -49,7 +51,7 @@ function token(index: number, chainId = 10) {
   }
 }
 
-function storedToken(token: any, custom = false) {
+function storedToken(token: Token, custom = false): TokenRecord {
   return {
     ...token,
     custom,
@@ -59,7 +61,7 @@ function storedToken(token: any, custom = false) {
   }
 }
 
-function catalogFor(known: any[], custom: any[] = []) {
+function catalogFor(known: Token[], custom: Token[] = []): TokenCatalog {
   const records = [
     ...known.map((item) => storedToken(item)),
     ...custom.map((item) => storedToken(item, true))
@@ -72,7 +74,7 @@ function catalogFor(known: any[], custom: any[] = []) {
   }
 }
 
-let balances: any
+let balances!: ReturnType<typeof BalancesScanner>
 
 beforeAll(() => {
   log.transports.console.level = false

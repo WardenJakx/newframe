@@ -53,6 +53,13 @@ interface AccountOptions {
   options?: SignerOptions
 }
 
+type AccountRequestInput = {
+  handlerId: string
+  type: string
+  account?: string
+  recognizedActions?: Action<unknown>[]
+}
+
 class FrameAccount {
   readonly id: Address
   readonly address: Address
@@ -592,10 +599,10 @@ class FrameAccount {
     }
   }
 
-  addRequest(req: any) {
-    const add = (r: AccountRequest) => {
+  addRequest(req: AccountRequestInput) {
+    const add = (r: AccountRequestInput) => {
       const actionHandlers = new Map<string, Action<unknown>>()
-      ;(req.recognizedActions ?? []).forEach((action: any) => {
+      ;(req.recognizedActions ?? []).forEach((action) => {
         if (typeof action.update === 'function') {
           actionHandlers.set(action.id, action)
         }

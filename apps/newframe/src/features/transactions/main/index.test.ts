@@ -5,9 +5,49 @@ import { addHexPrefix, stripHexPrefix } from '@ethereumjs/util'
 
 import * as transactionModule from './index'
 
-// real functions under test, exercised with partial tx fixtures
-const { maxFee, londonToLegacy, signerCompatibility, populate, sign, classifyTransaction } =
-  transactionModule as Record<string, any>
+type TestTransaction = Partial<Parameters<typeof transactionModule.maxFee>[0]> & Record<string, unknown>
+type TestSigner = Partial<Parameters<typeof transactionModule.signerCompatibility>[1]> &
+  Record<string, unknown>
+type Gas = Parameters<typeof transactionModule.populate>[2]
+type TestGas = {
+  samples?: Gas['samples']
+  price: {
+    selected?: Gas['price']['selected']
+    levels: Partial<Gas['price']['levels']>
+    fees?: Partial<NonNullable<Gas['price']['fees']>>
+  }
+}
+
+const signerCompatibility = (tx: TestTransaction, signer: TestSigner) =>
+  transactionModule.signerCompatibility(
+    tx as Parameters<typeof transactionModule.signerCompatibility>[0],
+    signer as Parameters<typeof transactionModule.signerCompatibility>[1]
+  )
+const londonToLegacy = (tx: TestTransaction) =>
+  transactionModule.londonToLegacy(
+    tx as Parameters<typeof transactionModule.londonToLegacy>[0]
+  ) as TestTransaction & { type: string }
+const maxFee = (tx: TestTransaction) =>
+  transactionModule.maxFee(tx as Parameters<typeof transactionModule.maxFee>[0])
+const populate = (
+  tx: TestTransaction,
+  chain: Parameters<typeof transactionModule.populate>[1],
+  gas: TestGas
+) =>
+  transactionModule.populate(
+    tx as Parameters<typeof transactionModule.populate>[0],
+    chain,
+    gas as Parameters<typeof transactionModule.populate>[2]
+  ) as TestTransaction
+const sign = (tx: TestTransaction, signingFunction: Parameters<typeof transactionModule.sign>[1]) =>
+  transactionModule.sign(tx as Parameters<typeof transactionModule.sign>[0], signingFunction)
+const classifyTransaction = (request: {
+  payload: { method: string; params: unknown[] }
+  recipientType: unknown
+}) =>
+  transactionModule.classifyTransaction(
+    request as Parameters<typeof transactionModule.classifyTransaction>[0]
+  )
 import { TxClassification } from '../../requests/contract/requests'
 import { GasFeesSource } from '../domain'
 

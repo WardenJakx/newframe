@@ -2,7 +2,7 @@ import { BrowserProvider } from 'ethers'
 
 import createFrameProvider from '../../../apps/newframe/src/features/connections/main/provider/connection.ts'
 
-let frame: any
+let frame: ReturnType<typeof createFrameProvider>
 let provider: BrowserProvider
 
 const waitForFrameConnect = () =>
@@ -45,7 +45,7 @@ async function main() {
     }
     console.log(JSON.stringify({ transactionHash: tx.hash }))
   } finally {
-    frame?.close()
+    frame.close()
   }
 }
 

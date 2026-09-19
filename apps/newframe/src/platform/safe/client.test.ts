@@ -90,7 +90,7 @@ describe('Safe service client over HTTP', () => {
       if (!request.url.includes('/v2/')) {
         return response
       }
-      const page = await response.json()
+      const page = (await response.json()) as { results: unknown[] }
       page.results.push(page.results[0])
       return Response.json(page)
     })

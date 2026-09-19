@@ -2,7 +2,7 @@ import { BrowserProvider, hexlify, toUtf8Bytes } from 'ethers'
 
 import createFrameProvider from '../../../apps/newframe/src/features/connections/main/provider/connection.ts'
 
-let frame: any
+let frame: ReturnType<typeof createFrameProvider>
 let provider: BrowserProvider
 
 const waitForFrameConnect = () =>
@@ -81,7 +81,7 @@ async function main() {
     await signPersonal()
     await signEth()
   } finally {
-    frame?.close()
+    frame.close()
   }
 }
 

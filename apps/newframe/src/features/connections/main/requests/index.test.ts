@@ -2,8 +2,23 @@ import { describe, expect, it } from 'bun:test'
 
 import { mapRequest as mapRequestTyped } from './index'
 
-// real function under test, exercised with loose payload fixtures
-const mapRequest = mapRequestTyped as any
+type TestRequest = {
+  jsonrpc: string
+  id: string | number
+  method: string
+  params: unknown
+  _origin?: string
+}
+type MappedRequest = {
+  jsonrpc?: string
+  id?: string | number
+  method?: string
+  params?: unknown
+  chainId?: string
+  _origin?: string
+}
+
+const mapRequest = (request: TestRequest) => mapRequestTyped(request as RPCRequestPayload) as MappedRequest
 
 describe('#mapRequest', () => {
   it('passes through a request that does not require mapping', () => {

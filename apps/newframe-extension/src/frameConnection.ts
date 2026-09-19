@@ -12,12 +12,13 @@ export interface JsonRpcPayload {
   __extensionConnecting?: boolean
 }
 
-interface JsonRpcResponse {
+export interface JsonRpcResponse {
   id?: number | string
   jsonrpc?: '2.0'
   result?: unknown
   error?: unknown
   method?: string
+  type?: string
   params?: {
     subscription: string
     result: unknown

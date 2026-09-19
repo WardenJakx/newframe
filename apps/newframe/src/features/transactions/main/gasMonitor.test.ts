@@ -4,9 +4,11 @@ import { intToHex } from '@ethereumjs/util'
 
 import GasMonitor from './gasMonitor'
 
-let requestHandlers: any
+type RequestHandler = (params: string[]) => unknown
+
+let requestHandlers: Record<string, RequestHandler>
 const testConnection = {
-  send: mock((method, params) => {
+  send: mock((method: string, params: string[]) => {
     if (method in requestHandlers) {
       return Promise.resolve(requestHandlers[method](params))
     }
@@ -41,7 +43,7 @@ describe('#getGasPrices', () => {
 describe('#getFeeHistory', () => {
   const nextBlockBaseFee = '0xb6'
 
-  let gasUsedRatios: any, blockRewards: any
+  let gasUsedRatios: number[], blockRewards: string[][]
 
   beforeEach(() => {
     // default to all blocks being ineligible for priority fee calculation
@@ -76,7 +78,7 @@ describe('#getFeeHistory', () => {
 })
 
 // helper functions
-function fillEmptySlots(arr: any, targetLength: any, value: any) {
+function fillEmptySlots<T>(arr: T[], targetLength: number, value: T) {
   const target = arr.slice()
   let i = 0
 

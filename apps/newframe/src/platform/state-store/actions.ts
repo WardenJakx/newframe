@@ -128,9 +128,10 @@ function validateNetworkSettings(network: any) {
 }
 
 function tokenFromValue(value: any): Token | undefined {
+  const address: unknown = value.address
   if (
-    value.address === NATIVE_CURRENCY ||
-    typeof value.address !== 'string' ||
+    address === NATIVE_CURRENCY ||
+    typeof address !== 'string' ||
     !Number.isInteger(Number(value.chainId)) ||
     typeof value.name !== 'string' ||
     typeof value.symbol !== 'string' ||
@@ -140,7 +141,7 @@ function tokenFromValue(value: any): Token | undefined {
   }
 
   return {
-    address: value.address.toLowerCase(),
+    address: address.toLowerCase(),
     chainId: Number(value.chainId),
     decimals: Number(value.decimals),
     name: value.name,
@@ -151,8 +152,12 @@ function tokenFromValue(value: any): Token | undefined {
 }
 
 function balanceFromValue(value: any) {
+  const address: unknown = value.address
+  if (address !== NATIVE_CURRENCY && typeof address !== 'string') {
+    throw new TypeError('Balance address must be a string')
+  }
   return {
-    address: value.address === NATIVE_CURRENCY ? NATIVE_CURRENCY : value.address.toLowerCase(),
+    address: address === NATIVE_CURRENCY ? NATIVE_CURRENCY : address.toLowerCase(),
     balance: value.balance,
     chainId: Number(value.chainId),
     displayBalance: value.displayBalance ?? ''
@@ -210,7 +215,14 @@ function upsertTokenRecords(
 }
 
 function stripRequestCapabilities(request: MutableRecord) {
-  ;(request.recognizedActions ?? []).forEach((action: MutableRecord) => delete action.update)
+  const actions: unknown = request.recognizedActions
+  if (Array.isArray(actions)) {
+    actions.forEach((action: unknown) => {
+      if (action && typeof action === 'object' && !Array.isArray(action)) {
+        delete (action as Record<string, unknown>).update
+      }
+    })
+  }
 }
 
 export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
@@ -1330,9 +1342,17 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         const key = address.toLowerCase()
 
         Object.values(balances).forEach((value) => {
-          const accountBalances = value as any[]
+          const accountBalances: unknown[] = Array.isArray(value) ? value : []
           const index = accountBalances.findIndex((balance) => {
-            return balance.chainId === chainId && balance.address.toLowerCase() === key
+            if (!balance || typeof balance !== 'object' || Array.isArray(balance)) {
+              return false
+            }
+            const record = balance as Record<string, unknown>
+            return (
+              record.chainId === chainId &&
+              typeof record.address === 'string' &&
+              record.address.toLowerCase() === key
+            )
           })
           if (index > -1) {
             accountBalances.splice(index, 1)

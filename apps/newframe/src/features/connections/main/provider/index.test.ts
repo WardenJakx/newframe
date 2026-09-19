@@ -8,7 +8,8 @@ import {
   it,
   jest as timers,
   mock,
-  spyOn
+  spyOn,
+  type Mock
 } from 'bun:test'
 import EventEmitter from 'events'
 import { randomUUID } from 'node:crypto'
@@ -23,6 +24,109 @@ import { Type as SignerType } from '../../../../platform/signing/domain'
 import { gweiToHex } from '../../../../shared/domain/hex'
 import { createAgentPrincipal, createRpcPrincipal } from '../../../access-control/main/authority'
 import chainConfig from '../../../networks/main/config'
+import type { ProviderDependencies } from './index'
+
+type Store = typeof import('../../../../platform/state-store').default
+type AccountSignTransaction = InstanceType<
+  typeof import('../../../accounts/main/Account').default
+>['signTransaction']
+
+type TestAccount = {
+  id: string
+  address?: string
+  lastSignerType?: string
+  getAccounts?: () => string[]
+  signTransaction?: Mock<AccountSignTransaction>
+}
+type AccountRequest = {
+  handlerId: string
+  account: string
+  payload: RPCRequestPayload
+  data: Record<string, unknown> & { from?: string; gasLimit?: string; gasPrice?: string; chainId?: string }
+  chain: Record<string, unknown> & { icon?: string }
+  tokenData: unknown
+  approvals: unknown[]
+  typedMessage: { version?: unknown; data?: unknown }
+}
+type AccountsMock = {
+  getAccounts: () => string[]
+  current: Mock<() => TestAccount | null | undefined>
+  get: Mock<(id: string) => TestAccount | undefined>
+  routeRequest: (
+    principal: unknown,
+    request: AccountRequest,
+    executeAutonomously?: (request: AccountRequest) => void
+  ) => void
+  clearRequestsByOrigin: Mock<(address: string, origin: string) => void>
+  lockRequest: Mock<(id: string) => void>
+  setSigner: Mock<(id: string, callback: (error: Error | null, account?: TestAccount) => void) => void>
+  setTxSigned: Mock<(id: string, callback: (error?: Error | null) => void) => void>
+  signTransaction: Mock<
+    (transaction: Record<string, unknown>, callback: (error: Error | null, signed?: string) => void) => void
+  >
+}
+type TestChain = { id: number; type: 'ethereum' }
+type TestResponse = {
+  id?: string | number
+  jsonrpc?: string
+  result?: unknown
+  error?: { code?: number; message: string }
+  [key: string]: unknown
+}
+type ChainsMock = {
+  connections: Record<
+    string,
+    Record<
+      number,
+      {
+        chainConfig: ReturnType<typeof chainConfig>
+        primary: Record<string, unknown> & { connected: boolean }
+      }
+    >
+  >
+  refreshGasFees: Mock<(targetChain: TestChain) => Promise<void>>
+  send: Mock<
+    (payload: RPCRequestPayload, respond: (response: TestResponse) => void, targetChain?: TestChain) => void
+  >
+  syncDataEmit: Mock<(...args: unknown[]) => unknown>
+  on: Mock<(...args: unknown[]) => unknown>
+  off: Mock<(...args: unknown[]) => unknown>
+}
+type Subscription = { id: string; originId: string; capabilities: unknown[] }
+type Provider = {
+  subscriptions: Record<string, Array<Subscription | string>>
+  start: () => void
+  dispose: () => void
+  once: EventEmitter['once']
+  send: (
+    request: Record<string, unknown>,
+    respond: (response: TestResponse) => void,
+    principal?: unknown,
+    context?: unknown
+  ) => Promise<void> | void
+  sendAsync: (
+    request: Partial<RPCRequestPayload> & Record<string, unknown>,
+    callback: Callback<RPCResponsePayload>
+  ) => void
+  executeAgentTransaction: (
+    account: TestAccount,
+    request: { payload: Record<string, unknown>; data: Record<string, unknown> },
+    principal: unknown,
+    respond: (response: TestResponse) => void
+  ) => void
+  signAndSend: (
+    request: Partial<AccountRequest>,
+    callback: (error: Error | null, result?: string) => void
+  ) => void
+  fillTransaction: (
+    transaction: Record<string, unknown>,
+    callback: (error: Error | null, result: { tx: Record<string, unknown> }) => void
+  ) => Promise<void>
+  approveTransactionRequest: (
+    request: Partial<AccountRequest>,
+    callback: (error: Error | null, result?: string) => void
+  ) => void
+}
 
 const address = '0x22dd63c3619818fdbc262c78baee43cb61e9cccf'
 const principal = createRpcPrincipal({
@@ -37,12 +141,21 @@ const internalPrincipal = createRpcPrincipal({
   capabilities: ['wallet:internal-state']
 })
 
-let accountRequests: any = []
-let provider: any
-const accounts: any = {}
-let connection: any
-let store: any
-let accountRequestHook: ((request: any, respond?: (response: any) => void) => void) | undefined
+let accountRequests: AccountRequest[] = []
+let provider: Provider
+const accounts = {} as AccountsMock
+const connection = {
+  connections: {},
+  send: mock<ChainsMock['send']>(),
+  syncDataEmit: mock(),
+  on: mock(),
+  off: mock(),
+  refreshGasFees: mock<ChainsMock['refreshGasFees']>()
+} as ChainsMock
+let store: Store
+let accountRequestHook:
+  | ((request: AccountRequest, respond?: (response: RPCResponsePayload) => void) => void)
+  | undefined
 const lookupChainIcon = mock(async (_chainId: number) => '')
 const requestContinuations = {
   callbacks: new Map<string, RPCRequestCallback>(),
@@ -132,8 +245,14 @@ const expectQueuedRequestRejection = (sendRequest: (callback: (response: any) =>
   })
 
 await mock.module('../../../networks/main', () => {
-  const chains = { send: mock(), syncDataEmit: mock(), on: mock(), off: mock(), refreshGasFees: mock() }
-  return { default: chains, ...chains }
+  return {
+    default: connection,
+    send: connection.send,
+    syncDataEmit: connection.syncDataEmit,
+    on: connection.on,
+    off: connection.off,
+    refreshGasFees: connection.refreshGasFees
+  }
 })
 await mock.module('../../../transactions/main/reveal', () => {
   const reveal = {
@@ -154,17 +273,16 @@ await mock.module('./subscriptions', () => ({
 beforeAll(async () => {
   log.transports.console.level = false
 
-  const connectionModule = (await import('../../../networks/main')) as any
-  connection = connectionModule.default ?? connectionModule
-  store = (await import('../../../../platform/state-store')).default as any
+  store = (await import('../../../../platform/state-store')).default
   accounts.getAccounts = () => [address]
-  accounts.current = () => ({ id: address, getAccounts: () => [address] })
-  accounts.get = () => undefined
-  accounts.routeRequest = (receivedPrincipal: unknown, req: any, executeAutonomously: any) => {
+  accounts.current = mock(() => ({ id: address, getAccounts: () => [address] }))
+  accounts.get = mock(() => undefined)
+  accounts.routeRequest = (receivedPrincipal, req, executeAutonomously) => {
     expect(receivedPrincipal).toBe(principal)
-    store.setState((state: any) => {
-      state.main.accounts[req.account] ??= {}
-      state.main.accounts[req.account].requests = { [req.handlerId]: req }
+    store.setState((state) => {
+      const testAccounts = state.main.accounts as Record<string, { requests: Record<string, AccountRequest> }>
+      testAccounts[req.account] ??= { requests: {} }
+      testAccounts[req.account].requests = { [req.handlerId]: req }
     })
     accountRequests.push(req)
     if (accountRequestHook) {
@@ -184,16 +302,17 @@ beforeAll(async () => {
 
   const { Provider } = await import('./index')
   const { createProviderStatePort } = await import('./statePort')
-  provider = new Provider({
-    accounts,
-    chains: connection,
+  const constructedProvider = new Provider({
+    accounts: accounts as AccountsMock & ProviderDependencies['accounts'],
+    chains: connection as ChainsMock & ProviderDependencies['chains'],
     lookupChainIcon,
-    proxy: new EventEmitter() as any,
+    proxy: new EventEmitter() as ProviderDependencies['proxy'],
     state: createProviderStatePort(store),
     store,
     reveal: { resolveEntityType: mock(async () => 'unknown' as const) },
     requests: requestContinuations
-  }) as any
+  })
+  provider = constructedProvider as typeof constructedProvider & Provider
   provider.start()
 })
 
@@ -205,7 +324,7 @@ afterAll(() => {
 beforeEach(() => {
   timers.useFakeTimers()
 
-  store.setState((state: any) => {
+  store.setState((state) => {
     state.main.accounts = {}
     state.main.balances = {}
     state.main.currentAccount = ''
@@ -246,7 +365,7 @@ afterEach(() => {
 })
 
 function mockConnectionError(message: string) {
-  connection.send.mockImplementation((payload: RPCRequestPayload, callback: RPCRequestCallback) =>
+  connection.send.mockImplementation((payload, callback) =>
     callback({ id: payload.id, jsonrpc: payload.jsonrpc, error: { message, code: -1 } })
   )
 }
@@ -258,8 +377,9 @@ describe('#send', () => {
     })
   })
 
-  const send = (request: any, cb: any = mock(), requestPrincipal = principal) =>
-    provider.send({ ...request, _origin: '8073729a-5e59-53b7-9e69-5d9bcff94087' }, cb, requestPrincipal)
+  const send = (request: any, cb: any = mock(), requestPrincipal = principal): void => {
+    void provider.send({ ...request, _origin: '8073729a-5e59-53b7-9e69-5d9bcff94087' }, cb, requestPrincipal)
+  }
   const sendResult = (request: any, requestPrincipal = principal) =>
     new Promise<any>((resolve) => send(request, resolve, requestPrincipal))
 
@@ -278,7 +398,7 @@ describe('#send', () => {
   it('rejects signing methods that do not carry a trusted transport principal', () => {
     const callback = mock()
 
-    provider.send(
+    void provider.send(
       {
         id: 1,
         jsonrpc: '2.0',
@@ -542,7 +662,9 @@ describe('#send', () => {
         })
       ).result
       expect(
-        permissions.map(({ parentCapability, date }: any) => [parentCapability, Number.isInteger(date)])
+        (permissions as Array<{ parentCapability: string; date: number }>).map(
+          ({ parentCapability, date }) => [parentCapability, Number.isInteger(date)]
+        )
       ).toEqual([
         ['eth_accounts', true],
         ['eth_signTransaction', true]
@@ -675,7 +797,7 @@ describe('#send', () => {
 
       const response = await sendResult({ method: 'wallet_getEthereumChains', id: 14, jsonrpc: '2.0' })
       expect(response).toMatchObject({ id: 14, jsonrpc: '2.0' })
-      expect(response.result.map(({ chainId }: any) => chainId)).toEqual([1])
+      expect((response.result as Array<{ chainId: number }>).map(({ chainId }) => chainId)).toEqual([1])
     })
   })
 
@@ -744,7 +866,10 @@ describe('#send', () => {
     let blockResult: any
 
     beforeEach(() => {
-      connection.send.mockImplementation((payload: any, res: any, targetChain: any) => {
+      connection.send.mockImplementation((payload, res, targetChain) => {
+        if (!targetChain) {
+          throw new Error('Expected a target chain')
+        }
         expect(targetChain.id).toBe(chain)
         expect(payload.params[0]).toBe(txHash)
 
@@ -779,7 +904,12 @@ describe('#send', () => {
         ;(payload as any).chainId = chainId
       }
 
-      provider.send({ ...payload, _origin: '8073729a-5e59-53b7-9e69-5d9bcff94087' }, cb, principal, context)
+      void provider.send(
+        { ...payload, _origin: '8073729a-5e59-53b7-9e69-5d9bcff94087' },
+        cb,
+        principal,
+        context
+      )
     }
     const sendTransactionResult = (chainId?: any, context?: any) =>
       new Promise<any>((resolve) => sendTransaction(resolve, chainId, context))
@@ -857,7 +987,7 @@ describe('#send', () => {
       accounts.get = mock((addr) =>
         addr === nextAddress ? { id: nextAddress, address: nextAddress, lastSignerType: 'ring' } : undefined
       )
-      accounts.setSigner = mock((id, cb) => {
+      accounts.setSigner = mock((id: string, cb: Parameters<AccountsMock['setSigner']>[1]) => {
         currentAddress = id
         cb(null, { id, address: id, lastSignerType: 'ring' })
       })
@@ -865,11 +995,11 @@ describe('#send', () => {
       await sendTransactionResult()
       expect(accounts.setSigner).toHaveBeenCalledWith(nextAddress, expect.any(Function))
       expect(accountRequests[0].account).toBe(nextAddress)
-      expect(accountRequests[0].data.from.toLowerCase()).toBe(nextAddress)
+      expect(String(accountRequests[0].data.from).toLowerCase()).toBe(nextAddress)
     })
 
     it('pads the gas estimate from the network by 50 percent', async () => {
-      connection.send.mockImplementationOnce((payload: any, cb: any) => {
+      connection.send.mockImplementationOnce((payload, cb) => {
         expect(payload.method).toBe('eth_estimateGas')
         cb({ result: addHexPrefix((150000).toString(16)) })
       })
@@ -881,7 +1011,7 @@ describe('#send', () => {
     })
 
     it('publishes required approvals with the initial transaction request', async () => {
-      connection.send.mockImplementationOnce((_payload: any, cb: any) => {
+      connection.send.mockImplementationOnce((_payload, cb) => {
         cb({ error: { message: 'Unable to estimate gas' } })
       })
       delete tx.gasLimit
@@ -1051,7 +1181,7 @@ describe('#send', () => {
     HardwareSignersSupportingV4Only.forEach((signerType) => {
       it(`does not submit a V3 request to a ${signerType}`, async () => {
         accounts.get.mockImplementationOnce((addr: any) => {
-          return addr === address ? { id: address, address, lastSignerType: signerType } : {}
+          return addr === address ? { id: address, address, lastSignerType: signerType } : undefined
         })
 
         const params = [address, typedData]
@@ -1064,7 +1194,7 @@ describe('#send', () => {
 
     it('should submit a V3 request to a Lattice', () => {
       accounts.get.mockImplementationOnce((addr: any) => {
-        return addr === address ? { id: address, address, lastSignerType: SignerType.Lattice } : {}
+        return addr === address ? { id: address, address, lastSignerType: SignerType.Lattice } : undefined
       })
       const params = [address, typedData]
 
@@ -1100,7 +1230,7 @@ describe('#send', () => {
           expect(response.error).toBeUndefined()
           expect(response.result).toMatch(/0x\w{32}$/)
           expect(provider.subscriptions[eventType]).toHaveLength(1)
-          expect(provider.subscriptions[eventType][0].capabilities).toEqual([])
+          expect(provider.subscriptions[eventType][0]).toMatchObject({ capabilities: [] })
         })
       })
 
@@ -1153,7 +1283,7 @@ describe('#executeAgentTransaction', () => {
       expiresAt: Date.now() + 60_000,
       isActive: () => active
     })
-    const signTransaction = mock()
+    const signTransaction = mock<AccountSignTransaction>()
     const account = { id: address, signTransaction }
     const request = {
       payload: {
@@ -1235,7 +1365,7 @@ describe('#signAndSend', () => {
 
   describe('#fillTransaction', () => {
     beforeEach(() => {
-      connection.send.mockImplementationOnce((payload: any, cb: any) => {
+      connection.send.mockImplementationOnce((payload, cb) => {
         expect(payload.method).toBe('eth_estimateGas')
         cb({ result: addHexPrefix((150000).toString(16)) })
       })
@@ -1257,7 +1387,7 @@ describe('#signAndSend', () => {
         chainId: '0x1'
       }
 
-      provider.fillTransaction(txJson, (err: any, { tx }: any) => {
+      void provider.fillTransaction(txJson, (err: any, { tx }: any) => {
         try {
           expect(err).toBeFalsy()
           expect(connection.refreshGasFees).toHaveBeenCalledWith({ type: 'ethereum', id: 1 })
@@ -1275,8 +1405,8 @@ describe('#signAndSend', () => {
     const txHash = '0x6e8b1de115105ceab599b4d99604797b961cfd1f46b85e10f23a81974baae3d5'
 
     beforeEach(() => {
-      accounts.signTransaction.mockImplementation((_: any, cb: any) => cb(null, signedTx))
-      accounts.setTxSigned.mockImplementation((reqId: any, cb: any) => {
+      accounts.signTransaction.mockImplementation((_, cb) => cb(null, signedTx))
+      accounts.setTxSigned.mockImplementation((reqId, cb) => {
         expect(reqId).toBe((request as any).handlerId)
         cb()
       })
@@ -1284,7 +1414,7 @@ describe('#signAndSend', () => {
 
     describe('success', () => {
       beforeEach(() => {
-        connection.send.mockImplementation((payload: any, cb: any) => {
+        connection.send.mockImplementation((payload, cb) => {
           expect(payload).toEqual(
             expect.objectContaining({
               id: (request as any).payload.id,
@@ -1339,14 +1469,12 @@ describe('sendAsync failure settlement', () => {
   it.each([false, true])('settles once when send rejects, callback first: %s', async (callbackFirst) => {
     const response = { id: 1, jsonrpc: '2.0' as const, result: '0x1' }
     const failure = new Error('provider unavailable')
-    const send = spyOn(provider, 'send').mockImplementation(
-      async (_payload: RPCRequestPayload, respond: (result: RPCResponsePayload) => void) => {
-        if (callbackFirst) {
-          respond(response)
-        }
-        throw failure
+    const send = spyOn(provider, 'send').mockImplementation(async (_payload, respond) => {
+      if (callbackFirst) {
+        respond(response)
       }
-    )
+      throw failure
+    })
     const results: Parameters<Callback<RPCResponsePayload>>[] = []
     try {
       provider.sendAsync(

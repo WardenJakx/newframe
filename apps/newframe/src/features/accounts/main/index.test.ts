@@ -25,8 +25,16 @@ import {
   type TransactionSimulation
 } from '../../transactions/domain'
 
+interface TestRpcResponse {
+  error?: { code: number; message: string }
+  result?: unknown
+}
+
+type TestRpcCallback = (response: TestRpcResponse) => void
+type TestRpcPayload = Pick<RPCRequestPayload, 'method'>
+
 const providerMock = {
-  send: mock(),
+  send: mock((_payload: TestRpcPayload, _respond: TestRpcCallback): void => undefined),
   getL1GasCost: mock(),
   emit: mock(),
   on: mock(),
@@ -96,9 +104,57 @@ await mock.module('../../name-resolution/main/nameResolution', () => ({
   }
 }))
 
-let provider: any
-let Accounts: any
-let AccountsClass: any
+type AccountsConstructor = typeof import('./index').Accounts
+type AccountsInstance = InstanceType<AccountsConstructor>
+type AccountsDependencies = ConstructorParameters<AccountsConstructor>[1]
+type FrameAccountInstance = InstanceType<typeof import('./Account').default>
+
+interface AccountTestRequest {
+  data: Record<string, unknown>
+  mode?: string
+  status?: string
+  tx: { confirmations: number }
+}
+
+interface AccountTestHandle {
+  address: string
+  requests: Record<PropertyKey, AccountTestRequest>
+  addRequest(...args: unknown[]): unknown
+  clearRequest(...args: unknown[]): unknown
+  patchRequest(...args: unknown[]): unknown
+  resolveRequest(...args: unknown[]): unknown
+}
+
+interface AccountsTestHandle {
+  accounts: Record<string, AccountTestHandle>
+  add(...args: unknown[]): unknown
+  clearRequestsByOrigin(...args: unknown[]): unknown
+  close(): void
+  current(): AccountTestHandle
+  dispose(): void
+  getFrameAccount(...args: unknown[]): AccountTestHandle
+  initialize(): void
+  refreshBalances(...args: unknown[]): unknown
+  refreshPositions(...args: unknown[]): unknown
+  remove(...args: unknown[]): unknown
+  removeRequest(...args: unknown[]): unknown
+  routeRequest(...args: unknown[]): unknown
+  setBaseFee(...args: unknown[]): unknown
+  setGasPrice(...args: unknown[]): unknown
+  setPriorityFee(...args: unknown[]): unknown
+  setRequestError(...args: unknown[]): unknown
+  setRequestPending(...args: unknown[]): unknown
+  setSigner(...args: unknown[]): unknown
+  setTxSent(...args: unknown[]): unknown
+  setTxSigned(...args: unknown[]): unknown
+  start(): void
+  startDataScanner(): void
+  updatePendingFees(...args: unknown[]): unknown
+}
+
+const provider = providerMock
+let Accounts!: AccountsTestHandle
+let AccountsClass!: AccountsConstructor
 
 const nameResolutionMock = {
   ready: () => true,
@@ -119,12 +175,14 @@ const simulationMock = {
 }
 
 function createAccounts(chainRpc = providerMock) {
-  return new AccountsClass(store, {
-    chainRpc,
+  const dependencies: AccountsDependencies = {
+    chainRpc: chainRpc as Partial<AccountsDependencies['chainRpc']> as AccountsDependencies['chainRpc'],
     transactionPolicy: transactionMock,
     simulation: simulationMock,
-    nameResolution: nameResolutionMock,
-    reveal: revealMock,
+    nameResolution: nameResolutionMock as Partial<
+      AccountsDependencies['nameResolution']
+    > as AccountsDependencies['nameResolution'],
+    reveal: revealMock as Partial<AccountsDependencies['reveal']> as AccountsDependencies['reveal'],
     createDataScanner: externalDataScannerFactoryMock,
     requests: requestLifecycle,
     runtime: {
@@ -137,10 +195,12 @@ function createAccounts(chainRpc = providerMock) {
       signers: signersMock,
       windows: windowsMock
     }
-  })
+  }
+
+  return new AccountsClass(store, dependencies) as Pick<AccountsInstance, 'start'> as AccountsTestHandle
 }
 
-const storeState = () => store.getState() as any
+const storeState = () => store.getState()
 const canonicalRequest = (id: string | number = request.handlerId) => Accounts.current().requests[id]
 const patchRequest = (update: (request: any) => void, id: string | number = request.handlerId) =>
   Accounts.current().patchRequest(id, update)
@@ -150,7 +210,7 @@ const flushPromises = async (count = 4) => {
   }
 }
 function mockConfirmedReceipt(receiptBlock: number) {
-  provider.send = mock((payload: any, cb: any) => {
+  provider.send = mock((payload: TestRpcPayload, cb: TestRpcCallback): void => {
     if (payload.method === 'eth_subscribe') {
       return cb({ error: { code: -32601, message: 'unsupported' } })
     }
@@ -191,9 +251,8 @@ let request: any
 beforeAll(async () => {
   log.transports.console.level = false
 
-  provider = providerMock
   const accountsModule = await import('./index')
-  AccountsClass = accountsModule.Accounts as any
+  AccountsClass = accountsModule.Accounts
   Accounts = createAccounts()
 })
 
@@ -227,10 +286,18 @@ beforeEach((done) => {
     }
   }
 
-  Accounts.add(account2.address, 'Test Account 2')
-  Accounts.add(account.address, 'Test Account 1', account, (err: any, account: any) => {
-    Accounts.setSigner(account.address, done)
-  })
+  void Accounts.add(account2.address, 'Test Account 2')
+  void Accounts.add(
+    account.address,
+    'Test Account 1',
+    account,
+    (_error: Error | null, addedAccount?: FrameAccountInstance) => {
+      if (!addedAccount) {
+        throw new Error('account was not added')
+      }
+      Accounts.setSigner(addedAccount.address, done)
+    }
+  )
 })
 
 afterEach(() => {
@@ -608,7 +675,7 @@ describe('#setTxSent', () => {
   it('keeps activity submitted when asynchronous confirmation monitoring fails', async () => {
     const hash = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
     notificationMock.mockClear()
-    provider.send = mock((payload: any, cb: any) => {
+    provider.send = mock((payload: TestRpcPayload, cb: TestRpcCallback): void => {
       if (payload.method === 'eth_subscribe') {
         cb({ error: { code: -32601, message: 'subscriptions unavailable' } })
       } else if (payload.method === 'eth_blockNumber') {
@@ -646,7 +713,7 @@ describe('#setTxSent', () => {
     const receiptBlock = 100
     const usdc = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
     request.account = account.address
-    const simulation: TransactionSimulation = {
+    const simulation = {
       status: 'success',
       effects: [
         {
@@ -660,7 +727,7 @@ describe('#setTxSent', () => {
           assetAddress: usdc
         }
       ]
-    }
+    } satisfies TransactionSimulation
     simulationMock.simulateTransactionEffects.mockResolvedValueOnce(simulation)
     store.setState((state: any) => {
       state.main.tokens.accountTokenIds[account.address] = []
@@ -867,7 +934,7 @@ describe('#setTxSent', () => {
     const hash = '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
     const receiptBlock = 200
 
-    provider.send = mock((payload: any, cb: any) => {
+    provider.send = mock((payload: TestRpcPayload, cb: TestRpcCallback): void => {
       if (payload.method === 'eth_getTransactionReceipt') {
         return cb({
           result: {
@@ -908,14 +975,14 @@ describe('#setTxSent', () => {
   it('pauses persisted activity immediately and resumes it once without overlapping RPC', async () => {
     const profileId = 'dormant-activity-profile'
     const hash = '0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'
-    const receiptCallbacks: Array<(response: any) => void> = []
+    const receiptCallbacks: TestRpcCallback[] = []
     const accounts = createAccounts()
 
     storeState().createProfile(profileId, 'Dormant activity')
     storeState().moveAccountToProfile(account2.address, profileId)
     storeState().selectProfile(DEFAULT_PROFILE_ID)
     setSubmittedActivity(hash)
-    provider.send = mock((payload: any, cb: any) => {
+    provider.send = mock((payload: TestRpcPayload, cb: TestRpcCallback): void => {
       if (payload.method === 'eth_getTransactionReceipt') {
         receiptCallbacks.push(cb)
         return
@@ -967,7 +1034,7 @@ describe('#setTxSent', () => {
     storeState().createProfile(profileId, 'Dormant live request')
     storeState().moveAccountToProfile(account2.address, profileId)
     storeState().selectProfile(DEFAULT_PROFILE_ID)
-    provider.send = mock((payload: any, cb: any) => {
+    provider.send = mock((payload: TestRpcPayload, cb: TestRpcCallback): void => {
       methods.push(payload.method)
       if (payload.method === 'eth_subscribe') {
         cb({ result: 'head-subscription' })

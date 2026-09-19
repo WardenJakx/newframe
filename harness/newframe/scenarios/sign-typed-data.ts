@@ -45,7 +45,7 @@ const TYPED_TYPES = {
   Mail: TYPED_DATA.types.Mail
 }
 
-let frame: any
+let frame: ReturnType<typeof createFrameProvider>
 let provider: BrowserProvider
 
 const waitForFrameConnect = () =>
@@ -77,7 +77,10 @@ async function main() {
       request: ({ method, params }: { method: string; params?: any[] }) => frame.request({ method, params })
     })
 
-    const [address] = await provider.send('eth_requestAccounts', [])
+    const [address] = await frame.request<string[]>({ method: 'eth_requestAccounts' })
+    if (!address) {
+      throw new Error('No account available')
+    }
     const expectedDigest = TypedDataEncoder.hash(TYPED_DATA.domain, TYPED_TYPES, TYPED_DATA.message)
     const signaturePromise = provider.send('eth_signTypedData_v4', [address, JSON.stringify(TYPED_DATA)])
     console.log(JSON.stringify({ address, expectedDigest, label: 'EIP-712 Digest' }))
@@ -91,7 +94,7 @@ async function main() {
       throw new Error(`Signature recovered ${recovered}; expected ${address}`)
     }
   } finally {
-    frame?.close()
+    frame.close()
   }
 }
 

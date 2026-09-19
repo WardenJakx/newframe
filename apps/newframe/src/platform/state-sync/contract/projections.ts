@@ -586,7 +586,11 @@ function createProjectionChangesSchema<TSchema extends z.ZodObject>(schema: TSch
         continue
       }
 
-      const result = shape[key].safeParse(value)
+      const propertySchema: unknown = (shape as Record<string, unknown>)[key]
+      if (!(propertySchema instanceof z.ZodType)) {
+        continue
+      }
+      const result = propertySchema.safeParse(value)
       if (!result.success) {
         context.addIssue({
           code: 'custom',

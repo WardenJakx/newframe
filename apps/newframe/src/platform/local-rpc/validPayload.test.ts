@@ -2,8 +2,7 @@ import { afterAll, beforeAll, beforeEach, expect, it } from 'bun:test'
 
 import validatePayloadTyped from './validPayload'
 
-// real function under test, exercised with invalid payloads
-const validatePayload = validatePayloadTyped as any
+const validatePayload = (data: unknown) => validatePayloadTyped(data as string)
 
 import log from 'electron-log'
 
