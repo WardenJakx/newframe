@@ -139,11 +139,16 @@ it('rejects invalid scalars and over-wide or invalid v without accepting a missi
     Buffer.from(vectors.messages[0].signature.slice(0, 128) + '02', 'hex'),
     Buffer.from(vectors.messages[0].signature.slice(0, 128) + '001b', 'hex')
   ]) {
-    const cbor = new ETHSignature(signature, uuid).toCBOR()
+    const cbor = new ETHSignature(signature, uuid).toCBOR() as Buffer
     expect(() => decodeSignature(cbor, sessionId, DataType.personalMessage, 1)).toThrow()
   }
   expect(() =>
-    decodeSignature(new ETHSignature(Buffer.alloc(65, 1)).toCBOR(), sessionId, DataType.personalMessage, 1)
+    decodeSignature(
+      new ETHSignature(Buffer.alloc(65, 1)).toCBOR() as Buffer,
+      sessionId,
+      DataType.personalMessage,
+      1
+    )
   ).toThrow()
 })
 

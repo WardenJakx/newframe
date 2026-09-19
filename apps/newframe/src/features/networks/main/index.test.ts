@@ -10,7 +10,7 @@ import store from '../../../platform/state-store'
 log.transports.console.level = false
 
 class MockConnection extends EventEmitter {
-  constructor(chainId: any) {
+  constructor(chainId: number) {
     super()
     ;(this as any).chainId = addHexPrefix(chainId.toString(16))
     ;(this as any).connected = false

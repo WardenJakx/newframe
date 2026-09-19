@@ -45,8 +45,22 @@ const TYPED_TYPES = {
   Mail: TYPED_DATA.types.Mail
 }
 
-let frame: any
+let frame: ReturnType<typeof createFrameProvider>
 let provider: BrowserProvider
+
+function requireString(value: unknown, label: string) {
+  if (typeof value !== 'string') {
+    throw new Error(`${label} returned a non-string value`)
+  }
+  return value
+}
+
+function requireFirstAddress(value: unknown) {
+  if (!Array.isArray(value) || typeof value[0] !== 'string') {
+    throw new Error('eth_requestAccounts returned no address')
+  }
+  return value[0]
+}
 
 const waitForFrameConnect = () =>
   new Promise<void>((resolve, reject) => {
@@ -74,15 +88,16 @@ async function main() {
   try {
     await waitForFrameConnect()
     provider = new BrowserProvider({
-      request: ({ method, params }: { method: string; params?: any[] }) => frame.request({ method, params })
+      request: ({ method, params }: { method: string; params?: unknown[] }) =>
+        frame.request({ method, params })
     })
 
-    const [address] = await provider.send('eth_requestAccounts', [])
+    const address = requireFirstAddress(await provider.send('eth_requestAccounts', []))
     const expectedDigest = TypedDataEncoder.hash(TYPED_DATA.domain, TYPED_TYPES, TYPED_DATA.message)
     const signaturePromise = provider.send('eth_signTypedData_v4', [address, JSON.stringify(TYPED_DATA)])
     console.log(JSON.stringify({ address, expectedDigest, label: 'EIP-712 Digest' }))
 
-    const signature = await signaturePromise
+    const signature = requireString(await signaturePromise, 'eth_signTypedData_v4')
     const recovered = verifyTypedData(TYPED_DATA.domain, TYPED_TYPES, TYPED_DATA.message, signature)
     if (!/^0x[0-9a-fA-F]{130}$/.test(signature)) {
       throw new Error('Invalid typed-data signature')

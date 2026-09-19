@@ -1,4 +1,4 @@
-import type { TypedTransaction } from '@ethereumjs/tx'
+import type { JSONTx, TypedTransaction } from '@ethereumjs/tx'
 import { padToEven, stripHexPrefix, addHexPrefix, bytesToHex } from '@ethereumjs/util'
 import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util'
 import type { Device as TrezorDevice } from '@trezor/connect'
@@ -18,6 +18,18 @@ const ns = '3bbcee75-cecc-5b56-8031-b6641c1ed1f1'
 
 const defaultTrezorTVersion = { major_version: 2, minor_version: 3, patch_version: 0 }
 const defaultTrezorOneVersion = { major_version: 1, minor_version: 9, patch_version: 2 }
+
+type TrezorTransaction = {
+  nonce: string
+  gasLimit: string
+  to: string
+  value: string
+  data: string
+  chainId: number
+  gasPrice?: string
+  maxFeePerGas?: string
+  maxPriorityFeePerGas?: string
+}
 
 export const Status = {
   INITIAL: 'Connecting',
@@ -276,12 +288,11 @@ export default class Trezor extends Signer {
           SignTypedDataVersion.V4
         )
 
-        const messageHash = TypedDataUtils.hashStruct(
-          primaryType as any,
-          message,
-          types,
-          SignTypedDataVersion.V4
-        )
+        if (typeof primaryType !== 'string') {
+          throw new Error('Invalid typed data primary type')
+        }
+
+        const messageHash = TypedDataUtils.hashStruct(primaryType, message, types, SignTypedDataVersion.V4)
 
         signature = await TrezorBridge.signTypedHash(
           this.device,
@@ -342,9 +353,9 @@ export default class Trezor extends Signer {
   }
 
   private normalizeTransaction(chainId: string, tx: TypedTransaction) {
-    const txJson = tx.toJSON()
+    const txJson: JSONTx = tx.toJSON()
 
-    const unsignedTx = {
+    const unsignedTx: TrezorTransaction = {
       nonce: this.normalize(txJson.nonce ?? ''),
       gasLimit: this.normalize(txJson.gasLimit ?? ''),
       to: this.normalize(txJson.to ?? ''),
@@ -353,16 +364,15 @@ export default class Trezor extends Signer {
       chainId: hexToInt(chainId)
     }
 
-    const optionalFields = ['gasPrice', 'maxFeePerGas', 'maxPriorityFeePerGas']
-
-    optionalFields.forEach((field) => {
-      // @ts-expect-error: Transaction JSON optional fee fields are indexed dynamically.
-      const val: string = txJson[field]
-      if (val) {
-        // @ts-expect-error: The normalized transaction adds optional fee fields dynamically.
-        unsignedTx[field] = this.normalize(val)
-      }
-    })
+    if (txJson.gasPrice) {
+      unsignedTx.gasPrice = this.normalize(txJson.gasPrice)
+    }
+    if (txJson.maxFeePerGas) {
+      unsignedTx.maxFeePerGas = this.normalize(txJson.maxFeePerGas)
+    }
+    if (txJson.maxPriorityFeePerGas) {
+      unsignedTx.maxPriorityFeePerGas = this.normalize(txJson.maxPriorityFeePerGas)
+    }
 
     return unsignedTx
   }

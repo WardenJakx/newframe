@@ -63,17 +63,27 @@ interface ConnectionState {
 // and ethereumjs/common to determine the state of various EIPs
 const legacyChains = [250, 4002]
 
-const normalizeRpcError = (error: any) => {
+const normalizeRpcError = (error: unknown): EVMError => {
   if (typeof error === 'string') {
     return { message: error, code: -1 }
   }
   if (error instanceof Error) {
-    return { message: error.message, code: (error as any).code ?? -1, data: (error as any).data }
+    const errorWithCode = error as Error & { code?: unknown }
+    return {
+      message: error.message,
+      code: typeof errorWithCode.code === 'number' ? errorWithCode.code : -1
+    }
   }
-  return error
+  if (error && typeof error === 'object' && 'message' in error) {
+    return {
+      message: typeof error.message === 'string' ? error.message : 'JSON-RPC request failed',
+      code: 'code' in error && typeof error.code === 'number' ? error.code : -1
+    }
+  }
+  return { message: 'JSON-RPC request failed', code: -1 }
 }
 
-const resError = (error: any, payload: any, res: (response: any) => void) =>
+const resError = (error: unknown, payload: RPCId, res: RPCRequestCallback) =>
   res({
     id: payload.id,
     jsonrpc: payload.jsonrpc,
@@ -313,8 +323,18 @@ class ChainConnection extends EventEmitter {
       this.primary.provider = null
       this.killProvider(this.secondary.provider)
       this.secondary.provider = null
-      this.primary = { status: 'loading', network: '', type: '', connected: false }
-      this.secondary = { status: 'loading', network: '', type: '', connected: false }
+      this.primary = {
+        status: 'loading',
+        network: '',
+        type: '',
+        connected: false
+      }
+      this.secondary = {
+        status: 'loading',
+        network: '',
+        type: '',
+        connected: false
+      }
       this.update('primary')
       this.update('secondary')
       log.info('Network changed from ' + this.network + ' to ' + connection.network)
@@ -392,14 +412,24 @@ class ChainConnection extends EventEmitter {
     this.secondary.provider = null
 
     if (update) {
-      this.primary = { status: 'loading', network: '', type: '', connected: false }
-      this.secondary = { status: 'loading', network: '', type: '', connected: false }
+      this.primary = {
+        status: 'loading',
+        network: '',
+        type: '',
+        connected: false
+      }
+      this.secondary = {
+        status: 'loading',
+        network: '',
+        type: '',
+        connected: false
+      }
       this.update('primary')
       this.update('secondary')
     }
   }
 
-  send(payload: any, res: (response: any) => void) {
+  send(payload: JSONRPCRequestPayload, res: RPCRequestCallback) {
     if (this.primary.provider && this.primary.connected) {
       sendRpcPayload(this.primary.provider, payload)
         .then((result) => res({ id: payload.id, jsonrpc: payload.jsonrpc ?? '2.0', result }))
@@ -432,7 +462,7 @@ class ChainConnection extends EventEmitter {
     const chainId = parseInt(this.chainId)
     const gasMonitor = new GasMonitor(provider)
     const allowEip1559 = !legacyChains.includes(chainId)
-    let feeMarket: any = null
+    let feeMarket: ReturnType<ChainConnection['gasCalculator']['calculateGas']> | null = null
 
     if (allowEip1559) {
       try {
@@ -444,10 +474,12 @@ class ChainConnection extends EventEmitter {
       }
     }
 
-    if (feeMarket) {
+    if (feeMarket?.maxBaseFeePerGas && feeMarket.maxPriorityFeePerGas) {
       const gasPrice = parseInt(feeMarket.maxBaseFeePerGas) + parseInt(feeMarket.maxPriorityFeePerGas)
 
-      this.store.getState().setGasPrices(this.type, chainId, { fast: addHexPrefix(gasPrice.toString(16)) })
+      this.store.getState().setGasPrices(this.type, chainId, {
+        fast: addHexPrefix(gasPrice.toString(16))
+      })
       this.store.getState().setGasDefault(this.type, chainId, 'fast')
     } else {
       const gas = await gasMonitor.getGasPrices()
@@ -520,7 +552,9 @@ export class Chains extends EventEmitter {
 
     const sleepConnections = (reason: string) => {
       const connections = activeConnectionIds()
-      log.info(`System ${reason}, closing active chain connections`, { chains: connections })
+      log.info(`System ${reason}, closing active chain connections`, {
+        chains: connections
+      })
 
       connections.forEach((id) => {
         const [type, chainId] = id.split(':')
@@ -554,23 +588,23 @@ export class Chains extends EventEmitter {
             const connection = new ChainConnection(type, chainId, this.store)
             this.connections[type][chainId] = connection
 
-            connection.on('connect', (...args) => {
+            connection.on('connect', (...args: unknown[]) => {
               this.emit('connect', { type, id: chainId }, ...args)
             })
 
-            connection.on('close', (...args) => {
+            connection.on('close', (...args: unknown[]) => {
               this.emit('close', { type, id: chainId }, ...args)
             })
 
-            connection.on('data', (...args) => {
+            connection.on('data', (...args: unknown[]) => {
               this.emit('data', { type, id: chainId }, ...args)
             })
 
-            connection.on('update', (...args) => {
+            connection.on('update', (...args: unknown[]) => {
               this.emit('update', { type, id: parseInt(chainId) }, ...args)
             })
 
-            connection.on('error', (...args) => {
+            connection.on('error', (...args: unknown[]) => {
               this.emit('error', { type, id: chainId }, ...args)
             })
 
@@ -586,7 +620,10 @@ export class Chains extends EventEmitter {
 
     const wakeConnections = (reason: string) => {
       if (isSystemInactive()) {
-        log.info(`System ${reason}, keeping chain connections closed`, { systemSuspended, screenLocked })
+        log.info(`System ${reason}, keeping chain connections closed`, {
+          systemSuspended,
+          screenLocked
+        })
         return
       }
 
@@ -673,7 +710,10 @@ export class Chains extends EventEmitter {
     const { type, id } = targetChain as Chain
     if (!this.connections[type]?.[id]) {
       resError(
-        { message: `Connection for ${type} chain with chainId ${id} did not exist for send`, code: -32601 },
+        {
+          message: `Connection for ${type} chain with chainId ${id} did not exist for send`,
+          code: -32601
+        },
         payload,
         res
       )

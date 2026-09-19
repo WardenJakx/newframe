@@ -25,7 +25,7 @@ type LockState = {
 
 type RuntimeEvaluateResult = {
   result?: {
-    value?: any
+    value?: unknown
     description?: string
   }
   exceptionDetails?: {
@@ -38,25 +38,33 @@ type RuntimeEvaluateResult = {
 
 class CdpClient {
   private nextId = 1
-  private pending = new Map<number, { resolve: (value: any) => void; reject: (err: Error) => void }>()
+  private pending = new Map<number, { resolve: (value: unknown) => void; reject: (err: Error) => void }>()
 
   private constructor(private socket: WebSocket) {
     socket.on('message', (data) => {
-      const message = JSON.parse(data.toString())
-      if (!message.id) {
+      const message: unknown = JSON.parse(data.toString())
+      if (!message || typeof message !== 'object' || Array.isArray(message) || !('id' in message)) {
         return
       }
 
-      const pending = this.pending.get(message.id)
+      const id = message.id
+      if (typeof id !== 'number') {
+        return
+      }
+
+      const pending = this.pending.get(id)
       if (!pending) {
         return
       }
 
-      this.pending.delete(message.id)
-      if (message.error) {
-        pending.reject(new Error(message.error.message ?? JSON.stringify(message.error)))
+      this.pending.delete(id)
+      const error = 'error' in message ? message.error : undefined
+      if (error) {
+        const detail =
+          typeof error === 'object' && !Array.isArray(error) && 'message' in error ? error.message : undefined
+        pending.reject(new Error(typeof detail === 'string' ? detail : JSON.stringify(error)))
       } else {
-        pending.resolve(message.result)
+        pending.resolve('result' in message ? message.result : undefined)
       }
     })
 
@@ -76,11 +84,11 @@ class CdpClient {
     })
   }
 
-  command<T>(method: string, params: Record<string, any> = {}) {
+  command(method: string, params: Record<string, unknown> = {}) {
     const id = this.nextId++
     const payload = JSON.stringify({ id, method, params })
 
-    return new Promise<T>((resolve, reject) => {
+    return new Promise<unknown>((resolve, reject) => {
       this.pending.set(id, { resolve, reject })
       this.socket.send(payload, (err) => {
         if (!err) {
@@ -197,12 +205,27 @@ function readHarnessPassword() {
   return ''
 }
 
-async function evaluate<T>(client: CdpClient, expression: string) {
-  const response = await client.command<RuntimeEvaluateResult>('Runtime.evaluate', {
-    expression,
-    awaitPromise: true,
-    returnByValue: true
-  })
+function runtimeEvaluateResult(value: unknown): RuntimeEvaluateResult {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {}
+  }
+  const result =
+    'result' in value && value.result && typeof value.result === 'object' ? value.result : undefined
+  const exceptionDetails =
+    'exceptionDetails' in value && value.exceptionDetails && typeof value.exceptionDetails === 'object'
+      ? value.exceptionDetails
+      : undefined
+  return { result, exceptionDetails }
+}
+
+async function evaluate(client: CdpClient, expression: string) {
+  const response = runtimeEvaluateResult(
+    await client.command('Runtime.evaluate', {
+      expression,
+      awaitPromise: true,
+      returnByValue: true
+    })
+  )
 
   if (response.exceptionDetails) {
     throw new Error(
@@ -213,7 +236,19 @@ async function evaluate<T>(client: CdpClient, expression: string) {
     )
   }
 
-  return response.result?.value as T
+  return response.result?.value
+}
+
+function lockState(value: unknown): LockState {
+  if (!value || typeof value !== 'object' || Array.isArray(value) || !('status' in value)) {
+    return { status: 'unknown' }
+  }
+  const status = value.status
+  if (status !== 'checking' && status !== 'locked' && status !== 'unlocked' && status !== 'unknown') {
+    return { status: 'unknown' }
+  }
+  const error = 'error' in value && typeof value.error === 'string' ? value.error : undefined
+  return { status, ...(error ? { error } : {}) }
 }
 
 function lockStateExpression() {
@@ -273,7 +308,7 @@ async function waitForLockState(client: CdpClient, timeoutMs: number) {
   let latest: LockState = { status: 'unknown' }
 
   while (Date.now() - started < timeoutMs) {
-    latest = await evaluate<LockState>(client, lockStateExpression())
+    latest = lockState(await evaluate(client, lockStateExpression()))
     if (latest.status === 'locked' || latest.status === 'unlocked') {
       return latest
     }
@@ -288,7 +323,7 @@ async function waitForUnlock(client: CdpClient, timeoutMs: number) {
   let latest: LockState = { status: 'unknown' }
 
   while (Date.now() - started < timeoutMs) {
-    latest = await evaluate<LockState>(client, lockStateExpression())
+    latest = lockState(await evaluate(client, lockStateExpression()))
     if (latest.status === 'unlocked') {
       return latest
     }
@@ -326,9 +361,13 @@ export async function unlockHarnessNewframe(options: { optional?: boolean } = {}
       throw new Error(message)
     }
 
-    const submit = await evaluate<{ status: string }>(client, submitPasswordExpression(password))
-    if (submit.status !== 'submitted') {
-      throw new Error(`Could not submit Newframe password: ${submit.status}`)
+    const submit = await evaluate(client, submitPasswordExpression(password))
+    const submitStatus =
+      submit && typeof submit === 'object' && !Array.isArray(submit) && 'status' in submit
+        ? submit.status
+        : undefined
+    if (submitStatus !== 'submitted') {
+      throw new Error(`Could not submit Newframe password: ${String(submitStatus ?? 'unknown')}`)
     }
 
     await waitForUnlock(client, 15_000)

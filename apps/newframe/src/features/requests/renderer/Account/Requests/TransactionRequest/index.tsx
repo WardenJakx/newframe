@@ -26,7 +26,12 @@ type TransactionRequestWithStateProps = Omit<TransactionRequestProps, 'actionId'
 
 const decodeRequested = (req: TransactionRequestView) => {
   const calldata = req.payload.params[0]?.data ?? '0x'
-  const [spender, amount] = erc20Interface.decodeFunctionData('approve', calldata)
+  const decoded = erc20Interface.decodeFunctionData('approve', calldata)
+  const spender: unknown = decoded[0]
+  const amount: unknown = decoded[1]
+  if (typeof spender !== 'string' || (typeof amount !== 'string' && typeof amount !== 'bigint')) {
+    throw new Error('Invalid ERC-20 approve calldata')
+  }
   return { spender, amount: BigInt(amount) }
 }
 

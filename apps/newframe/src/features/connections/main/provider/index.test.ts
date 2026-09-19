@@ -10,7 +10,6 @@ import {
   mock,
   spyOn
 } from 'bun:test'
-import EventEmitter from 'events'
 import { randomUUID } from 'node:crypto'
 
 import { addHexPrefix, intToHex } from '@ethereumjs/util'
@@ -21,8 +20,14 @@ import { validate as validateUUID } from 'uuid'
 
 import { Type as SignerType } from '../../../../platform/signing/domain'
 import { gweiToHex } from '../../../../shared/domain/hex'
-import { createAgentPrincipal, createRpcPrincipal } from '../../../access-control/main/authority'
+import {
+  createAgentPrincipal,
+  createRpcPrincipal,
+  type RpcPrincipal
+} from '../../../access-control/main/authority'
 import chainConfig from '../../../networks/main/config'
+import type { TransactionData } from '../../../transactions/domain'
+import { ProviderProxyConnection } from './proxy'
 
 const address = '0x22dd63c3619818fdbc262c78baee43cb61e9cccf'
 const principal = createRpcPrincipal({
@@ -41,8 +46,14 @@ let accountRequests: any = []
 let provider: any
 const accounts: any = {}
 let connection: any
-let store: any
-let accountRequestHook: ((request: any, respond?: (response: any) => void) => void) | undefined
+let store: (typeof import('../../../../platform/state-store'))['default']
+interface AccountRequestDouble {
+  account: string
+  handlerId: string
+  payload: Pick<RPCRequestPayload, 'id' | 'jsonrpc'>
+}
+
+let accountRequestHook: ((request: AccountRequestDouble, respond?: RPCRequestCallback) => void) | undefined
 const lookupChainIcon = mock(async (_chainId: number) => '')
 const requestContinuations = {
   callbacks: new Map<string, RPCRequestCallback>(),
@@ -106,12 +117,12 @@ const setNetworkGas = (id: number, gas: any) => {
     state.main.networksMeta.ethereum[id].gas = gas
   })
 }
-const expectQueuedRequestRejection = (sendRequest: (callback: (response: any) => void) => void) =>
+const expectQueuedRequestRejection = (sendRequest: (callback: RPCRequestCallback) => void) =>
   new Promise<void>((resolve, reject) => {
     const callback = mock()
     accountRequestHook = (request, respond) => {
       try {
-        expect(respond).toEqual(expect.any(Function))
+        expect(typeof respond).toBe('function')
         expect(requestContinuations.callbacks.has(request.handlerId)).toBe(true)
         const rejection = {
           id: request.payload.id,
@@ -154,13 +165,19 @@ await mock.module('./subscriptions', () => ({
 beforeAll(async () => {
   log.transports.console.level = false
 
-  const connectionModule = (await import('../../../networks/main')) as any
+  const connectionModule = (await import('../../../networks/main')) as unknown as {
+    default?: unknown
+  } & Record<string, unknown>
   connection = connectionModule.default ?? connectionModule
-  store = (await import('../../../../platform/state-store')).default as any
+  store = (await import('../../../../platform/state-store')).default
   accounts.getAccounts = () => [address]
   accounts.current = () => ({ id: address, getAccounts: () => [address] })
   accounts.get = () => undefined
-  accounts.routeRequest = (receivedPrincipal: unknown, req: any, executeAutonomously: any) => {
+  accounts.routeRequest = (
+    receivedPrincipal: unknown,
+    req: AccountRequestDouble,
+    executeAutonomously: ((request: AccountRequestDouble) => void) | undefined
+  ) => {
     expect(receivedPrincipal).toBe(principal)
     store.setState((state: any) => {
       state.main.accounts[req.account] ??= {}
@@ -188,12 +205,12 @@ beforeAll(async () => {
     accounts,
     chains: connection,
     lookupChainIcon,
-    proxy: new EventEmitter() as any,
+    proxy: new ProviderProxyConnection(),
     state: createProviderStatePort(store),
     store,
     reveal: { resolveEntityType: mock(async () => 'unknown' as const) },
     requests: requestContinuations
-  }) as any
+  })
   provider.start()
 })
 
@@ -330,7 +347,9 @@ describe('#send', () => {
       it(description as string, async () => {
         setOrigin(originId, { name: 'frame.test', chain: { id: chainId, type: 'ethereum' } })
         setPermissions(address, permitted ? { [originId]: { origin: 'frame.test', provider: true } } : {})
-        expect((await sendResult({ method: 'frame_getOriginStatus' }, source as any)).result).toEqual({
+        expect(
+          (await sendResult({ method: 'frame_getOriginStatus' }, source as unknown as RpcPrincipal)).result
+        ).toEqual({
           originId,
           origin: 'frame.test',
           connected: permitted,
@@ -375,7 +394,7 @@ describe('#send', () => {
         expect(response.result.connected).toBe(false)
         expect(response.result.address).toBe('')
         expect(storeState().main.permissions[address][originId]).toBeUndefined()
-        expect(storeState().main.origins[originId].session.endedAt).toEqual(expect.any(Number))
+        expect(typeof storeState().main.origins[originId].session.endedAt).toBe('number')
         expect(accounts.clearRequestsByOrigin).toHaveBeenCalledWith(address, originId)
         expect(subscriptionEvent.params.subscription).toBe(subscription.id)
         expect(subscriptionEvent.params.result).toEqual([])
@@ -767,8 +786,8 @@ describe('#send', () => {
   describe('#eth_sendTransaction', () => {
     let tx: any
 
-    const sendTransaction = (cb: any, chainId?: any, context?: any) => {
-      const payload = {
+    const sendTransaction = (cb: any, chainId?: string, context?: any) => {
+      const payload: Omit<RPC.SendTransaction.Request, '_origin'> = {
         jsonrpc: '2.0',
         id: 7,
         method: 'eth_sendTransaction',
@@ -776,12 +795,12 @@ describe('#send', () => {
       }
 
       if (chainId) {
-        ;(payload as any).chainId = chainId
+        payload.chainId = chainId
       }
 
       provider.send({ ...payload, _origin: '8073729a-5e59-53b7-9e69-5d9bcff94087' }, cb, principal, context)
     }
-    const sendTransactionResult = (chainId?: any, context?: any) =>
+    const sendTransactionResult = (chainId?: string, context?: any) =>
       new Promise<any>((resolve) => sendTransaction(resolve, chainId, context))
 
     beforeEach(() => {
@@ -1188,8 +1207,14 @@ describe('#executeAgentTransaction', () => {
 })
 
 describe('#signAndSend', () => {
-  let tx = {},
-    request = {}
+  let tx: Partial<TransactionData>
+  let request: {
+    handlerId: number
+    account: string
+    type: string
+    payload: { jsonrpc: string; id: number; method: string }
+    data: Partial<TransactionData>
+  }
 
   const signAndSend = (cb: any = mock()) => provider.signAndSend(request, cb)
 
@@ -1207,10 +1232,10 @@ describe('#signAndSend', () => {
 
   it('allows a Fantom transaction with fees over the mainnet hard limit', (done) => {
     // 200 gwei * 10M gas = 2 FTM
-    ;(tx as any).chainId = '0xfa'
-    ;(tx as any).type = '0x0'
-    ;(tx as any).gasPrice = toBeHex(parseUnits('210', 'gwei'))
-    ;(tx as any).gasLimit = addHexPrefix((1e7).toString(16))
+    tx.chainId = '0xfa'
+    tx.type = '0x0'
+    tx.gasPrice = toBeHex(parseUnits('210', 'gwei'))
+    tx.gasLimit = addHexPrefix((1e7).toString(16))
     accounts.signTransaction.mockImplementation(() => done())
 
     signAndSend(done)
@@ -1277,7 +1302,7 @@ describe('#signAndSend', () => {
     beforeEach(() => {
       accounts.signTransaction.mockImplementation((_: any, cb: any) => cb(null, signedTx))
       accounts.setTxSigned.mockImplementation((reqId: any, cb: any) => {
-        expect(reqId).toBe((request as any).handlerId)
+        expect(reqId).toBe(request.handlerId)
         cb()
       })
     })
@@ -1287,7 +1312,7 @@ describe('#signAndSend', () => {
         connection.send.mockImplementation((payload: any, cb: any) => {
           expect(payload).toEqual(
             expect.objectContaining({
-              id: (request as any).payload.id,
+              id: request.payload.id,
               method: 'eth_sendRawTransaction',
               params: [signedTx]
             })

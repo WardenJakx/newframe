@@ -2,6 +2,7 @@ import EventEmitter from 'events'
 
 import { GNS_CONTRACT, gnsAbi, isGwei, normalizeName } from '@donnoh/gns-utils'
 import { Interface, ZeroAddress, dnsEncode, ensNormalize, getAddress, isAddress, namehash } from 'ethers'
+import type { BytesLike, Result } from 'ethers'
 
 import { createProxyProvider } from '../../connections/main/provider/connection.js'
 import type { ProviderProxyConnection } from '../../connections/main/provider/proxy.js'
@@ -109,6 +110,10 @@ export function createNameResolutionService(
     return gnsInterface.decodeFunctionResult(functionName, result)
   }
 
+  const resultValue = (result: Result, index: number): unknown => result[index]
+  const isBytesLike = (value: unknown): value is BytesLike =>
+    typeof value === 'string' || value instanceof Uint8Array
+
   function isGnsName(name: string) {
     const input = name.trim()
     return !!input && (isGwei(input) || !input.includes('.'))
@@ -116,12 +121,18 @@ export function createNameResolutionService(
 
   async function resolveGnsAddress(name: string) {
     try {
-      const [tokenId] = await readGns('computeId', [normalizeName(name)])
+      const tokenId = resultValue(await readGns('computeId', [normalizeName(name)]), 0)
+      if (typeof tokenId !== 'bigint') {
+        return ''
+      }
       if (tokenId === 0n) {
         return ''
       }
 
-      const [address] = await readGns('resolve', [tokenId])
+      const address = resultValue(await readGns('resolve', [tokenId]), 0)
+      if (typeof address !== 'string') {
+        return ''
+      }
       return address === ZeroAddress ? '' : getAddress(address)
     } catch {
       return ''
@@ -132,12 +143,17 @@ export function createNameResolutionService(
     const normalized = ensNormalize(name)
     const node = namehash(normalized)
     const data = resolverInterface.encodeFunctionData('addr', [node])
-    const [result] = await readUniversalResolver('resolveWithGateways', [
-      dnsEncode(normalized),
-      data,
-      GATEWAYS
-    ])
-    const [address] = resolverInterface.decodeFunctionResult('addr', result)
+    const result = resultValue(
+      await readUniversalResolver('resolveWithGateways', [dnsEncode(normalized), data, GATEWAYS]),
+      0
+    )
+    if (!isBytesLike(result)) {
+      return ''
+    }
+    const address = resultValue(resolverInterface.decodeFunctionResult('addr', result), 0)
+    if (typeof address !== 'string') {
+      return ''
+    }
 
     return address === ZeroAddress ? '' : getAddress(address)
   }
@@ -155,8 +171,8 @@ export function createNameResolutionService(
       if (!isAddress(address)) {
         return ''
       }
-      const [primary] = await readGns('reverseResolve', [getAddress(address)])
-      return primary ?? ''
+      const primary = resultValue(await readGns('reverseResolve', [getAddress(address)]), 0)
+      return typeof primary === 'string' ? primary : ''
     } catch {
       return ''
     }
@@ -166,12 +182,11 @@ export function createNameResolutionService(
     if (!isAddress(address)) {
       return ''
     }
-    const [primary] = await readUniversalResolver('reverseWithGateways', [
-      getAddress(address),
-      ETH_COIN_TYPE,
-      GATEWAYS
-    ])
-    return primary
+    const primary = resultValue(
+      await readUniversalResolver('reverseWithGateways', [getAddress(address), ETH_COIN_TYPE, GATEWAYS]),
+      0
+    )
+    return typeof primary === 'string' ? primary : ''
   }
 
   async function reverseLookup(address: string) {

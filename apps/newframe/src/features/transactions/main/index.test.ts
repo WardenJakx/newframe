@@ -3,13 +3,45 @@ import { describe, expect, it, mock } from 'bun:test'
 import { Common, Mainnet } from '@ethereumjs/common'
 import { addHexPrefix, stripHexPrefix } from '@ethereumjs/util'
 
+import { TxClassification } from '../../requests/contract/requests'
+import { GasFeesSource, type TransactionData } from '../domain'
 import * as transactionModule from './index'
 
-// real functions under test, exercised with partial tx fixtures
-const { maxFee, londonToLegacy, signerCompatibility, populate, sign, classifyTransaction } =
-  transactionModule as Record<string, any>
-import { TxClassification } from '../../requests/contract/requests'
-import { GasFeesSource } from '../domain'
+// Real functions under test, adapted only to allow focused partial fixtures.
+const maxFee = (tx: Pick<TransactionData, 'chainId'>) =>
+  transactionModule.maxFee(tx as unknown as TransactionData)
+const londonToLegacy = (tx: Partial<TransactionData> & Pick<TransactionData, 'type'>) =>
+  transactionModule.londonToLegacy(tx as unknown as TransactionData)
+type SignerInput = Pick<Parameters<typeof transactionModule.signerCompatibility>[1], 'type'> &
+  Partial<Parameters<typeof transactionModule.signerCompatibility>[1]>
+const signerCompatibility = (tx: Pick<TransactionData, 'type'>, signer: SignerInput) =>
+  transactionModule.signerCompatibility(
+    tx as unknown as TransactionData,
+    signer as Parameters<typeof transactionModule.signerCompatibility>[1]
+  )
+interface TestGas {
+  price: {
+    levels: Partial<Record<'slow' | 'standard' | 'fast' | 'asap' | 'custom', string>>
+    fees?: {
+      maxPriorityFeePerGas?: string
+      maxBaseFeePerGas?: string
+    }
+  }
+}
+const populate = (
+  tx: Partial<TransactionData>,
+  config: Parameters<typeof transactionModule.populate>[1],
+  gas: TestGas
+): Partial<TransactionData> =>
+  transactionModule.populate(
+    tx as unknown as TransactionData,
+    config,
+    gas as unknown as Parameters<typeof transactionModule.populate>[2]
+  )
+const sign = (tx: Partial<TransactionData>, signingFn: Parameters<typeof transactionModule.sign>[1]) =>
+  transactionModule.sign(tx as unknown as TransactionData, signingFn)
+type ClassificationInput = Parameters<typeof transactionModule.classifyTransaction>[0]
+const classifyTransaction = (request: ClassificationInput) => transactionModule.classifyTransaction(request)
 
 describe('#signerCompatibility', () => {
   it('accepts every signer for legacy transactions', () => {
@@ -358,13 +390,14 @@ describe('#classifyTransaction', () => {
   const method = 'eth_sendTransaction'
   const from = '0xd8da6bf26964af9d7eed9e03e53415d37aa96045'
   const to = '0x2f3a40a3db8a7e3d09b0adfefbce4f6f81927557'
-  const Request = (param: any, recipientType: any) => ({
-    payload: {
-      method,
-      params: [param]
-    },
-    recipientType
-  })
+  const Request = (param: Partial<RPC.SendTransaction.TxParams>, recipientType: string) =>
+    ({
+      payload: {
+        method,
+        params: [param]
+      },
+      recipientType
+    }) as unknown as ClassificationInput
 
   describe('contract deployments', () => {
     it('should classify transactions with data and no recipient as contract deployments', () => {

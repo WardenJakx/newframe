@@ -1,5 +1,5 @@
 import { encode } from '@ethereumjs/rlp'
-import type { TypedTransaction } from '@ethereumjs/tx'
+import type { JSONTx, TypedTransaction } from '@ethereumjs/tx'
 import { padToEven, addHexPrefix, bytesToHex, stripHexPrefix } from '@ethereumjs/util'
 import type { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import log from 'electron-log'
@@ -33,8 +33,40 @@ type LatticeResponseError = {
   errorMessage: string
 }
 
-type SigningPayload = Parameters<InstanceType<typeof Client>['sign']>[0]['data']
 type SignProtocol = 'eip712' | 'signPersonal'
+type SigningPayload = {
+  signerPath: number[]
+  payload: string | TypedData | Uint8Array | Uint8Array[]
+  curveType: number
+  hashType: number
+  encodingType?: number
+  protocol?: SignProtocol
+  decoder?: Buffer<ArrayBufferLike>
+}
+type LatticeTransaction = {
+  to: JSONTx['to']
+  value: JSONTx['value']
+  data: JSONTx['data']
+  chainId: string
+  nonce: number
+  gasLimit: number
+  useEIP155: true
+  signerPath: number[]
+  type?: number
+  gasPrice?: number
+  maxFeePerGas?: number
+  maxPriorityFeePerGas?: number
+  currency?: 'ETH'
+}
+type LatticeSigningOptions =
+  | { data: SigningPayload; currency?: 'ETH' | 'ETH_MSG' }
+  | { data: LatticeTransaction; currency: 'ETH' }
+
+declare module 'gridplus-sdk' {
+  interface Client {
+    sign(options: LatticeSigningOptions): Promise<{ sig?: LatticeSignature }>
+  }
+}
 
 const Status = {
   OK: 'ok',
@@ -300,7 +332,7 @@ export default class Lattice extends Signer {
         const signingOptions = await this.createTransactionSigningOptions(tx, unsignedTx)
 
         const signedTx = await connection.sign(signingOptions)
-        const sig = signedTx?.sig as LatticeSignature | undefined
+        const sig = signedTx.sig
 
         if (sig?.v === undefined) {
           throw new Error('Lattice returned an incomplete signature')
@@ -334,13 +366,13 @@ export default class Lattice extends Signer {
   private async sign(index: number, protocol: SignProtocol, payload: string | TypedData) {
     const connection = this.connection as Client
 
-    const data = {
+    const data: SigningPayload = {
       protocol,
       payload,
       curveType: Constants.SIGNING.CURVES.SECP256K1,
       hashType: Constants.SIGNING.HASHES.KECCAK256,
       signerPath: this.getPath(index)
-    } as SigningPayload
+    }
 
     const signOpts = {
       currency: 'ETH_MSG' as const,
@@ -348,7 +380,7 @@ export default class Lattice extends Signer {
     }
 
     const result = await connection.sign(signOpts)
-    const sig = result?.sig as LatticeSignature | undefined
+    const sig = result.sig
 
     if (sig?.v === undefined) {
       throw new Error('Lattice returned an incomplete signature')
@@ -363,7 +395,7 @@ export default class Lattice extends Signer {
     const { value, to, data, ...txJson } = tx.toJSON()
     const type = hexToInt(txType)
 
-    const unsignedTx: any = {
+    const unsignedTx: LatticeTransaction = {
       to,
       value,
       data,
@@ -378,19 +410,20 @@ export default class Lattice extends Signer {
       unsignedTx.type = type
     }
 
-    const optionalFields = ['gasPrice', 'maxFeePerGas', 'maxPriorityFeePerGas']
-
-    optionalFields.forEach((field) => {
-      if (field in txJson) {
-        // @ts-expect-error: Transaction JSON optional fee fields are indexed dynamically.
-        unsignedTx[field] = hexToInt(txJson[field])
-      }
-    })
+    if (txJson.gasPrice !== undefined) {
+      unsignedTx.gasPrice = hexToInt(txJson.gasPrice)
+    }
+    if (txJson.maxFeePerGas !== undefined) {
+      unsignedTx.maxFeePerGas = hexToInt(txJson.maxFeePerGas)
+    }
+    if (txJson.maxPriorityFeePerGas !== undefined) {
+      unsignedTx.maxPriorityFeePerGas = hexToInt(txJson.maxPriorityFeePerGas)
+    }
 
     return unsignedTx
   }
 
-  private async createTransactionSigningOptions(tx: TypedTransaction, unsignedTx: any) {
+  private async createTransactionSigningOptions(tx: TypedTransaction, unsignedTx: LatticeTransaction) {
     const fwVersion = (this.connection as Client).getFwVersion()
 
     if (fwVersion && (fwVersion.major > 0 || fwVersion.minor >= 15)) {
@@ -408,9 +441,7 @@ export default class Lattice extends Signer {
         hashType: Constants.SIGNING.HASHES.KECCAK256,
         encodingType: Constants.SIGNING.ENCODINGS.EVM,
         signerPath: unsignedTx.signerPath,
-        // gridplus-sdk types `fetchCalldataDecoder` with the `buffer` polyfill's Buffer
-        // but `sign` with Node's Buffer; the runtime values are interchangeable
-        decoder: callDataDecoder?.def as Buffer | undefined
+        decoder: callDataDecoder ? Buffer.from(callDataDecoder.def) : undefined
       }
 
       return { data, currency: unsignedTx.currency }

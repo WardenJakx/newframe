@@ -8,7 +8,13 @@ import { DEFAULT_PROFILE_ID } from '../../app/contracts/state/main'
 import { toTokenId } from '../../features/asset-data/domain/balance'
 import { customTokens, tokensForAccount } from '../../features/tokens/domain'
 import { NATIVE_CURRENCY } from '../../features/tokens/domain/constants'
+import type { TokenCatalog } from '../../features/tokens/domain/state/token'
+import type { CanonicalStore } from './actions'
 import createInitialState from './state'
+import type { ActivityRecord, Token, TokenRecord } from './state'
+
+type AccountRecord = CanonicalStore['main']['accounts'][string]
+type StatusNotification = CanonicalStore['view']['notifications'][string]
 
 beforeAll(() => {
   log.transports.console.level = false
@@ -46,7 +52,7 @@ const testTokens = {
   }
 }
 
-function tokenRecord(token: any, options: { custom?: boolean; curated?: boolean } = {}) {
+function tokenRecord(token: Token, options: { custom?: boolean; curated?: boolean } = {}): TokenRecord {
   return {
     ...token,
     custom: Boolean(options.custom),
@@ -56,7 +62,7 @@ function tokenRecord(token: any, options: { custom?: boolean; curated?: boolean 
   }
 }
 
-function tokenCatalog(tokens: any[], accountTokenIds: Record<string, string[]> = {}) {
+function tokenCatalog(tokens: TokenRecord[], accountTokenIds: Record<string, string[]> = {}): TokenCatalog {
   return {
     byId: Object.fromEntries(tokens.map((token) => [toTokenId(token), token])),
     accountTokenIds
@@ -260,7 +266,11 @@ describe('#upsertTokens', () => {
     actions.upsertTokens([testTokens.badger], { custom: true, source: 'custom' })
 
     expect(customTokens(getState().main.tokens)).toEqual([
-      expect.objectContaining({ ...testTokens.badger, custom: true, sources: ['custom'] })
+      expect.objectContaining({
+        ...testTokens.badger,
+        custom: true,
+        sources: ['custom']
+      }) as unknown as TokenRecord
     ])
   })
 
@@ -276,7 +286,10 @@ describe('#upsertTokens', () => {
 
     expect(Object.keys(getState().main.tokens.byId)).toHaveLength(1)
     expect(tokensForAccount(getState().main.tokens, account)).toEqual([
-      expect.objectContaining({ symbol: 'BAD', sources: ['onchain', 'portfolio'] })
+      expect.objectContaining({
+        symbol: 'BAD',
+        sources: ['onchain', 'portfolio']
+      }) as unknown as TokenRecord
     ])
   })
 
@@ -793,7 +806,7 @@ describe('#removeAccountTokens', () => {
       actions.removeAccountTokens(owner, new Set(removed))
 
       expect(tokensForAccount(getState().main.tokens, owner)).toStrictEqual(
-        remaining.map((token) => expect.objectContaining(token))
+        remaining.map((token) => expect.objectContaining(token) as unknown as TokenRecord)
       )
     }
   })
@@ -821,7 +834,9 @@ describe('#resetSavedData', () => {
     actions.resetSavedData()
     const main = getState().main
 
-    expect(customTokens(main.tokens)).toEqual([expect.objectContaining(testTokens.zrx)])
+    expect(customTokens(main.tokens)).toEqual([
+      expect.objectContaining(testTokens.zrx) as unknown as TokenRecord
+    ])
     expect(main.tokens.accountTokenIds).toStrictEqual({})
     expect(main.balances[owner]).toStrictEqual([storedBalance(testTokens.zrx, '0x1')])
     expect(main.balances[otherOwner]).toStrictEqual([])
@@ -902,7 +917,7 @@ describe('#activity actions', () => {
         status: 'confirming',
         confirmations: 2,
         updatedAt: confirmingAt.getTime()
-      })
+      }) as unknown as ActivityRecord
     )
 
     setSystemTime(completedAt)
@@ -914,7 +929,7 @@ describe('#activity actions', () => {
         completedAt: completedAt.getTime(),
         updatedAt: completedAt.getTime(),
         receipt: { status: '0x1' }
-      })
+      }) as unknown as ActivityRecord
     )
 
     actions.pruneActivity('tx-1')
@@ -962,7 +977,7 @@ describe('#status notification actions', () => {
         detail: 'Confirmed',
         expiresAt,
         updatedAt: resolvedAt.getTime()
-      })
+      }) as unknown as StatusNotification
     )
 
     setSystemTime(dismissedAt)
@@ -973,7 +988,7 @@ describe('#status notification actions', () => {
         hidden: true,
         dismissedAt: dismissedAt.getTime(),
         updatedAt: dismissedAt.getTime()
-      })
+      }) as unknown as StatusNotification
     )
 
     actions.expireNotification('notification-1')
@@ -1059,7 +1074,7 @@ describe('#canonical action boundaries', () => {
         requests: {
           'request-1': expect.objectContaining({ status: 'pending', notice: 'Waiting' })
         }
-      })
+      }) as unknown as AccountRecord
     )
 
     harness.actions.removeAccountRequest(accountId, 'request-1')

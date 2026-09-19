@@ -46,6 +46,28 @@ export interface SubscriptionPayload {
   }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+export function isRpcResponsePayload(value: unknown): value is RpcResult | SubscriptionPayload {
+  if (!isRecord(value)) {
+    return false
+  }
+  if (value.method === 'eth_subscription') {
+    return (
+      value.jsonrpc === '2.0' &&
+      isRecord(value.params) &&
+      typeof value.params.subscription === 'string' &&
+      'result' in value.params
+    )
+  }
+  return (
+    (typeof value.id === 'string' || typeof value.id === 'number') &&
+    (!value.jsonrpc || value.jsonrpc === '2.0')
+  )
+}
+
 export type EthersRpcProvider = JsonRpcApiProvider
 
 function normalizeParams(params?: RpcParams) {
@@ -107,9 +129,9 @@ export class FrameWebSocketProvider extends WebSocketProvider {
 
   override async _processMessage(message: string) {
     try {
-      const payload = JSON.parse(message) as SubscriptionPayload
+      const payload: unknown = JSON.parse(message)
 
-      if (payload?.method === 'eth_subscription') {
+      if (isRpcResponsePayload(payload) && 'method' in payload) {
         this.frameEvents.emit('subscription', payload)
       }
     } catch {
@@ -159,14 +181,16 @@ export function listenForProviderClose(provider: EthersRpcProvider, onClose: () 
   }
 
   try {
-    const socket = provider.websocket as any
+    const socket: unknown = provider.websocket
 
-    if (typeof socket.on === 'function') {
+    if (isRecord(socket) && typeof socket.on === 'function') {
       socket.on('close', onClose)
-    } else {
+    } else if (isRecord(socket) && ('onclose' in socket || Object.isExtensible(socket))) {
       const previousClose = socket.onclose
       socket.onclose = (...args: unknown[]) => {
-        previousClose?.(...args)
+        if (typeof previousClose === 'function') {
+          previousClose(...args)
+        }
         onClose()
       }
     }
@@ -180,9 +204,18 @@ export function sendRpcPayload<T = unknown>(provider: EthersRpcProvider, payload
 }
 
 export async function sendRawPayload<T = unknown>(provider: EthersRpcProvider, payload: RpcPayload) {
-  const [response] = (await provider._send(payload as any)) as RpcResult[]
+  const id = typeof payload.id === 'number' ? payload.id : Number(payload.id)
+  if (!Number.isSafeInteger(id)) {
+    throw new Error('Invalid JSON-RPC request ID')
+  }
+  const [response] = await provider._send({
+    id,
+    jsonrpc: payload.jsonrpc,
+    method: payload.method,
+    params: normalizeParams(payload.params)
+  })
 
-  if (response.error) {
+  if ('error' in response) {
     throw createError(response.error)
   }
 

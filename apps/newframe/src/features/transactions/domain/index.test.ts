@@ -6,9 +6,16 @@ import {
   getTransactionIntent,
   getTransactionPositionTokens,
   normalizeChainId,
+  type TransactionAnalysisInput,
+  type TransactionData,
+  type TransactionEffect,
   typeSupportsBaseFee,
   usesBaseFee
 } from './index'
+
+function effectMatching(effect: Partial<TransactionEffect>): TransactionEffect {
+  return expect.objectContaining(effect)
+}
 
 describe('#typeSupportsBaseFee', () => {
   it('does not support a base fee for type 0', () => {
@@ -30,7 +37,7 @@ describe('#usesBaseFee', () => {
       type: '0x0'
     }
 
-    expect(usesBaseFee(tx as any)).toBe(false)
+    expect(usesBaseFee(tx as unknown as TransactionData)).toBe(false)
   })
 
   it('does not use a base fee for transaction type 1', () => {
@@ -38,7 +45,7 @@ describe('#usesBaseFee', () => {
       type: '0x1'
     }
 
-    expect(usesBaseFee(tx as any)).toBe(false)
+    expect(usesBaseFee(tx as unknown as TransactionData)).toBe(false)
   })
 
   it('uses a base fee for transaction type 2', () => {
@@ -46,7 +53,7 @@ describe('#usesBaseFee', () => {
       type: '0x2'
     }
 
-    expect(usesBaseFee(tx as any)).toBe(true)
+    expect(usesBaseFee(tx as unknown as TransactionData)).toBe(true)
   })
 })
 
@@ -54,31 +61,42 @@ describe('#normalizeChainId', () => {
   it('does not modify a transaction with no chain id', () => {
     const tx = { to: '0xframe' }
 
-    expect(normalizeChainId(tx as any) as unknown).toStrictEqual(tx)
+    expect(normalizeChainId(tx as unknown as RPC.SendTransaction.TxParams) as unknown).toStrictEqual(tx)
   })
 
   it('normalizes a hex-prefixed chain id', () => {
     const tx = { to: '0xframe', chainId: '0xa' }
 
-    expect(normalizeChainId(tx as any)).toStrictEqual({ to: '0xframe', chainId: '0xa' })
+    expect(normalizeChainId(tx as unknown as RPC.SendTransaction.TxParams)).toStrictEqual({
+      to: '0xframe',
+      chainId: '0xa'
+    })
   })
 
   it('does not handle a hex chain id with no prefix', () => {
     const tx = { to: '0xframe', chainId: 'a' }
 
-    expect(() => normalizeChainId(tx as any)).toThrow(/chain for transaction.*is not a hex-prefixed string/i)
+    expect(() => normalizeChainId(tx as unknown as RPC.SendTransaction.TxParams)).toThrow(
+      /chain for transaction.*is not a hex-prefixed string/i
+    )
   })
 
   it('normalizes a numeric chain id', () => {
     const tx = { to: '0xframe', chainId: 14 }
 
-    expect(normalizeChainId(tx as any)).toStrictEqual({ to: '0xframe', chainId: '0xe' })
+    expect(normalizeChainId(tx as unknown as RPC.SendTransaction.TxParams)).toStrictEqual({
+      to: '0xframe',
+      chainId: '0xe'
+    })
   })
 
   it('normalizes a numeric string chain id', () => {
     const tx = { to: '0xframe', chainId: '100' }
 
-    expect(normalizeChainId(tx as any)).toStrictEqual({ to: '0xframe', chainId: '0x64' })
+    expect(normalizeChainId(tx as unknown as RPC.SendTransaction.TxParams)).toStrictEqual({
+      to: '0xframe',
+      chainId: '0x64'
+    })
   })
 
   it('does not allow a chain id that does not match the target chain', () => {
@@ -363,7 +381,7 @@ describe('#getTransactionEffects', () => {
     const token = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
     const spender = '0x0000000000000000000000000000000000001337'
     const otherSpender = '0x0000000000000000000000000000000000002222'
-    const observed = {
+    const observed: TransactionEffect = {
       id: 'observed-1',
       kind: 'allowance',
       direction: 'neutral',
@@ -392,7 +410,7 @@ describe('#getTransactionEffects', () => {
     expect(effects).toEqual([
       observed,
       { ...observed, id: 'observed-2', amount: '0x5' },
-      expect.objectContaining({ id: 'erc20-approval-1', spenderAddress: otherSpender })
+      effectMatching({ id: 'erc20-approval-1', spenderAddress: otherSpender })
     ])
   })
 
@@ -475,7 +493,7 @@ describe('#getTransactionPositionTokens', () => {
       }
     }
 
-    expect(getTransactionPositionTokens(req)).toStrictEqual([
+    expect(getTransactionPositionTokens(req as unknown as TransactionAnalysisInput)).toStrictEqual([
       {
         address: usdc.toLowerCase(),
         chainId: 10,

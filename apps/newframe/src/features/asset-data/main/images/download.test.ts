@@ -8,7 +8,7 @@ const mockLookup = mock()
 const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3])
 
 await mock.module('dns/promises', () => ({
-  lookup: (...args: any[]) => mockLookup(...args)
+  lookup: (...args: Parameters<typeof import('dns/promises').lookup>) => mockLookup(...args)
 }))
 
 function createResponse(body: Buffer, contentType: string, ok = true) {
@@ -41,7 +41,7 @@ function createRedirect(location: string, status = 302) {
 
 beforeEach(() => {
   mockFetch.mockReset()
-  electronMock.net.fetch.mockImplementation((...args: any[]) => mockFetch(...args))
+  electronMock.net.fetch.mockImplementation((...args: Parameters<typeof fetch>) => mockFetch(...args))
   mockLookup.mockReset()
   mockLookup.mockResolvedValue([{ address: '93.184.216.34', family: 4 }])
 })

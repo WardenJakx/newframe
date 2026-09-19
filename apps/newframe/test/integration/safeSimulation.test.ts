@@ -23,6 +23,7 @@ import { createSafeHandler } from '../../scripts/local-safe/handler'
 import type { SafeProposal } from '../../src/features/accounts/domain/safe'
 import { createSafeService } from '../../src/features/accounts/main/safe'
 import { simulateSafeProposal } from '../../src/features/accounts/main/safeSimulation'
+import type { TransactionEffect } from '../../src/features/transactions/domain'
 import {
   createTransactionSimulationProjection,
   type TraceCall
@@ -73,6 +74,10 @@ const base = createTestStore()
 const selectors = createStore(subscribeWithSelector(() => base.getState()))
 const store = { ...base.store, subscribe: selectors.subscribe }
 const projection = createTransactionSimulationProjection(store)
+
+function effectMatching(effect: Partial<TransactionEffect>): TransactionEffect {
+  return expect.objectContaining(effect)
+}
 
 function batch(calls: { to: string; value?: bigint; data?: string }[]) {
   return batchAbi.encodeFunctionData('multiSend', [
@@ -418,13 +423,13 @@ it('previews zero and partial confirmations in a profile containing only the wat
   const native = await executed('native')
   expect(native.status).toBe('success')
   expect(native.effects).toContainEqual(
-    expect.objectContaining({ kind: 'native', direction: 'out', amount: '0x2710' })
+    effectMatching({ kind: 'native', direction: 'out', amount: '0x2710' })
   )
   expect(native.assumptions?.join(' ')).toMatch(/guard/i)
   const erc20 = await executed('token')
   expect(erc20.status).toBe('success')
   expect(erc20.effects).toContainEqual(
-    expect.objectContaining({
+    effectMatching({
       kind: 'erc20',
       direction: 'out',
       amount: '0x3e8',
@@ -433,19 +438,17 @@ it('previews zero and partial confirmations in a profile containing only the wat
   )
   const approval = await executed('approval')
   expect(approval.status).toBe('success')
-  expect(approval.effects).toContainEqual(expect.objectContaining({ kind: 'allowance', amount: '0xc8' }))
+  expect(approval.effects).toContainEqual(effectMatching({ kind: 'allowance', amount: '0xc8' }))
 })
 
 it('executes MultiSend and undecoded configuration changes in Safe context without double-counting delegatecall value', async () => {
   const result = await executed('batch')
   expect(result.status).toBe('success')
   expect(result.effects?.filter((effect) => effect.kind === 'native')).toEqual([
-    expect.objectContaining({ amount: '0x19', direction: 'out' })
+    effectMatching({ amount: '0x19', direction: 'out' })
   ])
-  expect(result.effects).toContainEqual(
-    expect.objectContaining({ kind: 'erc20', amount: '0xfa', direction: 'out' })
-  )
-  expect(result.effects).toContainEqual(expect.objectContaining({ kind: 'allowance', amount: '0x12c' }))
+  expect(result.effects).toContainEqual(effectMatching({ kind: 'erc20', amount: '0xfa', direction: 'out' }))
+  expect(result.effects).toContainEqual(effectMatching({ kind: 'allowance', amount: '0x12c' }))
   expect((await preview('configuration')).status).toBe('success')
   expect(
     traces
@@ -460,7 +463,7 @@ it('executes MultiSend and undecoded configuration changes in Safe context witho
   ).toBe(true)
   const configBatch = await executed('configurationBatch')
   expect(configBatch.status).toBe('success')
-  expect(configBatch.effects).toContainEqual(expect.objectContaining({ kind: 'erc20', amount: '0x37' }))
+  expect(configBatch.effects).toContainEqual(effectMatching({ kind: 'erc20', amount: '0x37' }))
   expect((await preview('empty')).status).toBe('success')
 })
 
@@ -468,7 +471,7 @@ it('uses the future proposal nonce against current state without replaying a que
   const future = await executed('future')
   expect(future.status).toBe('success')
   expect(future.currentNonce).toBe('0')
-  expect(future.effects).toContainEqual(expect.objectContaining({ kind: 'native', amount: '0xc' }))
+  expect(future.effects).toContainEqual(effectMatching({ kind: 'native', amount: '0xc' }))
   expect(
     traces
       .flatMap(logs)

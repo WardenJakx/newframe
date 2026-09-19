@@ -6,6 +6,7 @@ import {
   Interface,
   ZeroAddress,
   getAddress,
+  isAddress,
   type JsonRpcProvider,
   type NonceManager
 } from 'ethers'
@@ -19,6 +20,13 @@ export type SafeSeedManifest = {
   threshold: number
   nonce: string
   version: string
+}
+
+function requireAddress(value: unknown, label: string) {
+  if (typeof value !== 'string' || !isAddress(value)) {
+    throw new Error(`${label} returned an invalid address`)
+  }
+  return getAddress(value)
 }
 
 export async function seedSafe(
@@ -35,7 +43,7 @@ export async function seedSafe(
     if (receipt?.status !== 1 || !receipt.contractAddress) {
       throw new Error('Safe contract deployment failed')
     }
-    return receipt.contractAddress
+    return requireAddress(receipt.contractAddress, 'Safe contract deployment')
   }
   const singleton = await deploy(safeArtifact)
   const factory = await deploy(factoryArtifact)
@@ -51,7 +59,10 @@ export async function seedSafe(
     ZeroAddress
   ])
   const proxyFactory = new Contract(factory, factoryArtifact.abi, signer)
-  const receipt = await (await proxyFactory.createProxyWithNonce(singleton, initializer, 20260908)).wait(1)
+  const transaction = await proxyFactory
+    .getFunction('createProxyWithNonce')
+    .send(singleton, initializer, 20260908)
+  const receipt = await transaction.wait(1)
   if (receipt?.status !== 1) {
     throw new Error('Safe proxy creation failed')
   }
@@ -62,7 +73,7 @@ export async function seedSafe(
     }
     const event = proxyFactory.interface.parseLog(log)
     if (event?.name === 'ProxyCreation') {
-      safe = getAddress(event.args.proxy)
+      safe = requireAddress(event.args.proxy, 'ProxyCreation')
     }
   }
   if (!safe) {

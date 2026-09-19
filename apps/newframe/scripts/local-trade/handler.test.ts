@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, jest as timers, spyOn } from 'bun:test'
 
-import { JsonRpcProvider, Wallet } from 'ethers'
+import { JsonRpcProvider, Wallet, type TransactionResponse } from 'ethers'
 
 import {
   FLASH_ANVIL_CHAIN_ID,
@@ -14,6 +14,47 @@ import { handleLocalTradeRequest, resetLocalTradeState, subscribeLocalTradeOrder
 
 const FUNDER_ADDRESS = '0x0000000000000000000000000000000000000001'
 const ZERO_ALLOWANCE = `0x${'0'.repeat(64)}`
+
+interface LocalOrderResponse {
+  cancellable: boolean
+  contraAsset: { chain: { id: string } }
+  normalizedStatus: string
+  open: boolean
+  orderId: string
+  targetAsset: { chain: { id: string } }
+  [key: string]: unknown
+}
+
+interface LocalTradeBody {
+  actions: { approval: null | { kind: string }; wrap?: unknown }
+  bridgeQuoteId: string
+  chainId: number
+  contraAsset: string
+  count: number
+  evm: { approveTx: unknown; orderTypedData: string }
+  expiresAt: string
+  fillTransactionHash: string
+  from: { asset: string; amount: string; notional: string }
+  local: Record<string, unknown>
+  message: string
+  ok: boolean
+  order: LocalOrderResponse
+  orderId: string
+  orders: LocalOrderResponse[]
+  quoteId: string
+  receiveAsset: { chainId: number }
+  spentAsset: { chainId: number }
+  steps: Array<{ kind: string; label: string }>
+  targetAsset: string
+  to: { asset: string; amount: string; notional: string }
+  wrap: unknown
+  [key: string]: unknown
+}
+
+interface OrderTypedData {
+  domain: { chainId: number }
+  message: { quoteId: string; settlementAsset: string }
+}
 
 function quoteRequest(overrides: Record<string, unknown> = {}) {
   return {
@@ -44,7 +85,7 @@ const post = (path: string, body: unknown) =>
   )
 
 async function json(response: Response) {
-  return response.json() as Promise<Record<string, any>>
+  return (await response.json()) as unknown as LocalTradeBody
 }
 
 describe('local trade service handler', () => {
@@ -58,7 +99,7 @@ describe('local trade service handler', () => {
     sendTransaction = spyOn(Wallet.prototype, 'sendTransaction').mockResolvedValue({
       hash: `0x${'1'.repeat(64)}`,
       wait: async () => ({ status: 1 })
-    } as any)
+    } as unknown as TransactionResponse)
   })
 
   afterEach(() => {
@@ -109,9 +150,11 @@ describe('local trade service handler', () => {
     })
     expect(String(body.quoteId).startsWith('local-quote-')).toBe(true)
     expect(typeof body.evm.orderTypedData).toBe('string')
-    expect(JSON.parse(body.evm.orderTypedData).message.quoteId).toBe(body.quoteId)
+    expect((JSON.parse(body.evm.orderTypedData) as unknown as OrderTypedData).message.quoteId).toBe(
+      body.quoteId
+    )
     expect(body.evm.approveTx).toBeTruthy()
-    expect(body.actions.approval.kind).toBe('approve')
+    expect(body.actions.approval?.kind).toBe('approve')
     expect(body.steps.find((step: Record<string, unknown>) => step.kind === 'sign')?.label).toBe('Sign order')
   })
 
@@ -357,8 +400,10 @@ describe('local trade service handler', () => {
     }
   ]) {
     it(`keeps a ${direction.name} market order accepted until signed cancellation`, async () => {
-      const published: Record<string, any>[] = []
-      const unsubscribe = subscribeLocalTradeOrders((order) => published.push(order))
+      const published: LocalOrderResponse[] = []
+      const unsubscribe = subscribeLocalTradeOrders((order) =>
+        published.push(order as unknown as LocalOrderResponse)
+      )
       const request = quoteRequest({
         contraAsset: direction.contraAsset,
         contraChain: direction.contraChain,
@@ -369,7 +414,7 @@ describe('local trade service handler', () => {
       })
       const quoteResponse = await post('/v1/quote', request)
       const quote = await json(quoteResponse)
-      const typedData = JSON.parse(quote.evm.orderTypedData)
+      const typedData = JSON.parse(quote.evm.orderTypedData) as unknown as OrderTypedData
 
       expect(quoteResponse.status).toBe(200)
       expect(quote.quoteId).toBe('')

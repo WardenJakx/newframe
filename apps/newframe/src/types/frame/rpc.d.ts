@@ -29,7 +29,7 @@ interface Caip27JsonRpcRequest extends RPCId, InternalPayload {
 }
 
 interface JSONRPCRequestPayload extends RPCId {
-  params: readonly any[]
+  params: readonly unknown[]
   method: string
   chainId?: string
 }
@@ -51,13 +51,27 @@ type RPCRequestPayload = JSONRPCRequestPayload & InternalPayload
 
 declare namespace RPC {
   namespace SignTypedData {
-    interface Request extends Omit<RPCRequestPayload, ['method', 'params']> {
+    interface Request extends Omit<RPCRequestPayload, 'method' | 'params'> {
       method: 'eth_signTypedData' | 'eth_signTypedData_v1' | 'eth_signTypedData_v3' | 'eth_signTypedData_v4'
       params: [string, LegacyTypedData | TypedData | string, ...unknown[]]
     }
 
     interface Response extends Omit<RPCResponsePayload, 'result'> {
       result?: string
+    }
+  }
+
+  namespace BlockNumber {
+    interface Response extends Omit<RPCResponsePayload, 'result'> {
+      result?: string
+    }
+  }
+
+  namespace GetTransactionReceipt {
+    interface Response extends Omit<RPCResponsePayload, 'result'> {
+      result?: import('../../features/requests/contract/requests.js').TransactionReceipt & {
+        status?: string
+      }
     }
   }
 

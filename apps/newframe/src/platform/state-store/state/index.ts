@@ -14,8 +14,10 @@ import {
 } from '../../../features/networks/domain/chain/index.js'
 import { OperationRecordSchema } from '../../operations/operation.js'
 import { getMainRuntime } from '../../runtime/index.js'
+import { Derivation } from '../../signing/signers/Signer/derive.js'
 import type { SignerSummary } from '../../signing/signers/Signer/index.js'
 import type { OwnedOperation } from '../actions.operation.js'
+import type { PersistedCanonicalState } from '../persist/schema.js'
 
 export type { ChainId, Chain, ChainMetadata } from '../../../features/networks/domain/state/chain.js'
 export type { Origin } from '../../../features/connections/domain/state/origin.js'
@@ -67,13 +69,16 @@ export const CanonicalStateSchema = z
   .passthrough()
 
 type StatusNotification = z.infer<typeof StatusNotificationSchema>
+type LegacyLedgerSettings = Omit<NonNullable<PersistedCanonicalState['main']['ledger']>, 'derivation'> & {
+  derivation: Derivation
+}
 
 // TODO: remove pieces of this as they're added to the main state definition
 type M = Main & {
-  shortcuts: any
+  shortcuts: Main['shortcuts'] & { altSlash?: boolean }
   lattice: any
   latticeSettings: any
-  ledger: any
+  ledger: LegacyLedgerSettings
   trezor: any
   signers: Record<string, SignerSummary & Record<string, unknown>>
   frames: any
@@ -113,7 +118,7 @@ const mainState: M = {
     endpointMode: 'default',
     endpointCustom: ''
   },
-  ledger: { derivation: 'live', liveAccountLimit: 5 },
+  ledger: { derivation: Derivation.live, liveAccountLimit: 5 },
   trezor: { derivation: 'standard' },
   origins: {},
   knownExtensions: {},

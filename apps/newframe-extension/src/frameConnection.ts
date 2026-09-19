@@ -9,19 +9,22 @@ export interface JsonRpcPayload {
   params?: JsonRpcParams
   chainId?: string
   __frameOrigin?: string
+  __frameFavicon?: string
   __extensionConnecting?: boolean
 }
 
-interface JsonRpcResponse {
+export interface JsonRpcResponse {
   id?: number | string
   jsonrpc?: '2.0'
   result?: unknown
   error?: unknown
   method?: string
-  params?: {
-    subscription: string
-    result: unknown
-  }
+  params?: JsonRpcParams | SubscriptionParams
+}
+
+interface SubscriptionParams {
+  subscription: string
+  result: unknown
 }
 
 interface PendingRequest {
@@ -59,6 +62,41 @@ const providerEvents: ProviderEvent[] = [
   'accountsChanged',
   'assetsChanged'
 ]
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function isJsonRpcId(value: unknown): value is number | string {
+  return typeof value === 'number' || typeof value === 'string'
+}
+
+function isSubscriptionParams(value: unknown): value is SubscriptionParams {
+  return isRecord(value) && typeof value.subscription === 'string' && 'result' in value
+}
+
+function isJsonRpcResponse(value: unknown): value is JsonRpcResponse {
+  if (!isRecord(value)) {
+    return false
+  }
+
+  if ('id' in value && value.id !== undefined && !isJsonRpcId(value.id)) {
+    return false
+  }
+  if ('jsonrpc' in value && value.jsonrpc !== undefined && value.jsonrpc !== '2.0') {
+    return false
+  }
+  if ('method' in value && value.method !== undefined && typeof value.method !== 'string') {
+    return false
+  }
+  if ('params' in value && value.params !== undefined) {
+    if (!Array.isArray(value.params) && !isSubscriptionParams(value.params)) {
+      return false
+    }
+  }
+
+  return value.id !== undefined || (typeof value.method === 'string' && isSubscriptionParams(value.params))
+}
 
 function normalizeParams(params?: JsonRpcParams) {
   return params ? [...params] : []
@@ -288,10 +326,14 @@ export class RawFrameConnection extends EventEmitter {
     }
 
     try {
-      const payload = JSON.parse(message.data)
-      const payloads = Array.isArray(payload) ? payload : [payload]
+      const payload: unknown = JSON.parse(message.data)
+      const payloads: unknown[] = Array.isArray(payload) ? payload : [payload]
 
-      payloads.forEach((load) => this.emit('payload', load))
+      payloads.forEach((load) => {
+        if (isJsonRpcResponse(load)) {
+          this.emit('payload', load)
+        }
+      })
     } catch (e) {
       this.handleError(e)
     }
@@ -367,7 +409,7 @@ export default class FrameBackgroundProvider extends EventEmitter {
   connection: RawFrameConnection
   nextId = 1
 
-  private promises: Record<number, PendingRequest> = {}
+  private promises: Record<number | string, PendingRequest> = {}
   private attemptedSubscriptions = new Set<ProviderEvent>()
   private subscriptionEvents = new Map<string, ProviderEvent>()
   private checkConnectionRunning = false
@@ -384,8 +426,8 @@ export default class FrameBackgroundProvider extends EventEmitter {
       this.checkConnection().catch(console.error)
     })
     this.connection.on('close', () => this.handleClose())
-    this.connection.on('payload', (payload) => this.handlePayload(payload))
-    this.on('newListener', (event) => this.handleNewListener(event))
+    this.connection.on('payload', (payload: JsonRpcResponse) => this.handlePayload(payload))
+    this.on('newListener', (event: string | symbol) => this.handleNewListener(event))
   }
 
   request<T = unknown>(payload: JsonRpcPayload) {
@@ -473,8 +515,9 @@ export default class FrameBackgroundProvider extends EventEmitter {
     const send = () =>
       new Promise<T>((resolve, reject) => {
         try {
-          const payload = createPayload(method, normalizeParams(params), this.nextId++, targetChain, options)
-          this.promises[payload.id as number] = {
+          const id = this.nextId++
+          const payload = createPayload(method, normalizeParams(params), id, targetChain, options)
+          this.promises[id] = {
             method,
             resolve: (value) => resolve(value as T),
             reject
@@ -505,12 +548,12 @@ export default class FrameBackgroundProvider extends EventEmitter {
 
   private handlePayload(payload: JsonRpcResponse) {
     if (typeof payload.id !== 'undefined') {
-      const pending = this.promises[payload.id as number]
+      const pending = this.promises[payload.id]
       if (!pending) {
         return
       }
 
-      delete this.promises[payload.id as number]
+      delete this.promises[payload.id]
       if (payload.error) {
         pending.reject(payload.error)
       } else {
@@ -519,7 +562,7 @@ export default class FrameBackgroundProvider extends EventEmitter {
       return
     }
 
-    if (!payload.method?.includes('_subscription') || !payload.params) {
+    if (!payload.method?.includes('_subscription') || !isSubscriptionParams(payload.params)) {
       return
     }
 

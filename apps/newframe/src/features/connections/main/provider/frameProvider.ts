@@ -4,6 +4,7 @@ import {
   createError,
   createJsonRpcProvider,
   FrameWebSocketProvider,
+  isRpcResponsePayload,
   listenForProviderClose,
   sendRawPayload,
   withTimeout,
@@ -55,7 +56,7 @@ abstract class EventedRequestProvider extends EventEmitter implements Eip1193Pro
   constructor() {
     super()
 
-    this.on('newListener', (event) => {
+    this.on('newListener', (event: string | symbol) => {
       if (this.connected && this.shouldStartSubscription(event)) {
         // Subscription failures are handled by startProviderSubscription.
         void this.startProviderSubscription(event as string)
@@ -221,7 +222,11 @@ class FrameProxyProvider extends EventedRequestProvider {
 
     this.connection.on('connect', () => this.markConnected(this.chainId))
     this.connection.on('close', () => this.markClosed())
-    this.connection.on('payload', (payload) => this.handlePayload(payload))
+    this.connection.on('payload', (payload: unknown) => {
+      if (isRpcResponsePayload(payload)) {
+        this.handlePayload(payload)
+      }
+    })
   }
 
   close() {
@@ -231,7 +236,10 @@ class FrameProxyProvider extends EventedRequestProvider {
 
   protected sendPayload<T = unknown>(payload: RpcPayload) {
     return new Promise<T>((resolve, reject) => {
-      this.promises[payload.id] = { resolve: resolve as (value: unknown) => void, reject }
+      this.promises[payload.id] = {
+        resolve: resolve as (value: unknown) => void,
+        reject
+      }
 
       try {
         this.connection.send(payload)

@@ -8,19 +8,21 @@ log.transports.file.level = ['development', 'test'].includes(process.env.NODE_EN
   ? false
   : 'verbose'
 
-import type { Token } from '../../../../../platform/state-store/state/index.js'
-import type { BalanceLoader } from './scan.js'
+import type { BalanceLoader, TokenDefinition } from './scan.js'
 import balancesLoader from './scan.js'
 
-interface ExternalDataWorkerMessage {
-  command: string
-  args: any[]
-}
+type ExternalDataWorkerMessage =
+  | { command: 'updateChainBalance'; args: [string, number[]?] }
+  | { command: 'fetchTokenBalances'; args: [Address, TokenDefinition[]] }
+  | { command: 'heartbeat'; args: [] }
 
 let heartbeat: NodeJS.Timeout
 let balances: BalanceLoader
 
-const eth = createProvider('http://127.0.0.1:1248', { origin: 'newframe-internal', name: 'scanWorker' })
+const eth = createProvider('http://127.0.0.1:1248', {
+  origin: 'newframe-internal',
+  name: 'scanWorker'
+})
 
 eth.on('connect', () => {
   balances = balancesLoader(eth)
@@ -38,18 +40,22 @@ async function getChains() {
   }
 }
 
-function sendToMainProcess(data: any) {
+function sendToMainProcess(data: unknown) {
   if (process.send) {
     return process.send(data)
   }
   log.error(`cannot send to main process! connected: ${process.connected}`)
 }
 
-async function fetchTokenBalances(address: Address, tokens: Token[]) {
+async function fetchTokenBalances(address: Address, tokens: TokenDefinition[]) {
   try {
     const tokenBalances = await balances.getTokenBalances(address, tokens)
 
-    sendToMainProcess({ type: 'tokenBalances', address, balances: tokenBalances })
+    sendToMainProcess({
+      type: 'tokenBalances',
+      address,
+      balances: tokenBalances
+    })
   } catch (e) {
     log.error('error fetching token balances', e)
   }
@@ -60,7 +66,11 @@ async function chainBalanceScan(address: string, chains?: number[]) {
     const availableChains = chains ?? (await getChains())
     const chainBalances = await balances.getCurrencyBalances(address, availableChains)
 
-    sendToMainProcess({ type: 'chainBalances', balances: chainBalances, address })
+    sendToMainProcess({
+      type: 'chainBalances',
+      balances: chainBalances,
+      address
+    })
   } catch (e) {
     log.error('error scanning chain balance', e)
   }
@@ -80,21 +90,62 @@ function resetHeartbeat() {
   }, 60 * 1000)
 }
 
-const messageHandler: { [command: string]: (...params: any) => void } = {
-  updateChainBalance: (address: string, chains?: number[]) => {
-    // Scans report their failures internally and may overlap.
-    void chainBalanceScan(address, chains)
-  },
-  fetchTokenBalances: (address: Address, tokens: Token[]) => {
-    // Token fetches report their failures internally.
-    void fetchTokenBalances(address, tokens)
-  },
-  heartbeat: resetHeartbeat
+function isTokenDefinition(value: unknown): value is TokenDefinition {
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    'address' in value &&
+    typeof value.address === 'string' &&
+    'chainId' in value &&
+    typeof value.chainId === 'number' &&
+    'decimals' in value &&
+    typeof value.decimals === 'number' &&
+    'name' in value &&
+    typeof value.name === 'string' &&
+    'symbol' in value &&
+    typeof value.symbol === 'string'
+  )
 }
 
-process.on('message', (message: ExternalDataWorkerMessage) => {
+function parseWorkerMessage(value: unknown): ExternalDataWorkerMessage | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value) || !('command' in value)) {
+    return
+  }
+  const args = 'args' in value && Array.isArray(value.args) ? value.args : []
+  if (
+    value.command === 'updateChainBalance' &&
+    typeof args[0] === 'string' &&
+    (args[1] === undefined || (Array.isArray(args[1]) && args[1].every((chain) => typeof chain === 'number')))
+  ) {
+    return { command: value.command, args: [args[0], args[1]] }
+  }
+  if (
+    value.command === 'fetchTokenBalances' &&
+    typeof args[0] === 'string' &&
+    Array.isArray(args[1]) &&
+    args[1].every(isTokenDefinition)
+  ) {
+    return { command: value.command, args: [args[0], args[1]] }
+  }
+  if (value.command === 'heartbeat' && args.length === 0) {
+    return { command: value.command, args: [] }
+  }
+}
+
+process.on('message', (value: unknown) => {
+  const message = parseWorkerMessage(value)
+  if (!message) {
+    log.warn('received invalid worker message')
+    return
+  }
   log.debug(`received message: ${message.command} [${message.args}]`)
 
-  const args = message.args || []
-  messageHandler[message.command](...args)
+  if (message.command === 'updateChainBalance') {
+    void chainBalanceScan(...message.args)
+  } else if (message.command === 'fetchTokenBalances') {
+    void fetchTokenBalances(...message.args)
+  } else {
+    resetHeartbeat()
+  }
 })

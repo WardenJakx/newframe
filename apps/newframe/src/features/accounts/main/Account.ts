@@ -35,9 +35,14 @@ import type { AccountChainRpcPort } from './providerPort.js'
 import type { AccountsRuntime } from './runtime.js'
 
 function cloneSerializable<T>(value: T): T {
-  return JSON.parse(
-    JSON.stringify(value, (_key, nextValue) => (typeof nextValue === 'function' ? undefined : nextValue))
+  const serialized = JSON.stringify(value, (_key, nextValue) =>
+    typeof nextValue === 'function' ? undefined : nextValue
   )
+  return JSON.parse(serialized) as T
+}
+
+type RuntimeAccountRequest = AccountRequest & {
+  recognizedActions?: Action<unknown>[]
 }
 
 interface SignerOptions {
@@ -49,7 +54,7 @@ interface AccountOptions {
   name: string
   ensName?: string
   created?: string
-  lastSignerType?: SignerType
+  lastSignerType?: string
   options?: SignerOptions
 }
 
@@ -237,7 +242,11 @@ class FrameAccount {
       // Permissions do not live inside the account summary
       if (access) {
         const { name } = this.store.getState().main.origins[origin]
-        this.store.getState().setPermission(targetAddress, { handlerId, origin: name, provider: true })
+        this.store.getState().setPermission(targetAddress, {
+          handlerId,
+          origin: name,
+          provider: true
+        })
       } else {
         this.store.getState().revokePermission(this.address, handlerId)
       }
@@ -250,7 +259,7 @@ class FrameAccount {
     return this.requests[id] as T
   }
 
-  resolveRequest({ handlerId, payload }: AccountRequest, result?: any) {
+  resolveRequest({ handlerId, payload }: AccountRequest, result?: unknown) {
     const knownRequest = this.requests[handlerId]
 
     if (knownRequest) {
@@ -318,7 +327,7 @@ class FrameAccount {
     })
   }
 
-  approveRequest(reqId: string, type: ApprovalType, _data: any) {
+  approveRequest(reqId: string, type: ApprovalType, _data: unknown) {
     const request = this.getRequest<TransactionRequest>(reqId)
     const approval = request?.approvals?.find((candidate) => candidate.type === type)
     if (!approval) {
@@ -334,14 +343,14 @@ class FrameAccount {
     return true
   }
 
-  updateRecognizedAction(reqId: string, actionId: string, data: any) {
+  updateRecognizedAction(reqId: string, actionId: string, data: unknown) {
     const runtimeAction = this.actionUpdateHandlers.get(reqId)?.get(actionId)
     if (!runtimeAction?.update) {
       return false
     }
 
     this.patchRequest<TransactionRequest>(reqId, (request) => {
-      runtimeAction.update?.(request, data)
+      runtimeAction.update?.(request, data && typeof data === 'object' ? data : {})
       const canonicalAction = request.recognizedActions.find((action) => action.id === actionId)
       if (canonicalAction) {
         canonicalAction.data = cloneSerializable(runtimeAction.data)
@@ -432,7 +441,12 @@ class FrameAccount {
         }
       }
     } catch (e) {
-      log.warn('unable to fetch erc20 token metadata', { handlerId: req.handlerId, to, chainId, error: e })
+      log.warn('unable to fetch erc20 token metadata', {
+        handlerId: req.handlerId,
+        to,
+        chainId,
+        error: e
+      })
     }
   }
 
@@ -524,7 +538,10 @@ class FrameAccount {
         request.erc7730 = erc7730
       })
     } catch (error) {
-      log.warn('unable to decode ERC-7730 typed message', { error, handlerId: req.handlerId })
+      log.warn('unable to decode ERC-7730 typed message', {
+        error,
+        handlerId: req.handlerId
+      })
     }
   }
 
@@ -560,13 +577,19 @@ class FrameAccount {
           tokenData,
           permit: {
             ...permit,
-            verifyingContract: { ...permit.verifyingContract, ...contractIdentity },
+            verifyingContract: {
+              ...permit.verifyingContract,
+              ...contractIdentity
+            },
             spender: { ...permit.spender, ...spenderIdentity }
           }
         })
       })
     } catch (error) {
-      log.warn('unable to decode typed message', { error, handlerId: req.handlerId })
+      log.warn('unable to decode typed message', {
+        error,
+        handlerId: req.handlerId
+      })
     }
   }
 
@@ -592,10 +615,10 @@ class FrameAccount {
     }
   }
 
-  addRequest(req: any) {
+  addRequest(req: RuntimeAccountRequest) {
     const add = (r: AccountRequest) => {
       const actionHandlers = new Map<string, Action<unknown>>()
-      ;(req.recognizedActions ?? []).forEach((action: any) => {
+      ;(req.recognizedActions ?? []).forEach((action) => {
         if (typeof action.update === 'function') {
           actionHandlers.set(action.id, action)
         }
@@ -733,11 +756,13 @@ class FrameAccount {
           _origin: 'newframe-internal',
           params: []
         },
-        (response: any) => {
+        (response: RPC.BlockNumber.Response) => {
           this.creationBlockLookupPending = false
           if (response.result) {
             if (this.store.getState().main.accounts[this.id]) {
-              this.patch({ created: `${parseInt(response.result, 16)}:${createdSuffix}` })
+              this.patch({
+                created: `${parseInt(response.result, 16)}:${createdSuffix}`
+              })
             }
             this.stopCreationBlockLookup()
           } else if (this.profileActive && !this.providerConnectListener) {

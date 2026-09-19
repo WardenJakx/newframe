@@ -6,7 +6,7 @@ import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import { createRendererAuthorizationRegistry } from '../../../platform/ipc/main/authorization'
 import type { SigningApprovalContext, SignerRequestContext } from '../../../platform/signing/signers/Signer'
 import { createRendererPrincipal, decideWalletAction } from '../../access-control/main/authority'
-import type { TypedMessage } from '../../requests/contract/requests'
+import type { AccountRequest, TypedMessage } from '../../requests/contract/requests'
 
 const revealMock = {
   recog: mock(),
@@ -64,14 +64,14 @@ const requestLifecycle = {
     callback(response)
     return true
   },
-  resolve(request: any, result?: unknown) {
+  resolve(request: AccountRequest, result?: unknown) {
     return this.respond(request.handlerId, {
       id: request.payload.id,
       jsonrpc: request.payload.jsonrpc,
       result
     })
   },
-  reject(request: any, error: EVMError) {
+  reject(request: AccountRequest, error: EVMError) {
     return this.respond(request.handlerId, {
       id: request.payload.id,
       jsonrpc: request.payload.jsonrpc,
@@ -159,7 +159,7 @@ describe('#addRequest', () => {
       webContentsId: 7,
       windowInstanceId: 'wallet-window'
     })
-    const decision = decideWalletAction(rendererPrincipal, request as any)
+    const decision = decideWalletAction(rendererPrincipal, request as unknown as AccountRequest)
     if (decision.outcome !== 'prompt') {
       throw new Error('renderer request was not prompt-authorized')
     }

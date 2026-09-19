@@ -39,16 +39,22 @@ function buildCallData<R, T>(calls: Call<R, T>[]) {
   })
 }
 
-function getResultData(results: any, call: string[], target: string) {
+function isBytesLike(value: unknown): value is BytesLike {
+  return typeof value === 'string' || value instanceof Uint8Array
+}
+
+function getResultData<R>(results: unknown, call: string[], target: string): R[] | undefined {
   const [fnSignature] = call
   const callInterface = memoizedInterfaces[fnSignature]
   const fnName = getFunctionNameFromSignature(fnSignature)
   try {
+    if (!isBytesLike(results)) {
+      throw new Error(`Invalid ${fnName} result`)
+    }
     return callInterface.decodeFunctionResult(fnName, results)
   } catch (e) {
     log.warn(`Failed to decode ${fnName},`, { target, results })
-    const outputs = callInterface.getFunction(fnName)?.outputs ?? []
-    return outputs.map(() => null)
+    return undefined
   }
 }
 
@@ -82,15 +88,32 @@ export async function aggregate3<R, T>(
   }
 
   return calls.map(({ call, returns, target }, i) => {
-    const results = response.returnData[i]
-
-    if (!results.success) {
+    const results: unknown = response.returnData[i]
+    let success: unknown
+    if (Array.isArray(results)) {
+      success = results[0]
+    } else if (results && typeof results === 'object' && 'success' in results) {
+      success = results.success
+    }
+    if (success !== true) {
       return { success: false, returnValues: [] }
     }
 
-    const resultData = getResultData(results.returnData, call, target)
+    let returnData: unknown
+    if (Array.isArray(results)) {
+      returnData = results[1]
+    } else if (results && typeof results === 'object' && 'returnData' in results) {
+      returnData = results.returnData
+    }
+    const resultData = getResultData<R>(returnData, call, target)
+    if (!resultData) {
+      return { success: false, returnValues: [] }
+    }
 
-    return { success: true, returnValues: returns.map((handler, j) => handler(resultData[j])) }
+    return {
+      success: true,
+      returnValues: returns.map((handler, j) => handler(resultData[j]))
+    }
   })
 }
 
@@ -127,7 +150,10 @@ export default function (chainId: number, eth: Eip1193Provider) {
             )}`,
             e
           )
-          return [...Array(batchCalls.length).keys()].map(() => ({ success: false, returnValues: [] }))
+          return [...Array(batchCalls.length).keys()].map(() => ({
+            success: false,
+            returnValues: []
+          }))
         }
       })
 

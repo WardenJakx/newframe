@@ -2,8 +2,15 @@ import { BrowserProvider, hexlify, toUtf8Bytes } from 'ethers'
 
 import createFrameProvider from '../../../apps/newframe/src/features/connections/main/provider/connection.ts'
 
-let frame: any
+let frame: ReturnType<typeof createFrameProvider>
 let provider: BrowserProvider
+
+function requireString(value: unknown, label: string) {
+  if (typeof value !== 'string') {
+    throw new Error(`${label} returned a non-string value`)
+  }
+  return value
+}
 
 const waitForFrameConnect = () =>
   new Promise<void>((resolve, reject) => {
@@ -43,8 +50,11 @@ async function main() {
     const hexMessage = hexlify(toUtf8Bytes(message))
     const signer = await getFirstSigner()
     const address = await signer.getAddress()
-    const signed = await provider.send('personal_sign', [hexMessage, address])
-    const result = await provider.send('personal_ecRecover', [hexMessage, signed])
+    const signed = requireString(await provider.send('personal_sign', [hexMessage, address]), 'personal_sign')
+    const result = requireString(
+      await provider.send('personal_ecRecover', [hexMessage, signed]),
+      'personal_ecRecover'
+    )
 
     assertRecovered(result, address, 'personal_sign')
     console.log(JSON.stringify({ address, msg: message, sig: signed, version: '2' }))
@@ -55,8 +65,11 @@ async function main() {
     const hexMessage = hexlify(toUtf8Bytes(message))
     const signer = await getFirstSigner()
     const address = await signer.getAddress()
-    const signed = await provider.send('eth_sign', [address, hexMessage])
-    const result = await provider.send('personal_ecRecover', [hexMessage, signed])
+    const signed = requireString(await provider.send('eth_sign', [address, hexMessage]), 'eth_sign')
+    const result = requireString(
+      await provider.send('personal_ecRecover', [hexMessage, signed]),
+      'personal_ecRecover'
+    )
 
     assertRecovered(result, address, 'eth_sign')
     console.log(JSON.stringify({ address, msg: message, sig: signed, version: '2' }))
@@ -65,7 +78,8 @@ async function main() {
   try {
     await waitForFrameConnect()
     provider = new BrowserProvider({
-      request: ({ method, params }: { method: string; params?: any[] }) => frame.request({ method, params })
+      request: ({ method, params }: { method: string; params?: unknown[] }) =>
+        frame.request({ method, params })
     })
     await provider.send('eth_accounts', [])
 

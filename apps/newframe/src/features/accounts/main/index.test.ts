@@ -18,12 +18,27 @@ import { gweiToHex } from '../../../../test/support/util'
 import { ActivityRecordSchema, DEFAULT_PROFILE_ID } from '../../../app/contracts/state/main'
 import store from '../../../platform/state-store'
 import { createAgentPrincipal, createRpcPrincipal } from '../../access-control/main/authority'
+import type { AccountRequest } from '../../requests/contract/requests'
 import {
   GasFeesSource,
   TRANSACTION_CONFIRMATION_TARGET,
+  type TransactionData,
   type TransactionEffect,
   type TransactionSimulation
 } from '../../transactions/domain'
+
+interface TestTransactionRequest {
+  account?: string
+  data: Omit<TransactionData, 'gasFeesSource'> & { gasFeesSource?: GasFeesSource }
+  feesUpdatedByUser?: boolean
+  handlerId: string
+  origin: string
+  payload: JSONRPCRequestPayload
+  simulation?: TransactionSimulation
+  type: 'transaction'
+}
+
+type ProviderCallback = (response: { error?: EVMError; result?: unknown }) => void
 
 const providerMock = {
   send: mock(),
@@ -64,14 +79,14 @@ const requestLifecycle = {
     callback(response)
     return true
   },
-  resolve(request: any, result?: unknown) {
+  resolve(request: AccountRequest, result?: unknown) {
     return this.respond(request.handlerId, {
       id: request.payload.id,
       jsonrpc: request.payload.jsonrpc,
       result
     })
   },
-  reject(request: any, error: EVMError) {
+  reject(request: AccountRequest, error: EVMError) {
     return this.respond(request.handlerId, {
       id: request.payload.id,
       jsonrpc: request.payload.jsonrpc,
@@ -186,7 +201,7 @@ const accountAddress = '0x22dd63c3619818fdbc262c78baee43cb61e9cccf'
 const account = { id: accountAddress, address: accountAddress }
 const account2 = { address: '0xef8f1bbe054ad30c6af774ed7a7c70a74ef77ac5' }
 
-let request: any
+let request: TestTransactionRequest
 
 beforeAll(async () => {
   log.transports.console.level = false
@@ -206,7 +221,7 @@ beforeEach((done) => {
   timers.useFakeTimers()
   requestLifecycle.pending.clear()
   request = {
-    handlerId: 1,
+    handlerId: '1',
     origin: '0r161n',
     type: 'transaction',
     data: {
@@ -234,11 +249,13 @@ beforeEach((done) => {
 })
 
 afterEach(() => {
-  Object.values(Accounts.accounts).forEach((account: any) => {
-    Object.keys(account.requests).forEach((id) => {
-      Accounts.removeRequest(account, id)
-    })
-  })
+  Object.values(Accounts.accounts as Record<string, { requests: Record<string, unknown> }>).forEach(
+    (account) => {
+      Object.keys(account.requests).forEach((id) => {
+        Accounts.removeRequest(account, id)
+      })
+    }
+  )
   timers.useRealTimers()
 })
 
@@ -590,7 +607,7 @@ describe('transaction fee editing', () => {
   it('applies the field-specific absolute caps', () => {
     Accounts.setBaseFee(gweiToHex(10_200), 1, false)
     expect(canonicalRequest().data.maxFeePerGas).toBe(
-      intToHex(9_999e9 + parseInt(request.data.maxPriorityFeePerGas))
+      intToHex(9_999e9 + parseInt(request.data.maxPriorityFeePerGas ?? '0x0'))
     )
 
     Accounts.setPriorityFee(gweiToHex(10_200), 1, false)
@@ -908,14 +925,14 @@ describe('#setTxSent', () => {
   it('pauses persisted activity immediately and resumes it once without overlapping RPC', async () => {
     const profileId = 'dormant-activity-profile'
     const hash = '0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'
-    const receiptCallbacks: Array<(response: any) => void> = []
+    const receiptCallbacks: ProviderCallback[] = []
     const accounts = createAccounts()
 
     storeState().createProfile(profileId, 'Dormant activity')
     storeState().moveAccountToProfile(account2.address, profileId)
     storeState().selectProfile(DEFAULT_PROFILE_ID)
     setSubmittedActivity(hash)
-    provider.send = mock((payload: any, cb: any) => {
+    provider.send = mock((payload: { method: string }, cb: ProviderCallback) => {
       if (payload.method === 'eth_getTransactionReceipt') {
         receiptCallbacks.push(cb)
         return
@@ -967,7 +984,7 @@ describe('#setTxSent', () => {
     storeState().createProfile(profileId, 'Dormant live request')
     storeState().moveAccountToProfile(account2.address, profileId)
     storeState().selectProfile(DEFAULT_PROFILE_ID)
-    provider.send = mock((payload: any, cb: any) => {
+    provider.send = mock((payload: { method: string }, cb: ProviderCallback) => {
       methods.push(payload.method)
       if (payload.method === 'eth_subscribe') {
         cb({ result: 'head-subscription' })
@@ -1014,6 +1031,6 @@ describe('#clearRequestsByOrigin', () => {
 
   it('should remove any request from a given origin', () => {
     Accounts.clearRequestsByOrigin(account.id, request.origin)
-    expect(Object.keys(Accounts.accounts[account.id].requests)).toHaveLength(1)
+    expect(Object.keys(Accounts.accounts[account.id].requests as Record<string, unknown>)).toHaveLength(1)
   })
 })

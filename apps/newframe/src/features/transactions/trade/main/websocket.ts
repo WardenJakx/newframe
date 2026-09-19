@@ -26,8 +26,8 @@ const retryableErrorCodes = new Set([
   'INTERNAL_ERROR'
 ])
 
-function objectPayload(value: unknown): Record<string, any> {
-  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, any>) : {}
+function objectPayload(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
 }
 
 export class FlashOrderStream {
@@ -151,12 +151,14 @@ export class FlashOrderStream {
       (frame.type === 'snapshot' || frame.type === 'update') &&
       Array.isArray(frame.orders)
     ) {
+      const frameType = frame.type
+      const orders = frame.orders
       this.orderQueue = this.orderQueue
         .then(() => {
           if (this.stopped) {
             return
           }
-          return this.options.onOrders(frame.type, frame.orders)
+          return this.options.onOrders(frameType, orders)
         })
         .then(() => undefined)
         .catch((error: unknown) => this.options.onError?.(error))

@@ -62,20 +62,21 @@ function isBalanceChange(effect: TransactionEffect) {
   )
 }
 
-function cloneForActivity(value: any) {
+const recordValue = (value: unknown): Record<string, unknown> | undefined =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined
+
+function cloneForActivity<T>(value: T): T | undefined {
   if (value === undefined) {
     return undefined
   }
 
   try {
-    return JSON.parse(
-      JSON.stringify(value, (_key, nextValue) => {
-        if (typeof nextValue === 'function') {
-          return undefined
-        }
-        return nextValue
-      })
+    const serialized = JSON.stringify(value, (_key, nextValue) =>
+      typeof nextValue === 'function' ? undefined : nextValue
     )
+    return JSON.parse(serialized) as T
   } catch {
     return undefined
   }
@@ -135,7 +136,10 @@ function toTransactionsByLayer(requests: Record<string, AccountRequest>, chainId
 
         return { l1Transactions, l2Transactions }
       },
-      { l1Transactions: [] as RequestWithId[], l2Transactions: [] as RequestWithId[] }
+      {
+        l1Transactions: [] as RequestWithId[],
+        l2Transactions: [] as RequestWithId[]
+      }
     )
 }
 
@@ -192,7 +196,7 @@ export class Accounts extends EventEmitter {
     Object.entries(this.storeApi.getAccounts()).forEach(([id, account]) => {
       if (!this.accounts[id]) {
         this.accounts[id] = new FrameAccount(
-          JSON.parse(JSON.stringify(account)),
+          cloneForActivity(account) ?? account,
           this,
           this.store,
           this.dependencies.chainRpc,
@@ -242,7 +246,7 @@ export class Accounts extends EventEmitter {
 
     if (!this.accounts[id]) {
       this.accounts[id] = new FrameAccount(
-        JSON.parse(JSON.stringify(account)),
+        cloneForActivity(account) ?? account,
         this,
         this.store,
         this.dependencies.chainRpc,
@@ -308,9 +312,9 @@ export class Accounts extends EventEmitter {
 
   private getTransactionActivityDisplay(req: TransactionRequest, chain?: Chain) {
     const value = req.data?.value
-    const network = chain ? (this.store.getState().main.networks.ethereum[chain.id] as any) : undefined
+    const network = chain ? this.store.getState().main.networks.ethereum[chain.id] : undefined
     const chainSymbol =
-      network?.symbol ??
+      (typeof network?.symbol === 'string' ? network.symbol : undefined) ??
       (chain ? this.store.getState().main.networksMeta.ethereum[chain.id].nativeCurrency.symbol : '') ??
       'ETH'
     const intent = getTransactionIntent(req, chainSymbol)
@@ -341,10 +345,14 @@ export class Accounts extends EventEmitter {
 
   private getTransactionNativeSymbol(req: TransactionRequest) {
     const chain = this.getTransactionChain(req)
-    const network = chain ? (this.store.getState().main.networks.ethereum[chain.id] as any) : undefined
+    const network = chain ? this.store.getState().main.networks.ethereum[chain.id] : undefined
     const metadata = chain ? this.store.getState().main.networksMeta.ethereum[chain.id] : undefined
 
-    return network?.symbol ?? metadata?.nativeCurrency.symbol ?? 'ETH'
+    return (
+      (typeof network?.symbol === 'string' ? network.symbol : undefined) ??
+      metadata?.nativeCurrency.symbol ??
+      'ETH'
+    )
   }
 
   private getAccountRelativeActivityDisplay(effects: TransactionEffect[]) {
@@ -353,7 +361,10 @@ export class Accounts extends EventEmitter {
 
     if (incoming.length === effects.length) {
       return effects.length === 1
-        ? { title: `Receive ${effects[0].symbol}`, subtitle: 'Incoming transfer' }
+        ? {
+            title: `Receive ${effects[0].symbol}`,
+            subtitle: 'Incoming transfer'
+          }
         : { title: 'Receive assets', subtitle: 'Incoming assets' }
     }
 
@@ -566,9 +577,9 @@ export class Accounts extends EventEmitter {
       return
     }
 
-    this.store
-      .getState()
-      .updateActivity(transactionActivityId(hash), { positionsRefreshedAt: this.dependencies.runtime.now() })
+    this.store.getState().updateActivity(transactionActivityId(hash), {
+      positionsRefreshedAt: this.dependencies.runtime.now()
+    })
     this.pendingPositionRefreshes.delete(hash)
     this.transactionPositionTokensByHash.delete(hash)
   }
@@ -668,7 +679,7 @@ export class Accounts extends EventEmitter {
   private finalizeTransactionActivity(
     req: TransactionRequest,
     status: 'succeeded' | 'reverted',
-    update: any = {}
+    update: Record<string, unknown> = {}
   ) {
     const hash = req.tx?.hash
     if (!hash) {
@@ -751,15 +762,25 @@ export class Accounts extends EventEmitter {
   }
 
   private activityChainId(activity: ActivityRecord) {
-    return normalizeChainId(activity.chainId ?? (activity.data as any)?.chainId)
+    const data = recordValue(activity.data)
+    const chainId = activity.chainId ?? data?.chainId
+    return normalizeChainId(
+      typeof chainId === 'string' || typeof chainId === 'number' || chainId === null ? chainId : undefined
+    )
   }
 
   private activityNonce(activity: ActivityRecord) {
-    return normalizeQuantity(activity.nonce ?? (activity.data as any)?.nonce)
+    const data = recordValue(activity.data)
+    const nonce = activity.nonce ?? data?.nonce
+    return normalizeQuantity(
+      typeof nonce === 'string' || typeof nonce === 'number' || nonce === null ? nonce : undefined
+    )
   }
 
   private activityAccount(activity: ActivityRecord) {
-    return (activity.account ?? activity.address ?? (activity.data as any)?.from ?? '').toLowerCase()
+    const data = recordValue(activity.data)
+    const account = activity.account ?? activity.address ?? data?.from
+    return (typeof account === 'string' ? account : '').toLowerCase()
   }
 
   private isNonTerminalActivity(activity?: ActivityRecord) {
@@ -826,52 +847,63 @@ export class Accounts extends EventEmitter {
     targetChain: Chain,
     isCurrentMonitor: () => boolean
   ) {
-    return new Promise<{ confirmations: number; receipt?: TransactionReceipt; paused?: boolean }>(
-      (resolve, reject) => {
-        const targetChainId = addHexPrefix(targetChain.id.toString(16))
+    return new Promise<{
+      confirmations: number
+      receipt?: TransactionReceipt
+      paused?: boolean
+    }>((resolve, reject) => {
+      const targetChainId = addHexPrefix(targetChain.id.toString(16))
 
-        if (!isCurrentMonitor()) {
-          return resolve({ confirmations: 0, paused: true })
-        }
-
-        this.sendRequest(
-          { method: 'eth_getTransactionReceipt', params: [activity.hash], chainId: targetChainId },
-          (receiptRes: RPCResponsePayload) => {
-            if (!isCurrentMonitor()) {
-              return resolve({ confirmations: 0, paused: true })
-            }
-            if (receiptRes.error) {
-              return reject(receiptRes.error)
-            }
-
-            const receipt = receiptRes.result as TransactionReceipt | undefined
-            if (!receipt) {
-              return resolve({ confirmations: Number(activity.confirmations ?? 0) })
-            }
-
-            this.sendRequest(
-              { method: 'eth_blockNumber', params: [], chainId: targetChainId },
-              (blockRes: RPCResponsePayload) => {
-                if (!isCurrentMonitor()) {
-                  return resolve({ confirmations: 0, paused: true })
-                }
-                if (blockRes.error) {
-                  return reject(new Error(JSON.stringify(blockRes.error)))
-                }
-
-                const blockHeight = parseInt(blockRes.result, 16)
-                const receiptBlock = parseInt(receipt.blockNumber, 16)
-
-                resolve({
-                  confirmations: Math.max(blockHeight - receiptBlock, 0),
-                  receipt
-                })
-              }
-            )
-          }
-        )
+      if (!isCurrentMonitor()) {
+        return resolve({ confirmations: 0, paused: true })
       }
-    )
+
+      this.sendRequest(
+        {
+          method: 'eth_getTransactionReceipt',
+          params: [activity.hash],
+          chainId: targetChainId
+        },
+        (receiptRes: RPC.GetTransactionReceipt.Response) => {
+          if (!isCurrentMonitor()) {
+            return resolve({ confirmations: 0, paused: true })
+          }
+          if (receiptRes.error) {
+            return reject(receiptRes.error)
+          }
+
+          const receipt = receiptRes.result
+          if (!receipt) {
+            return resolve({
+              confirmations: Number(activity.confirmations ?? 0)
+            })
+          }
+
+          this.sendRequest(
+            { method: 'eth_blockNumber', params: [], chainId: targetChainId },
+            (blockRes: RPC.BlockNumber.Response) => {
+              if (!isCurrentMonitor()) {
+                return resolve({ confirmations: 0, paused: true })
+              }
+              if (blockRes.error) {
+                return reject(new Error(JSON.stringify(blockRes.error)))
+              }
+
+              if (typeof blockRes.result !== 'string') {
+                return reject(new Error('Block number response did not include a result'))
+              }
+              const blockHeight = parseInt(blockRes.result, 16)
+              const receiptBlock = parseInt(receipt.blockNumber, 16)
+
+              resolve({
+                confirmations: Math.max(blockHeight - receiptBlock, 0),
+                receipt
+              })
+            }
+          )
+        }
+      )
+    })
   }
 
   private pruneSameNonceActivityLosers(winningActivity: ActivityRecord) {
@@ -987,12 +1019,18 @@ export class Accounts extends EventEmitter {
         this.pruneSameNonceActivityLosers(currentActivity)
 
         if ((receipt as any)?.status === '0x0') {
-          this.finalizeTransactionActivity(txRequest, 'reverted', { confirmations, receipt })
+          this.finalizeTransactionActivity(txRequest, 'reverted', {
+            confirmations,
+            receipt
+          })
           return this.stopActivityMonitor(activity.id)
         }
 
         if (confirmations >= TRANSACTION_CONFIRMATION_TARGET) {
-          this.finalizeTransactionActivity(txRequest, 'succeeded', { confirmations, receipt })
+          this.finalizeTransactionActivity(txRequest, 'succeeded', {
+            confirmations,
+            receipt
+          })
           return this.stopActivityMonitor(activity.id)
         }
 
@@ -1148,7 +1186,7 @@ export class Accounts extends EventEmitter {
     }
   }
 
-  confirmRequestApproval(reqId: string, approvalType: ApprovalType, approvalData: any) {
+  confirmRequestApproval(reqId: string, approvalType: ApprovalType, approvalData: unknown) {
     log.info('confirmRequestApproval', reqId, approvalType)
 
     const currentAccount = this.current()
@@ -1158,7 +1196,7 @@ export class Accounts extends EventEmitter {
   }
 
   // TODO: can we make this typed for the action type?
-  updateRequest(reqId: string, data: any, actionId: ActionType) {
+  updateRequest(reqId: string, data: unknown, actionId: ActionType) {
     log.verbose('updateRequest', { reqId, actionId, data })
 
     const currentAccount = this.current()
@@ -1200,7 +1238,7 @@ export class Accounts extends EventEmitter {
 
       const txRequest = this.getTransactionRequest(currentAccount, id)
 
-      const data = JSON.parse(JSON.stringify(txRequest.data))
+      const data = cloneForActivity(txRequest.data) ?? txRequest.data
       const targetChain = { type: 'ethereum', id: parseInt(data.chainId, 16) }
       const { levels } = this.store.getState().main.networksMeta.ethereum[targetChain.id].gas.price
 
@@ -1233,7 +1271,7 @@ export class Accounts extends EventEmitter {
 
       this.sendRequest(
         tx,
-        (res: RPCResponsePayload) => {
+        (res: RPC.BlockNumber.Response) => {
           if (res.error) {
             return reject(new Error(res.error.message))
           }
@@ -1245,12 +1283,42 @@ export class Accounts extends EventEmitter {
   }
 
   private sendRequest(
+    request: {
+      method: 'eth_blockNumber'
+      params: unknown[]
+      chainId: string
+      _origin?: string
+    },
+    cb: RPCCallback<RPC.BlockNumber.Response>,
+    principal?: TrustedPrincipal
+  ): void
+  private sendRequest(
+    request: {
+      method: 'eth_getTransactionReceipt'
+      params: unknown[]
+      chainId: string
+      _origin?: string
+    },
+    cb: RPCCallback<RPC.GetTransactionReceipt.Response>,
+    principal?: TrustedPrincipal
+  ): void
+  private sendRequest(
+    request: {
+      method: string
+      params: unknown[]
+      chainId: string
+      _origin?: string
+    },
+    cb: RPCRequestCallback,
+    principal?: TrustedPrincipal
+  ): void
+  private sendRequest(
     {
       method,
       params,
       chainId,
       _origin = frameOriginId
-    }: { method: string; params: any[]; chainId: string; _origin?: string },
+    }: { method: string; params: unknown[]; chainId: string; _origin?: string },
     cb: RPCRequestCallback,
     principal?: TrustedPrincipal
   ) {
@@ -1293,8 +1361,12 @@ export class Accounts extends EventEmitter {
           }
 
           this.sendRequest(
-            { method: 'eth_getTransactionReceipt', params: [hash], chainId: targetChainId },
-            (receiptRes: RPCResponsePayload) => {
+            {
+              method: 'eth_getTransactionReceipt',
+              params: [hash],
+              chainId: targetChainId
+            },
+            (receiptRes: RPC.GetTransactionReceipt.Response) => {
               if (!isCurrentMonitor()) {
                 return resolve(-1)
               }
@@ -1305,7 +1377,7 @@ export class Accounts extends EventEmitter {
                 return reject(new Error('account closed'))
               }
 
-              if (receiptRes.result && account.requests[id]) {
+              if (receiptRes.result && account.requests[id] && typeof res.result === 'string') {
                 let txRequest = account.patchRequest<TransactionRequest>(id, (request) => {
                   request.tx = {
                     ...request.tx,
@@ -1338,7 +1410,7 @@ export class Accounts extends EventEmitter {
                       const feeAtTime = (
                         Math.round(
                           weiIntToEthInt(
-                            hexToInt(gasUsed) * hexToInt(txRequest.data.gasPrice ?? '0x0') * res.result.ethusd
+                            hexToInt(gasUsed) * hexToInt(txRequest.data.gasPrice ?? '0x0') * ethPrice
                           ) * 100
                         ) / 100
                       ).toFixed(2)
@@ -1354,7 +1426,7 @@ export class Accounts extends EventEmitter {
                 }
 
                 const blockHeight = parseInt(res.result, 16)
-                const receiptBlock = parseInt((receiptRes.result as TransactionReceipt).blockNumber, 16)
+                const receiptBlock = parseInt(receiptRes.result.blockNumber, 16)
                 const confirmations = blockHeight - receiptBlock
 
                 txRequest = account.patchRequest<TransactionRequest>(id, (request) => {
@@ -1466,7 +1538,11 @@ export class Accounts extends EventEmitter {
     }
 
     const token = Symbol(activityId)
-    this.requestActivityMonitors[activityId] = { accountId, token, stop: () => {} }
+    this.requestActivityMonitors[activityId] = {
+      accountId,
+      token,
+      stop: () => {}
+    }
     const isCurrentMonitor = () => this.isCurrentRequestActivityMonitor(activityId, token, accountId)
     const installStop = (stop: () => void) => {
       const current = this.requestActivityMonitors[activityId]
@@ -1509,12 +1585,20 @@ export class Accounts extends EventEmitter {
 
       const targetChainId = addHexPrefix(targetChain.id.toString(16))
       this.sendRequest(
-        { method: 'eth_subscribe', params: ['newHeads'], chainId: targetChainId },
+        {
+          method: 'eth_subscribe',
+          params: ['newHeads'],
+          chainId: targetChainId
+        },
         (newHeadRes: RPCResponsePayload) => {
           if (!isCurrentMonitor()) {
             if (newHeadRes.result) {
               this.sendRequest(
-                { method: 'eth_unsubscribe', chainId: targetChainId, params: [newHeadRes.result] },
+                {
+                  method: 'eth_unsubscribe',
+                  chainId: targetChainId,
+                  params: [newHeadRes.result]
+                },
                 () => {}
               )
             }
@@ -1557,7 +1641,9 @@ export class Accounts extends EventEmitter {
                     request.status = RequestStatus.Confirmed
                     request.notice = 'Confirmed'
                   })
-                  this.finalizeTransactionActivity(txRequest, 'succeeded', { confirmations })
+                  this.finalizeTransactionActivity(txRequest, 'succeeded', {
+                    confirmations
+                  })
                   this.dependencies.runtime.schedule(
                     () => this.has(account.address) && this.removeRequest(account, requestId),
                     CONFIRMED_REQUEST_CLOSE_MS
@@ -1659,7 +1745,9 @@ export class Accounts extends EventEmitter {
                     request.status = RequestStatus.Confirmed
                     request.notice = 'Confirmed'
                   })
-                  this.finalizeTransactionActivity(txRequest, 'succeeded', { confirmations })
+                  this.finalizeTransactionActivity(txRequest, 'succeeded', {
+                    confirmations
+                  })
 
                   removeSubscription(CONFIRMED_REQUEST_CLOSE_MS)
                 }
@@ -1687,7 +1775,11 @@ export class Accounts extends EventEmitter {
               this.dependencies.chainRpc.off(`data:${targetChain.type}:${targetChain.id}`, handler)
               this.dependencies.chainRpc.off(`status:${targetChain.type}:${targetChain.id}`, statusHandler)
               this.sendRequest(
-                { method: 'eth_unsubscribe', chainId: targetChainId, params: [headSub] },
+                {
+                  method: 'eth_unsubscribe',
+                  chainId: targetChainId,
+                  params: [headSub]
+                },
                 (res: RPCResponsePayload) => {
                   if (res.error) {
                     log.error('error sending message eth_unsubscribe', res)
@@ -1956,7 +2048,10 @@ export class Accounts extends EventEmitter {
         this.dependencies.requests.respond(req.handlerId, {
           id: req.payload.id,
           jsonrpc: req.payload.jsonrpc,
-          error: { code: 4100, message: 'Autonomous signing is not enabled for this action' }
+          error: {
+            code: 4100,
+            message: 'Autonomous signing is not enabled for this action'
+          }
         })
         return false
       }
@@ -2190,7 +2285,10 @@ export class Accounts extends EventEmitter {
     const handle = this.accounts[address]
     if (handle) {
       Object.values(handle.requests).forEach((request) => {
-        handle.rejectRequest(request, { code: 4001, message: 'User rejected the request' })
+        handle.rejectRequest(request, {
+          code: 4001,
+          message: 'User rejected the request'
+        })
       })
       handle.close()
     }
@@ -2341,7 +2439,9 @@ export class Accounts extends EventEmitter {
       return
     }
 
-    const tx = { ...this.getTransactionRequest(currentAccount, handlerId).data }
+    const tx = {
+      ...this.getTransactionRequest(currentAccount, handlerId).data
+    }
 
     // New max fee per gas
     const newMaxFeePerGas = currentBaseFee + newMaxPriorityFeePerGas

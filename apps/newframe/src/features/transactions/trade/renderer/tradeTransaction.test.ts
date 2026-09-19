@@ -25,6 +25,9 @@ import {
   marketTradeQuoteRequestKey
 } from './tradeTransaction'
 
+type TradeValidationInput = Parameters<typeof getTradeValidationError>[0]
+type TradeQuoteInput = Parameters<typeof buildTradeQuoteRequest>[0]
+
 describe('tradeTransaction', () => {
   const base = {
     accountAddress: '0xsender',
@@ -36,9 +39,17 @@ describe('tradeTransaction', () => {
     targetAsset: FLASH_WETH_ASSET
   }
   const validate = (fields: Record<string, unknown>) =>
-    getTradeValidationError({ inputAmount: '1', side: 'sell', ...fields } as any)
+    getTradeValidationError({
+      inputAmount: '1',
+      side: 'sell',
+      ...fields
+    } as unknown as TradeValidationInput)
   const market = (fields: Record<string, unknown> = {}) =>
-    buildTradeQuoteRequest({ ...base, ...fields, orderType: FLASH_MARKET_ORDER_TYPE } as any)
+    buildTradeQuoteRequest({
+      ...base,
+      ...fields,
+      orderType: FLASH_MARKET_ORDER_TYPE
+    } as unknown as TradeQuoteInput)
 
   it('normalizes market and optional order payloads', () => {
     expect(cleanFlashDecimal(' 1,200.50 ')).toBe('1200.50')

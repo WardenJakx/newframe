@@ -81,8 +81,12 @@ export default function (eth: Eip1193Provider) {
     })
 
     const result = erc20Interface.decodeFunctionResult('balanceOf', response)
+    const rawBalance: unknown = result[0]
+    if (typeof rawBalance !== 'bigint' && typeof rawBalance !== 'string') {
+      throw new Error('Invalid balanceOf result')
+    }
 
-    return toBeHex(result.balance)
+    return toBeHex(rawBalance)
   }
 
   async function getTokenBalancesFromContracts(owner: string, tokens: TokenDefinition[]) {
@@ -132,8 +136,9 @@ export default function (eth: Eip1193Provider) {
       const tokensByChain = tokens.reduce(groupByChain, {} as TokensByChain)
 
       const tokenBalances = await Promise.all(
-        Object.entries(tokensByChain).map(([chain, tokens]) => {
+        Object.entries(tokensByChain).map(([chain, chainTokens]) => {
           const chainId = parseInt(chain)
+          const tokens: TokenDefinition[] = chainTokens
 
           return multicallSupportsChain(chainId)
             ? getTokenBalancesFromMulticall(owner, tokens, chainId)

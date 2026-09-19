@@ -1,8 +1,23 @@
 import EventEmitter from 'events'
 
-import InjectedFrameProvider from './provider'
+import InjectedFrameProvider, { type JsonRpcPayload } from './provider'
 
 declare const __NEWFRAME_EIP6963_ICON__: string
+
+declare global {
+  interface Window {
+    ethereum?: InjectedFrameProvider
+    web3?: unknown
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function isUnknownArray(value: unknown): value is unknown[] {
+  return Array.isArray(value)
+}
 
 function pageMessageTargetOrigin() {
   return window.location.origin === 'null' ? '*' : window.location.origin
@@ -19,14 +34,14 @@ function setProvider() {
       enumerable: true
     })
   } else {
-    ;(window as any).ethereum = provider
+    window.ethereum = provider
   }
 }
 
-function shimWeb3(provider: any, appearAsMetaMask: any) {
+function shimWeb3(provider: InjectedFrameProvider | undefined, appearAsMetaMask: boolean) {
   let loggedCurrentProvider = false
 
-  if (!(window as any).web3) {
+  if (!window.web3) {
     const SHIM_IDENTIFIER = appearAsMetaMask ? '__isMetaMaskShim__' : '__isNewframeShim__'
 
     const shim = { currentProvider: provider }
@@ -79,21 +94,21 @@ class Connection extends EventEmitter {
     setTimeout(() => this.emit('connect'), 0)
   }
 
-  handleMessage(event: MessageEvent) {
-    if (event?.source === window && event.data) {
+  handleMessage(event: MessageEvent<unknown>) {
+    if (event.source === window && isRecord(event.data)) {
       const { type } = event.data
 
       if (type === 'eth:payload') {
         this.emit('payload', event.data.payload)
       }
 
-      if (type === 'eth:event') {
+      if (type === 'eth:event' && typeof event.data.event === 'string' && isUnknownArray(event.data.args)) {
         this.emit(event.data.event, ...event.data.args)
       }
     }
   }
 
-  send(payload: any) {
+  send(payload: JsonRpcPayload) {
     window.postMessage({ type: 'eth:send', payload }, pageMessageTargetOrigin())
   }
 
@@ -102,13 +117,17 @@ class Connection extends EventEmitter {
   }
 }
 
-let mmAppear: any =
+const storedMmAppear =
   window.localStorage.getItem('__newframeAppearAsMM__') ?? window.localStorage.getItem('__frameAppearAsMM__')
+let mmAppear = false
 
-try {
-  mmAppear = JSON.parse(mmAppear)
-} catch (e) {
-  mmAppear = false
+if (storedMmAppear) {
+  try {
+    const parsed: unknown = JSON.parse(storedMmAppear)
+    mmAppear = Boolean(parsed)
+  } catch (e) {
+    mmAppear = false
+  }
 }
 
 let provider: InjectedFrameProvider | undefined
@@ -142,7 +161,7 @@ const info = {
   rdns: 'sh.newframe'
 }
 
-function broadcastEvent(eventName: string, detail: any) {
+function broadcastEvent(eventName: string, detail: unknown) {
   try {
     const event = new CustomEvent(eventName, { detail })
     window.dispatchEvent(event)
@@ -159,9 +178,9 @@ broadcastEvent('eip6963:announceProvider', Object.freeze({ info, provider }))
 
 setProvider()
 
-shimWeb3((window as any).ethereum, mmAppear)
+shimWeb3(window.ethereum, mmAppear)
 
-const embedded: Record<string, (action: any) => Promise<any>> = {
+const embedded: Record<string, () => Promise<unknown>> = {
   getChainId: async () => ({
     // use Newframe's own provider; window.ethereum may belong to another wallet
     chainId: await provider?.doSend('eth_chainId', [], undefined, false)
@@ -174,20 +193,27 @@ document.addEventListener('readystatechange', () => {
   }
 })
 
-async function handleEmbeddedAction(event: MessageEvent) {
-  if (event?.source === window && event.data?.type === 'embedded:action' && window.self === window.top) {
-    if (event.data.action) {
-      const action = event.data.action
-      if (embedded[action.type]) {
-        const res = await embedded[action.type]!(action)
-        const payload = {
-          method: 'embedded_action_res',
-          params: [action, res]
-        }
-        window.postMessage({ type: 'eth:send', payload }, pageMessageTargetOrigin())
-      } else {
-        console.warn(`Could not find embedded action ${action.type}`)
+async function handleEmbeddedAction(event: MessageEvent<unknown>) {
+  if (
+    event.source === window &&
+    isRecord(event.data) &&
+    event.data.type === 'embedded:action' &&
+    window.self === window.top &&
+    isRecord(event.data.action) &&
+    typeof event.data.action.type === 'string'
+  ) {
+    const action = event.data.action
+    const actionType = event.data.action.type
+    const handler = embedded[actionType]
+    if (handler) {
+      const res = await handler()
+      const payload = {
+        method: 'embedded_action_res',
+        params: [action, res]
       }
+      window.postMessage({ type: 'eth:send', payload }, pageMessageTargetOrigin())
+    } else {
+      console.warn(`Could not find embedded action ${actionType}`)
     }
   }
 }

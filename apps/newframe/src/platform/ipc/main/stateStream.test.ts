@@ -9,6 +9,30 @@ import { createStateStream, type StateStream } from './stateStream'
 
 const authorizeRenderer = mock()
 
+type ProjectedRecord = Record<string, unknown>
+type ProjectedAccount = ProjectedRecord & {
+  requests?: Record<string, ProjectedRecord>
+}
+type TestProjection = ProjectedRecord & {
+  accounts: Record<string, ProjectedAccount>
+  accountOrder: string[]
+  operations: ProjectedRecord
+  selected: ProjectedRecord
+  signers: Record<string, ProjectedRecord>
+  tokens: ProjectedRecord
+  tray: ProjectedRecord & { homeCommand: unknown }
+  view: ProjectedRecord
+  windows: ProjectedRecord & {
+    panel: ProjectedRecord & { nav: unknown[] }
+  }
+  networksMeta: Record<string, Record<number, ProjectedRecord>>
+}
+type TestStateMessage = ProjectedRecord & {
+  streamId: string
+  state: TestProjection
+  changes: TestProjection
+}
+
 let stateStream: StateStream
 let connectState: StateStream['connectState']
 let store: ReturnType<typeof createCanonicalStore>['store']
@@ -34,8 +58,8 @@ function renderer(id = 1) {
   const sender = {
     id,
     isDestroyed: mock(() => false),
-    once: mock(),
-    send: mock()
+    once: mock((_event: string, _listener: () => void) => {}),
+    send: mock((_channel: string, _message: TestStateMessage) => {})
   }
 
   return { event: { sender } as unknown as Electron.IpcMainInvokeEvent, sender }
@@ -168,15 +192,15 @@ describe('renderer state stream', () => {
     const [channel, snapshot] = sender.send.mock.calls[0]
     expect(channel).toBe(StateMessageChannel)
     expect(snapshot).toMatchObject({ revision: 0, state: { currentAccount: '' } })
-    expect(snapshot.streamId).toEqual(expect.any(String))
+    expect(typeof snapshot.streamId).toBe('string')
     expect(snapshot.state).not.toHaveProperty('main')
     expect(snapshot.state).not.toHaveProperty('lattice')
     expect(snapshot.state).not.toHaveProperty('futureCredential')
     expect(snapshot.state).not.toHaveProperty('portfolioApiKey')
     expect(snapshot.state.portfolioApiKeyConfigured).toBe(true)
     expect(snapshot.state.accounts[accountId]).not.toHaveProperty('futureCredential')
-    expect(snapshot.state.accounts[accountId].requests.request).not.toHaveProperty('futureCredential')
-    expect(snapshot.state.accounts[accountId].requests.request).not.toHaveProperty('authorization')
+    expect(snapshot.state.accounts[accountId].requests!.request).not.toHaveProperty('futureCredential')
+    expect(snapshot.state.accounts[accountId].requests!.request).not.toHaveProperty('authorization')
     expect(snapshot.state.signers.signer).not.toHaveProperty('futureCredential')
     expect(snapshot.state.windows).not.toHaveProperty('frames')
     expect(snapshot.state.windows).not.toHaveProperty('futureWindowState')
@@ -271,7 +295,7 @@ describe('renderer state stream', () => {
     })
     const wallet = renderer(1)
     const sideTray = renderer(2)
-    authorizeRenderer.mockImplementation((event) => ({
+    authorizeRenderer.mockImplementation((event: Electron.IpcMainInvokeEvent) => ({
       clientType: event.sender.id === 1 ? 'wallet-ui' : 'sidetray',
       webContentsId: event.sender.id
     }))
@@ -474,7 +498,7 @@ describe('renderer state stream', () => {
     })
     store.getState().operationStarted(firstOwner, pending('first-operation'))
     store.getState().operationStarted(secondOwner, pending('second-operation'))
-    authorizeRenderer.mockImplementation((event) => ({
+    authorizeRenderer.mockImplementation((event: Electron.IpcMainInvokeEvent) => ({
       clientType: 'wallet-ui',
       webContentsId: event.sender.id,
       windowInstanceId: event.sender.id === 11 ? 'wallet-one' : 'wallet-two'
@@ -510,7 +534,7 @@ describe('renderer state stream', () => {
     authorizeRenderer.mockReturnValue({ clientType: 'wallet-ui', webContentsId: sender.id })
     expect(connectState(event)).toEqual({ ok: true })
 
-    const destroyed = sender.once.mock.calls[0][1] as () => void
+    const destroyed = sender.once.mock.calls[0][1]
     destroyed()
     store.getState().setAssetRates({
       token: { usdRate: 2, source: 'zerion', observedAt: 2 }

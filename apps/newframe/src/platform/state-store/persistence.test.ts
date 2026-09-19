@@ -158,8 +158,9 @@ describe('canonical persistence lifecycle', () => {
     durable.main.accountOrder = [id]
     durable.main.currentAccount = id
     durable.main.autohide = false
-    const v2 = selectPersistedState(durable) as any
-    v2.main.tokens = {
+    const v2 = selectPersistedState(durable)
+    const v2Main: Record<string, unknown> = v2.main
+    v2Main.tokens = {
       custom: [
         {
           address: '0x1111111111111111111111111111111111111111',
@@ -392,13 +393,14 @@ describe('canonical persisted state contract', () => {
   })
 
   it('owns supported migration equivalence classes and rejects invalid inputs', () => {
-    const v3 = selectPersistedState(canonicalState()) as any
-    delete v3.main.balances
-    delete v3.main.assetRates
+    const v3 = selectPersistedState(canonicalState())
+    const v3Main: Partial<PersistedCanonicalState['main']> = v3.main
+    delete v3Main.balances
+    delete v3Main.assetRates
 
     expect(migratePersistedState(v3, 3)).toEqual({
       ...v3,
-      main: { ...v3.main, assetRates: {} }
+      main: { ...v3Main, assetRates: {} }
     })
     expect(() => migratePersistedState(selectPersistedState(canonicalState()), 1)).toThrow(
       'uses an unsupported persistence version'

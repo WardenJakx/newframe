@@ -29,14 +29,26 @@ type RecognitionContext = {
   account?: string
 }
 
-function toHexAmount(value: any) {
+function hasToHexString(value: unknown): value is { toHexString(): string } {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    'toHexString' in value &&
+    typeof value.toHexString === 'function'
+  )
+}
+
+function toHexAmount(value: unknown) {
   if (typeof value === 'bigint') {
     return addHexPrefix(value.toString(16))
   }
-  if (value?.toHexString) {
+  if (hasToHexString(value)) {
     return value.toHexString()
   }
-  return addHexPrefix(BigInt(value ?? 0).toString(16))
+  if (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'boolean') {
+    return '0x0'
+  }
+  return addHexPrefix(BigInt(value).toString(16))
 }
 
 async function resolveEntityType(
@@ -88,7 +100,11 @@ async function recogErc20(
 
       const { decimals = 0, name, symbol } = await contract.getTokenData()
       if (Erc20Contract.isApproval(decoded)) {
-        const spenderAddress = decoded.args[0].toLowerCase()
+        const rawSpender: unknown = decoded.args[0]
+        if (typeof rawSpender !== 'string') {
+          return
+        }
+        const spenderAddress = rawSpender.toLowerCase()
         const amount = toHexAmount(decoded.args[1])
 
         const [spenderIdentity, contractIdentity] = await Promise.all([
@@ -116,7 +132,8 @@ async function recogErc20(
           data,
           update: (request, { amount }) => {
             // amount is a hex string
-            const approvedAmount = BigInt(amount ?? '0x0').toString()
+            const nextAmount = amount ?? '0x0'
+            const approvedAmount = BigInt(nextAmount).toString()
 
             log.verbose(
               `Updating Erc20 approve amount to ${approvedAmount} for contract ${contractAddress} and spender ${spenderAddress}`
@@ -124,17 +141,21 @@ async function recogErc20(
 
             const txRequest = request as TransactionRequest
 
-            data.amount = amount
-            txRequest.data.data = Erc20Contract.encodeCallData('approve', [spenderAddress, amount])
+            data.amount = nextAmount
+            txRequest.data.data = Erc20Contract.encodeCallData('approve', [spenderAddress, nextAmount])
 
             if (txRequest.decodedData) {
-              txRequest.decodedData.args[1].value = amount === MAX_HEX ? 'unlimited' : approvedAmount
+              txRequest.decodedData.args[1].value = nextAmount === MAX_HEX ? 'unlimited' : approvedAmount
             }
           }
         }
         return action
       } else if (Erc20Contract.isTransfer(decoded)) {
-        const recipient = decoded.args[0].toLowerCase()
+        const rawRecipient: unknown = decoded.args[0]
+        if (typeof rawRecipient !== 'string') {
+          return
+        }
+        const recipient = rawRecipient.toLowerCase()
         const amount = toHexAmount(decoded.args[1])
         const identity = await surface.identity(recipient, chainId)
         const action: Erc20Transfer = {
