@@ -90,15 +90,15 @@ const defaultState = () => ({
   }
 })
 
-let actionImplementations: Record<string, (...args: any[]) => any> = {}
+let actionImplementations: Record<string, (...args: any[]) => unknown> = {}
 let actionMocks: Record<string, ReturnType<typeof mock>> = {}
 
 const createMockActions = (set: any, get: any) => {
-  actionImplementations = createCanonicalActions(set, get) as Record<string, (...args: any[]) => any>
+  actionImplementations = createCanonicalActions(set, get) as Record<string, (...args: any[]) => unknown>
   actionMocks = Object.fromEntries(
     Object.entries(actionImplementations).map(([name, action]) => [
       name,
-      mock((...args: any[]) => action(...args))
+      mock((...args: any[]): unknown => action(...args))
     ])
   )
 

@@ -90,7 +90,7 @@ beforeEach(() => {
     projectRendererState
   })
   stateStream.registerHandlers(ipc)
-  connectState = stateStream.connectState
+  connectState = (event) => stateStream.connectState(event)
 })
 
 afterEach(() => {
@@ -324,17 +324,17 @@ describe('renderer state stream', () => {
     const walletChanges = wallet.sender.send.mock.calls[1][1].changes
     const sideTrayChanges = sideTray.sender.send.mock.calls[1][1].changes
     expect(walletChanges).toMatchObject({
-      accounts: { [workId]: expect.objectContaining({ id: workId, profileId: 'work' }) },
       accountOrder: [workId],
       currentAccount: workId,
       currentProfile: 'work'
     })
+    expect(walletChanges.accounts?.[workId]).toMatchObject({ id: workId, profileId: 'work' })
     expect(walletChanges.accounts).not.toHaveProperty(activeId)
     expect(sideTrayChanges).toMatchObject({
-      accounts: { [workId]: expect.objectContaining({ id: workId }) },
       accountOrder: [workId],
       currentAccount: workId
     })
+    expect(sideTrayChanges.accounts?.[workId]).toMatchObject({ id: workId })
     expect(sideTrayChanges.accounts).not.toHaveProperty(activeId)
   })
 
@@ -459,13 +459,9 @@ describe('renderer state stream', () => {
       'runtime',
       'tokens'
     ])
-    expect(snapshot.state.accounts[id]).toEqual({
-      accountType: 'address',
-      id,
-      address: id,
-      name: 'Side Tray Account',
-      lastSignerType: 'address'
-    })
+    const account = snapshot.state.accounts[id]
+    expect(account).toMatchObject({ id, address: id, name: 'Side Tray Account', lastSignerType: 'address' })
+    expect(account && 'accountType' in account ? account.accountType : undefined).toBe('address')
     expect(snapshot.state.accounts).not.toHaveProperty(dormantId)
     expect(snapshot.state.accountOrder).toEqual([id])
     expect(snapshot.state.orders).toEqual({})

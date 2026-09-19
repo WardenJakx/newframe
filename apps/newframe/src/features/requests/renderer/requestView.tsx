@@ -47,16 +47,16 @@ type RequestViewContextValue = RequestViewState & {
   adjustments?: TransactionApprovalAdjustments
   feeLevel?: TransactionFeeLevel | 'custom'
   feeNoticeDismissed: boolean
-  dismissFeeNotice(): void
-  displayRequest<T extends FeeRequest>(request: T): T
-  updateFee(request: FeeRequest, field: TransactionFeeField, value: bigint): void
-  selectFeeLevel(
+  dismissFeeNotice: () => void
+  displayRequest: <T extends FeeRequest>(request: T) => T
+  updateFee: (request: FeeRequest, field: TransactionFeeField, value: bigint) => void
+  selectFeeLevel: (
     request: FeeRequest,
     level: TransactionFeeLevel,
     recommendation: Parameters<typeof transactionFeePreset>[1]
-  ): void
-  back(): boolean
-  open(next: RequestViewState): void
+  ) => void
+  back: () => boolean
+  open: (next: RequestViewState) => void
 }
 
 const RequestViewContext = createContext<RequestViewContextValue | undefined>(undefined)

@@ -130,7 +130,7 @@ function valueToText(value: unknown): string {
     return value.map(valueToText).join(', ')
   }
 
-  return JSON.stringify(value, (_key, nestedValue) =>
+  return JSON.stringify(value, (_key, nestedValue: unknown) =>
     typeof nestedValue === 'bigint' ? nestedValue.toString() : nestedValue
   )
 }
@@ -377,7 +377,8 @@ function formatFieldValue(field: Field, value: unknown, context: FormatContext) 
     const metadata = getTokenMetadata(context)
 
     if (threshold !== null && amount !== null && amount >= threshold) {
-      return `${field.params?.message ?? 'Unlimited'}${metadata?.symbol ? ` ${metadata.symbol}` : ''}`
+      const message = typeof field.params?.message === 'string' ? field.params.message : 'Unlimited'
+      return `${message}${metadata?.symbol ? ` ${metadata.symbol}` : ''}`
     }
 
     if (amount !== null && metadata?.decimals !== undefined) {

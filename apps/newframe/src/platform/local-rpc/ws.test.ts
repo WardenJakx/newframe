@@ -17,7 +17,7 @@ class FakeWebSocketServer extends EventEmitter {
 }
 
 it('adapts a WebSocket message to the shared request contract', async () => {
-  let captured: RpcRequestDescription | undefined
+  const captured: RpcRequestDescription[] = []
   const server = new FakeWebSocketServer()
   const transport = createWebSocketRpcTransport({
     provider: new FakeProvider(),
@@ -27,7 +27,7 @@ it('adapts a WebSocket message to the shared request contract', async () => {
       isKnownExtension: async () => true
     } as never,
     requestHandler: async (request) => {
-      captured = request
+      captured.push(request)
     },
     windows: { toggleTray: () => undefined },
     createServer: () => server,
@@ -57,10 +57,14 @@ it('adapts a WebSocket message to the shared request contract', async () => {
     headers: { origin: 'chrome-extension://extension-id' },
     url: '/?identity=newframe-extension&scope=internal&chainId=5'
   })
-  socket.emit('message', Buffer.from(JSON.stringify(payload)))
+  const encoded = Buffer.from(JSON.stringify(payload))
+  socket.emit('message', encoded)
+  socket.emit('message', [encoded.subarray(0, 10), encoded.subarray(10)])
+  socket.emit('message', Uint8Array.from(encoded).buffer)
   await Bun.sleep(0)
 
-  const normalized = captured as unknown as RpcRequestDescription
+  expect(captured).toHaveLength(3)
+  const normalized = captured[2]
   expect(normalized.rawPayload as JSONRPCRequestPayload & { __extensionConnecting?: boolean }).toEqual({
     id: 1,
     jsonrpc: '2.0',

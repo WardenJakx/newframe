@@ -26,12 +26,12 @@ const host: NewframeHost = {
   },
   async connectState(handler) {
     stateHandler = handler
-    const result = await ipcRenderer.invoke(StateConnectChannel)
+    const result: unknown = await ipcRenderer.invoke(StateConnectChannel)
     return StateConnectionResultSchema.parse(result)
   },
   async disconnectState() {
     stateHandler = undefined
-    const result = await ipcRenderer.invoke(StateDisconnectChannel)
+    const result: unknown = await ipcRenderer.invoke(StateDisconnectChannel)
     return StateConnectionResultSchema.parse(result)
   }
 }

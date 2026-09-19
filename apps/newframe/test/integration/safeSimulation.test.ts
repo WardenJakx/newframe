@@ -60,9 +60,11 @@ const batchAbi = new Interface(['function multiSend(bytes) payable'])
 let anvil: ReturnType<typeof Bun.spawn> | undefined
 let provider: JsonRpcProvider
 let seed: SafeSeedManifest
-let token: Contract & {
-  mint(address: string, amount: bigint): Promise<ContractTransactionResponse>
+type TestToken = Contract & {
+  mint(address: string, amount: bigint): Promise<{ wait(): Promise<unknown> }>
 }
+
+let token: TestToken
 let tokenAddress: string
 let multiSend: string
 let service: ReturnType<typeof createSafeService>
@@ -76,6 +78,21 @@ const base = createTestStore()
 const selectors = createStore(subscribeWithSelector(() => base.getState()))
 const store = { ...base.store, subscribe: selectors.subscribe }
 const projection = createTransactionSimulationProjection(store)
+
+interface SafeHashContract {
+  getTransactionHash(
+    to: string,
+    value: string,
+    data: string,
+    operation: number,
+    safeTxGas: string,
+    baseGas: string,
+    gasPrice: string,
+    gasToken: string,
+    refundReceiver: string,
+    nonce: string
+  ): Promise<string>
+}
 
 function batch(calls: { to: string; value?: bigint; data?: string }[]) {
   return batchAbi.encodeFunctionData('multiSend', [
@@ -209,7 +226,7 @@ beforeAll(async () => {
   ).deploy()
   await deployedToken.waitForDeployment()
   tokenAddress = await deployedToken.getAddress()
-  token = new Contract(tokenAddress, tokenAbi, signer) as typeof token
+  token = new Contract(tokenAddress, tokenAbi, signer) as TestToken
   const harnessRequire = createRequire(new URL('../../../../harness/package.json', import.meta.url))
   const multiSendArtifact = (await Bun.file(
     harnessRequire.resolve(
@@ -223,7 +240,7 @@ beforeAll(async () => {
   ).deploy()
   await deployedBatch.waitForDeployment()
   multiSend = await deployedBatch.getAddress()
-  const mintTransaction = await token.mint(seed.safe, 1_000_000n)
+  const mintTransaction = (await token.mint(seed.safe, 1_000_000n)) as ContractTransactionResponse
   await mintTransaction.wait()
   await provider.send('anvil_setBalance', [seed.safe, toQuantity(10n ** 18n)])
   // A rejecting guard demonstrates the preview does not require an extension-free Safe.
@@ -298,7 +315,7 @@ beforeAll(async () => {
       data: tokenAbi.encodeFunctionData('transferFrom', [seed.safe, recipient, 1n])
     }
   }
-  const safe = new Contract(seed.safe, safeAbi, provider)
+  const safe = new Contract(seed.safe, safeAbi, provider) as unknown as SafeHashContract
   proposals = Object.fromEntries(
     await Promise.all(
       Object.entries(cases).map(async ([name, fields]) => {
@@ -323,14 +340,14 @@ beforeAll(async () => {
           proposal.value,
           proposal.data,
           proposal.operation,
-          proposal.safeTxGas,
-          proposal.baseGas,
-          proposal.gasPrice,
-          proposal.gasToken,
-          proposal.refundReceiver,
+          proposal.safeTxGas ?? '0',
+          proposal.baseGas ?? '0',
+          proposal.gasPrice ?? '0',
+          proposal.gasToken ?? ZeroAddress,
+          proposal.refundReceiver ?? ZeroAddress,
           proposal.nonce
         )
-        return [name, proposal]
+        return [name, proposal] as const
       })
     )
   )

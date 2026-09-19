@@ -242,7 +242,7 @@ export function createProductionCapabilities(
     store,
     accounts,
     chains,
-    adapters.network.lookupChainIcon,
+    (chainId) => adapters.network.lookupChainIcon(chainId),
     proxy,
     reveal,
     requestService
@@ -252,11 +252,11 @@ export function createProductionCapabilities(
   const accountSelection = createAccountSelectionAdapter(accounts, provider)
   const assetRateService = createAssetRateService({
     store,
-    clock: { now: adapters.accounts.now }
+    clock: { now: () => adapters.accounts.now() }
   })
   const operationService = createOperationService({
     store,
-    clock: { now: adapters.accounts.now }
+    clock: { now: () => adapters.accounts.now() }
   })
   const airgapService = createProductionAirGapService(store, adapters.accounts.signers, operationService)
   const profileService = createProfileService({
@@ -300,8 +300,9 @@ export function createProductionCapabilities(
   const safeRequests = new ProviderRequestPolicy(fetch, { maxRetries: 0, minIntervalMs: 500 })
   const safeRpc = createSafeSimulationRpc(chains)
   const safeClient = createSafeClient({
-    call: safeRpc.call,
-    decode: reveal.decode,
+    call: (chainId, address, data, blockTag, signal) =>
+      safeRpc.call(chainId, address, data, blockTag, signal),
+    decode: (address, chainId, data) => reveal.decode(address, chainId, data),
     request: (url, init) => safeRequests.request(url, init),
     networks: safeServiceNetworks({
       development: process.env.FRAME_PROFILE === 'dev',
@@ -353,7 +354,7 @@ export function createProductionCapabilities(
     accounts,
     provider: providerRequests,
     store,
-    now: adapters.accounts.now
+    now: () => adapters.accounts.now()
   })
   const sendService = createSendService({
     canonical: {
@@ -368,11 +369,13 @@ export function createProductionCapabilities(
         }
       }
     },
-    clock: { now: adapters.accounts.now },
+    clock: { now: () => adapters.accounts.now() },
     idempotency: new Map<string, SendIdempotencyEntry>(),
     names: { resolve: resolveName },
     operations: operationService,
-    transactions: { submit: sideTrayTransactions.submitCurrentAccountTransaction }
+    transactions: {
+      submit: (command, principal) => sideTrayTransactions.submitCurrentAccountTransaction(command, principal)
+    }
   })
   const tradeService = createTradeService({
     canonical: {
@@ -386,14 +389,17 @@ export function createProductionCapabilities(
         }
       }
     },
-    clock: { now: adapters.accounts.now },
+    clock: { now: () => adapters.accounts.now() },
     flash: flashService,
     operations: operationService,
     signatures: {
-      signMessage: sideTrayTransactions.signCurrentAccountMessage,
-      signTypedData: sideTrayTransactions.signCurrentAccountTypedData
+      signMessage: (command, principal) => sideTrayTransactions.signCurrentAccountMessage(command, principal),
+      signTypedData: (command, principal) =>
+        sideTrayTransactions.signCurrentAccountTypedData(command, principal)
     },
-    transactions: { submit: sideTrayTransactions.submitCurrentAccountTransaction }
+    transactions: {
+      submit: (command, principal) => sideTrayTransactions.submitCurrentAccountTransaction(command, principal)
+    }
   })
   return {
     accounts,
@@ -483,9 +489,9 @@ function createProductionOperationServices(
     settings: settingsService,
     tokens: tokenService,
     safes: safeService,
-    authorizeRenderer: rendererAuthorization.authorizeRenderer,
+    authorizeRenderer: (event) => rendererAuthorization.authorizeRenderer(event),
     createRendererPrincipal,
-    requestTokenImage: imageService.requestTokenImage,
+    requestTokenImage: (tokenId) => imageService.requestTokenImage(tokenId),
     resolveName: (name) => nameResolution.resolveAddress(name)
   }
 }
@@ -550,7 +556,7 @@ export function createProductionMainApp({
   )
   const stateStream = createStateStream({
     store,
-    authorizeRenderer: rendererAuthorization.authorizeRenderer,
+    authorizeRenderer: (event) => rendererAuthorization.authorizeRenderer(event),
     projectRendererState
   })
 

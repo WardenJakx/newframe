@@ -1,6 +1,6 @@
 import EventEmitter from 'events'
 
-import type { JsonRpcApiProvider } from 'ethers'
+import type { JsonRpcApiProvider, JsonRpcPayload } from 'ethers'
 import { FetchRequest, JsonRpcProvider, WebSocketProvider } from 'ethers'
 import WebSocket from 'ws'
 
@@ -48,25 +48,14 @@ export interface SubscriptionPayload {
 
 export type EthersRpcProvider = JsonRpcApiProvider
 
-interface EventEmitterCloseSocket {
-  on(event: 'close', listener: () => void): unknown
-}
-
-interface PropertyCloseSocket {
-  onclose: ((...args: unknown[]) => unknown) | null
-}
-
-function isEventEmitterCloseSocket(socket: unknown): socket is EventEmitterCloseSocket {
-  return typeof socket === 'object' && socket !== null && 'on' in socket && typeof socket.on === 'function'
-}
-
-function isPropertyCloseSocket(socket: unknown): socket is PropertyCloseSocket {
-  return typeof socket === 'object' && socket !== null && 'onclose' in socket
+interface CloseAwareSocket {
+  on?(event: 'close', listener: () => void): unknown
+  onclose?: (...args: unknown[]) => unknown
 }
 
 function normalizeParams(params?: RpcParams) {
   if (Array.isArray(params)) {
-    return [...params]
+    return Array.from(params as readonly unknown[])
   }
   return params ?? []
 }
@@ -175,10 +164,10 @@ export function listenForProviderClose(provider: EthersRpcProvider, onClose: () 
   }
 
   try {
-    const socket: unknown = provider.websocket
-    if (isEventEmitterCloseSocket(socket)) {
+    const socket = provider.websocket as CloseAwareSocket
+    if (typeof socket.on === 'function') {
       socket.on('close', onClose)
-    } else if (isPropertyCloseSocket(socket)) {
+    } else {
       const previousClose = socket.onclose
       socket.onclose = (...args: unknown[]) => {
         previousClose?.(...args)
@@ -195,9 +184,9 @@ export function sendRpcPayload<T = unknown>(provider: EthersRpcProvider, payload
 }
 
 export async function sendRawPayload<T = unknown>(provider: EthersRpcProvider, payload: RpcPayload) {
-  const [response] = (await provider._send(payload as any)) as RpcResult[]
+  const [response] = await provider._send(payload as unknown as JsonRpcPayload)
 
-  if (response.error) {
+  if ('error' in response) {
     throw createError(response.error)
   }
 

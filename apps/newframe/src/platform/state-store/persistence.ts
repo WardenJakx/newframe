@@ -1,10 +1,6 @@
 import log from 'electron-log'
 
-import {
-  DEFAULT_PROFILE_ID,
-  DEFAULT_PROFILE_NAME,
-  getProfileAccountIds
-} from '../../app/contracts/state/main.js'
+import { DEFAULT_PROFILE_ID, DEFAULT_PROFILE_NAME } from '../../app/contracts/state/main.js'
 import { listCuratedAssets } from '../../features/asset-data/domain/asset/index.js'
 import { CanonicalStatePersistenceError } from '../persistence/index.js'
 import type { CanonicalStore } from './actions.js'
@@ -135,6 +131,12 @@ function unknownRecord(value: unknown): UnknownRecord {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as UnknownRecord) : {}
 }
 
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? (value as unknown[]).filter((item): item is string => typeof item === 'string')
+    : []
+}
+
 function normalizeProfileState(main: UnknownRecord) {
   const sourceAccounts = unknownRecord(main.accounts)
   const sourceProfiles = unknownRecord(main.profiles)
@@ -159,19 +161,15 @@ function normalizeProfileState(main: UnknownRecord) {
 
   const profileOrder: string[] = []
   const seenProfiles = new Set<string>()
-  ;[...(Array.isArray(main.profileOrder) ? main.profileOrder : []), ...Object.keys(profiles)].forEach(
-    (candidate) => {
-      const id = typeof candidate === 'string' ? profileAliases[candidate] || candidate : ''
-      if (profiles[id] && !seenProfiles.has(id)) {
-        seenProfiles.add(id)
-        profileOrder.push(id)
-      }
+  ;[...stringArray(main.profileOrder), ...Object.keys(profiles)].forEach((candidate) => {
+    const id = profileAliases[candidate] || candidate
+    if (profiles[id] && !seenProfiles.has(id)) {
+      seenProfiles.add(id)
+      profileOrder.push(id)
     }
-  )
+  })
 
-  const requestedOrderAccount = Array.isArray(main.accountOrder)
-    ? main.accountOrder.find((id): id is string => typeof id === 'string' && Boolean(sourceAccounts[id]))
-    : undefined
+  const requestedOrderAccount = stringArray(main.accountOrder).find((id) => sourceAccounts[id])
   const requestedAccount =
     (typeof main.currentAccount === 'string' && sourceAccounts[main.currentAccount]
       ? main.currentAccount
@@ -192,30 +190,28 @@ function normalizeProfileState(main: UnknownRecord) {
     currentProfile = requestedProfile
   }
 
-  const accounts = Object.fromEntries(
+  const accounts: Record<string, UnknownRecord> = Object.fromEntries(
     Object.entries(sourceAccounts).map(([id, candidate]) => {
       const account = unknownRecord(candidate)
       const accountProfileId = typeof account.profileId === 'string' ? account.profileId : ''
       const profileId = profileAliases[accountProfileId] || accountProfileId
-      return [id, { ...account, profileId: profiles[profileId] ? profileId : currentProfile }]
+      return [id, { ...account, profileId: profiles[profileId] ? profileId : currentProfile }] as const
     })
   )
   const accountOrder: string[] = []
   const seenAccounts = new Set<string>()
-  ;[...(Array.isArray(main.accountOrder) ? main.accountOrder : []), ...Object.keys(accounts)].forEach(
-    (id) => {
-      if (typeof id === 'string' && accounts[id] && !seenAccounts.has(id)) {
-        seenAccounts.add(id)
-        accountOrder.push(id)
-      }
+  ;[...stringArray(main.accountOrder), ...Object.keys(accounts)].forEach((id) => {
+    if (accounts[id] && !seenAccounts.has(id)) {
+      seenAccounts.add(id)
+      accountOrder.push(id)
     }
-  )
+  })
 
   const normalized = { ...main, accounts, accountOrder, profiles, profileOrder, currentProfile }
   const currentAccount =
     requestedAccount && accounts[requestedAccount]?.profileId === currentProfile
       ? requestedAccount
-      : getProfileAccountIds(normalized as any, currentProfile)[0] || ''
+      : (accountOrder.find((id) => accounts[id]?.profileId === currentProfile) ?? '')
 
   return { ...normalized, currentAccount }
 }
@@ -265,8 +261,8 @@ export function migratePersistedState(
     )
   }
 
-  const raw = (value ?? {}) as UnknownRecord
-  const rawMain = (raw.main ?? {}) as UnknownRecord
+  const raw = unknownRecord(value)
+  const rawMain = unknownRecord(raw.main)
   const legacyMain =
     fromVersion >= 5
       ? rawMain
@@ -294,12 +290,16 @@ export function migratePersistedState(
 }
 
 function mergeRecord(current: unknown, persisted: unknown) {
-  return { ...(current as UnknownRecord), ...(persisted as UnknownRecord) }
+  return { ...unknownRecord(current), ...unknownRecord(persisted) }
 }
 
 function httpsImageSource(value: unknown) {
+  if (typeof value !== 'string') {
+    return ''
+  }
+
   try {
-    const url = new URL(String(value ?? '').trim())
+    const url = new URL(value.trim())
     return url.protocol === 'https:' ? url.toString() : ''
   } catch {
     return ''
@@ -361,8 +361,8 @@ export function mergePersistedState(persistedValue: unknown, current: CanonicalS
   }
 
   const persisted = migratePersistedState(persistedValue)
-  const saved = persisted.main as UnknownRecord
-  const currentMain = current.main as UnknownRecord
+  const saved = unknownRecord(persisted.main)
+  const currentMain = unknownRecord(current.main)
   const main: UnknownRecord = {
     ...currentMain,
     ...saved,
@@ -399,13 +399,13 @@ export function mergePersistedState(persistedValue: unknown, current: CanonicalS
   const mergedAccounts = persistedAccounts(unknownRecord(main.accounts))
   main.accounts = mergedAccounts
   const currentAccount = typeof main.currentAccount === 'string' ? main.currentAccount : ''
+  const currentProfile = typeof main.currentProfile === 'string' ? main.currentProfile : ''
   main.currentAccount =
-    unknownRecord(mergedAccounts[currentAccount]).profileId === main.currentProfile
+    unknownRecord(mergedAccounts[currentAccount]).profileId === currentProfile
       ? currentAccount
-      : getProfileAccountIds(
-          main as any,
-          typeof main.currentProfile === 'string' ? main.currentProfile : ''
-        )[0] || ''
+      : (Object.keys(mergedAccounts).find(
+          (id) => unknownRecord(mergedAccounts[id]).profileId === currentProfile
+        ) ?? '')
 
   return {
     ...current,

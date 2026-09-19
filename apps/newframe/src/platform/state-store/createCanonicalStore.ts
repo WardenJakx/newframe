@@ -12,22 +12,15 @@ import {
 import { mergePersistedState, migratePersistedState, selectPersistedState } from './persistence.js'
 import createInitialState from './state/index.js'
 
-type HydrationAwareStorage = PersistStorage<PersistedCanonicalState, void> & {
-  finishHydration(success: boolean): void
-}
-
-function hasFinishHydration(
-  storage: PersistStorage<PersistedCanonicalState, void>
-): storage is HydrationAwareStorage {
-  return 'finishHydration' in storage && typeof storage.finishHydration === 'function'
-}
-
 export default function createCanonicalStore(storage: PersistStorage<PersistedCanonicalState, void>) {
   let hydrationError: unknown
   let hydration: Promise<void> | undefined
   const finishHydration = (success: boolean) => {
-    if (hasFinishHydration(storage)) {
-      storage.finishHydration(success)
+    const hydratableStorage = storage as PersistStorage<PersistedCanonicalState> & {
+      finishHydration?(success: boolean): void
+    }
+    if (typeof hydratableStorage.finishHydration === 'function') {
+      hydratableStorage.finishHydration(success)
     }
   }
   const store = createStore<CanonicalStore>()(

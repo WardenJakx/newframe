@@ -243,7 +243,7 @@ describe('Trade', () => {
       throw new Error('Expected trade prepare command')
     }
     expect(prepareCommand).toEqual({
-      operationId: expect.any(String),
+      operationId: expect.any(String) as string,
       quoteId: 'quote-1',
       action: 'approve'
     })
@@ -408,7 +408,7 @@ describe('Trade', () => {
       throw new Error('Expected trade submit command')
     }
     expect(command).toEqual({
-      operationId: expect.any(String),
+      operationId: expect.any(String) as string,
       quoteId: 'permit-quote'
     })
     expect(JSON.stringify(command)).not.toMatch(/signature|typedData|payload|transaction|calldata/i)

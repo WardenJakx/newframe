@@ -110,7 +110,7 @@ export function createSafeHandler(options: {
     failNext(status: number, retryAfter?: string, offset?: number) {
       failure = { status, retryAfter, offset }
     },
-    async fetch(request: Request): Promise<Response> {
+    fetch: async (request: Request): Promise<Response> => {
       const url = new URL(request.url)
       requests.push(url.pathname + url.search)
       if (

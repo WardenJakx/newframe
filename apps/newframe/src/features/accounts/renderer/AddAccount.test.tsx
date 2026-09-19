@@ -9,6 +9,8 @@ import { walletState } from '../../../platform/state-sync/renderer/fixtures.test
 import { createAccountsCapabilityFake, type AccountsCapabilityFake } from './accountsCapability.test-support'
 import { AddAccount } from './AddAccount'
 
+const anyString = expect.any(String) as string
+
 const fixture = registerTestRuntimeFixture()
 let capability: AccountsCapabilityFake
 const address = (digit: string) => `0x${digit.repeat(40)}`
@@ -80,7 +82,7 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   await view.user.click(screen.getByRole('button', { name: 'Create account' }))
   const currentWatch = capability.createAccount.mock.calls.at(-1)![0]
   expect(currentWatch).toEqual({
-    operationId: expect.any(String),
+    operationId: anyString,
     source: 'watch',
     addressOrName: address('2'),
     name: 'Watch Account'
@@ -108,7 +110,7 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   await view.user.type(screen.getByLabelText('JSON backup file password'), 'file-secret')
   await view.user.click(screen.getByRole('button', { name: 'Create account' }))
   expect(capability.importSigner.mock.calls.at(-1)![0]).toEqual({
-    operationId: expect.any(String),
+    operationId: anyString,
     source: 'keystore',
     keystore: { version: 3, crypto: {} },
     keystorePassword: 'file-secret',
@@ -124,7 +126,7 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   await view.user.click(screen.getByRole('button', { name: 'Recovery phrase saved' }))
   await view.user.click(screen.getByRole('button', { name: 'Create account' }))
   expect(capability.importSigner.mock.calls.at(-1)![0]).toEqual({
-    operationId: expect.any(String),
+    operationId: anyString,
     source: 'phrase',
     phrase: 'one two three four',
     framePassword: '',
@@ -137,7 +139,7 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   await view.user.click(screen.getByRole('button', { name: 'Add address' }))
   await view.user.click(screen.getByRole('button', { name: 'Add Wallet 1' }))
   expect(capability.createAccount.mock.calls.at(-1)![0]).toEqual({
-    operationId: expect.any(String),
+    operationId: anyString,
     source: 'signer',
     signerId: 'seed-1',
     address: address('1'),
@@ -162,7 +164,7 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   await waitFor(() => expect(capability.startSignerSession.mock.calls.length).toBe(1))
   await view.user.click(screen.getByRole('button', { name: 'Next account page' }))
   expect(capability.refreshSigner.mock.calls.at(-1)![0]).toEqual({
-    operationId: expect.any(String),
+    operationId: anyString,
     signerId: 'ledger-1',
     accountCount: 10
   })
@@ -179,7 +181,7 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   const latticePair = capability.inputSignerSession.mock.calls.at(-1)![0]
   expect(latticePair).toEqual({
     operationId: latticeSession.operationId,
-    actionId: expect.any(String),
+    actionId: anyString,
     signerId: 'lattice-1',
     input: 'pair-code',
     value: 'PAIR-SECRET'
@@ -202,7 +204,7 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   await view.user.click(screen.getByRole('button', { name: 'Submit Trezor PIN' }))
   expect(capability.inputSignerSession.mock.calls.at(-1)![0]).toEqual({
     operationId: trezorSession.operationId,
-    actionId: expect.any(String),
+    actionId: anyString,
     signerId: 'trezor-1',
     input: 'pin',
     value: '1'
@@ -224,7 +226,7 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   await view.user.click(screen.getByRole('button', { name: 'Enter passphrase on Trezor' }))
   expect(capability.inputSignerSession.mock.calls.at(-1)![0]).toEqual({
     operationId: trezorSession.operationId,
-    actionId: expect.any(String),
+    actionId: anyString,
     signerId: 'trezor-1',
     input: 'device-passphrase'
   })
@@ -252,7 +254,7 @@ it('maps direct recovery-phrase and private-key imports to focused signer comman
   )
   await view.user.click(screen.getByRole('button', { name: 'Create account' }))
   expect(capability.importSigner.mock.calls.at(-1)?.[0]).toEqual({
-    operationId: expect.any(String),
+    operationId: anyString,
     source: 'phrase',
     phrase: 'one two three four five six seven eight nine ten eleven twelve',
     framePassword: '',
@@ -268,7 +270,7 @@ it('maps direct recovery-phrase and private-key imports to focused signer comman
   await view.user.type(screen.getByLabelText('Private key'), privateKey)
   await view.user.click(screen.getByRole('button', { name: 'Create account' }))
   expect(capability.importSigner.mock.calls.at(-1)?.[0]).toEqual({
-    operationId: expect.any(String),
+    operationId: anyString,
     source: 'private-key',
     privateKey,
     framePassword: '',
@@ -482,7 +484,7 @@ it('pairs AirGap public QR through its owned operation, then adds an address nor
   await waitFor(() => expect(camera.sessions[1].stopped).toBe(true))
   await view.user.click(screen.getByRole('button', { name: /Add 0xaaa/ }))
   expect(capability.createAccount).toHaveBeenCalledWith({
-    operationId: expect.any(String),
+    operationId: anyString,
     source: 'signer',
     signerId: nextSigner.id,
     address: address('a'),

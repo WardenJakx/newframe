@@ -1,6 +1,7 @@
 import { describe, expect, it, mock } from 'bun:test'
 
 import { createTestStore } from '../../../../test/support/createTestStore'
+import { DEFAULT_PROFILE_ID } from '../../../app/contracts/state/main'
 import { createAccountService } from './service'
 
 const first = '0x1111111111111111111111111111111111111111'
@@ -11,12 +12,40 @@ describe('account mutation service', () => {
     const store = createTestStore({
       main: {
         accounts: {
-          [first]: { id: first, address: first, signer: 'seed-1' },
-          [second]: { id: second, address: second, signer: '' }
+          [first]: {
+            id: first,
+            profileId: DEFAULT_PROFILE_ID,
+            address: first,
+            name: 'First',
+            lastSignerType: 'seed',
+            status: 'ok',
+            signer: 'seed-1',
+            requests: {},
+            created: ''
+          },
+          [second]: {
+            id: second,
+            profileId: DEFAULT_PROFILE_ID,
+            address: second,
+            name: 'Second',
+            lastSignerType: 'address',
+            status: 'ok',
+            signer: '',
+            requests: {},
+            created: ''
+          }
         },
         accountOrder: [first, second],
-        origins: { 'origin-1': {} },
-        permissions: { [first]: { origin: { handlerId: 'origin' } } }
+        origins: {
+          'origin-1': {
+            chain: { id: 1, type: 'ethereum' },
+            name: 'Origin',
+            session: { requests: 0, startedAt: 0, lastUpdatedAt: 0 }
+          }
+        },
+        permissions: {
+          [first]: { origin: { origin: 'origin-1', provider: false, handlerId: 'origin' } }
+        }
       }
     })
     const remove = mock((_accountId: string) => undefined)

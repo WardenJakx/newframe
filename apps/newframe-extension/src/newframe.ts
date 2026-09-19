@@ -69,7 +69,7 @@ function shimWeb3(provider: InjectedFrameProvider | undefined, appearAsMetaMask:
             `You are requesting the "${property as string}" property of window.web3 which no longer supported; use window.ethereum instead.`
           )
         }
-        return Reflect.get(target, property, ...args)
+        return Reflect.get(target, property, ...args) as unknown
       },
       set: (...args) => {
         console.warn(
@@ -89,12 +89,14 @@ function shimWeb3(provider: InjectedFrameProvider | undefined, appearAsMetaMask:
 }
 
 class Connection extends EventEmitter {
+  private readonly messageHandler: (event: MessageEvent) => void
+
   constructor() {
     super()
 
-    this.handleMessage = this.handleMessage.bind(this)
+    this.messageHandler = this.handleMessage.bind(this)
 
-    window.addEventListener('message', this.handleMessage)
+    window.addEventListener('message', this.messageHandler)
 
     setTimeout(() => this.emit('connect'), 0)
   }
@@ -118,7 +120,7 @@ class Connection extends EventEmitter {
   }
 
   close() {
-    window.removeEventListener('message', this.handleMessage)
+    window.removeEventListener('message', this.messageHandler)
   }
 }
 

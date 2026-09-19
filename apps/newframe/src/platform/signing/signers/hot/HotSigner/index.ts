@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { Common, createCustomCommon, Holesky, Mainnet, Sepolia } from '@ethereumjs/common'
+import { Common, createCustomCommon, Holesky, Mainnet, Sepolia, type ChainConfig } from '@ethereumjs/common'
 import { createTx } from '@ethereumjs/tx'
 import { bytesToHex } from '@ethereumjs/util'
 import { personalSign, recoverPersonalSignature, signTypedData } from '@metamask/eth-sig-util'
@@ -17,7 +17,7 @@ export type VaultAccess = { getKey(): string | null }
 
 const USER_DATA = app ? app.getPath('userData') : path.resolve(import.meta.dirname, '../.userData')
 const SIGNERS_PATH = path.resolve(USER_DATA, 'signers')
-const knownChains: Record<number, any> = { 1: Mainnet, 17000: Holesky, 11155111: Sepolia }
+const knownChains: Record<number, ChainConfig> = { 1: Mainnet, 17000: Holesky, 11155111: Sepolia }
 
 function chainConfig(chain: number, hardfork: string) {
   return chain in knownChains

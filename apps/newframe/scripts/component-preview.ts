@@ -150,7 +150,7 @@ createRoot(document.getElementById('preview')).render(<Preview />)
       ]
     })
     if (!result.success) {
-      throw new Error(`Preview build failed:\n${result.logs.join('\n')}`)
+      throw new Error(`Preview build failed:\n${result.logs.map((log) => log.message).join('\n')}`)
     }
     stopped.signal.throwIfAborted()
     const outputs = new Map(result.outputs.map((output) => [`/${relative(outdir, output.path)}`, output]))
@@ -227,9 +227,9 @@ createRoot(document.getElementById('preview')).render(<Preview />)
     await page.locator('html[data-preview-ready="true"]').waitFor({ state: 'attached' })
     assertHealthy()
     if (values.check) {
-      const check: { default?: (page: Page) => Promise<void> } = await import(
-        pathToFileURL(values.check).href
-      )
+      const check = (await import(pathToFileURL(values.check).href)) as unknown as {
+        default?: (page: Page) => Promise<void>
+      }
       if (typeof check.default !== 'function') {
         throw new Error('--check must default-export an async (page: Page) => void function')
       }

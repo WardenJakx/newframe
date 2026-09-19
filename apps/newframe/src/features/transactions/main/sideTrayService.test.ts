@@ -54,7 +54,7 @@ describe('side tray transaction service', () => {
       )
     ).resolves.toEqual({ ok: true, transactionHash: `0x${'a'.repeat(64)}` })
 
-    expect(initOrigin).toHaveBeenCalledWith(expect.any(String), {
+    expect(initOrigin).toHaveBeenCalledWith(expect.any(String) as unknown, {
       name: 'newframe-internal',
       chain: { id: 1, type: 'ethereum' }
     })
@@ -65,7 +65,7 @@ describe('side tray transaction service', () => {
         jsonrpc: '2.0',
         method: 'eth_sendTransaction',
         chainId: '0x1',
-        _origin: expect.any(String),
+        _origin: expect.any(String) as unknown,
         params: [
           {
             to: target,
@@ -144,7 +144,7 @@ describe('side tray transaction service', () => {
         method: 'eth_signTypedData_v4',
         chainId: '0x1',
         params: [address, typedData],
-        _origin: expect.any(String)
+        _origin: expect.any(String) as unknown
       }),
       principal
     )

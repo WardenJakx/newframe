@@ -25,7 +25,7 @@ interface FooterProps {
   notify: RequestCommandNotifier
   shared: FooterSharedState
   step: RequestViewStep
-  onContinue(): void
+  onContinue: () => void
 }
 
 const footerRecipe = cva({

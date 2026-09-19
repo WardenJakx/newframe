@@ -99,8 +99,8 @@ function integrationFixture({
   chains.send = rpc.send.bind(rpc)
   const accounts = new Accounts(f.store, {
     chainRpc: {
-      send: rpc.send,
-      sendAsync: rpc.sendAsync,
+      send: (payload, callback) => rpc.send(payload, callback),
+      sendAsync: (payload, callback) => rpc.sendAsync(payload, callback),
       getL1GasCost: rpc.getL1GasCost,
       on() {
         return undefined

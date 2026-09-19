@@ -20,12 +20,12 @@ const revealMock = {
 }
 const fetchContractMock = mock()
 const simulateTransactionEffectsMock = mock()
-type TestRpcRespond = (response: { error?: EVMError; result?: unknown }) => void
 const providerMock = {
-  on: mock((_event: string | symbol, _listener: (...args: never[]) => void) => undefined),
-  off: mock((_event: string | symbol, _listener: (...args: never[]) => void) => undefined),
-  send: mock((_payload: RPCRequestPayload, _respond: TestRpcRespond): void => undefined),
-  getL1GasCost: mock()
+  on: mock<(event: string | symbol, listener: (...args: never[]) => void) => void>(),
+  off: mock<(event: string | symbol, listener: (...args: never[]) => void) => void>(),
+  send: mock<(payload: RPCRequestPayload, callback: RPCRequestCallback) => void>(),
+  sendAsync: mock<(payload: RPCRequestPayload, callback: Callback<RPCResponsePayload>) => void>(),
+  getL1GasCost: mock(async (_transaction: TransactionData) => 0n)
 }
 const signersMock = { get: mock() }
 const windowsMock = { showTray: mock() }
@@ -127,7 +127,7 @@ function createAccount(profileActive = true) {
     accountState,
     accounts as any,
     store,
-    providerMock as any,
+    providerMock,
     { simulateTransactionEffects: simulateTransactionEffectsMock },
     nameResolution,
     revealMock,
@@ -340,11 +340,13 @@ describe('#addRequest', () => {
 describe('creation-block listener lifecycle', () => {
   it('removes the provider listener after resolving the creation block', () => {
     const listener = providerMock.on.mock.calls.find(([event]) => event === 'connect')?.[1]
-    providerMock.send.mockImplementationOnce((_payload, respond) => respond({ result: '0x64' }))
-
     if (!listener) {
-      throw new Error('missing connect listener')
+      throw new Error('Expected a provider connect listener')
     }
+    providerMock.send.mockImplementationOnce((payload, respond) =>
+      respond({ id: payload.id, jsonrpc: payload.jsonrpc, result: '0x64' })
+    )
+
     listener()
 
     expect(account.created).toMatch(/^100:/)
@@ -353,6 +355,9 @@ describe('creation-block listener lifecycle', () => {
 
   it('removes the provider listener when the account handle closes', () => {
     const listener = providerMock.on.mock.calls.find(([event]) => event === 'connect')?.[1]
+    if (!listener) {
+      throw new Error('Expected a provider connect listener')
+    }
 
     account.close()
 
@@ -361,13 +366,17 @@ describe('creation-block listener lifecycle', () => {
 
   it('ignores a late creation-block response after canonical removal', () => {
     const listener = providerMock.on.mock.calls.find(([event]) => event === 'connect')?.[1]
-    providerMock.send.mockImplementationOnce((_payload, respond) => respond({ result: '0x64' }))
+    if (!listener) {
+      throw new Error('Expected a provider connect listener')
+    }
+    providerMock.send.mockImplementationOnce((payload, respond) =>
+      respond({ id: payload.id, jsonrpc: payload.jsonrpc, result: '0x64' })
+    )
     store.getState().removeAccount(account.id)
 
-    if (!listener) {
-      throw new Error('missing connect listener')
-    }
-    expect(() => listener()).not.toThrow()
+    expect(() => {
+      listener()
+    }).not.toThrow()
     expect(providerMock.off).toHaveBeenCalledWith('connect', listener)
   })
 

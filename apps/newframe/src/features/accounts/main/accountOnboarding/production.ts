@@ -10,6 +10,14 @@ import type Signer from '../../../../platform/signing/signers/Signer/index.js'
 import { randomLetters } from '../../../../shared/domain/text.js'
 import type { AccountOnboardingPorts, OnboardingSigner } from './service.js'
 
+interface PairingSigner {
+  pair(pairCode: string): Promise<void>
+}
+
+function isPairingSigner(signer: Signer): signer is Signer & PairingSigner {
+  return 'pair' in signer && typeof signer.pair === 'function'
+}
+
 export interface ProductionAccountOnboardingExternal {
   signers: {
     createFromPhrase(phrase: string, password: string, callback: OneResultCallback<Signer>): void
@@ -41,10 +49,6 @@ export interface ProductionAccountOnboardingExternal {
   }
 }
 
-function canPairLattice(signer: Signer): signer is Signer & { pair(pairCode: string): Promise<void> } {
-  return 'pair' in signer && typeof signer.pair === 'function'
-}
-
 export function createProductionAccountOnboardingAdapters(
   external: ProductionAccountOnboardingExternal
 ): Pick<AccountOnboardingPorts, 'hardware' | 'keystore' | 'secrets' | 'signers'> & {
@@ -52,7 +56,7 @@ export function createProductionAccountOnboardingAdapters(
 } {
   const callbacks = createOneResultCallbackBoundary()
   return {
-    dispose: callbacks.dispose,
+    dispose: () => callbacks.dispose(),
     hardware: {
       configureLattice(deviceId, deviceName) {
         external.store.getState().updateLattice(deviceId, {
@@ -78,7 +82,7 @@ export function createProductionAccountOnboardingAdapters(
       },
       async pairLattice(signerId, pairCode) {
         const signer = external.signers.get(signerId)
-        if (signer?.type !== 'lattice' || !canPairLattice(signer)) {
+        if (signer?.type !== 'lattice' || !isPairingSigner(signer)) {
           return false
         }
         await signer.pair(pairCode)

@@ -94,7 +94,7 @@ export function createAddressChainUsageAdapter(
       })
     )
   }
-  addressChainUsage.dispose = callbacks.dispose
+  addressChainUsage.dispose = () => callbacks.dispose()
   return addressChainUsage
 }
 
@@ -112,6 +112,6 @@ export function createAccountSelectionAdapter(
     }
     return account
   }
-  selectAccount.dispose = callbacks.dispose
+  selectAccount.dispose = () => callbacks.dispose()
   return selectAccount
 }

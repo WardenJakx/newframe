@@ -87,7 +87,7 @@ const proxyPrincipal = createMainPrincipal('provider-proxy', ['wallet:internal-s
 
 interface RequiredApproval {
   type: ApprovalType
-  data: any
+  data: unknown
 }
 
 interface TransactionMetadata {
@@ -100,6 +100,24 @@ type ProviderSubscriptionType = SubscriptionType | 'chainChanged' | 'networkChan
 type AccountHandle = NonNullable<ReturnType<AccountRequestPort['getFrameAccount']>>
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value)
+
+function arrayValue(value: unknown): readonly unknown[] {
+  return Array.isArray(value) ? (value as unknown[]) : []
+}
+
+function recordValue(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === 'object' ? (value as Record<string, unknown>) : undefined
+}
+
+function typedDataValue(value: unknown): LegacyTypedData | TypedData | undefined {
+  if (Array.isArray(value)) {
+    return value as LegacyTypedData
+  }
+  if (recordValue(value)?.message) {
+    return value as TypedData
+  }
+  return undefined
+}
 
 export interface ProviderDependencies {
   accounts: AccountRequestPort
@@ -186,12 +204,18 @@ export class Provider extends EventEmitter {
   private readonly handleProxySend = (payload: RPCRequestPayload) => {
     const { id, method } = payload
     let settled = false
-    const respond = ({ error, result }: RPCResponsePayload) => {
+    const respond = (response: RPCResponsePayload) => {
       if (settled) {
         return
       }
       settled = true
-      this.proxy.emit('payload', { id, method, error, result })
+      const projected: { id: string | number; method: string; error?: EVMError; result?: unknown } = {
+        id,
+        method,
+        error: response.error,
+        result: response.result
+      }
+      this.proxy.emit('payload', projected)
     }
     Promise.resolve(this.send(payload, respond, proxyPrincipal)).catch((error: unknown) => {
       log.error('Could not handle proxy request', error)
@@ -322,12 +346,12 @@ export class Provider extends EventEmitter {
       .forEach((subscription) => this.sendSubscriptionData(subscription.id, netId))
   }
 
-  private sendSubscriptionData(subscription: string, result: any) {
-    const payload: RPC.Susbcription.Response = {
+  private sendSubscriptionData(subscription: string, result: unknown) {
+    const payload = {
       jsonrpc: '2.0',
       method: 'eth_subscription',
       params: { subscription, result }
-    }
+    } as const
 
     this.proxy.emit('payload', payload)
     this.emit('data:subscription', payload)
@@ -377,7 +401,7 @@ export class Provider extends EventEmitter {
           'typedMessage' in value ? value.typedMessage : undefined,
           value.authorization
         ],
-        (_key, item) => (typeof item === 'function' ? undefined : item)
+        (_key, item: unknown) => (typeof item === 'function' ? undefined : item)
       )
     const expected = identity(request)
     const typed = 'typedMessage' in request ? (request as SignTypedDataRequest).typedMessage : undefined
@@ -406,7 +430,9 @@ export class Provider extends EventEmitter {
   }
 
   approveSign(req: AccountRequest, cb: Callback<string>, context?: SigningUiContext) {
-    const [address, rawMessage] = req.payload.params
+    const [addressValue, rawMessageValue] = arrayValue(req.payload.params)
+    const address = typeof addressValue === 'string' ? addressValue : ''
+    const rawMessage = typeof rawMessageValue === 'string' ? rawMessageValue : ''
     const message = encodePersonalSignMessage(rawMessage)
 
     this.accounts.signMessage(
@@ -432,10 +458,11 @@ export class Provider extends EventEmitter {
 
   approveSignTypedData(req: SignTypedDataRequest, cb: Callback<string>, context?: SigningUiContext) {
     const typedMessage = structuredClone(req.typedMessage)
-    const [address] = req.payload.params
-    if (typeof address !== 'string') {
+    const addressValue: unknown = req.payload.params[0]
+    if (typeof addressValue !== 'string') {
       return cb(new Error('TypedData request missing address'))
     }
+    const address = addressValue
 
     this.accounts.signTypedData(
       address,
@@ -593,7 +620,7 @@ export class Provider extends EventEmitter {
         payload,
         (response) => {
           if (response.error) {
-            log.warn(`error estimating gas for tx to ${txParams.to}: ${response.error}`)
+            log.warn(`error estimating gas for tx to ${txParams.to}: ${response.error.message}`)
             return reject(response.error)
           }
 
@@ -760,8 +787,8 @@ export class Provider extends EventEmitter {
     }
 
     const account = this.accounts.getFrameAccount(principal.accountId)
-    const params = payload.params || []
-    const orderedParams =
+    const params = arrayValue(payload.params)
+    const orderedParams: readonly unknown[] =
       isAddress(params[0]) && !isAddress(params[1]) ? [...params] : [params[1], params[0], ...params.slice(2)]
     const [requestedAddress, rawMessage] = orderedParams
 
@@ -824,10 +851,11 @@ export class Provider extends EventEmitter {
     }
 
     const account = this.accounts.getFrameAccount(principal.accountId)
-    const orderedParams =
-      isAddress(rawPayload.params[1]) && !isAddress(rawPayload.params[0])
-        ? [rawPayload.params[1], rawPayload.params[0], ...rawPayload.params.slice(2)]
-        : [...rawPayload.params]
+    const rawParams = arrayValue(rawPayload.params)
+    const orderedParams: readonly unknown[] =
+      isAddress(rawParams[1]) && !isAddress(rawParams[0])
+        ? [rawParams[1], rawParams[0], ...rawParams.slice(2)]
+        : [...rawParams]
     const [requestedAddress, rawTypedData, ...additionalParams] = orderedParams
 
     if (!account || typeof requestedAddress !== 'string' || !rawTypedData) {
@@ -839,19 +867,20 @@ export class Provider extends EventEmitter {
       return resError('Agent session is not authorized for the typed-data account', rawPayload, res)
     }
 
-    let typedData = rawTypedData
-    if (typeof typedData === 'string') {
+    let parsedTypedData: unknown = rawTypedData
+    if (typeof parsedTypedData === 'string') {
       try {
-        typedData = JSON.parse(typedData) as LegacyTypedData | TypedData
+        parsedTypedData = JSON.parse(parsedTypedData) as unknown
       } catch {
         return resError('Malformed typed data', rawPayload, res)
       }
     }
 
-    if (!isRecord(typedData) || !typedData.message) {
+    const typedData = typedDataValue(parsedTypedData)
+    if (!typedData || Array.isArray(typedData)) {
       return resError('Typed data missing message', rawPayload, res)
     }
-    const validatedTypedData = typedData as TypedData
+    const validatedTypedData = typedData
 
     let explicitVersion: SignTypedDataVersion | undefined
     if (rawPayload.method.endsWith('_v3')) {
@@ -1061,7 +1090,7 @@ export class Provider extends EventEmitter {
   }
 
   _personalSign(payload: RPCRequestPayload, res: RPCRequestCallback, principal: TrustedPrincipal) {
-    const params = payload.params || []
+    const params = arrayValue(payload.params)
 
     if (isAddress(params[0]) && !isAddress(params[1])) {
       // personal_sign requests expect the first parameter to be the message and the second
@@ -1075,7 +1104,9 @@ export class Provider extends EventEmitter {
   }
 
   sign(payload: RPCRequestPayload, res: RPCRequestCallback, principal: TrustedPrincipal) {
-    const [from, message] = payload.params || []
+    const [fromValue, messageValue] = arrayValue(payload.params)
+    const from = typeof fromValue === 'string' ? fromValue : ''
+    const message = typeof messageValue === 'string' ? messageValue : ''
     const currentAccount = this.accounts.current()
 
     if (!message) {
@@ -1109,46 +1140,46 @@ export class Provider extends EventEmitter {
     principal: TrustedPrincipal
   ) {
     // ensure param order is [address, data, ...] regardless of version
-    const orderedParams =
-      isAddress(rawPayload.params[1]) && !isAddress(rawPayload.params[0])
-        ? [rawPayload.params[1], rawPayload.params[0], ...rawPayload.params.slice(2)]
-        : [...rawPayload.params]
+    const rawParams = arrayValue(rawPayload.params)
+    const orderedParams: unknown[] =
+      isAddress(rawParams[1]) && !isAddress(rawParams[0])
+        ? [rawParams[1], rawParams[0], ...rawParams.slice(2)]
+        : [...rawParams]
 
     const payload = {
       ...rawPayload,
       params: orderedParams
     }
 
-    const [from = '', rawTypedData, ...additionalParams] = payload.params
-    let typedData = rawTypedData
+    const [fromValue, rawTypedData, ...additionalParams] = payload.params
+    const from = typeof fromValue === 'string' ? fromValue : ''
+    let parsedTypedData: unknown = rawTypedData
 
-    if (!typedData) {
+    if (!parsedTypedData) {
       return resError(`Missing typed data`, payload, res)
     }
 
     // HACK: Standards clearly say, that second param is an object but it seems like in the wild it can be a JSON-string.
-    if (typeof typedData === 'string') {
+    if (typeof parsedTypedData === 'string') {
       try {
-        typedData = JSON.parse(typedData) as LegacyTypedData | TypedData
-        payload.params = [from, typedData, ...additionalParams]
+        parsedTypedData = JSON.parse(parsedTypedData) as unknown
       } catch (e) {
         return resError('Malformed typed data', payload, res)
       }
     }
 
-    if (!Array.isArray(typedData) && (!isRecord(typedData) || !typedData.message)) {
+    const typedData = typedDataValue(parsedTypedData)
+    if (!typedData) {
       return resError('Typed data missing message', payload, res)
     }
-    const validatedTypedData = typedData as LegacyTypedData | TypedData
+    payload.params = [from, typedData, ...additionalParams]
+    const validatedTypedData = typedData
 
     // no explicit version called so we choose one which best fits the data
     if (!version) {
       version = getVersionFromTypedData(validatedTypedData)
     }
 
-    if (typeof from !== 'string') {
-      return resError('Sign request missing account', payload, res)
-    }
     const targetAccount = this.accounts.get(from.toLowerCase())
 
     if (!targetAccount) {
@@ -1378,7 +1409,7 @@ export class Provider extends EventEmitter {
         throw new Error('Params not supplied')
       }
 
-      const requestedChainId = params[0].chainId
+      const requestedChainId = recordValue(params[0])?.chainId
       if (typeof requestedChainId !== 'string' || !/^0x[0-9a-f]+$/i.test(requestedChainId)) {
         throw new Error('Invalid chain id')
       }

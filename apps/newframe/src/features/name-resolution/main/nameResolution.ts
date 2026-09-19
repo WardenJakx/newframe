@@ -2,6 +2,7 @@ import EventEmitter from 'events'
 
 import { GNS_CONTRACT, gnsAbi, isGwei, normalizeName } from '@donnoh/gns-utils'
 import { Interface, ZeroAddress, dnsEncode, ensNormalize, getAddress, isAddress, namehash } from 'ethers'
+import type { Result } from 'ethers'
 
 import { createProxyProvider } from '../../connections/main/provider/connection.js'
 import type { ProviderProxyConnection } from '../../connections/main/provider/proxy.js'
@@ -17,6 +18,26 @@ const universalResolverInterface = new Interface([
 ])
 const resolverInterface = new Interface(['function addr(bytes32 node) view returns (address)'])
 const gnsInterface = new Interface(gnsAbi)
+
+function resultValue(result: Result, index: number): unknown {
+  return result[index] as unknown
+}
+
+function decodedString(result: Result, index: number, label: string) {
+  const value = resultValue(result, index)
+  if (typeof value !== 'string') {
+    throw new Error(`Invalid ${label} response`)
+  }
+  return value
+}
+
+function decodedBigInt(result: Result, index: number, label: string) {
+  const value = resultValue(result, index)
+  if (typeof value !== 'bigint') {
+    throw new Error(`Invalid ${label} response`)
+  }
+  return value
+}
 
 export interface NameResolutionProviderPort {
   setChain(chainId: string): void
@@ -114,30 +135,37 @@ export function createNameResolutionService(
     return !!input && (isGwei(input) || !input.includes('.'))
   }
 
-  async function resolveGnsAddress(name: string) {
+  async function resolveGnsAddress(name: string): Promise<string> {
     try {
-      const [tokenId] = await readGns('computeId', [normalizeName(name)])
+      const computeResult = await readGns('computeId', [normalizeName(name)])
+      const tokenId = decodedBigInt(computeResult, 0, 'GNS computeId')
       if (tokenId === 0n) {
         return ''
       }
 
-      const [address] = await readGns('resolve', [tokenId])
+      const resolveResult = await readGns('resolve', [tokenId])
+      const address = decodedString(resolveResult, 0, 'GNS resolve')
       return address === ZeroAddress ? '' : getAddress(address)
     } catch {
       return ''
     }
   }
 
-  async function resolveEnsAddress(name: string) {
+  async function resolveEnsAddress(name: string): Promise<string> {
     const normalized = ensNormalize(name)
     const node = namehash(normalized)
     const data = resolverInterface.encodeFunctionData('addr', [node])
-    const [result] = await readUniversalResolver('resolveWithGateways', [
+    const universalResult = await readUniversalResolver('resolveWithGateways', [
       dnsEncode(normalized),
       data,
       GATEWAYS
     ])
-    const [address] = resolverInterface.decodeFunctionResult('addr', result)
+    const result = decodedString(universalResult, 0, 'ENS universal resolver')
+    const address = decodedString(
+      resolverInterface.decodeFunctionResult('addr', result),
+      0,
+      'ENS address resolver'
+    )
 
     return address === ZeroAddress ? '' : getAddress(address)
   }
@@ -150,34 +178,34 @@ export function createNameResolutionService(
     return isGnsName(input) ? resolveGnsAddress(input) : resolveEnsAddress(input)
   }
 
-  async function reverseGnsLookup(address: string) {
+  async function reverseGnsLookup(address: string): Promise<string> {
     try {
       if (!isAddress(address)) {
         return ''
       }
-      const [primary] = await readGns('reverseResolve', [getAddress(address)])
-      return primary ?? ''
+      const result = await readGns('reverseResolve', [getAddress(address)])
+      return decodedString(result, 0, 'GNS reverseResolve')
     } catch {
       return ''
     }
   }
 
-  async function reverseEnsLookup(address: string) {
+  async function reverseEnsLookup(address: string): Promise<string> {
     if (!isAddress(address)) {
       return ''
     }
-    const [primary] = await readUniversalResolver('reverseWithGateways', [
+    const result = await readUniversalResolver('reverseWithGateways', [
       getAddress(address),
       ETH_COIN_TYPE,
       GATEWAYS
     ])
-    return primary
+    return decodedString(result, 0, 'ENS reverse resolver')
   }
 
   async function reverseLookup(address: string) {
-    const gnsName = await reverseGnsLookup(address)
+    const gnsName: unknown = await reverseGnsLookup(address)
     if (gnsName) {
-      return gnsName
+      return typeof gnsName === 'string' ? gnsName : ''
     }
     return reverseEnsLookup(address)
   }

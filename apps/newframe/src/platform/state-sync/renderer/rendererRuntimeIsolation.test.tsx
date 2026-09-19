@@ -96,12 +96,8 @@ describe('renderer runtime isolation', () => {
 
     await left.client.executeCommand({ type: 'tray.close' })
     await right.client.executeCommand({ type: 'sidetray.close' })
-    expect(left.client.executeCommand.mock.calls.map(([command]) => command)).toEqual([
-      { type: 'tray.close' }
-    ])
-    expect(right.client.executeCommand.mock.calls.map(([command]) => command)).toEqual([
-      { type: 'sidetray.close' }
-    ])
+    expect(left.client.executeCommand.mock.calls).toEqual([[{ type: 'tray.close' }]])
+    expect(right.client.executeCommand.mock.calls).toEqual([[{ type: 'sidetray.close' }]])
 
     await Promise.all([stopLeft(), stopRight()])
     expect(left.client.disconnectState.mock.calls).toEqual([[]])

@@ -1,25 +1,30 @@
 import { describe, expect, it, mock } from 'bun:test'
 
 import { createTestStore } from '../../../../test/support/createTestStore'
+import { createBuiltInNetworks } from '../domain/chain/catalog'
 import { createNetworkService } from './service'
 
 describe('network mutation service', () => {
   it('verifies activation and RPC preconditions before canonical mutation', async () => {
+    const builtIns = createBuiltInNetworks()
+    const mainnet = builtIns[1]
+    const optimism = builtIns[10]
+    if (!mainnet || !optimism) {
+      throw new Error('Expected built-in network fixtures')
+    }
     const store = createTestStore({
       main: {
         networks: {
           ethereum: {
             1: {
-              id: 1,
-              type: 'ethereum',
-              on: true,
+              ...mainnet,
               connection: {
-                primary: { current: 'local', custom: '', on: false },
-                secondary: { current: 'local', custom: '', on: false }
+                primary: { ...mainnet.connection.primary, current: 'local', custom: '', on: false },
+                secondary: { ...mainnet.connection.secondary, current: 'local', custom: '', on: false }
               }
             },
-            10: { id: 10, type: 'ethereum', on: true },
-            20: { id: 20, type: 'ethereum', on: true }
+            10: optimism,
+            20: { ...optimism, id: 20, name: 'Removable test network' }
           }
         }
       }

@@ -169,7 +169,10 @@ export function requestPermissions(payload: JSONRPCRequestPayload, res: RPCReque
 }
 
 export function ecRecover(payload: JSONRPCRequestPayload, res: RPCRequestCallback) {
-  const [message, signed] = payload.params
+  const messageValue: unknown = payload.params[0]
+  const signedValue: unknown = payload.params[1]
+  const message = typeof messageValue === 'string' ? messageValue : ''
+  const signed = typeof signedValue === 'string' ? signedValue : ''
 
   getSignedAddress(signed, message, (err, verifiedAddress) => {
     if (err) {

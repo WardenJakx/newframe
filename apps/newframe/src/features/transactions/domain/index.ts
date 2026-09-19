@@ -174,7 +174,8 @@ function payloadValue(payload: unknown) {
   if (!payload || typeof payload !== 'object' || !('params' in payload) || !Array.isArray(payload.params)) {
     return undefined
   }
-  const first = payload.params[0]
+  const params: unknown[] = payload.params
+  const first = params[0]
   if (!first || typeof first !== 'object') {
     return undefined
   }

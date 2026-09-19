@@ -1,9 +1,24 @@
-import { BrowserProvider, hexlify, toUtf8Bytes } from 'ethers'
+import { BrowserProvider, hexlify, isAddress, toUtf8Bytes } from 'ethers'
 
 import createFrameProvider from '../../../apps/newframe/src/features/connections/main/provider/connection.ts'
 
 let frame: ReturnType<typeof createFrameProvider>
 let provider: BrowserProvider
+
+function requireString(value: unknown, label: string) {
+  if (typeof value !== 'string') {
+    throw new Error(`${label} must be a string`)
+  }
+  return value
+}
+
+function requireAddress(value: unknown, label: string) {
+  const address = requireString(value, label)
+  if (!isAddress(address)) {
+    throw new Error(`${label} must be an address`)
+  }
+  return address
+}
 
 const waitForFrameConnect = () =>
   new Promise<void>((resolve, reject) => {
@@ -43,8 +58,14 @@ async function main() {
     const hexMessage = hexlify(toUtf8Bytes(message))
     const signer = await getFirstSigner()
     const address = await signer.getAddress()
-    const signed = await provider.send('personal_sign', [hexMessage, address])
-    const result = await provider.send('personal_ecRecover', [hexMessage, signed])
+    const signed = requireString(
+      await provider.send('personal_sign', [hexMessage, address]),
+      'personal_sign result'
+    )
+    const result = requireAddress(
+      await provider.send('personal_ecRecover', [hexMessage, signed]),
+      'personal_ecRecover result'
+    )
 
     assertRecovered(result, address, 'personal_sign')
     console.log(JSON.stringify({ address, msg: message, sig: signed, version: '2' }))
@@ -55,8 +76,11 @@ async function main() {
     const hexMessage = hexlify(toUtf8Bytes(message))
     const signer = await getFirstSigner()
     const address = await signer.getAddress()
-    const signed = await provider.send('eth_sign', [address, hexMessage])
-    const result = await provider.send('personal_ecRecover', [hexMessage, signed])
+    const signed = requireString(await provider.send('eth_sign', [address, hexMessage]), 'eth_sign result')
+    const result = requireAddress(
+      await provider.send('personal_ecRecover', [hexMessage, signed]),
+      'personal_ecRecover result'
+    )
 
     assertRecovered(result, address, 'eth_sign')
     console.log(JSON.stringify({ address, msg: message, sig: signed, version: '2' }))

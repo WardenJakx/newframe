@@ -36,8 +36,10 @@ import type { AccountsRuntime } from './runtime.js'
 
 function cloneSerializable<T>(value: T): T {
   return JSON.parse(
-    JSON.stringify(value, (_key, nextValue) => (typeof nextValue === 'function' ? undefined : nextValue))
-  )
+    JSON.stringify(value, (_key, nextValue: unknown) =>
+      typeof nextValue === 'function' ? undefined : nextValue
+    )
+  ) as T
 }
 
 interface SignerOptions {

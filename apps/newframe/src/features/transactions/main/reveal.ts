@@ -29,12 +29,11 @@ type RecognitionContext = {
   account?: string
 }
 
-function hasToHexString(value: unknown): value is { toHexString(): string } {
+function isHexStringConvertible(value: unknown): value is { toHexString(): string } {
   return (
     typeof value === 'object' &&
     value !== null &&
-    'toHexString' in value &&
-    typeof value.toHexString === 'function'
+    typeof (value as { toHexString?: unknown }).toHexString === 'function'
   )
 }
 
@@ -42,7 +41,7 @@ function toHexAmount(value: unknown) {
   if (typeof value === 'bigint') {
     return addHexPrefix(value.toString(16))
   }
-  if (hasToHexString(value)) {
+  if (isHexStringConvertible(value)) {
     return value.toHexString()
   }
   const scalar = ['string', 'number', 'boolean'].includes(typeof value) ? value : 0

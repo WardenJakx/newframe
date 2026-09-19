@@ -22,7 +22,7 @@ export function createProductionPlatformAdapters(
     openExternal,
     updater: external.updater,
     windows: {
-      close: external.windows.close,
+      close: (event) => external.windows.close(event),
       handleTrayMouseout: external.windows.handleTrayMouseout,
       inspect: (event, x, y) => {
         if (process.env.NODE_ENV === 'development') {

@@ -59,7 +59,7 @@ export default class LedgerSignerAdapter extends SignerAdapter {
     this.unsubscribeDerivation?.()
     this.unsubscribeDerivation = this.store.subscribe(
       (state) => {
-        const settings = state.main.ledger as { derivation: Derivation; liveAccountLimit: number }
+        const settings = state.main.ledger
         return [settings.derivation, settings.liveAccountLimit] as const
       },
       ([ledgerDerivation, liveAccountLimit]) => {
@@ -150,8 +150,12 @@ export default class LedgerSignerAdapter extends SignerAdapter {
     this.disconnections = pendingDisconnections
 
     detachedLedgers.forEach((ledger) => this.handleDisconnectedDevice(ledger))
-    reconnections.forEach((disconnection) => this.handleReconnectedDevice(disconnection))
-    attachedDevices.forEach((device) => this.handleAttachedDevice(device))
+    reconnections.forEach((disconnection) => {
+      void this.handleReconnectedDevice(disconnection)
+    })
+    attachedDevices.forEach((device) => {
+      void this.handleAttachedDevice(device)
+    })
   }
 
   private async handleAttachedDevice(device: ConnectedDevice) {

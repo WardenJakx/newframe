@@ -9,6 +9,7 @@ export interface JsonRpcPayload {
   params?: JsonRpcParams
   chainId?: string
   __frameOrigin?: string
+  __frameFavicon?: string
   __extensionConnecting?: boolean
 }
 
@@ -18,11 +19,7 @@ export interface JsonRpcResponse {
   result?: unknown
   error?: unknown
   method?: string
-  type?: string
-  params?: {
-    subscription: string
-    result: unknown
-  }
+  params?: readonly unknown[] | { subscription: string; result: unknown }
 }
 
 interface PendingRequest {
@@ -60,6 +57,29 @@ const providerEvents: ProviderEvent[] = [
   'accountsChanged',
   'assetsChanged'
 ]
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function isJsonRpcResponse(value: unknown): value is JsonRpcResponse {
+  if (!isRecord(value) || (!('id' in value) && !('method' in value))) {
+    return false
+  }
+  if (value.id !== undefined && typeof value.id !== 'number' && typeof value.id !== 'string') {
+    return false
+  }
+  if (value.jsonrpc !== undefined && value.jsonrpc !== '2.0') {
+    return false
+  }
+  if (value.method !== undefined && typeof value.method !== 'string') {
+    return false
+  }
+  if (value.params === undefined || Array.isArray(value.params)) {
+    return true
+  }
+  return isRecord(value.params) && typeof value.params.subscription === 'string'
+}
 
 function normalizeParams(params?: JsonRpcParams) {
   return params ? [...params] : []
@@ -289,10 +309,16 @@ export class RawFrameConnection extends EventEmitter {
     }
 
     try {
-      const payload = JSON.parse(message.data)
-      const payloads = Array.isArray(payload) ? payload : [payload]
+      const payload: unknown = JSON.parse(message.data)
+      const payloads: unknown[] = Array.isArray(payload) ? payload : [payload]
 
-      payloads.forEach((load) => this.emit('payload', load))
+      payloads.forEach((load) => {
+        if (isJsonRpcResponse(load)) {
+          this.emit('payload', load)
+        } else {
+          this.handleError(new Error('Received an invalid JSON-RPC payload'))
+        }
+      })
     } catch (e) {
       this.handleError(e)
     }
@@ -520,7 +546,11 @@ export default class FrameBackgroundProvider extends EventEmitter {
       return
     }
 
-    if (!payload.method?.includes('_subscription') || !payload.params) {
+    if (
+      !payload.method?.includes('_subscription') ||
+      !isRecord(payload.params) ||
+      typeof payload.params.subscription !== 'string'
+    ) {
       return
     }
 
