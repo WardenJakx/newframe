@@ -15,6 +15,35 @@ import { handleLocalTradeRequest, resetLocalTradeState, subscribeLocalTradeOrder
 const FUNDER_ADDRESS = '0x0000000000000000000000000000000000000001'
 const ZERO_ALLOWANCE = `0x${'0'.repeat(64)}`
 
+type QuoteBody = Record<string, unknown> & {
+  actions: {
+    approval: { kind: string } | null
+    wrap: unknown
+  }
+  evm: {
+    approveTx: unknown
+    orderTypedData: string
+  }
+  from: { asset: string }
+  receiveAsset: { chainId: number }
+  spentAsset: { chainId: number }
+  steps: Record<string, unknown>[]
+  to: { asset: string }
+}
+
+type OrderBody = Record<string, unknown> & {
+  contraAsset: { chain: { id: string } }
+  targetAsset: { chain: { id: string } }
+}
+
+type SubmittedOrderBody = Record<string, unknown> & {
+  order: OrderBody
+}
+
+type OrderListBody = Record<string, unknown> & {
+  orders: OrderBody[]
+}
+
 function quoteRequest(overrides: Record<string, unknown> = {}) {
   return {
     contraAsset: FLASH_USDC_ADDRESS,
@@ -34,7 +63,7 @@ function quoteRequest(overrides: Record<string, unknown> = {}) {
 async function requestQuote(overrides: Record<string, unknown> = {}) {
   const response = await post('/v1/quote', quoteRequest(overrides))
 
-  return { response, body: await json(response) }
+  return { response, body: await json<QuoteBody>(response) }
 }
 
 const get = (path: string) => handleLocalTradeRequest(new Request(`http://127.0.0.1:8422${path}`))
@@ -43,8 +72,8 @@ const post = (path: string, body: unknown) =>
     new Request(`http://127.0.0.1:8422${path}`, { method: 'POST', body: JSON.stringify(body) })
   )
 
-async function json(response: Response) {
-  return response.json() as Promise<Record<string, any>>
+async function json<Body extends Record<string, unknown> = Record<string, unknown>>(response: Response) {
+  return response.json() as Promise<Body>
 }
 
 describe('local trade service handler', () => {
@@ -58,7 +87,7 @@ describe('local trade service handler', () => {
     sendTransaction = spyOn(Wallet.prototype, 'sendTransaction').mockResolvedValue({
       hash: `0x${'1'.repeat(64)}`,
       wait: async () => ({ status: 1 })
-    } as any)
+    } as unknown as Awaited<ReturnType<Wallet['sendTransaction']>>)
   })
 
   afterEach(() => {
@@ -111,7 +140,7 @@ describe('local trade service handler', () => {
     expect(typeof body.evm.orderTypedData).toBe('string')
     expect(JSON.parse(body.evm.orderTypedData).message.quoteId).toBe(body.quoteId)
     expect(body.evm.approveTx).toBeTruthy()
-    expect(body.actions.approval.kind).toBe('approve')
+    expect((body.actions.approval as { kind: string }).kind).toBe('approve')
     expect(body.steps.find((step: Record<string, unknown>) => step.kind === 'sign')?.label).toBe('Sign order')
   })
 
@@ -357,7 +386,7 @@ describe('local trade service handler', () => {
     }
   ]) {
     it(`keeps a ${direction.name} market order accepted until signed cancellation`, async () => {
-      const published: Record<string, any>[] = []
+      const published: Record<string, unknown>[] = []
       const unsubscribe = subscribeLocalTradeOrders((order) => published.push(order))
       const request = quoteRequest({
         contraAsset: direction.contraAsset,
@@ -368,7 +397,7 @@ describe('local trade service handler', () => {
         targetChain: direction.targetChain
       })
       const quoteResponse = await post('/v1/quote', request)
-      const quote = await json(quoteResponse)
+      const quote = await json<QuoteBody>(quoteResponse)
       const typedData = JSON.parse(quote.evm.orderTypedData)
 
       expect(quoteResponse.status).toBe(200)
@@ -391,7 +420,7 @@ describe('local trade service handler', () => {
         userSignature: '0xorder-signature',
         evmOrderTypedData: quote.evm.orderTypedData
       })
-      const submitted = await json(submittedResponse)
+      const submitted = await json<SubmittedOrderBody>(submittedResponse)
       const orderId = String(submitted.orderId)
 
       expect(submittedResponse.status).toBe(200)
@@ -412,7 +441,7 @@ describe('local trade service handler', () => {
       const lookupResponse = await get(`/v1/orders/${orderId}?funderAddress=${FUNDER_ADDRESS}`)
       const lookup = await json(lookupResponse)
       const listResponse = await get(`/v1/orders?funderAddress=${FUNDER_ADDRESS}`)
-      const list = await json(listResponse)
+      const list = await json<OrderListBody>(listResponse)
       expect(lookup).toMatchObject({ normalizedStatus: 'accepted', open: true, cancellable: true })
       expect(lookup).not.toHaveProperty('chainId')
       expect(list.orders).toHaveLength(1)
@@ -480,7 +509,7 @@ describe('local trade service handler', () => {
       userSignature: '0xorder-signature',
       evmOrderTypedData: quoted.body.evm.orderTypedData
     })
-    const submitted = await json(submittedResponse)
+    const submitted = await json<SubmittedOrderBody>(submittedResponse)
     const orderId = String(submitted.orderId)
 
     expect(submitted.order).toMatchObject({ normalizedStatus: 'accepted', open: true, cancellable: false })

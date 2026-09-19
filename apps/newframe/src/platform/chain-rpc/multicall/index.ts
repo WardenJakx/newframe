@@ -39,7 +39,7 @@ function buildCallData<R, T>(calls: Call<R, T>[]) {
   })
 }
 
-function getResultData(results: any, call: string[], target: string) {
+function getResultData(results: BytesLike, call: string[], target: string) {
   const [fnSignature] = call
   const callInterface = memoizedInterfaces[fnSignature]
   const fnName = getFunctionNameFromSignature(fnSignature)

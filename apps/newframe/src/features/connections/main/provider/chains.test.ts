@@ -18,13 +18,19 @@ const network = (id: number, name: string, on: boolean, connected: boolean, expl
   on
 })
 
-const chains: any = {
+type TestChain = ReturnType<typeof network>
+type TestChainMeta = Record<
+  number,
+  { nativeCurrency: Partial<typeof ether>; primaryColor?: string; icon?: string; image?: object }
+>
+
+const chains: Record<number, TestChain> = {
   1: network(1, 'Ethereum Mainnet', true, true, 'https://etherscan.io'),
   137: network(137, 'Polygon', false, true),
   11155111: network(11155111, 'Ethereum Testnet Sepolia', true, false, 'https://sepolia.etherscan.io')
 }
 
-const chainMeta: any = {
+const chainMeta: TestChainMeta = {
   1: {
     icon: 'https://chain-icons.example/ethereum.png',
     image: { base64: 'aWNvbg==', contentHash: 'test-icon', mimeType: 'image/png' },
@@ -74,9 +80,11 @@ describe('#getActiveChains', () => {
 })
 
 describe('#createChainsObserver', () => {
-  const handler = { chainsChanged: mock() }
+  const handler = {
+    chainsChanged: mock((_address: string, _chains: ReturnType<typeof getActiveChains>) => {})
+  }
   const optimism = network(10, 'Optimism', true, true, 'https://optimistic.etherscan.io')
-  let fireObserver: any
+  let fireObserver: () => void
 
   beforeEach(() => {
     const observer = createChainsObserver(store, handler)
@@ -86,7 +94,7 @@ describe('#createChainsObserver', () => {
       timers.runAllTimers()
     }
 
-    handler.chainsChanged = mock()
+    handler.chainsChanged = mock((_address: string, _chains: ReturnType<typeof getActiveChains>) => {})
   })
 
   it('invokes the handler with EVM chain objects', () => {
@@ -133,7 +141,7 @@ describe('#createChainsObserver', () => {
     it(`invokes the handler when a chain is ${description}`, () => {
       arrange()
       fireObserver()
-      expect(handler.chainsChanged.mock.calls[0][1].map((chain: any) => chain.chainId)).toEqual(expected)
+      expect(handler.chainsChanged.mock.calls[0][1].map((chain) => chain.chainId)).toEqual(expected)
     })
   })
 
@@ -146,7 +154,7 @@ describe('#createChainsObserver', () => {
 
 describe('#createOriginChainObserver', () => {
   const handler = { chainChanged: mock(), networkChanged: mock() }
-  let observer: any
+  let observer: () => void
 
   const originId = '8073729a-5e59-53b7-9e69-5d9bcff94087'
   const frameTestOrigin = {
@@ -189,16 +197,16 @@ describe('#createOriginChainObserver', () => {
 
 // helper functions
 
-function setChains(chainState: any, chainMetaState = chainMeta) {
-  store.setState((state: any) => {
+function setChains(chainState: Record<number, TestChain>, chainMetaState: TestChainMeta = chainMeta) {
+  store.setState((state) => {
     state.main.currentAccount = selectedAddress
-    state.main.networks.ethereum = chainState
-    state.main.networksMeta.ethereum = chainMetaState
+    state.main.networks.ethereum = chainState as unknown as typeof state.main.networks.ethereum
+    state.main.networksMeta.ethereum = chainMetaState as unknown as typeof state.main.networksMeta.ethereum
   })
 }
 
-function setOrigins(originState: any) {
-  store.setState((state: any) => {
-    state.main.origins = originState
+function setOrigins(originState: Record<string, object>) {
+  store.setState((state) => {
+    state.main.origins = originState as unknown as typeof state.main.origins
   })
 }

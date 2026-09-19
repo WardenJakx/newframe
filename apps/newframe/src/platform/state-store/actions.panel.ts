@@ -8,7 +8,15 @@ export type CanonicalSet = (update: (state: Draft<CanonicalState>) => void) => v
 export type CanonicalGet = () => CanonicalState
 
 type NotificationState = 'pending' | 'completed' | 'failed'
-type MutableRecord = Record<string, any>
+type MutableRecord = Record<string, unknown>
+type NotificationUpdate = MutableRecord & {
+  createdAt?: unknown
+  dismissedAt?: unknown
+  hidden?: boolean
+  id?: string
+  state?: NotificationState
+  updatedAt?: unknown
+}
 type MutableCanonicalState = Omit<Draft<CanonicalState>, 'view'> & {
   view: MutableRecord & { notifications: Record<string, MutableRecord> }
 }
@@ -21,7 +29,7 @@ export function createPanelActions(set: CanonicalSet, _get: CanonicalGet) {
   let trayInitial = true
 
   return {
-    notify: (type: string, data: any = {}) => {
+    notify: (type: string, data: unknown = {}) => {
       set((draft) => {
         const state = mutable(draft)
         state.view.notify = type
@@ -29,7 +37,7 @@ export function createPanelActions(set: CanonicalSet, _get: CanonicalGet) {
       })
     },
 
-    upsertPendingNotification: (notification: any) => {
+    upsertPendingNotification: (notification: NotificationUpdate) => {
       const id = notification?.id
       if (!id) {
         return
@@ -57,7 +65,11 @@ export function createPanelActions(set: CanonicalSet, _get: CanonicalGet) {
       })
     },
 
-    resolveNotification: (id: string, state: Exclude<NotificationState, 'pending'>, update: any = {}) => {
+    resolveNotification: (
+      id: string,
+      state: Exclude<NotificationState, 'pending'>,
+      update: NotificationUpdate = {}
+    ) => {
       if (!id || !resolvedNotificationStates.has(state)) {
         return
       }
@@ -87,7 +99,7 @@ export function createPanelActions(set: CanonicalSet, _get: CanonicalGet) {
       })
     },
 
-    dismissNotification: (id: string, update: any = {}) => {
+    dismissNotification: (id: string, update: NotificationUpdate = {}) => {
       if (!id) {
         return
       }
@@ -119,7 +131,7 @@ export function createPanelActions(set: CanonicalSet, _get: CanonicalGet) {
       })
     },
 
-    updateBadge: (type: string, version: any) => {
+    updateBadge: (type: string, version: unknown) => {
       set((draft) => {
         mutable(draft).view.badge = { type, version }
       })

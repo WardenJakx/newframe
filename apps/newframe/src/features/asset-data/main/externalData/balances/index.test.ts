@@ -5,6 +5,7 @@ import log from 'electron-log'
 
 import store from '../../../../../platform/state-store'
 import { NATIVE_CURRENCY } from '../../../../tokens/domain/constants'
+import type { Token, TokenCatalog, TokenRecord } from '../../../../tokens/domain/state/token'
 import BalancesScanner from './index'
 
 const controllerEvents = new EventEmitter()
@@ -25,7 +26,7 @@ await mock.module('./controller', () => ({
   ...balancesControllerMock
 }))
 
-const balancesController = balancesControllerMock as any
+const balancesController = balancesControllerMock
 
 const address = '0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5'
 
@@ -49,17 +50,17 @@ function token(index: number, chainId = 10) {
   }
 }
 
-function storedToken(token: any, custom = false) {
+function storedToken(token: Token, custom = false): TokenRecord {
   return {
     ...token,
     custom,
     curated: false,
-    sources: [custom ? 'custom' : 'onchain'],
+    sources: [custom ? ('custom' as const) : ('onchain' as const)],
     updatedAt: 0
   }
 }
 
-function catalogFor(known: any[], custom: any[] = []) {
+function catalogFor(known: Token[], custom: Token[] = []): TokenCatalog {
   const records = [
     ...known.map((item) => storedToken(item)),
     ...custom.map((item) => storedToken(item, true))
@@ -72,7 +73,7 @@ function catalogFor(known: any[], custom: any[] = []) {
   }
 }
 
-let balances: any
+let balances: ReturnType<typeof BalancesScanner>
 
 beforeAll(() => {
   log.transports.console.level = false
@@ -82,17 +83,17 @@ beforeEach(() => {
   timers.useFakeTimers()
   controllerEvents.removeAllListeners()
   store.setState((state) => {
-    const main = state.main as any
+    const main = state.main
     main.tokens = catalogFor(knownTokens)
     main.networks.ethereum[10] = {
       id: 10,
       name: 'Optimism',
       on: true,
       connection: { primary: { connected: true } }
-    }
+    } as unknown as (typeof main.networks.ethereum)[number]
     main.networksMeta.ethereum[10] = {
       nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 }
-    }
+    } as unknown as (typeof main.networksMeta.ethereum)[number]
     main.balances[address] = [
       {
         ...knownTokens[0],
@@ -101,7 +102,7 @@ beforeEach(() => {
         displayBalance: '1',
         name: 'Optimism'
       }
-    ]
+    ] as unknown as (typeof main.balances)[string]
     main.assetRates[`10:${knownTokens[0].address}`] = {
       usdRate: 2,
       source: 'zerion',
@@ -198,7 +199,7 @@ it('only manually refreshes non-dust valued tokens and curated blue chips', () =
   const oneToken = '0xde0b6b3a7640000'
 
   store.setState((state) => {
-    const main = state.main as any
+    const main = state.main
     main.tokens = catalogFor(tokens, [custom])
     main.balances[address] = [...tokens, custom].map((trackedToken) => ({
       ...trackedToken,
@@ -315,8 +316,12 @@ it('caps direct token update scans', () => {
 
 it('stores native worker balances without duplicating currency metadata', () => {
   store.setState((state) => {
-    const main = state.main as any
-    main.accounts[address] = { id: address, address, requests: {} }
+    const main = state.main
+    main.accounts[address] = {
+      id: address,
+      address,
+      requests: {}
+    } as unknown as (typeof main.accounts)[string]
   })
 
   balancesController.emit('chainBalances', address, [{ chainId: 10, balance: '0x2', displayBalance: '2' }])
@@ -331,8 +336,12 @@ it('stores native worker balances without duplicating currency metadata', () => 
 
 it('ignores a late worker update after its network has been removed', () => {
   store.setState((state) => {
-    const main = state.main as any
-    main.accounts[address] = { id: address, address, requests: {} }
+    const main = state.main
+    main.accounts[address] = {
+      id: address,
+      address,
+      requests: {}
+    } as unknown as (typeof main.accounts)[string]
     delete main.networks.ethereum[10]
     delete main.networksMeta.ethereum[10]
   })

@@ -12,6 +12,7 @@ import type { TransactionRequest } from '../../requests/contract/requests.js'
 import { NATIVE_CURRENCY } from '../../tokens/domain/constants.js'
 import { tokenImageSource } from '../../tokens/domain/index.js'
 import type { TransactionEffect, TransactionSimulation } from '../domain/index.js'
+import type { ApproveAction, TransferAction } from './actions/erc20.js'
 
 const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
 const APPROVAL_TOPIC = '0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925'
@@ -364,17 +365,20 @@ function tokenFromRequest(
     }
   }
 
-  const matchingAction = (req.recognizedActions ?? []).find((action: any) => {
-    const contract = action?.data?.contract?.address ?? action?.data?.contract
-    return sameAddress(contract, address)
-  }) as any
+  const matchingAction = ((req.recognizedActions ?? []) as Array<ApproveAction | TransferAction>).find(
+    (action) => {
+      const contract = action.data?.contract
+      return sameAddress(typeof contract === 'string' ? contract : contract?.address, address)
+    }
+  )
 
   if (matchingAction?.data) {
+    const actionData = matchingAction.data as typeof matchingAction.data & { logoURI?: string }
     return {
       address,
       chainId,
       decimals: matchingAction.data.decimals,
-      logoURI: matchingAction.data.logoURI,
+      logoURI: actionData.logoURI,
       name: matchingAction.data.name ?? matchingAction.data.symbol ?? 'Token',
       symbol: matchingAction.data.symbol ?? 'Token'
     }
@@ -415,10 +419,11 @@ async function resolveTokenMetadata(
   }
 
   try {
-    const loaded = (await import('../../../platform/chain-rpc/contracts/erc20.js')).default as unknown
-    const Erc20Contract = (
+    const loaded = (await import('../../../platform/chain-rpc/contracts/erc20.js')).default as
+      | typeof import('../../../platform/chain-rpc/contracts/erc20.js').default
+      | { default: typeof import('../../../platform/chain-rpc/contracts/erc20.js').default }
+    const Erc20Contract =
       loaded && typeof loaded === 'object' && 'default' in loaded ? loaded.default : loaded
-    ) as typeof import('../../../platform/chain-rpc/contracts/erc20.js').default
     const tokenData = await new Erc20Contract(address, chainId, provider).getTokenData()
     return {
       ...tokenData,

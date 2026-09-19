@@ -29,13 +29,13 @@ interface Caip27JsonRpcRequest extends RPCId, InternalPayload {
 }
 
 interface JSONRPCRequestPayload extends RPCId {
-  params: readonly any[]
+  params: readonly unknown[]
   method: string
   chainId?: string
 }
 
 interface JSONRPCSuccessResponsePayload extends RPCId {
-  result?: any
+  result?: unknown
 }
 
 interface JSONRPCErrorResponsePayload extends RPCId {
@@ -183,7 +183,7 @@ declare namespace RPC {
     interface Response {
       jsonrpc: '2.0'
       method: 'eth_subscription'
-      params: any
+      params: { subscription: string; result?: unknown }
     }
   }
 }

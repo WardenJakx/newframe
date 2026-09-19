@@ -6,7 +6,8 @@ import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import { createRendererAuthorizationRegistry } from '../../../platform/ipc/main/authorization'
 import type { SigningApprovalContext, SignerRequestContext } from '../../../platform/signing/signers/Signer'
 import { createRendererPrincipal, decideWalletAction } from '../../access-control/main/authority'
-import type { TypedMessage } from '../../requests/contract/requests'
+import type { AccountRequest, TypedMessage } from '../../requests/contract/requests'
+import type { RevealService } from '../../transactions/main/reveal'
 
 const revealMock = {
   recog: mock(),
@@ -15,15 +16,26 @@ const revealMock = {
 }
 const fetchContractMock = mock()
 const simulateTransactionEffectsMock = mock()
-const providerMock = { on: mock(), off: mock(), send: mock(), getL1GasCost: mock() }
+const providerMock = {
+  on: mock(),
+  off: mock(),
+  send: mock(),
+  getL1GasCost: mock()
+}
 const signersMock = { get: mock() }
 const windowsMock = { showTray: mock() }
 const navMock = { forward: mock(), back: mock() }
 
 await mock.module('../../transactions/main/reveal', () => ({ ...revealMock }))
-await mock.module('../../../platform/chain-rpc/contracts', () => ({ fetchContract: fetchContractMock }))
-await mock.module('../../../platform/signing/signers', () => ({ default: signersMock }))
-await mock.module('../../../platform/desktop/windows', () => ({ default: windowsMock }))
+await mock.module('../../../platform/chain-rpc/contracts', () => ({
+  fetchContract: fetchContractMock
+}))
+await mock.module('../../../platform/signing/signers', () => ({
+  default: signersMock
+}))
+await mock.module('../../../platform/desktop/windows', () => ({
+  default: windowsMock
+}))
 await mock.module('../../name-resolution/main/nameResolution', () => ({
   __esModule: true,
   default: {
@@ -34,12 +46,29 @@ await mock.module('../../name-resolution/main/nameResolution', () => ({
   }
 }))
 
-let account: any
-let Account: any
-let reveal: any
-let fetchContract: any
-let nav: any
-let store: any
+type AccountInstance = InstanceType<typeof import('./Account').default>
+type TestStoredRequest = AccountRequest & {
+  approvals: Array<{ approved?: boolean }>
+  data: { data: string }
+  recognizedActions: Array<{ data: { amount: string }; update?: unknown }>
+}
+type TestAccount = Omit<
+  AccountInstance,
+  'addRequest' | 'approveRequest' | 'rejectRequest' | 'requests' | 'resolveRequest'
+> & {
+  addRequest(request: object): void
+  approveRequest(handlerId: string, approvalType: string, data: object): boolean
+  rejectRequest(request: object, error: EVMError): void
+  requests: Record<string, TestStoredRequest>
+  resolveRequest(request: object, result?: unknown): void
+}
+
+let account: TestAccount
+let Account: typeof import('./Account').default
+const reveal = revealMock
+const fetchContract = fetchContractMock
+const nav = navMock
+let store: typeof import('../../../platform/state-store').default
 const nameResolution = {
   off: mock(),
   ready: mock(() => true),
@@ -64,14 +93,14 @@ const requestLifecycle = {
     callback(response)
     return true
   },
-  resolve(request: any, result?: unknown) {
+  resolve(request: AccountRequest, result?: unknown) {
     return this.respond(request.handlerId, {
       id: request.payload.id,
       jsonrpc: request.payload.jsonrpc,
       result
     })
   },
-  reject(request: any, error: EVMError) {
+  reject(request: AccountRequest, error: EVMError) {
     return this.respond(request.handlerId, {
       id: request.payload.id,
       jsonrpc: request.payload.jsonrpc,
@@ -87,21 +116,18 @@ const accountState = {
 
 beforeAll(async () => {
   Account = (await import('./Account')).default
-  reveal = revealMock
-  fetchContract = (await import('../../../platform/chain-rpc/contracts')).fetchContract
-  nav = navMock
   store = (await import('../../../platform/state-store')).default
 })
 
 function createAccount(profileActive = true) {
   return new Account(
-    accountState as any,
-    accounts as any,
+    accountState,
+    accounts as unknown as ConstructorParameters<typeof Account>[1],
     store,
-    providerMock as any,
+    providerMock as unknown as ConstructorParameters<typeof Account>[3],
     { simulateTransactionEffects: simulateTransactionEffectsMock },
-    nameResolution,
-    revealMock,
+    nameResolution as unknown as ConstructorParameters<typeof Account>[5],
+    revealMock as unknown as ConstructorParameters<typeof Account>[6],
     {
       navigation: navMock,
       now: Date.now,
@@ -122,9 +148,12 @@ beforeEach(() => {
   account?.close()
   requestLifecycle.pending.clear()
   store.getState().removeAccount(accountState.address.toLowerCase())
-  account = createAccount()
+  account = createAccount() as unknown as TestAccount
   fetchContract.mockResolvedValueOnce(undefined)
-  simulateTransactionEffectsMock.mockResolvedValue({ status: 'success', effects: [] })
+  simulateTransactionEffectsMock.mockResolvedValue({
+    status: 'success',
+    effects: []
+  })
 })
 
 afterEach(() => {
@@ -138,7 +167,7 @@ describe('#addRequest', () => {
     const handlerId = requestLifecycle.create(externalResponse)
     const actionData = { amount: '0x1' }
     let updateCalls = 0
-    const update = (request: any, data: any) => {
+    const update = (request: { data: { data: string } }, data: { amount: string }) => {
       updateCalls += 1
       actionData.amount = data.amount
       request.data.data = `encoded:${data.amount}`
@@ -148,7 +177,12 @@ describe('#addRequest', () => {
       type: 'transaction',
       account: account.id,
       origin: 'test',
-      payload: { id: 1, jsonrpc: '2.0', method: 'eth_sendTransaction', params: [] },
+      payload: {
+        id: 1,
+        jsonrpc: '2.0',
+        method: 'eth_sendTransaction',
+        params: []
+      },
       data: { data: 'encoded:0x1' },
       approvals: [{ type: 'approveGasLimit', approved: false, data: {} }],
       recognizedActions: [{ id: 'erc20:approve', data: actionData, update }]
@@ -159,14 +193,17 @@ describe('#addRequest', () => {
       webContentsId: 7,
       windowInstanceId: 'wallet-window'
     })
-    const decision = decideWalletAction(rendererPrincipal, request as any)
+    const decision = decideWalletAction(rendererPrincipal, request as unknown as AccountRequest)
     if (decision.outcome !== 'prompt') {
       throw new Error('renderer request was not prompt-authorized')
     }
-    ;(request as any).authorization = decision.authorization
+    const authorizedRequest = request as typeof request & {
+      authorization: typeof decision.authorization
+    }
+    authorizedRequest.authorization = decision.authorization
 
-    requestLifecycle.bind(request as any)
-    account.addRequest(request)
+    requestLifecycle.bind(authorizedRequest)
+    account.addRequest(authorizedRequest)
 
     expect(nav.forward).toHaveBeenCalledTimes(1)
     expect(nav.forward).toHaveBeenCalledWith('panel', {
@@ -186,19 +223,29 @@ describe('#addRequest', () => {
     expect(account.requests[request.handlerId]).toMatchObject({
       authorization: {
         decision: 'prompt',
-        principal: { kind: 'renderer', webContentsId: 7, windowInstanceId: 'wallet-window' }
+        principal: {
+          kind: 'renderer',
+          webContentsId: 7,
+          windowInstanceId: 'wallet-window'
+        }
       }
     })
     expect(requestLifecycle.pending.has(request.handlerId)).toBe(true)
     expect('responseHandlers' in account).toBe(false)
 
-    const canonical = store.getState().main.accounts[account.id].requests[request.handlerId]
+    const canonical = store.getState().main.accounts[account.id].requests[
+      request.handlerId
+    ] as TestStoredRequest
     expect(canonical.recognizedActions[0].update).toBeUndefined()
     expect(() => structuredClone(canonical)).not.toThrow()
 
     expect(account.approveRequest(request.handlerId, 'approveGasLimit', {})).toBe(true)
     expect(account.requests[request.handlerId].approvals[0].approved).toBe(true)
-    expect(account.updateRecognizedAction(request.handlerId, 'erc20:approve', { amount: '0x2' })).toBe(true)
+    expect(
+      account.updateRecognizedAction(request.handlerId, 'erc20:approve', {
+        amount: '0x2'
+      })
+    ).toBe(true)
     expect(updateCalls).toBe(1)
     expect(account.requests[request.handlerId].data.data).toBe('encoded:0x2')
     expect(account.requests[request.handlerId].recognizedActions[0].data.amount).toBe('0x2')
@@ -208,7 +255,9 @@ describe('#addRequest', () => {
     account.rejectRequest(request, { code: 4001, message: 'late rejection' })
     expect(externalResponse.mock.calls).toEqual([[{ id: 1, jsonrpc: '2.0', result: 'ok' }]])
     expect(account.requests[request.handlerId]).toBeUndefined()
-    expect(account.actionUpdateHandlers.size).toBe(0)
+    expect(
+      (account as unknown as { actionUpdateHandlers: Map<string, unknown> }).actionUpdateHandlers.size
+    ).toBe(0)
     expect(requestLifecycle.pending.has(handlerId)).toBe(false)
     renderers.dispose()
   })
@@ -230,7 +279,7 @@ describe('#addRequest', () => {
         {
           id: 'erc20:approve',
           data: actionData,
-          update: (request: any, { amount }: { amount: string }) => {
+          update: (request: { data: { data: string } }, { amount }: { amount: string }) => {
             actionData.amount = amount
             request.data.data = `encoded:${amount}`
           }
@@ -241,20 +290,25 @@ describe('#addRequest', () => {
       await Promise.resolve()
       await Promise.resolve()
 
-      expect(account.requests[request.handlerId].recognizedActions).toEqual([
+      expect(account.requests[request.handlerId].recognizedActions as unknown).toEqual([
         { id: 'erc20:approve', data: { amount: '0x1' } }
       ])
       expect(() =>
-        account.updateRecognizedAction(request.handlerId, 'erc20:approve', { amount: '0x2' })
+        account.updateRecognizedAction(request.handlerId, 'erc20:approve', {
+          amount: '0x2'
+        })
       ).not.toThrow()
       expect(account.requests[request.handlerId].data.data).toBe('encoded:0x2')
       expect(account.requests[request.handlerId].recognizedActions[0].data.amount).toBe('0x2')
     })
 
     it('waits for token recognition before simulating the transaction', async () => {
-      let resolveRecognition: (actions: any[]) => void = () => {}
+      let resolveRecognition: (actions: Awaited<ReturnType<RevealService['recog']>>) => void = () => {}
       reveal.recog.mockImplementationOnce(
-        () => new Promise<any[]>((resolve) => (resolveRecognition = resolve))
+        () =>
+          new Promise<Awaited<ReturnType<RevealService['recog']>>>(
+            (resolve) => (resolveRecognition = resolve)
+          )
       )
       reveal.decode.mockResolvedValueOnce(undefined)
 
@@ -335,7 +389,7 @@ describe('creation-block listener lifecycle', () => {
     store.getState().removeAccount(account.id)
     mock.clearAllMocks()
 
-    account = createAccount(false)
+    account = createAccount(false) as unknown as TestAccount
 
     expect(providerMock.on).not.toHaveBeenCalledWith('connect', expect.any(Function))
     expect(nameResolution.reverseLookup).not.toHaveBeenCalled()
@@ -359,7 +413,7 @@ describe('creation-block listener lifecycle', () => {
     nameResolution.reverseLookup.mockImplementationOnce(
       () => new Promise<string>((resolve) => (resolveLookup = resolve))
     )
-    account = createAccount()
+    account = createAccount() as unknown as TestAccount
 
     account.setProfileActive(false)
     resolveLookup('late.frame.eth')
@@ -385,14 +439,25 @@ describe('#clearRequest', () => {
       pendingRequest('second', 2),
       pendingRequest('newest', 3),
       pendingRequest('confirmed', 0, { status: 'confirmed' }),
-      pendingRequest('monitoring', 0, { mode: 'monitor', status: 'confirming' })
+      pendingRequest('monitoring', 0, {
+        mode: 'monitor',
+        status: 'confirming'
+      })
     ].forEach((request) => {
-      store.getState().upsertAccountRequest(account.id, request)
+      store
+        .getState()
+        .upsertAccountRequest(
+          account.id,
+          request as unknown as Parameters<ReturnType<typeof store.getState>['upsertAccountRequest']>[1]
+        )
     })
-    store.setState((state: any) => {
+    store.setState((state) => {
       state.windows.panel.nav = [
         { view: 'requestView', data: { requestId: 'first' } },
-        { view: 'expandedModule', data: { id: 'requests', account: account.id } }
+        {
+          view: 'expandedModule',
+          data: { id: 'requests', account: account.id }
+        }
       ]
     })
 
@@ -422,12 +487,15 @@ describe('#clearRequest', () => {
       }
     }
 
-    store.setState((state: any) => {
+    store.setState((state) => {
       state.main.currentAccount = account.id
       state.tray.open = true
       state.windows.panel.nav = [
         { view: 'requestView', data: { requestId: 'first' } },
-        { view: 'expandedModule', data: { id: 'requests', account: account.id } }
+        {
+          view: 'expandedModule',
+          data: { id: 'requests', account: account.id }
+        }
       ]
     })
 
@@ -450,9 +518,17 @@ it('rejects every Safe signing method even when an owner signer is associated', 
     signTransaction: signed
   })
   for (const sign of [
-    (callback: any) => account.signMessage('0x1234', callback),
-    (callback: any) => account.signTypedData({ data: {} }, callback),
-    (callback: any) => account.signTransaction({ from: account.address }, callback)
+    (callback: Callback<unknown>) => account.signMessage('0x1234', callback),
+    (callback: Callback<unknown>) =>
+      account.signTypedData(
+        { data: {} } as unknown as Parameters<AccountInstance['signTypedData']>[0],
+        callback
+      ),
+    (callback: Callback<unknown>) =>
+      account.signTransaction(
+        { from: account.address } as unknown as Parameters<AccountInstance['signTransaction']>[0],
+        callback
+      )
   ]) {
     expect(
       new Promise((resolve, reject) => {
@@ -465,7 +541,7 @@ it('rejects every Safe signing method even when an owner signer is associated', 
 it.each([true, false])(
   'settles the original access owner and grants only the selected target, approved=%s',
   (approved) => {
-    const ownerAccount = account as InstanceType<typeof import('./Account').default>
+    const ownerAccount = account as unknown as InstanceType<typeof import('./Account').default>
     const target = '0x0000000000000000000000000000000000000002'
     const origin = 'selected-target-test'
     const respond = mock<RPCRequestCallback>()
@@ -475,16 +551,30 @@ it.each([true, false])(
       handlerId,
       origin,
       account: ownerAccount.address,
-      payload: { id: 19, jsonrpc: '2.0', method: 'eth_requestAccounts', params: [] }
+      payload: {
+        id: 19,
+        jsonrpc: '2.0',
+        method: 'eth_requestAccounts',
+        params: []
+      }
     }
-    store.getState().initOrigin(origin, { name: 'selected-target.test', chain: { id: 1, type: 'ethereum' } })
+    store.getState().initOrigin(origin, {
+      name: 'selected-target.test',
+      chain: { id: 1, type: 'ethereum' }
+    })
     store.getState().revokePermission(target, handlerId)
     ownerAccount.addRequest(request)
     ownerAccount.setAccess(request, approved, target)
-    expect(store.getState().main.permissions[target]?.[handlerId]?.provider).toBe(approved ? true : undefined)
+    expect(store.getState().main.permissions[target]?.[handlerId]?.provider as unknown).toBe(
+      approved ? true : undefined
+    )
     expect(store.getState().main.permissions[ownerAccount.address]?.[handlerId]).toBeUndefined()
     expect(ownerAccount.getRequest(handlerId)).toBeUndefined()
-    expect(respond).toHaveBeenCalledWith({ id: 19, jsonrpc: '2.0', result: approved ? target : undefined })
+    expect(respond).toHaveBeenCalledWith({
+      id: 19,
+      jsonrpc: '2.0',
+      result: approved ? target : undefined
+    })
     store.getState().revokePermission(target, handlerId)
   }
 )
@@ -513,9 +603,11 @@ describe('account signing boundary', () => {
       verifyAddress: mock()
     }
     signersMock.get.mockReturnValue(signer)
-    store.setState((state: any) => {
+    store.setState((state) => {
       state.main.currentAccount = ''
-      state.main.signers = { [signer.id]: { ...signer } }
+      state.main.signers = {
+        [signer.id]: { ...signer }
+      } as unknown as typeof state.main.signers
       state.main.appLock.locked = false
     })
     const controller = new AbortController()
@@ -536,7 +628,7 @@ describe('account signing boundary', () => {
     }
   }
   afterEach(() => {
-    store.setState((state: any) => {
+    store.setState((state) => {
       state.main.signers = {}
     })
   })
@@ -566,12 +658,12 @@ describe('account signing boundary', () => {
     (kind) => {
       const test = signingFixture()
       if (kind === 'locked') {
-        store.setState((state: any) => {
+        store.setState((state) => {
           state.main.appLock.locked = true
         })
       }
       if (kind === 'foreign-profile') {
-        store.setState((state: any) => {
+        store.setState((state) => {
           state.main.accounts[account.id].profileId = 'other'
         })
       }
@@ -606,7 +698,7 @@ describe('account signing boundary', () => {
         store.getState().patchAccount(account.id, { name: 'Updated' })
       }
       if (kind === 'lock') {
-        store.setState((state: any) => {
+        store.setState((state) => {
           state.main.appLock.locked = true
         })
       }
@@ -628,7 +720,11 @@ describe('account signing boundary', () => {
     const test = signingFixture()
     for (const transaction of [{}, { from: account.address, value: 'not-hex' }]) {
       const callback = mock()
-      account.signTransaction(transaction, callback, test.approval)
+      account.signTransaction(
+        transaction as unknown as Parameters<AccountInstance['signTransaction']>[0],
+        callback,
+        test.approval
+      )
       expect(callback).toHaveBeenCalledTimes(1)
       expect(callback.mock.calls[0][0]).toBeInstanceOf(Error)
     }

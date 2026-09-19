@@ -9,6 +9,7 @@ import log from 'electron-log'
 import { shallow } from 'zustand/vanilla/shallow'
 
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
+import type { Chain as StoredChain, GasFees } from '../../../platform/state-store/state/index.js'
 import {
   createJsonRpcProvider,
   listenForProviderClose,
@@ -27,9 +28,14 @@ export interface Chain {
   type: 'ethereum'
 }
 
-type Priority = 'primary' | 'secondary'
+type StringRPCResponsePayload = Omit<RPCResponsePayload, 'result'> & { result: string }
 
-const selectConnectionSettings = (chain: any) => {
+type Priority = 'primary' | 'secondary'
+type ConnectedChain = StoredChain & {
+  connection: StoredChain['connection'] & { network?: string }
+}
+
+const selectConnectionSettings = (chain: ConnectedChain | undefined) => {
   if (!chain) {
     return null
   }
@@ -63,17 +69,18 @@ interface ConnectionState {
 // and ethereumjs/common to determine the state of various EIPs
 const legacyChains = [250, 4002]
 
-const normalizeRpcError = (error: any) => {
+const normalizeRpcError = (error: unknown) => {
   if (typeof error === 'string') {
     return { message: error, code: -1 }
   }
   if (error instanceof Error) {
-    return { message: error.message, code: (error as any).code ?? -1, data: (error as any).data }
+    const rpcError = error as Error & { code?: number; data?: unknown }
+    return { message: error.message, code: rpcError.code ?? -1, data: rpcError.data }
   }
-  return error
+  return error as EVMError
 }
 
-const resError = (error: any, payload: any, res: (response: any) => void) =>
+const resError = (error: unknown, payload: JSONRPCRequestPayload, res: RPCRequestCallback) =>
   res({
     id: payload.id,
     jsonrpc: payload.jsonrpc,
@@ -243,12 +250,24 @@ class ChainConnection extends EventEmitter {
       const { status, connected, type, network } = this.primary
       const details = { status, connected, type, network }
       log.info(`Updating primary connection for chain ${this.chainId}`, details)
-      this.store.getState().setPrimary(this.type, Number(this.chainId), details)
+      this.store
+        .getState()
+        .setPrimary(
+          this.type,
+          Number(this.chainId),
+          details as Parameters<ReturnType<CanonicalStoreApi['getState']>['setPrimary']>[2]
+        )
     } else if (priority === 'secondary') {
       const { status, connected, type, network } = this.secondary
       const details = { status, connected, type, network }
       log.info(`Updating secondary connection for chain ${this.chainId}`, details)
-      this.store.getState().setSecondary(this.type, Number(this.chainId), details)
+      this.store
+        .getState()
+        .setSecondary(
+          this.type,
+          Number(this.chainId),
+          details as Parameters<ReturnType<CanonicalStoreApi['getState']>['setSecondary']>[2]
+        )
     }
   }
 
@@ -303,7 +322,7 @@ class ChainConnection extends EventEmitter {
     }
   }
 
-  connect(chain: any) {
+  connect(chain: ConnectedChain) {
     const connection = chain.connection
 
     log.info(this.type + ':' + this.chainId + "'s connection has been updated")
@@ -323,7 +342,7 @@ class ChainConnection extends EventEmitter {
 
     const currentPresets: Record<string, string> = {
       ...NETWORK_PRESETS.ethereum.default,
-      ...(NETWORK_PRESETS.ethereum as Record<string, any>)[this.chainId]
+      ...(NETWORK_PRESETS.ethereum as Record<string, Record<string, string>>)[this.chainId]
     }
 
     const { primary, secondary } =
@@ -399,7 +418,7 @@ class ChainConnection extends EventEmitter {
     }
   }
 
-  send(payload: any, res: (response: any) => void) {
+  send(payload: JSONRPCRequestPayload, res: RPCRequestCallback) {
     if (this.primary.provider && this.primary.connected) {
       sendRpcPayload(this.primary.provider, payload)
         .then((result) => res({ id: payload.id, jsonrpc: payload.jsonrpc ?? '2.0', result }))
@@ -432,7 +451,7 @@ class ChainConnection extends EventEmitter {
     const chainId = parseInt(this.chainId)
     const gasMonitor = new GasMonitor(provider)
     const allowEip1559 = !legacyChains.includes(chainId)
-    let feeMarket: any = null
+    let feeMarket: GasFees | null = null
 
     if (allowEip1559) {
       try {
@@ -445,7 +464,8 @@ class ChainConnection extends EventEmitter {
     }
 
     if (feeMarket) {
-      const gasPrice = parseInt(feeMarket.maxBaseFeePerGas) + parseInt(feeMarket.maxPriorityFeePerGas)
+      const gasPrice =
+        parseInt(feeMarket.maxBaseFeePerGas ?? '0x0') + parseInt(feeMarket.maxPriorityFeePerGas ?? '0x0')
 
       this.store.getState().setGasPrices(this.type, chainId, { fast: addHexPrefix(gasPrice.toString(16)) })
       this.store.getState().setGasDefault(this.type, chainId, 'fast')
@@ -666,19 +686,30 @@ export class Chains extends EventEmitter {
     this.removeAllListeners()
   }
 
-  send(payload: JSONRPCRequestPayload, res: RPCRequestCallback, targetChain?: Chain) {
+  send(
+    payload: JSONRPCRequestPayload & { method: 'eth_getTransactionCount' },
+    res: RPCCallback<StringRPCResponsePayload>,
+    targetChain?: Chain
+  ): void
+  send(payload: JSONRPCRequestPayload, res: RPCRequestCallback, targetChain?: Chain): void
+  send(
+    payload: JSONRPCRequestPayload,
+    res: RPCRequestCallback | RPCCallback<StringRPCResponsePayload>,
+    targetChain?: Chain
+  ) {
+    const respond = res as RPCRequestCallback
     if (!targetChain) {
-      resError({ message: `Target chain did not exist for send`, code: -32601 }, payload, res)
+      resError({ message: `Target chain did not exist for send`, code: -32601 }, payload, respond)
     }
     const { type, id } = targetChain as Chain
     if (!this.connections[type]?.[id]) {
       resError(
         { message: `Connection for ${type} chain with chainId ${id} did not exist for send`, code: -32601 },
         payload,
-        res
+        respond
       )
     } else {
-      this.connections[type][id].send(payload, res)
+      this.connections[type][id].send(payload, respond)
     }
   }
 

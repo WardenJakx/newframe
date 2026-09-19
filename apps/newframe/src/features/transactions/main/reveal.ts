@@ -29,11 +29,11 @@ type RecognitionContext = {
   account?: string
 }
 
-function toHexAmount(value: any) {
+function toHexAmount(value: bigint | string | number | { toHexString(): string } | null | undefined) {
   if (typeof value === 'bigint') {
     return addHexPrefix(value.toString(16))
   }
-  if (value?.toHexString) {
+  if (value && typeof value === 'object' && 'toHexString' in value) {
     return value.toHexString()
   }
   return addHexPrefix(BigInt(value ?? 0).toString(16))
@@ -124,7 +124,7 @@ async function recogErc20(
 
             const txRequest = request as TransactionRequest
 
-            data.amount = amount
+            data.amount = amount as string
             txRequest.data.data = Erc20Contract.encodeCallData('approve', [spenderAddress, amount])
 
             if (txRequest.decodedData) {

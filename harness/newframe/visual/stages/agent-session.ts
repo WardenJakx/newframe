@@ -17,6 +17,10 @@ type AgentCredentials = {
   expiresAt: number
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
 async function connectAgent() {
   const response = await fetch(`${newframeRpcUrl}/agent/session`, {
     method: 'POST',
@@ -103,9 +107,11 @@ async function flashRequest(path: string, init: RequestInit) {
     ...init,
     headers
   })
-  const body = (await response.json()) as Record<string, any>
+  const body = (await response.json()) as Record<string, unknown>
   if (!response.ok) {
-    throw new Error(body.message ?? `Local Flash request failed with ${response.status}`)
+    throw new Error(
+      typeof body.message === 'string' ? body.message : `Local Flash request failed with ${response.status}`
+    )
   }
   return body
 }
@@ -128,7 +134,8 @@ async function submitExternalFlashOrder(credentials: AgentCredentials) {
     method: 'POST',
     body: JSON.stringify(quoteRequest)
   })
-  const evmOrderTypedData = String(quote.evm?.orderTypedData ?? '')
+  const evm = isRecord(quote.evm) ? quote.evm : {}
+  const evmOrderTypedData = String(evm.orderTypedData ?? '')
   if (!evmOrderTypedData) {
     throw new Error('Local Flash quote omitted its order typed data')
   }

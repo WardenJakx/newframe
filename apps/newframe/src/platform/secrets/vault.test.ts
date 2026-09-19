@@ -10,7 +10,7 @@ const VAULT_PATH = path.resolve(import.meta.dirname, '../../../.userData/vault.j
 
 const clean = () => rm(VAULT_PATH, { recursive: true, force: true })
 
-let vault: any
+let vault: typeof import('./vault').default
 
 describe('Vault', () => {
   beforeAll(async () => {
@@ -38,7 +38,7 @@ describe('Vault', () => {
     expect(key).toHaveLength(64)
     expect(vault.exists()).toBe(true)
     expect(vault.isUnlocked()).toBe(true)
-    expect(vault.getKey()).toBe(key)
+    expect(vault.getKey() as unknown).toBe(key)
   })
 
   test('Create fails when vault already exists', () => {
@@ -65,17 +65,20 @@ describe('Vault', () => {
   test('Unlock returns the same key created', () => {
     const key = vault.getKey()
     vault.lock()
-    expect(vault.unlock(PASSWORD)).toBe(key)
+    expect(vault.unlock(PASSWORD) as unknown).toBe(key)
   })
 
   test('Unlock with vault key', () => {
     const key = vault.getKey()
     vault.lock()
-    expect(vault.unlockWithKey(key)).toBe(key)
+    if (!key) {
+      throw new Error('expected vault key')
+    }
+    expect(vault.unlockWithKey(key) as unknown).toBe(key)
   })
 
   test('Acquire key uses the session when unlocked', () => {
-    expect(vault.acquireKey('any password, ignored')).toBe(vault.getKey())
+    expect(vault.acquireKey('any password, ignored') as unknown).toBe(vault.getKey())
   })
 
   test('Change password keeps the same vault key', () => {
@@ -83,7 +86,7 @@ describe('Vault', () => {
     vault.changePassword(PASSWORD, NEW_PASSWORD)
     vault.lock()
     expect(() => vault.unlock(PASSWORD)).toThrow('Incorrect password')
-    expect(vault.unlock(NEW_PASSWORD)).toBe(key)
+    expect(vault.unlock(NEW_PASSWORD) as unknown).toBe(key)
   })
 
   test('Change password rejects a weak new password', () => {

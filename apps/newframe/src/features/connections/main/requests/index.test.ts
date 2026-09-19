@@ -3,7 +3,7 @@ import { describe, expect, it } from 'bun:test'
 import { mapRequest as mapRequestTyped } from './index'
 
 // real function under test, exercised with loose payload fixtures
-const mapRequest = mapRequestTyped as any
+const mapRequest = (request: unknown) => mapRequestTyped(request as Parameters<typeof mapRequestTyped>[0])
 
 describe('#mapRequest', () => {
   it('passes through a request that does not require mapping', () => {
@@ -14,7 +14,7 @@ describe('#mapRequest', () => {
       params: ['atx']
     }
 
-    expect(mapRequest(request)).toStrictEqual(request)
+    expect(mapRequest(request) as unknown).toStrictEqual(request)
   })
 
   describe('caip_request', () => {

@@ -55,12 +55,13 @@ const queuedJsonResponses = (payloads: unknown[]) => {
     return jsonResponse(payload)
   }
 }
-function installFetch(implementation: any) {
+type FetchImplementation = (...args: Parameters<typeof fetch>) => ReturnType<typeof fetch>
+function installFetch(implementation: FetchImplementation) {
   const fetchMock = mock(implementation)
   globalThis.fetch = fetchMock as unknown as typeof fetch
   return fetchMock
 }
-function flashWithFetch(implementation: any, overrides: Record<string, unknown> = {}) {
+function flashWithFetch(implementation: FetchImplementation, overrides: Record<string, unknown> = {}) {
   const fetchMock = installFetch(implementation)
   const flash = createFlashService({ assetRateService, store, ...overrides })
   services.push(flash)
@@ -209,7 +210,7 @@ describe('main Flash facade helpers', () => {
       'dpka_513a2bd7_57a2_46d2_927b_2a3857fe271b'
     ]
   ])('uses %s endpoints and packaged auth', (profile, baseUrl, webSocketUrl, apiKey) => {
-    process.env.FRAME_PROFILE = profile as any
+    process.env.FRAME_PROFILE = profile as NodeJS.ProcessEnv['FRAME_PROFILE']
     expect(flashBaseUrl()).toBe(baseUrl)
     expect(flashWebSocketUrl()).toBe(webSocketUrl)
     expect(flashHeaders()['x-definitive-api-key'] || undefined).toBe(apiKey)
@@ -293,7 +294,7 @@ describe('main Flash facade helpers', () => {
   ])(
     'preserves the live %s cross-chain quote and submit contract',
     (_label, sourceChainId, targetChainId) => {
-      process.env.FRAME_PROFILE = 'prod' as any
+      process.env.FRAME_PROFILE = 'prod' as NodeJS.ProcessEnv['FRAME_PROFILE']
       const contraAsset = getFlashAssetsForChain(sourceChainId).find((asset) => asset.symbol === 'USDC')!
       const targetAsset = getFlashAssetsForChain(targetChainId).find((asset) => asset.symbol === 'WETH')!
       const bridgeQuoteId = `bridge-${sourceChainId}-${targetChainId}`
@@ -339,7 +340,10 @@ describe('main Flash facade helpers', () => {
       )
       expect(quote.id).toBe('')
       expect(quote.actions?.approval?.tx.chainId).toBe(sourceChainId)
-      expect((quote.raw as any).evm.orderTypedData.message.toToken).toBe(bridgeSentinel)
+      const rawQuote = quote.raw as {
+        evm: { orderTypedData: { message: { toToken: string } } }
+      }
+      expect(rawQuote.evm.orderTypedData.message.toToken).toBe(bridgeSentinel)
 
       const body = buildFlashSubmitBody({
         ...request,
@@ -363,11 +367,14 @@ describe('main Flash facade helpers', () => {
         evmOrderTypedData: JSON.stringify(typedData)
       })
       expect(body).not.toHaveProperty('quoteId')
-      expect(JSON.parse(body.evmOrderTypedData!).message.toToken).not.toBe(body.targetAsset)
+      const submittedTypedData = JSON.parse(body.evmOrderTypedData!) as unknown as {
+        message: { toToken: string }
+      }
+      expect(submittedTypedData.message.toToken).not.toBe(body.targetAsset)
     }
   )
   it('rejects cross-chain advanced orders before contacting Flash', () => {
-    process.env.FRAME_PROFILE = 'prod' as any
+    process.env.FRAME_PROFILE = 'prod' as NodeJS.ProcessEnv['FRAME_PROFILE']
     const targetAsset = getFlashAssetsForChain(1).find((asset) => asset.symbol === 'WETH')!
     const contraAsset = getFlashAssetsForChain(8453).find((asset) => asset.symbol === 'USDC')!
     expect(() =>
@@ -400,8 +407,11 @@ describe('main Flash facade helpers', () => {
     expect(quote.fees).toEqual([{ label: 'Estimated fee (USD)', amount: '1.92' }])
     expect(quote.actions?.approval?.tx.to).toBe(FLASH_WETH_ASSET.address)
     expect(quote.steps.map((step) => step.kind)).toEqual(['approve', 'sign', 'submit'])
-    expect((quote.raw as any).evm.orderTypedData).toEqual(typedData)
-    expect((quote.raw as any).evm.orderTypedDataRaw).toBe(JSON.stringify(typedData))
+    const rawQuote = quote.raw as {
+      evm: { orderTypedData: typeof typedData; orderTypedDataRaw: string }
+    }
+    expect(rawQuote.evm.orderTypedData).toEqual(typedData)
+    expect(rawQuote.evm.orderTypedDataRaw).toBe(JSON.stringify(typedData))
     const submitTypedData = orderTypedData('submit-quote')
     const orderTypedDataRaw = ` ${JSON.stringify(submitTypedData)} `
     const permitTypedDataRaw = `\n${JSON.stringify({ ...submitTypedData, primaryType: 'Permit' })}\n`

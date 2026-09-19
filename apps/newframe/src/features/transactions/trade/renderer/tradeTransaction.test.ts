@@ -36,9 +36,15 @@ describe('tradeTransaction', () => {
     targetAsset: FLASH_WETH_ASSET
   }
   const validate = (fields: Record<string, unknown>) =>
-    getTradeValidationError({ inputAmount: '1', side: 'sell', ...fields } as any)
+    getTradeValidationError({ inputAmount: '1', side: 'sell', ...fields } as unknown as Parameters<
+      typeof getTradeValidationError
+    >[0])
   const market = (fields: Record<string, unknown> = {}) =>
-    buildTradeQuoteRequest({ ...base, ...fields, orderType: FLASH_MARKET_ORDER_TYPE } as any)
+    buildTradeQuoteRequest({
+      ...base,
+      ...fields,
+      orderType: FLASH_MARKET_ORDER_TYPE
+    } as unknown as Parameters<typeof buildTradeQuoteRequest>[0])
 
   it('normalizes market and optional order payloads', () => {
     expect(cleanFlashDecimal(' 1,200.50 ')).toBe('1200.50')

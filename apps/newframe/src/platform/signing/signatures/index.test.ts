@@ -1,12 +1,24 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
 
+import { SignTypedDataVersion } from '@metamask/eth-sig-util'
+
 import * as signatureParser from './index'
 
 describe('#identify', () => {
-  let typedMessage: any
+  type PermitMessage = {
+    version: SignTypedDataVersion
+    data: {
+      types: Record<string, Array<{ name: string; type: string }>>
+      primaryType: string
+      domain: { name: string; verifyingContract: string; chainId?: number; version: string }
+      message: Record<string, string | number>
+    }
+  }
+  let typedMessage: PermitMessage
 
   beforeEach(() => {
     typedMessage = {
+      version: SignTypedDataVersion.V4,
       data: {
         types: {
           EIP712Domain: [
@@ -42,24 +54,32 @@ describe('#identify', () => {
   })
 
   it('should successfully identify erc-20 permit signature requests', () => {
-    expect(signatureParser.identify(typedMessage)).toBe('signErc20Permit')
+    expect(signatureParser.identify(typedMessage as Parameters<typeof signatureParser.identify>[0])).toBe(
+      'signErc20Permit'
+    )
   })
 
   it('should not identify erc-20 permit signature requests with missing domain entries', () => {
     delete typedMessage.data.domain.chainId
 
-    expect(signatureParser.identify(typedMessage)).toBe('signTypedData')
+    expect(signatureParser.identify(typedMessage as Parameters<typeof signatureParser.identify>[0])).toBe(
+      'signTypedData'
+    )
   })
 
   it('should return the base typed signature type when unable to identify a request', () => {
     typedMessage.data.types.Permit.pop()
 
-    expect(signatureParser.identify(typedMessage)).toBe('signTypedData')
+    expect(signatureParser.identify(typedMessage as Parameters<typeof signatureParser.identify>[0])).toBe(
+      'signTypedData'
+    )
   })
 
   it('should successfully identfy empty types arrays', () => {
-    typedMessage.data.types = []
+    typedMessage.data.types = [] as unknown as PermitMessage['data']['types']
 
-    expect(signatureParser.identify(typedMessage)).toBe('signTypedData')
+    expect(signatureParser.identify(typedMessage as Parameters<typeof signatureParser.identify>[0])).toBe(
+      'signTypedData'
+    )
   })
 })

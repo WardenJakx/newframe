@@ -11,10 +11,12 @@ import {
   type NameResolutionProviderPort
 } from './nameResolution'
 
+type ProviderRequest = Parameters<NameResolutionProviderPort['request']>[0]
+
 class FakeProvider extends EventEmitter implements NameResolutionProviderPort {
   chainId = ''
-  readonly requests: any[] = []
-  respond: (payload: any) => Promise<any> = async () => {
+  readonly requests: ProviderRequest[] = []
+  respond: (payload: ProviderRequest) => Promise<unknown> = async () => {
     throw new Error('No response configured')
   }
 
@@ -22,7 +24,19 @@ class FakeProvider extends EventEmitter implements NameResolutionProviderPort {
     this.chainId = chainId
   }
 
-  async request<T>(payload: any) {
+  override on(event: string, listener: (...args: never[]) => void) {
+    return super.on(event, listener as unknown as Parameters<EventEmitter['on']>[1])
+  }
+
+  override once(event: string, listener: (...args: never[]) => void) {
+    return super.once(event, listener as unknown as Parameters<EventEmitter['once']>[1])
+  }
+
+  override off(event: string, listener: (...args: never[]) => void) {
+    return super.off(event, listener as unknown as Parameters<EventEmitter['off']>[1])
+  }
+
+  async request<T>(payload: ProviderRequest) {
     this.requests.push(payload)
     return (await this.respond(payload)) as T
   }
@@ -43,7 +57,10 @@ let provider: FakeProvider
 let nameResolution: ReturnType<typeof createNameResolutionService>
 
 function callsTo(address: string) {
-  return provider.requests.filter((payload) => payload.params?.[0]?.to === address)
+  return provider.requests.filter((payload) => {
+    const params = Array.isArray(payload.params) ? payload.params : []
+    return (params[0] as { to?: string } | undefined)?.to === address
+  })
 }
 
 function mockNameRequests({
@@ -60,8 +77,8 @@ function mockNameRequests({
   const tokenNames = new Map<bigint, string>()
   const tokenIds = new Map<string, bigint>()
 
-  provider.respond = async ({ params }: any) => {
-    const [{ to, data }] = params
+  provider.respond = async ({ params = [] }: ProviderRequest) => {
+    const [{ to, data }] = (Array.isArray(params) ? params : []) as Array<{ to: string; data: string }>
 
     if (to === GNS_CONTRACT) {
       const parsed = gnsInterface.parseTransaction({ data })
@@ -129,7 +146,7 @@ describe('name resolution', () => {
     const service = createProductionNameResolutionService(proxy)
     const tokenId = 1n
 
-    proxy.on('provider:send', (payload: any) => {
+    proxy.on('provider:send', (payload: RPCRequestPayload) => {
       if (payload.method === 'wallet_getEthereumChains') {
         proxy.emit('payload', {
           id: payload.id,
@@ -139,7 +156,7 @@ describe('name resolution', () => {
         return
       }
 
-      const [{ to, data }] = payload.params
+      const [{ to, data }] = payload.params as Array<{ to: string; data: string }>
       const parsed = gnsInterface.parseTransaction({ data })
       const result =
         parsed?.name === 'computeId'

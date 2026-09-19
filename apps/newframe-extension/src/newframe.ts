@@ -1,8 +1,13 @@
 import EventEmitter from 'events'
 
-import InjectedFrameProvider from './provider'
+import InjectedFrameProvider, { type JsonRpcPayload } from './provider'
 
 declare const __NEWFRAME_EIP6963_ICON__: string
+
+type EthereumWindow = Window & {
+  ethereum?: InjectedFrameProvider
+  web3?: unknown
+}
 
 function pageMessageTargetOrigin() {
   return window.location.origin === 'null' ? '*' : window.location.origin
@@ -19,14 +24,14 @@ function setProvider() {
       enumerable: true
     })
   } else {
-    ;(window as any).ethereum = provider
+    ;(window as EthereumWindow).ethereum = provider
   }
 }
 
-function shimWeb3(provider: any, appearAsMetaMask: any) {
+function shimWeb3(provider: InjectedFrameProvider | undefined, appearAsMetaMask: unknown) {
   let loggedCurrentProvider = false
 
-  if (!(window as any).web3) {
+  if (!(window as EthereumWindow).web3) {
     const SHIM_IDENTIFIER = appearAsMetaMask ? '__isMetaMaskShim__' : '__isNewframeShim__'
 
     const shim = { currentProvider: provider }
@@ -93,7 +98,7 @@ class Connection extends EventEmitter {
     }
   }
 
-  send(payload: any) {
+  send(payload: JsonRpcPayload) {
     window.postMessage({ type: 'eth:send', payload }, pageMessageTargetOrigin())
   }
 
@@ -102,11 +107,12 @@ class Connection extends EventEmitter {
   }
 }
 
-let mmAppear: any =
+let mmAppear = false
+const storedMmAppear =
   window.localStorage.getItem('__newframeAppearAsMM__') ?? window.localStorage.getItem('__frameAppearAsMM__')
 
 try {
-  mmAppear = JSON.parse(mmAppear)
+  mmAppear = storedMmAppear ? Boolean(JSON.parse(storedMmAppear)) : false
 } catch (e) {
   mmAppear = false
 }
@@ -142,7 +148,7 @@ const info = {
   rdns: 'sh.newframe'
 }
 
-function broadcastEvent(eventName: string, detail: any) {
+function broadcastEvent<Detail>(eventName: string, detail: Detail) {
   try {
     const event = new CustomEvent(eventName, { detail })
     window.dispatchEvent(event)
@@ -159,9 +165,9 @@ broadcastEvent('eip6963:announceProvider', Object.freeze({ info, provider }))
 
 setProvider()
 
-shimWeb3((window as any).ethereum, mmAppear)
+shimWeb3((window as EthereumWindow).ethereum, mmAppear)
 
-const embedded: Record<string, (action: any) => Promise<any>> = {
+const embedded: Record<string, (action: unknown) => Promise<unknown>> = {
   getChainId: async () => ({
     // use Newframe's own provider; window.ethereum may belong to another wallet
     chainId: await provider?.doSend('eth_chainId', [], undefined, false)

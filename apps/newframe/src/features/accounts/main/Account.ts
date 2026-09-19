@@ -250,7 +250,7 @@ class FrameAccount {
     return this.requests[id] as T
   }
 
-  resolveRequest({ handlerId, payload }: AccountRequest, result?: any) {
+  resolveRequest({ handlerId, payload }: AccountRequest, result?: unknown) {
     const knownRequest = this.requests[handlerId]
 
     if (knownRequest) {
@@ -277,7 +277,7 @@ class FrameAccount {
   clearRequest(handlerId: string) {
     log.info(`clearRequest(${handlerId}) for account ${this.id}`)
 
-    const panelNav = (this.store.getState().windows.panel.nav || []) as any[]
+    const panelNav = this.store.getState().windows.panel.nav || []
     const wasCurrentRequest =
       panelNav[0]?.view === 'requestView' && panelNav[0]?.data?.requestId === handlerId
 
@@ -318,7 +318,7 @@ class FrameAccount {
     })
   }
 
-  approveRequest(reqId: string, type: ApprovalType, _data: any) {
+  approveRequest(reqId: string, type: ApprovalType, _data: unknown) {
     const request = this.getRequest<TransactionRequest>(reqId)
     const approval = request?.approvals?.find((candidate) => candidate.type === type)
     if (!approval) {
@@ -334,7 +334,7 @@ class FrameAccount {
     return true
   }
 
-  updateRecognizedAction(reqId: string, actionId: string, data: any) {
+  updateRecognizedAction(reqId: string, actionId: string, data: Record<string, unknown>) {
     const runtimeAction = this.actionUpdateHandlers.get(reqId)?.get(actionId)
     if (!runtimeAction?.update) {
       return false
@@ -592,10 +592,10 @@ class FrameAccount {
     }
   }
 
-  addRequest(req: any) {
+  addRequest(req: AccountRequest & { recognizedActions?: Action<unknown>[] }) {
     const add = (r: AccountRequest) => {
       const actionHandlers = new Map<string, Action<unknown>>()
-      ;(req.recognizedActions ?? []).forEach((action: any) => {
+      ;(req.recognizedActions ?? []).forEach((action) => {
         if (typeof action.update === 'function') {
           actionHandlers.set(action.id, action)
         }
@@ -620,10 +620,10 @@ class FrameAccount {
       const accountOpen = this.store.getState().main.currentAccount === account
 
       // Does the current panel nav include a 'requestView'
-      const panelNav = (this.store.getState().windows.panel.nav || []) as any[]
+      const panelNav = this.store.getState().windows.panel.nav || []
       const inExpandedRequestsView =
         panelNav[0]?.view === 'expandedModule' && panelNav[0]?.data?.id === 'requests'
-      const inRequestView = panelNav.map((crumb: any) => crumb.view).includes('requestView')
+      const inRequestView = panelNav.map((crumb) => crumb.view).includes('requestView')
 
       if (!accountOpen) {
         this.store.getState().setAccount({ id: this.id })
@@ -733,9 +733,9 @@ class FrameAccount {
           _origin: 'newframe-internal',
           params: []
         },
-        (response: any) => {
+        (response: RPCResponsePayload) => {
           this.creationBlockLookupPending = false
-          if (response.result) {
+          if (typeof response.result === 'string') {
             if (this.store.getState().main.accounts[this.id]) {
               this.patch({ created: `${parseInt(response.result, 16)}:${createdSuffix}` })
             }

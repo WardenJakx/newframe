@@ -69,7 +69,12 @@ describe('wallet action authority', () => {
         }
       }
     })
-    expect((decision as any).authorization.principal.origin).toBeUndefined()
+    if (decision.outcome !== 'prompt') {
+      throw new Error('expected a prompt decision')
+    }
+    expect(
+      'origin' in decision.authorization.principal ? decision.authorization.principal.origin : undefined
+    ).toBeUndefined()
   })
 
   it('keeps RPC origin as transport metadata and still requires a prompt', () => {

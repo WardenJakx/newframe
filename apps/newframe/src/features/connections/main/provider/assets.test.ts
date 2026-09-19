@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, jest as timers, mock } from 'bun:test'
 
+import type { Draft } from 'immer'
+
 import store from '../../../../platform/state-store'
+import type { CanonicalStore } from '../../../../platform/state-store'
 import { createObserver, loadAssets } from './assets'
 
 const account = '0x3ba7bd5cd1c19f678d9c8edfa043de5a57570e06'
@@ -26,7 +29,12 @@ const nativeCurrency = () => ({
   symbol: 'ETH'
 })
 
-function setToken(state: any, balance: { address: string; chainId: number }, symbol: string) {
+type MutableStore = Draft<CanonicalStore>
+
+const accountBalances = (state: MutableStore) =>
+  state.main.accounts[account].balances as { lastUpdated: Date }
+
+function setToken(state: MutableStore, balance: { address: string; chainId: number }, symbol: string) {
   state.main.tokens.byId[`${balance.chainId}:${balance.address}`] = {
     address: balance.address,
     chainId: balance.chainId,
@@ -40,7 +48,7 @@ function setToken(state: any, balance: { address: string; chainId: number }, sym
   }
 }
 
-function setTokenBalance(state: any, balance = tokenBalance, withPrice = false) {
+function setTokenBalance(state: MutableStore, balance = tokenBalance, withPrice = false) {
   state.main.balances[account] = [balance]
   setToken(state, balance, balance.symbol)
   if (withPrice) {
@@ -56,8 +64,10 @@ beforeEach(() => {
   timers.useFakeTimers()
 
   // ensure that the balances have been updated within the range to not be considered stale
-  store.setState((state: any) => {
-    state.main.accounts[account] = { balances: { lastUpdated: new Date() } }
+  store.setState((state) => {
+    state.main.accounts[account] = {
+      balances: { lastUpdated: new Date() }
+    } as unknown as (typeof state.main.accounts)[string]
     state.main.tokens.byId = {}
   })
 })
@@ -68,8 +78,10 @@ afterEach(() => {
 
 describe('#loadAssets', () => {
   it('loads native currency assets', () => {
-    store.setState((state: any) => {
-      state.main.networksMeta.ethereum[1] = { nativeCurrency: nativeCurrency() }
+    store.setState((state) => {
+      state.main.networksMeta.ethereum[1] = {
+        nativeCurrency: nativeCurrency()
+      } as unknown as (typeof state.main.networksMeta.ethereum)[number]
       state.main.balances[account] = [nativeBalance]
     })
 
@@ -87,7 +99,7 @@ describe('#loadAssets', () => {
   })
 
   it('loads token assets', () => {
-    store.setState((state: any) => {
+    store.setState((state) => {
       setTokenBalance(state, tokenBalance, true)
     })
 
@@ -113,7 +125,7 @@ describe('#loadAssets', () => {
       displayBalance: '0'
     }
 
-    store.setState((state: any) => {
+    store.setState((state) => {
       state.main.balances[account] = [balance]
       setToken(state, balance, balance.symbol)
     })
@@ -125,19 +137,22 @@ describe('#loadAssets', () => {
   })
 
   it('ignores a stale native balance after its network has been removed', () => {
-    store.setState((state: any) => {
+    store.setState((state) => {
       state.main.balances[account] = [{ ...nativeBalance, chainId: 31337 }]
       delete state.main.networksMeta.ethereum[31337]
     })
 
-    expect(loadAssets(store, account)).toEqual({ nativeCurrency: [], erc20: [] })
+    expect(loadAssets(store, account)).toEqual({
+      nativeCurrency: [],
+      erc20: []
+    })
   })
 
   it('throws an error if assets have not been updated in the last 5 minutes', () => {
     const tooOld = new Date(Date.now() - 6 * 60 * 1000)
 
-    store.setState((state: any) => {
-      state.main.accounts[account].balances.lastUpdated = tooOld
+    store.setState((state) => {
+      accountBalances(state).lastUpdated = tooOld
     })
 
     expect(() => loadAssets(store, account)).toThrow(/assets not known/)
@@ -158,15 +173,17 @@ describe('#createObserver', () => {
   beforeEach(() => {
     handler.assetsChanged = mock()
 
-    store.setState((state: any) => {
+    store.setState((state) => {
       state.main.currentAccount = account
       setTokenBalance(state)
     })
   })
 
   it('invokes the handler when the account is holding native currency assets', () => {
-    store.setState((state: any) => {
-      state.main.networksMeta.ethereum[1] = { nativeCurrency: nativeCurrency() }
+    store.setState((state) => {
+      state.main.networksMeta.ethereum[1] = {
+        nativeCurrency: nativeCurrency()
+      } as unknown as (typeof state.main.networksMeta.ethereum)[number]
       state.main.balances[account] = [nativeBalance]
     })
 
@@ -177,7 +194,7 @@ describe('#createObserver', () => {
   })
 
   it('invokes the handler when the account is holding token assets', () => {
-    store.setState((state: any) => {
+    store.setState((state) => {
       setTokenBalance(state, tokenBalance, true)
     })
 
@@ -187,15 +204,15 @@ describe('#createObserver', () => {
     expect(handler.assetsChanged).toHaveBeenCalledWith(account, expected)
   })
   ;[
-    ['no account is selected', (state: any) => void (state.main.currentAccount = '')],
-    ['no assets are present', (state: any) => void (state.main.balances[account] = [])],
+    ['no account is selected', (state: MutableStore) => void (state.main.currentAccount = '')],
+    ['no assets are present', (state: MutableStore) => void (state.main.balances[account] = [])],
     [
       'asset scanning is stale',
-      (state: any) => void (state.main.accounts[account].balances.lastUpdated = new Date(0))
+      (state: MutableStore) => void (accountBalances(state).lastUpdated = new Date(0))
     ]
   ].forEach(([description, arrange]) => {
     it(`does not invoke the handler when ${description}`, () => {
-      store.setState(arrange as (state: any) => void)
+      store.setState(arrange as (state: MutableStore) => void)
       fireObserver()
       expect(handler.assetsChanged).not.toHaveBeenCalled()
     })
@@ -218,10 +235,12 @@ describe('#createObserver', () => {
 
     observer()
     timers.advanceTimersByTime(400)
-    store.setState((state: any) => {
+    store.setState((state) => {
       state.main.currentAccount = nextAccount
-      state.main.accounts[nextAccount] = { balances: { lastUpdated: new Date() } }
-      state.main.balances[nextAccount] = [nextBalance]
+      state.main.accounts[nextAccount] = {
+        balances: { lastUpdated: new Date() }
+      } as unknown as (typeof state.main.accounts)[string]
+      state.main.balances[nextAccount] = [nextBalance] as unknown as (typeof state.main.balances)[string]
       setToken(state, nextBalance, 'NEXT')
     })
     observer()

@@ -107,7 +107,7 @@ export default class LatticeAdapter extends SignerAdapter {
 
     this.unsubscribeSigners?.()
     this.unsubscribeSigners = this.store.subscribe(
-      (state) => state.main.lattice as { [id: string]: LatticeSettings },
+      (state) => state.main.lattice as unknown as { [id: string]: LatticeSettings },
       (devices) => {
         Object.entries(devices).forEach(([deviceId, device]) => {
           if (deviceId in this.knownSigners) {

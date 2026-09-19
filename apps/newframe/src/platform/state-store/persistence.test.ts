@@ -3,6 +3,7 @@ import { describe, expect, it } from 'bun:test'
 import { createTestStore } from '../../../test/support/createTestStore'
 import { DEFAULT_PROFILE_ID, DEFAULT_PROFILE_NAME } from '../../app/contracts/state/main'
 import { builtInChainIconUrl } from '../../features/networks/domain/chain'
+import type { Token } from '../../features/tokens/domain/state/token'
 import {
   CanonicalStatePersistenceError,
   createPersistenceAdapter,
@@ -158,8 +159,15 @@ describe('canonical persistence lifecycle', () => {
     durable.main.accountOrder = [id]
     durable.main.currentAccount = id
     durable.main.autohide = false
-    const v2 = selectPersistedState(durable) as any
-    v2.main.tokens = {
+    const v2 = selectPersistedState(durable)
+    ;(
+      v2.main as unknown as {
+        tokens: {
+          custom: Token[]
+          known: Record<string, string[]>
+        }
+      }
+    ).tokens = {
       custom: [
         {
           address: '0x1111111111111111111111111111111111111111',
@@ -249,20 +257,28 @@ describe('canonical persisted state contract', () => {
     expect(mergePersistedState(persisted, canonicalState()).operations).toEqual({})
 
     for (const version of [2, 3, 4]) {
-      const legacy = selectPersistedState(canonicalState()) as any
-      legacy.main.rates = { legacy: { usd: { price: 2, change24hr: 0 } } }
+      const legacy = selectPersistedState(canonicalState())
+      const legacyMain = legacy.main as typeof legacy.main & {
+        rates: Record<string, { usd: { change24hr: number; price: number } }>
+      }
+      legacyMain.rates = { legacy: { usd: { price: 2, change24hr: 0 } } }
       legacy.main.assetRates = {
         stale: { usdRate: 3, source: 'zerion', observedAt: 1 }
       }
-      legacy.main.networksMeta.ethereum[1].nativeCurrency.usd = {
+      type NetworksMeta = NonNullable<typeof legacy.main.networksMeta>
+      const nativeCurrency = legacy.main.networksMeta!.ethereum[1]
+        .nativeCurrency as NetworksMeta['ethereum'][1]['nativeCurrency'] & {
+        usd?: { change24hr: number; price: number }
+      }
+      nativeCurrency.usd = {
         price: 0,
         change24hr: 0
       }
 
-      const migrated = migratePersistedState(legacy, version) as any
+      const migrated = migratePersistedState(legacy, version)
       expect(migrated.main.assetRates).toEqual({})
       expect(migrated.main).not.toHaveProperty('rates')
-      expect(migrated.main.networksMeta.ethereum[1].nativeCurrency).not.toHaveProperty('usd')
+      expect(migrated.main.networksMeta!.ethereum[1].nativeCurrency).not.toHaveProperty('usd')
     }
   })
 
@@ -320,10 +336,21 @@ describe('canonical persisted state contract', () => {
     }
     durable.main.signers.runtime = { id: 'runtime' } as never
     durable.main.networks.ethereum[1].connection.primary.connected = true
-    ;(durable.main.networksMeta.ethereum[1] as any).blockHeight = 123
+    ;(
+      durable.main.networksMeta.ethereum[1] as (typeof durable.main.networksMeta.ethereum)[1] & {
+        blockHeight?: number
+      }
+    ).blockHeight = 123
 
     const persisted = selectPersistedState(durable)
-    const projected = persisted.main as any
+    const projected = persisted.main as typeof persisted.main & {
+      accounts: NonNullable<typeof persisted.main.accounts>
+      appLock?: unknown
+      networks: NonNullable<typeof persisted.main.networks>
+      networksMeta: NonNullable<typeof persisted.main.networksMeta>
+      runtime?: unknown
+      signers?: unknown
+    }
     const fresh = canonicalState()
     fresh.main.appLock = { locked: true, vaultExists: true }
     const merged = mergePersistedState(persisted, fresh)
@@ -392,7 +419,7 @@ describe('canonical persisted state contract', () => {
   })
 
   it('owns supported migration equivalence classes and rejects invalid inputs', () => {
-    const v3 = selectPersistedState(canonicalState()) as any
+    const v3 = selectPersistedState(canonicalState())
     delete v3.main.balances
     delete v3.main.assetRates
 
@@ -410,9 +437,9 @@ describe('canonical persisted state contract', () => {
 
   it('clears legacy scalar orders from every supported pre-v7 state', () => {
     for (const version of [2, 3, 4, 5, 6]) {
-      const legacy = selectPersistedState(canonicalState()) as any
+      const legacy = selectPersistedState(canonicalState())
       legacy.main.autohide = true
-      legacy.main.orders = {
+      ;(legacy.main as unknown as { orders: Record<string, unknown> }).orders = {
         [`legacy-${version}`]: {
           orderId: `legacy-${version}`,
           accountAddress: '0x1111111111111111111111111111111111111111',
@@ -443,7 +470,7 @@ describe('canonical persisted state contract', () => {
   })
 
   it('preserves canonical asset-chain orders in v7 and migrates them idempotently', () => {
-    const current = selectPersistedState(canonicalState()) as any
+    const current = selectPersistedState(canonicalState())
     const order = {
       orderId: 'canonical-order',
       accountAddress: '0x1111111111111111111111111111111111111111',
@@ -480,14 +507,22 @@ describe('canonical persisted state contract', () => {
     const id = '0x1111111111111111111111111111111111111111'
 
     for (const version of [2, 3, 4, 5, 6]) {
-      const legacy = selectPersistedState(canonicalState()) as any
-      legacy.main.accounts[id] = account(id)
-      delete legacy.main.accounts[id].profileId
-      delete legacy.main.profiles
-      delete legacy.main.profileOrder
-      delete legacy.main.currentProfile
-      legacy.main.accountOrder = [id]
-      legacy.main.currentAccount = id
+      const legacy = selectPersistedState(canonicalState())
+      const legacyMain = legacy.main as unknown as {
+        accountOrder: string[]
+        accounts: Record<string, Omit<ReturnType<typeof account>, 'profileId'> & { profileId?: string }>
+        currentAccount: string
+        currentProfile?: unknown
+        profileOrder?: unknown
+        profiles?: unknown
+      }
+      legacyMain.accounts[id] = account(id)
+      delete legacyMain.accounts[id].profileId
+      delete legacyMain.profiles
+      delete legacyMain.profileOrder
+      delete legacyMain.currentProfile
+      legacyMain.accountOrder = [id]
+      legacyMain.currentAccount = id
 
       const migrated = migratePersistedState(legacy, version)
       expect({
@@ -587,7 +622,7 @@ describe('canonical persisted state contract', () => {
   it('deep-merges sparse network preferences while repairing retired image sources', () => {
     const current = canonicalState()
     const persisted = selectPersistedState(current)
-    const metadata = (persisted.main as any).networksMeta.ethereum
+    const metadata = persisted.main.networksMeta!.ethereum
     metadata[1].gas.price.levels.custom = '0x2a'
     metadata[1].icon = 'frame-cache:icon:legacy'
     metadata[10].icon = 'data:image/png;base64,aWNvbg=='

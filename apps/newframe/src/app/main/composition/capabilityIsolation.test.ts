@@ -46,7 +46,7 @@ it('keeps mutable state, listeners, and deferred capability ports graph-local', 
     signer: '',
     signerStatus: '',
     agentEnabled: false
-  })
+  } as unknown as Parameters<ReturnType<typeof first.store.getState>['upsertAccount']>[0])
   first.capabilities.settingsService.update({
     type: 'settings.update',
     setting: 'autohide',

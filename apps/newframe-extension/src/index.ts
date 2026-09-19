@@ -1,5 +1,9 @@
 /* globals chrome */
-import FrameBackgroundProvider, { RawFrameConnection, type ConnectionRetryState } from './frameConnection'
+import FrameBackgroundProvider, {
+  RawFrameConnection,
+  type ConnectionRetryState,
+  type JsonRpcPayload
+} from './frameConnection'
 import { frameStateStore, type AvailableChain, type ConnectionStatus } from './frameState'
 
 type Provider = FrameBackgroundProvider
@@ -40,13 +44,21 @@ interface PendingRequest {
   tabId: number
   payloadId: number
   method: string
-  params: any
+  params: NonNullable<JsonRpcPayload['params']>
   origin: string
+}
+
+interface DappPayload {
+  id?: number | string
+  method?: string
+  params?: readonly unknown[] | { subscription: string; result?: unknown }
+  result?: unknown
+  type?: string
 }
 
 interface Subscription {
   tabId: number
-  send: (subload: any) => void
+  send: (subload: DappPayload) => void
   type: string
 }
 
@@ -70,13 +82,14 @@ const originFromUrl = (url?: string) => {
   const path = url.split('/')
   return `${path[0]}//${path[2]}`
 }
-const getOrigin = (sender: any = {}) => originFromUrl(sender.url)
+const getOrigin = (sender: string | { url?: string } = {}) =>
+  originFromUrl(typeof sender === 'string' ? undefined : sender.url)
 const isInjectedUrl = (url = '') => url.startsWith('http') || url.startsWith('file')
 
 const subType = (pendingPayload: PendingRequest) => {
   try {
     const type = pendingPayload.params[0]
-    return subTypes.includes(type) ? type : 'unknown'
+    return typeof type === 'string' && subTypes.includes(type) ? type : 'unknown'
   } catch (e) {
     return 'unknown'
   }
@@ -233,7 +246,7 @@ async function disconnectActiveOrigin(tab?: chrome.tabs.Tab) {
   }
 }
 
-async function sendEventToTab(tabId: number, event: string, args?: any) {
+async function sendEventToTab(tabId: number, event: string, args?: unknown) {
   try {
     return await chrome.tabs.sendMessage(tabId, { type: 'eth:event', event, args })
   } catch (e) {
@@ -245,7 +258,7 @@ async function sendEventToTab(tabId: number, event: string, args?: any) {
   }
 }
 
-async function sendEvent(event: string, args: any[] = [], selector: chrome.tabs.QueryInfo = {}) {
+async function sendEvent(event: string, args: unknown[] = [], selector: chrome.tabs.QueryInfo = {}) {
   const tabs = await chrome.tabs.query(selector)
 
   await Promise.all(tabs.filter((tab) => !!tab.url).map((tab) => sendEventToTab(tab.id!, event, args)))
@@ -307,12 +320,13 @@ function initProvider(requestApproval = false) {
     refreshActiveOriginStatus().catch(console.error)
   })
 
-  async function handleDappPayload(payload: any) {
+  async function handleDappPayload(payload: DappPayload) {
     if (typeof payload.id !== 'undefined') {
-      if (pending[payload.id]) {
-        const { tabId, payloadId } = pending[payload.id]!
-        if (pending[payload.id]!.method === 'eth_subscribe' && payload.result) {
-          subs[payload.result] = {
+      const pendingRequest = pending[payload.id]
+      if (pendingRequest) {
+        const { tabId, payloadId } = pendingRequest
+        if (pendingRequest.method === 'eth_subscribe' && payload.result) {
+          subs[payload.result as string] = {
             tabId,
             send: (subload) => {
               chrome.tabs.sendMessage(tabId, subload).catch((error: unknown) => {
@@ -322,23 +336,23 @@ function initProvider(requestApproval = false) {
                 console.error('Error sending subscription payload', error)
               })
             },
-            type: subType(pending[payload.id]!)
+            type: subType(pendingRequest)
           }
-        } else if (pending[payload.id]!.method === 'eth_unsubscribe') {
-          const params: any[] = payload.params ? [].concat(payload.params) : []
-          params.forEach((sub) => delete subs[sub])
+        } else if (pendingRequest.method === 'eth_unsubscribe') {
+          const params: unknown[] = payload.params ? ([] as unknown[]).concat(payload.params) : []
+          params.forEach((sub) => delete subs[sub as string])
         }
         chrome.tabs
           .sendMessage(tabId, Object.assign({}, payload, { id: payloadId, type: 'eth:payload' }))
           .catch(() => {})
-        if (pending[payload.id]!.method === 'eth_chainId' && pending[payload.id]!.tabId === activeTabId) {
-          const payloadOrigin = pending[payload.id]!.origin
+        if (pendingRequest.method === 'eth_chainId' && pendingRequest.tabId === activeTabId) {
+          const payloadOrigin = pendingRequest.origin
           const activeTab = await chrome.tabs.get(activeTabId)
           const activeTabOrigin = originFromUrl(activeTab.url)
           if (activeTabOrigin === payloadOrigin) {
             const chainId = payload.result
             if (chainId) {
-              setCurrentChain(chainId)
+              setCurrentChain(chainId as string)
             }
           }
         }
@@ -348,16 +362,17 @@ function initProvider(requestApproval = false) {
     } else if (
       payload.method &&
       payload.method.indexOf('_subscription') > -1 &&
-      subs[payload.params.subscription]
+      subs[(payload.params as { subscription: string }).subscription]
     ) {
       // Emit subscription result to tab
-      const sub = subs[payload.params.subscription]!
+      const subscriptionParams = payload.params as { subscription: string; result?: unknown }
+      const sub = subs[subscriptionParams.subscription]!
       payload.type = 'eth:payload'
       sub.send(payload)
       if (sub.type === 'chainChanged' && sub.tabId === activeTabId) {
-        const chainId = payload.params?.result
+        const chainId = subscriptionParams.result
         if (chainId) {
-          setCurrentChain(chainId)
+          setCurrentChain(chainId as string)
         }
       }
     }
@@ -375,8 +390,9 @@ function destroyProvider() {
 }
 
 function addStateListeners() {
-  function setMediaBlob(blobUrl: string, location: any, message?: string) {
-    ;(window as any).__setMediaBlob__(blobUrl, location, message)
+  function setMediaBlob(blobUrl: string, location: unknown, message?: string) {
+    const setter = Reflect.get(window, '__setMediaBlob__') as typeof setMediaBlob
+    setter(blobUrl, location, message)
   }
 
   async function handleMessage(

@@ -10,7 +10,7 @@ interface KnownSigners {
   [id: string]: {
     signer: Trezor
     eventHandlers: {
-      [event: string]: (...args: any) => void
+      [event: string]: (...args: unknown[]) => void
     }
   }
 }
@@ -251,11 +251,11 @@ export default class TrezorSignerAdapter extends SignerAdapter {
     }
   }
 
-  private addEventHandler(signer: Trezor, event: string, handler: (device: TrezorDevice) => void) {
+  private addEventHandler(signer: Trezor, event: string, handler: (...args: unknown[]) => void) {
     this.knownSigners[signer.id].eventHandlers[event] = handler
   }
 
-  private handleEvent(signerId: string, event: string, ...args: any) {
+  private handleEvent(signerId: string, event: string, ...args: unknown[]) {
     const action = this.knownSigners[signerId]?.eventHandlers[event] || (() => {})
 
     delete this.knownSigners[signerId].eventHandlers[event]

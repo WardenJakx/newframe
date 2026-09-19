@@ -3,20 +3,25 @@ import type { Mock } from 'bun:test'
 
 import { render, screen } from '../../../../test/support/componentSetup'
 
-let KeyboardShortcutConfigurator: any
-let mockLayoutGetKey: Mock<any>
+let KeyboardShortcutConfigurator: typeof import('./KeyboardShortcutConfigurator').default
+let mockLayoutGetKey: Mock<(key: string) => string | undefined>
 const setShortcut = mock()
 
 beforeEach(async () => {
   setShortcut.mockReset()
   mockLayoutGetKey = mock()
-  ;(global.navigator as any).keyboard = {}
-  global.navigator.keyboard.getLayoutMap = mock().mockResolvedValue({
+  const navigator = global.navigator as Navigator & {
+    keyboard: { getLayoutMap: () => Promise<{ get: (key: string) => string | undefined }> }
+  }
+  navigator.keyboard = {
+    getLayoutMap: mock().mockResolvedValue({ get: mockLayoutGetKey })
+  }
+  navigator.keyboard.getLayoutMap = mock().mockResolvedValue({
     get: mockLayoutGetKey
   })
   KeyboardShortcutConfigurator = (await import('./KeyboardShortcutConfigurator')).default
-  mockLayoutGetKey.mockImplementation((key: any) => {
-    const keyMap: any = {
+  mockLayoutGetKey.mockImplementation((key: string) => {
+    const keyMap: Record<string, string> = {
       Slash: '/'
     }
     return keyMap[key] ?? key
@@ -70,7 +75,8 @@ it('should render an existing Alt key shortcut on MacOS', () => {
       shortcut={{
         modifierKeys: ['Alt'],
         shortcutKey: 'Slash',
-        enabled: true
+        enabled: true,
+        configuring: false
       }}
     />
   )

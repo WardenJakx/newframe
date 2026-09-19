@@ -48,9 +48,9 @@ import {
 type LocalOrderStatus = 'accepted' | 'filled' | 'cancelled' | 'rejected'
 
 interface LocalQuoteRecord {
-  body: Record<string, any>
+  body: Record<string, unknown>
   quote: FlashQuote
-  response: Record<string, any>
+  response: Record<string, unknown>
 }
 
 interface LocalOrderRecord {
@@ -89,9 +89,9 @@ class LocalTradeValidationError extends Error {}
 
 const quotes = new Map<string, LocalQuoteRecord>()
 const orders = new Map<string, LocalOrderRecord>()
-const orderListeners = new Set<(order: Record<string, any>) => void>()
+const orderListeners = new Set<(order: Record<string, unknown>) => void>()
 
-export function subscribeLocalTradeOrders(listener: (order: Record<string, any>) => void) {
+export function subscribeLocalTradeOrders(listener: (order: Record<string, unknown>) => void) {
   orderListeners.add(listener)
   return () => orderListeners.delete(listener)
 }
@@ -175,8 +175,8 @@ async function readJson(req: Request) {
   }
 }
 
-function objectRecord(value: unknown): Record<string, any> {
-  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, any>) : {}
+function objectRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
 }
 
 function cleanOptionalAmount(amount: unknown, label: string) {
@@ -258,13 +258,17 @@ function ensureNoTriggers(triggers: LocalTrigger[], orderType: FlashOrderType) {
   }
 }
 
-function ensureNoTwapFields(body: Record<string, any>, orderType: FlashOrderType) {
+function ensureNoTwapFields(body: Record<string, unknown>, orderType: FlashOrderType) {
   if (body.durationSeconds !== undefined || body.twapBucketCount !== undefined) {
     validationError(`Local Flash TWAP fields are not allowed for ${orderType}`)
   }
 }
 
-function validateOrderParameters(body: Record<string, any>, orderType: FlashOrderType, side: FlashTradeSide) {
+function validateOrderParameters(
+  body: Record<string, unknown>,
+  orderType: FlashOrderType,
+  side: FlashTradeSide
+) {
   const limitNotionalPrice = cleanOptionalAmount(body.limitNotionalPrice, 'limitNotionalPrice')
   const maxSlippage = optionalProtection(body.maxSlippage, 'maxSlippage')
   const maxPriceImpact = optionalProtection(body.maxPriceImpact, 'maxPriceImpact')
@@ -658,7 +662,7 @@ function localBridgeQuoteId({
   contraAsset,
   targetAsset
 }: {
-  body: Record<string, any>
+  body: Record<string, unknown>
   contraAsset: FlashAsset
   targetAsset: FlashAsset
 }) {
@@ -690,7 +694,7 @@ function localBridgeQuoteId({
   return `local-bridge-${createHash('sha256').update(serialized).digest('hex')}`
 }
 
-async function buildQuote(body: Record<string, any>) {
+async function buildQuote(body: Record<string, unknown>) {
   const accountAddress = checksumAddress(String(body.funderAddress ?? ''), 'funder')
   const recipientAddress = body.recipientAddress
     ? checksumAddress(String(body.recipientAddress), 'recipient')
@@ -845,7 +849,7 @@ async function buildQuote(body: Record<string, any>) {
 }
 
 function orderResponse(order: LocalOrderRecord) {
-  const localParameters = objectRecord(order.quote.raw).local
+  const localParameters = objectRecord(objectRecord(order.quote.raw).local)
   const targetAmount = order.side === 'sell' ? order.quote.inputAmount : order.quote.outputAmount
   const contraAmount = order.side === 'buy' ? order.quote.inputAmount : order.quote.outputAmount
   let closeReason: string | null = 'REASON_FULLY_FILLED'
@@ -903,7 +907,7 @@ function orderResponse(order: LocalOrderRecord) {
   }
 }
 
-function validateSubmitBody(quoteRecord: LocalQuoteRecord, body: Record<string, any>) {
+function validateSubmitBody(quoteRecord: LocalQuoteRecord, body: Record<string, unknown>) {
   const quoteBody = quoteRecord.body
   const quoteResponse = quoteRecord.response
   const wrappedAsset = String(objectRecord(quoteResponse.wrap).wrappedAsset ?? '')
@@ -967,7 +971,7 @@ function validateSubmitBody(quoteRecord: LocalQuoteRecord, body: Record<string, 
   }
 }
 
-function storeOrder(quoteRecord: LocalQuoteRecord, body: Record<string, any>) {
+function storeOrder(quoteRecord: LocalQuoteRecord, body: Record<string, unknown>) {
   const now = nowIso()
   const orderId = `local-order-${crypto.randomUUID()}`
   const orderType = quoteRecord.quote.orderType

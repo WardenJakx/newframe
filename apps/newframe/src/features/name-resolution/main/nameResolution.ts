@@ -20,10 +20,14 @@ const gnsInterface = new Interface(gnsAbi)
 
 export interface NameResolutionProviderPort {
   setChain(chainId: string): void
-  on(event: string, listener: (...args: any[]) => void): unknown
-  once(event: string, listener: (...args: any[]) => void): unknown
-  off(event: string, listener: (...args: any[]) => void): unknown
-  request<T>(payload: { method: string; params?: unknown[]; chainId?: string }): Promise<T>
+  on(event: string, listener: (...args: never[]) => void): unknown
+  once(event: string, listener: (...args: never[]) => void): unknown
+  off(event: string, listener: (...args: never[]) => void): unknown
+  request<T>(payload: {
+    method: string
+    params?: readonly unknown[] | Record<string, unknown>
+    chainId?: string
+  }): Promise<T>
 }
 
 export interface NameResolutionService {
@@ -218,5 +222,7 @@ export function createNameResolutionService(
 }
 
 export function createProductionNameResolutionService(proxy: ProviderProxyConnection) {
-  return createNameResolutionService(() => createProxyProvider(proxy))
+  return createNameResolutionService(
+    () => createProxyProvider(proxy) as unknown as NameResolutionProviderPort
+  )
 }

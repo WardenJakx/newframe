@@ -1,4 +1,4 @@
-import { BrowserProvider, TypedDataEncoder, verifyTypedData } from 'ethers'
+import { BrowserProvider, TypedDataEncoder, verifyTypedData, type Eip1193Provider } from 'ethers'
 
 import createFrameProvider from '../../../apps/newframe/src/features/connections/main/provider/connection.ts'
 
@@ -45,7 +45,7 @@ const TYPED_TYPES = {
   Mail: TYPED_DATA.types.Mail
 }
 
-let frame: any
+let frame: ReturnType<typeof createFrameProvider>
 let provider: BrowserProvider
 
 const waitForFrameConnect = () =>
@@ -74,7 +74,8 @@ async function main() {
   try {
     await waitForFrameConnect()
     provider = new BrowserProvider({
-      request: ({ method, params }: { method: string; params?: any[] }) => frame.request({ method, params })
+      request: ({ method, params }: Parameters<Eip1193Provider['request']>[0]) =>
+        frame.request({ method, params })
     })
 
     const [address] = await provider.send('eth_requestAccounts', [])

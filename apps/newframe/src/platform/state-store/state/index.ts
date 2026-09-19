@@ -12,8 +12,10 @@ import {
   createBuiltInNetworkMetadata,
   createBuiltInNetworks
 } from '../../../features/networks/domain/chain/index.js'
+import type { Shortcut } from '../../../features/settings/domain/state/shortcuts.js'
 import { OperationRecordSchema } from '../../operations/operation.js'
 import { getMainRuntime } from '../../runtime/index.js'
+import { Derivation } from '../../signing/signers/Signer/derive.js'
 import type { SignerSummary } from '../../signing/signers/Signer/index.js'
 import type { OwnedOperation } from '../actions.operation.js'
 
@@ -70,13 +72,21 @@ type StatusNotification = z.infer<typeof StatusNotificationSchema>
 
 // TODO: remove pieces of this as they're added to the main state definition
 type M = Main & {
-  shortcuts: any
-  lattice: any
-  latticeSettings: any
-  ledger: any
-  trezor: any
+  shortcuts: { summon: Shortcut; altSlash?: boolean } & Record<string, unknown>
+  lattice: Record<
+    string,
+    { deviceName: string; tag: string; privKey: string; paired: boolean } & Record<string, unknown>
+  >
+  latticeSettings: {
+    accountLimit: number
+    derivation: Derivation
+    endpointMode: string
+    endpointCustom: string
+  }
+  ledger: { derivation: Derivation; liveAccountLimit: number }
+  trezor: { derivation: Derivation }
   signers: Record<string, SignerSummary & Record<string, unknown>>
-  frames: any
+  frames: Record<string, Frame>
 }
 
 const mainState: M = {
@@ -109,12 +119,12 @@ const mainState: M = {
   lattice: {},
   latticeSettings: {
     accountLimit: 5,
-    derivation: 'standard',
+    derivation: Derivation.standard,
     endpointMode: 'default',
     endpointCustom: ''
   },
-  ledger: { derivation: 'live', liveAccountLimit: 5 },
-  trezor: { derivation: 'standard' },
+  ledger: { derivation: Derivation.live, liveAccountLimit: 5 },
+  trezor: { derivation: Derivation.standard },
   origins: {},
   knownExtensions: {},
   accounts: {},
@@ -148,20 +158,28 @@ const initial = {
   main: mainState
 }
 
-type NavigationEntry = { view: string; data: Record<string, any> }
+export type NavigationEntry = {
+  view: string
+  data: Record<string, unknown>
+  position?: Record<string, string>
+  [key: string]: unknown
+}
 type WindowState = {
   show: boolean
   nav: NavigationEntry[]
-  [key: string]: any
+  [key: string]: unknown
 }
 
-export type CanonicalState = Omit<typeof initial, 'main' | 'operations' | 'view' | 'windows'> & {
+type HomeCommand = { id: number; view?: string; data: Record<string, unknown> }
+
+export type CanonicalState = Omit<typeof initial, 'main' | 'operations' | 'tray' | 'view' | 'windows'> & {
   main: M
   operations: Record<string, OwnedOperation>
   view: Omit<typeof initial.view, 'notifications'> & {
     notifications: Record<string, StatusNotification>
   }
   windows: { panel: WindowState }
+  tray: Omit<typeof initial.tray, 'homeCommand'> & { homeCommand: HomeCommand | null }
 }
 
 export default function createInitialState(): CanonicalState {

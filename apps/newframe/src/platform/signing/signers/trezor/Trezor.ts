@@ -277,7 +277,7 @@ export default class Trezor extends Signer {
         )
 
         const messageHash = TypedDataUtils.hashStruct(
-          primaryType as any,
+          primaryType as string,
           message,
           types,
           SignTypedDataVersion.V4
@@ -315,7 +315,11 @@ export default class Trezor extends Signer {
         const path = this.getPath(index)
 
         try {
-          return await TrezorBridge.signTransaction(this.device, path, trezorTx)
+          return await TrezorBridge.signTransaction(
+            this.device,
+            path,
+            trezorTx as Parameters<typeof TrezorBridge.signTransaction>[2]
+          )
         } catch (e: unknown) {
           const err = e as DeviceError
           const errMsg = err.message.toLowerCase().match(/forbidden key path/)

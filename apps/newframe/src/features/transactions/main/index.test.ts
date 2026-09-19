@@ -6,8 +6,30 @@ import { addHexPrefix, stripHexPrefix } from '@ethereumjs/util'
 import * as transactionModule from './index'
 
 // real functions under test, exercised with partial tx fixtures
-const { maxFee, londonToLegacy, signerCompatibility, populate, sign, classifyTransaction } =
-  transactionModule as Record<string, any>
+const signerCompatibility = (transaction: unknown, signer: unknown) =>
+  transactionModule.signerCompatibility(
+    transaction as Parameters<typeof transactionModule.signerCompatibility>[0],
+    signer as Parameters<typeof transactionModule.signerCompatibility>[1]
+  )
+const londonToLegacy = (transaction: unknown) =>
+  transactionModule.londonToLegacy(transaction as Parameters<typeof transactionModule.londonToLegacy>[0])
+const maxFee = (transaction: unknown) =>
+  transactionModule.maxFee(transaction as Parameters<typeof transactionModule.maxFee>[0])
+const populate = (transaction: unknown, chain: unknown, gas: unknown): unknown =>
+  transactionModule.populate(
+    transaction as Parameters<typeof transactionModule.populate>[0],
+    chain as Parameters<typeof transactionModule.populate>[1],
+    gas as Parameters<typeof transactionModule.populate>[2]
+  )
+const sign = (transaction: unknown, signingFunction: unknown) =>
+  transactionModule.sign(
+    transaction as Parameters<typeof transactionModule.sign>[0],
+    signingFunction as Parameters<typeof transactionModule.sign>[1]
+  )
+const classifyTransaction = (options: unknown) =>
+  transactionModule.classifyTransaction(
+    options as Parameters<typeof transactionModule.classifyTransaction>[0]
+  )
 import { TxClassification } from '../../requests/contract/requests'
 import { GasFeesSource } from '../domain'
 
@@ -358,7 +380,7 @@ describe('#classifyTransaction', () => {
   const method = 'eth_sendTransaction'
   const from = '0xd8da6bf26964af9d7eed9e03e53415d37aa96045'
   const to = '0x2f3a40a3db8a7e3d09b0adfefbce4f6f81927557'
-  const Request = (param: any, recipientType: any) => ({
+  const Request = (param: unknown, recipientType: unknown) => ({
     payload: {
       method,
       params: [param]

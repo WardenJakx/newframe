@@ -17,7 +17,7 @@ export interface TokenData {
 
 function createEip1193Wrapper(chainId: number, provider: Erc20ProviderPort) {
   return {
-    request: (request: { method: string; params?: any[] }) =>
+    request: (request: { method: string; params?: unknown[] }) =>
       new Promise((resolve, reject) => {
         const wrappedPayload = {
           method: request.method,
@@ -28,11 +28,11 @@ function createEip1193Wrapper(chainId: number, provider: Erc20ProviderPort) {
           chainId: addHexPrefix(chainId.toString(16))
         } as const
 
-        provider.sendAsync(wrappedPayload, (error: any, response: any) => {
-          if (error || response?.error) {
-            return reject(error ?? response.error)
+        provider.sendAsync(wrappedPayload, (error, response) => {
+          if (error || !response || response.error) {
+            return reject(error ?? response?.error)
           }
-          resolve(response?.result)
+          resolve(response.result)
         })
       })
   }
@@ -89,7 +89,7 @@ export default class Erc20Contract {
     }
   }
 
-  static encodeCallData(fn: string, params: any[]) {
+  static encodeCallData(fn: string, params: unknown[]) {
     return erc20Interface.encodeFunctionData(fn, params)
   }
 

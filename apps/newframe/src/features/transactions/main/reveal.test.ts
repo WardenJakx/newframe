@@ -10,7 +10,7 @@ it('reveals a contract identity through its graph-owned provider proxy', async (
   }
   const reveal = createRevealService(proxy, nameResolution as never)
 
-  proxy.on('provider:send', (payload: any) => {
+  proxy.on('provider:send', (payload: RPCRequestPayload) => {
     expect({
       chainId: payload.chainId,
       method: payload.method,

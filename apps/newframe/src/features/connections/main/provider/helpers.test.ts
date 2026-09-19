@@ -6,10 +6,7 @@ import log from 'electron-log'
 import * as helpersModule from './helpers'
 
 // real functions under test, exercised with partial fixtures
-const { decodeMessage, encodePersonalSignMessage, getRawTx, getSignedAddress } = helpersModule as Record<
-  string,
-  any
->
+const { decodeMessage, encodePersonalSignMessage, getRawTx, getSignedAddress } = helpersModule
 
 beforeAll(async () => {
   log.transports.console.level = false
@@ -31,11 +28,16 @@ describe('#getRawTx', () => {
     ['integer nonce', { nonce: '360' }, 'nonce', '0x168'],
     ['missing nonce', { nonce: undefined }, 'nonce', undefined]
   ].forEach(([description, input, field, expected]) => {
-    it(`normalizes ${description}`, () => expect(getRawTx(input as any)[field as string]).toBe(expected))
+    it(`normalizes ${description}`, () =>
+      expect(
+        (getRawTx(input as unknown as Parameters<typeof getRawTx>[0]) as unknown as Record<string, unknown>)[
+          field as string
+        ]
+      ).toBe(expected))
   })
   ;['invalid', '-360', '3.60'].forEach((nonce) => {
     it(`rejects invalid nonce ${nonce}`, () => {
-      expect(() => getRawTx({ nonce })).toThrow('Invalid nonce')
+      expect(() => getRawTx({ nonce } as unknown as Parameters<typeof getRawTx>[0])).toThrow('Invalid nonce')
     })
   })
 })
@@ -55,7 +57,7 @@ describe('#encodePersonalSignMessage', () => {
     const message = 'Definitive Flash v1 — Cancel Order\nOrder: 7c2fec66-26cb-4455-844a-f638f3cb8680'
     const expected = `0x${Buffer.from(message, 'utf8').toString('hex')}`
 
-    expect(encodePersonalSignMessage(message)).toBe(expected)
+    expect(encodePersonalSignMessage(message) as unknown).toBe(expected)
     expect(Buffer.from(expected.slice(2), 'hex').toString('utf8')).toBe(message)
   })
 
@@ -70,14 +72,14 @@ describe('#getSignedAddress', () => {
       '0xa4ba512820eab7022d0c88b9335425b6235c184565c84fb9e451965844a185030baec17ac9565c666675525cae41e367c458c1fdf575a80f6a44197d3b48c0ba1c'
     const message = fromUtf8('Example `personal_sign` message')
 
-    getSignedAddress(signature, message, (err: any, verifiedAddress: any) => {
+    getSignedAddress(signature, message, (err: Error | null, verifiedAddress?: string) => {
       expect(err).toBeFalsy()
-      expect(verifiedAddress.toLowerCase()).toBe('0x3a077715f7383ad97215d1a585778bce6a9aa8af')
+      expect(verifiedAddress?.toLowerCase()).toBe('0x3a077715f7383ad97215d1a585778bce6a9aa8af')
     })
   })
 
   it('returns an error if no signature is provided', () => {
-    getSignedAddress(null, 'some message', (err: any) => {
+    getSignedAddress(null as unknown as string, 'some message', (err: Error | null) => {
       expect(err).toBeTruthy()
     })
   })

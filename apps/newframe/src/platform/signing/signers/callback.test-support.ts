@@ -1,12 +1,14 @@
 import { expect } from 'bun:test'
 
+import type HotSigner from './hot/HotSigner'
+
 export function callbackResult<T>(start: (done: Callback<T>) => void): Promise<T> {
   return new Promise((resolve, reject) =>
     start((error, value) => (error ? reject(error) : resolve(value as T)))
   )
 }
 
-export async function exerciseHotSignerContract(signer: any, vault: { lock(): void }) {
+export async function exerciseHotSignerContract(signer: HotSigner, vault: { lock(): void }) {
   const signature = await callbackResult<string>((done) =>
     signer.signMessage(0, '0x' + Buffer.from('test').toString('hex'), done)
   )
@@ -22,13 +24,15 @@ export async function exerciseHotSignerContract(signer: any, vault: { lock(): vo
         to: '0xfa3caabc8eefec2b5e2895e5afbf79379e7268a7',
         value: '0x0',
         chainId: '0x1'
-      },
+      } as unknown as Parameters<HotSigner['signTransaction']>[1],
       done
     )
   )
   expect(transaction).toStartWith('0x')
   expect(transaction.length).toBeGreaterThan(2)
-  expect(await callbackResult((done) => signer.verifyAddress(0, signer.addresses[0], false, done))).toBeTrue()
+  expect(
+    await callbackResult<boolean>((done) => signer.verifyAddress(0, signer.addresses[0], false, done))
+  ).toBeTrue()
   expect(callbackResult((done) => signer.verifyAddress(0, '0xabcdef', false, done))).rejects.toThrow(
     'Unable to verify address'
   )

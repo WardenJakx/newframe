@@ -38,7 +38,7 @@ function sendError(socket: ServerWebSocket<LocalFlashSocketData>, code: string, 
   send(socket, { type: 'error', code, message })
 }
 
-function subscribe(socket: ServerWebSocket<LocalFlashSocketData>, frame: Record<string, any>) {
+function subscribe(socket: ServerWebSocket<LocalFlashSocketData>, frame: Record<string, unknown>) {
   const apiKey = String(frame.apiKey ?? '').trim()
   if (!apiKey || (socket.data.apiKey && socket.data.apiKey !== apiKey)) {
     sendError(socket, 'UNAUTHORIZED', 'apiKey does not match this connection')
@@ -103,7 +103,7 @@ const server = Bun.serve<LocalFlashSocketData>({
       sockets.add(socket)
     },
     message(socket, message) {
-      let frame: Record<string, any>
+      let frame: Record<string, unknown>
       try {
         const parsed = JSON.parse(String(message))
         frame = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}

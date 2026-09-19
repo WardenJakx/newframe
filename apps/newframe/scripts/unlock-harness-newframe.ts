@@ -25,7 +25,7 @@ type LockState = {
 
 type RuntimeEvaluateResult = {
   result?: {
-    value?: any
+    value?: unknown
     description?: string
   }
   exceptionDetails?: {
@@ -38,7 +38,7 @@ type RuntimeEvaluateResult = {
 
 class CdpClient {
   private nextId = 1
-  private pending = new Map<number, { resolve: (value: any) => void; reject: (err: Error) => void }>()
+  private pending = new Map<number, { resolve: (value: unknown) => void; reject: (err: Error) => void }>()
 
   private constructor(private socket: WebSocket) {
     socket.on('message', (data) => {
@@ -76,12 +76,12 @@ class CdpClient {
     })
   }
 
-  command<T>(method: string, params: Record<string, any> = {}) {
+  command<T>(method: string, params: Record<string, unknown> = {}) {
     const id = this.nextId++
     const payload = JSON.stringify({ id, method, params })
 
     return new Promise<T>((resolve, reject) => {
-      this.pending.set(id, { resolve, reject })
+      this.pending.set(id, { resolve: resolve as (value: unknown) => void, reject })
       this.socket.send(payload, (err) => {
         if (!err) {
           return

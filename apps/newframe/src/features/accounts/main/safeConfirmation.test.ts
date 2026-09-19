@@ -73,14 +73,14 @@ function setup() {
         pending: [proposal]
       }
     }
-  })
+  } as unknown as Parameters<ReturnType<typeof store.getState>['upsertAccount']>[0])
   store.getState().upsertAccount({
     id: ownerId,
     address: wallet.address,
     signer: 'seed',
     lastSignerType: 'Seed',
     created: 'owner:1'
-  })
+  } as unknown as Parameters<ReturnType<typeof store.getState>['upsertAccount']>[0])
   store.setState((state) => ({
     main: {
       ...state.main,

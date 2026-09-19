@@ -6,8 +6,10 @@ import log from 'electron-log'
 import { createTestStore as createActionHarness } from '../../../test/support/createTestStore'
 import { DEFAULT_PROFILE_ID } from '../../app/contracts/state/main'
 import { toTokenId } from '../../features/asset-data/domain/balance'
+import { RequestStatus } from '../../features/requests/contract/requests'
 import { customTokens, tokensForAccount } from '../../features/tokens/domain'
 import { NATIVE_CURRENCY } from '../../features/tokens/domain/constants'
+import type { Token } from '../../features/tokens/domain/state/token'
 import createInitialState from './state'
 
 beforeAll(() => {
@@ -46,7 +48,7 @@ const testTokens = {
   }
 }
 
-function tokenRecord(token: any, options: { custom?: boolean; curated?: boolean } = {}) {
+function tokenRecord(token: Token, options: { custom?: boolean; curated?: boolean } = {}) {
   return {
     ...token,
     custom: Boolean(options.custom),
@@ -56,7 +58,10 @@ function tokenRecord(token: any, options: { custom?: boolean; curated?: boolean 
   }
 }
 
-function tokenCatalog(tokens: any[], accountTokenIds: Record<string, string[]> = {}) {
+function tokenCatalog(
+  tokens: ReturnType<typeof tokenRecord>[],
+  accountTokenIds: Record<string, string[]> = {}
+) {
   return {
     byId: Object.fromEntries(tokens.map((token) => [toTokenId(token), token])),
     accountTokenIds
@@ -166,7 +171,7 @@ describe('#addNetwork', () => {
 
     for (const invalidNetwork of invalidNetworks) {
       const { actions, getState } = createActionHarness({})
-      actions.addNetwork(invalidNetwork)
+      actions.addNetwork(invalidNetwork as unknown as Parameters<typeof actions.addNetwork>[0])
 
       expect({
         networks: getState().main.networks,
@@ -215,7 +220,7 @@ describe('#setBalances', () => {
     actions.setBalances(owner, [
       { ...testTokens.zrx, balance: zrxAmount },
       { ...testTokens.badger, balance: badgerAmount }
-    ])
+    ] as unknown as Parameters<typeof actions.setBalances>[1])
     expect(getState().main.balances[owner]).toStrictEqual([
       storedBalance(testTokens.zrx, zrxAmount),
       storedBalance(testTokens.badger, badgerAmount)
@@ -448,7 +453,7 @@ describe('#removeNetwork', () => {
 
     expect(main.networks.ethereum[10]).toBeUndefined()
     expect(main.networksMeta.ethereum[10]).toBeUndefined()
-    expect(Object.values(main.origins).map(({ chain }: any) => chain)).toStrictEqual([
+    expect(Object.values(main.origins).map(({ chain }) => chain)).toStrictEqual([
       { id: 1, type: 'ethereum' },
       { id: 1, type: 'ethereum' },
       { id: 137, type: 'ethereum' },
@@ -497,7 +502,7 @@ describe('#upsertAccount', () => {
       lastSignerType: 'seed',
       status: 'ok',
       balances: 'ignored'
-    })
+    } as unknown as Parameters<typeof actions.upsertAccount>[0])
 
     expect(getState().main.accounts[1]).toMatchObject({
       id: '1',
@@ -515,7 +520,12 @@ describe('#upsertAccount', () => {
 
   it('creates a new account and its user-defined metadata together', () => {
     const { actions, getState } = createHarness()
-    actions.upsertAccount({ id: '2', name: 'not so cool account', lastSignerType: 'seed', status: 'ok' })
+    actions.upsertAccount({
+      id: '2',
+      name: 'not so cool account',
+      lastSignerType: 'seed',
+      status: 'ok'
+    } as unknown as Parameters<typeof actions.upsertAccount>[0])
 
     expect(getState().main.accounts[2]).toMatchObject({
       id: '2',
@@ -538,7 +548,12 @@ describe('#upsertAccount', () => {
     for (const id of ['1', '2']) {
       const { actions, getState } = createHarness()
 
-      actions.upsertAccount({ id, name: 'hot account', lastSignerType: 'seed', status: 'ok' })
+      actions.upsertAccount({
+        id,
+        name: 'hot account',
+        lastSignerType: 'seed',
+        status: 'ok'
+      } as unknown as Parameters<typeof actions.upsertAccount>[0])
 
       expect(getState().main.accountsMeta).toStrictEqual({
         [metadataId]: { name: 'cool account', lastUpdated: 1568682918135 }
@@ -730,7 +745,9 @@ describe('#setPortfolioBalances', () => {
       }
     })
 
-    actions.setPortfolioBalances(owner, [nativeBalance, zerionBalance])
+    actions.setPortfolioBalances(owner, [nativeBalance, zerionBalance] as unknown as Parameters<
+      typeof actions.setPortfolioBalances
+    >[1])
 
     expect(getState().main.balances[owner]).toStrictEqual([
       storedBalance(testTokens.zrx, '0x2'),
@@ -1047,7 +1064,7 @@ describe('#canonical action boundaries', () => {
       payload: { id: 1, jsonrpc: '2.0', method: 'eth_requestAccounts', params: [] }
     })
     harness.actions.patchAccountRequest(accountId, 'request-1', (request) => {
-      request.status = 'pending' as any
+      request.status = RequestStatus.Pending
       request.notice = 'Waiting'
     })
 

@@ -3,11 +3,16 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, jest as timers,
 import store from '../../../../platform/state-store'
 import createCanonicalStore from '../../../../platform/state-store/createCanonicalStore'
 
-const mockBalancesFactory = mock(() => mockBalances)
+type ExternalDataFactory = typeof import('./index').default
+type BalancesMock = ReturnType<typeof createBalancesMock>
+
+const mockBalancesFactory = mock((): BalancesMock => mockBalances)
 
 await mock.module('./balances', () => ({ default: mockBalancesFactory }))
 
-let dataManager: any, externalData: any, mockBalances: any
+let dataManager: ReturnType<ExternalDataFactory>
+let externalData: ExternalDataFactory
+let mockBalances: BalancesMock
 
 beforeAll(async () => {
   externalData = (await import('./index')).default
@@ -76,7 +81,7 @@ function isolatedStore(
       signer: '',
       signerStatus: '',
       agentEnabled: false
-    })
+    } as unknown as Parameters<ReturnType<typeof isolated.getState>['upsertAccount']>[0])
     isolated.getState().setAccount({ id: address })
   }
   return isolated
@@ -203,7 +208,10 @@ describe('wallet lock lifecycle', () => {
     balances.setAddress.mockClear()
 
     scannerStore.setState((state) => {
-      state.main.accounts[normalAddress] = { address: normalAddress, lastSignerType: 'ledger' } as any
+      state.main.accounts[normalAddress] = {
+        address: normalAddress,
+        lastSignerType: 'ledger'
+      } as unknown as (typeof state.main.accounts)[string]
       state.main.currentAccount = normalAddress
       const network = Object.values(state.main.networks.ethereum)[0]
       if (network) {
@@ -247,7 +255,10 @@ describe('address updates', () => {
 
   it('runs a targeted one-shot refresh when selecting a watch account', () => {
     store.setState((state) => {
-      state.main.accounts[address] = { address, lastSignerType: 'Address' } as any
+      state.main.accounts[address] = {
+        address,
+        lastSignerType: 'Address'
+      } as unknown as (typeof state.main.accounts)[string]
       state.main.currentAccount = address
     })
 
@@ -259,7 +270,10 @@ describe('address updates', () => {
 
   it('allows a manual on-chain refresh for a watch account', () => {
     store.setState((state) => {
-      state.main.accounts[address] = { address, lastSignerType: 'Address' } as any
+      state.main.accounts[address] = {
+        address,
+        lastSignerType: 'Address'
+      } as unknown as (typeof state.main.accounts)[string]
     })
 
     dataManager.refreshBalances(address)
@@ -306,7 +320,7 @@ it('keeps refresh state and lifecycle isolated across two production scanner ins
     signer: '',
     signerStatus: '',
     agentEnabled: false
-  })
+  } as unknown as Parameters<ReturnType<typeof firstStore.getState>['upsertAccount']>[0])
   secondStore.getState().upsertAccount({
     id: secondAddress,
     address: secondAddress,
@@ -315,7 +329,7 @@ it('keeps refresh state and lifecycle isolated across two production scanner ins
     signer: '',
     signerStatus: '',
     agentEnabled: false
-  })
+  } as unknown as Parameters<ReturnType<typeof secondStore.getState>['upsertAccount']>[0])
   firstStore.getState().setAccount({ id: firstAddress })
   secondStore.getState().setAccount({ id: secondAddress })
   timers.advanceTimersByTime(800)
@@ -344,7 +358,10 @@ it('cancels pending store-driven scans when closed', () => {
   mockBalances.setAddress.mockClear()
 
   store.setState((state) => {
-    state.main.accounts[address] = { address, lastSignerType: 'ledger' } as any
+    state.main.accounts[address] = {
+      address,
+      lastSignerType: 'ledger'
+    } as unknown as (typeof state.main.accounts)[string]
     state.main.currentAccount = address
     const network = Object.values(state.main.networks.ethereum)[0]
     if (network) {
@@ -399,7 +416,7 @@ describe('hiding and showing the tray', () => {
   })
 })
 
-function setTrayShown(shown: any) {
+function setTrayShown(shown: boolean) {
   store.setState((state) => {
     state.tray.open = shown
   })

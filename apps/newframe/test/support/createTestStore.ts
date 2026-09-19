@@ -4,8 +4,16 @@ import { createStore } from 'zustand/vanilla'
 import { createCanonicalActions, type CanonicalStore } from '../../src/platform/state-store/actions'
 import createInitialState from '../../src/platform/state-store/state'
 
+type TestStateOverrides = Record<string, unknown> & {
+  main?: Record<string, unknown>
+  view?: Record<string, unknown>
+  windows?: Record<string, unknown> & {
+    panel?: Record<string, unknown>
+  }
+}
+
 export function createTestStore(
-  initial: Record<string, any> = {},
+  initial: TestStateOverrides = {},
   onChange?: (state: CanonicalStore) => void
 ) {
   const defaults = createInitialState()

@@ -149,7 +149,11 @@ it('creates nothing for invalid info and rejects cross-profile imports', async (
   await until(() => store.getState().operations.bad?.operation.status === 'failed')
   expect(store.getState().main.accounts[address]).toBeUndefined()
   store.getState().createProfile('other', 'Other')
-  store.getState().upsertAccount({ id: address, profileId: 'other', name: 'Other treasury' })
+  store
+    .getState()
+    .upsertAccount({ id: address, profileId: 'other', name: 'Other treasury' } as unknown as Parameters<
+      ReturnType<typeof store.getState>['upsertAccount']
+    >[0])
   service.import({ type: 'account.create', source: 'safe', operationId: 'other', address, chainId: 1 }, owner)
   await until(() => store.getState().operations.other?.operation.status === 'failed')
   expect(store.getState().main.accounts[address].profileId).toBe('other')
@@ -158,9 +162,10 @@ it('invalidates delayed work after remove/re-add, profile switch, and disposal',
   for (const change of ['remove', 'profile', 'dispose']) {
     const { store, operations, accounts } = setup()
     const config: SafeConfiguration = { owners: [ownerAddress], threshold: 1, nonce: '0' }
-    store
-      .getState()
-      .upsertAccount({ id: address, safe: { '1': { chainId: 1, address, configuration: config } } })
+    store.getState().upsertAccount({
+      id: address,
+      safe: { '1': { chainId: 1, address, configuration: config } }
+    } as unknown as Parameters<ReturnType<typeof store.getState>['upsertAccount']>[0])
     let release!: (value: Pick<SafeConfiguration, 'nonce'>) => void
     const service = createSafeService({
       accounts,
@@ -185,7 +190,11 @@ it('invalidates delayed work after remove/re-add, profile switch, and disposal',
     })
     if (change === 'remove') {
       store.getState().removeAccount(address)
-      store.getState().upsertAccount({ id: address, name: 'Re-added' })
+      store
+        .getState()
+        .upsertAccount({ id: address, name: 'Re-added' } as unknown as Parameters<
+          ReturnType<typeof store.getState>['upsertAccount']
+        >[0])
     }
     if (change === 'profile') {
       store.getState().createProfile('other', 'Other')
@@ -306,7 +315,7 @@ function simulationSetup() {
     safe: {
       '1': { address, chainId: 1, configuration, pending: [proposal], refreshedAt: Date.now() }
     }
-  })
+  } as unknown as Parameters<ReturnType<typeof context.store.getState>['upsertAccount']>[0])
   const client = {
     configuration: async () => configuration,
     queueState: async () => ({ nonce: configuration.nonce }),

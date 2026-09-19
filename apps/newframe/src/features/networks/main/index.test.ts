@@ -10,29 +10,31 @@ import store from '../../../platform/state-store'
 log.transports.console.level = false
 
 class MockConnection extends EventEmitter {
-  constructor(chainId: any) {
+  chainId: string
+  connected = false
+
+  constructor(chainId: number) {
     super()
-    ;(this as any).chainId = addHexPrefix(chainId.toString(16))
-    ;(this as any).connected = false
-    ;(this as any).connect = () => {
-      if (!(this as any).connected) {
-        ;(this as any).connected = true
+    this.chainId = addHexPrefix(chainId.toString(16))
+    this.connect = () => {
+      if (!this.connected) {
+        this.connected = true
         process.nextTick(() => this.emit('connect'))
       }
     }
-    ;(this as any).close = () => {
-      if ((this as any).connected) {
-        ;(this as any).connected = false
+    this.close = () => {
+      if (this.connected) {
+        this.connected = false
         this.emit('close')
       }
     }
-    ;(this as any).destroy = (this as any).close
-    ;(this as any).send = (methodOrPayload: any, _params?: any) => {
+    this.destroy = this.close
+    this.send = (methodOrPayload: string | { method: string }, _params?: unknown) => {
       return new Promise((resolve, reject) => {
         const method = typeof methodOrPayload === 'string' ? methodOrPayload : methodOrPayload.method
 
         if (method === 'eth_chainId') {
-          ;(this as any).connected = true
+          this.connected = true
           return resolve(addHexPrefix(chainId.toString(16)))
         } else if (method === 'eth_gasPrice') {
           return resolve(gasPrice)
@@ -52,9 +54,15 @@ class MockConnection extends EventEmitter {
       })
     }
   }
+
+  connect: () => void
+  close: () => void
+  destroy: () => void
+  send: (methodOrPayload: string | { method: string }, params?: unknown) => Promise<unknown>
 }
 
-let feeHistoryError: Error | undefined, gasPrice: any
+let feeHistoryError: Error | undefined
+let gasPrice: string
 
 const state = {
   main: {
@@ -176,9 +184,10 @@ const state = {
 }
 
 await mock.module('../../connections/main/provider/connection', () => ({
-  createJsonRpcProvider: (target: any) => (mockConnections as any)[target].connection,
+  createJsonRpcProvider: (target: keyof typeof mockConnections) => mockConnections[target].connection,
   listenForProviderClose: mock(),
-  sendRpcPayload: (provider: any, payload: any) => provider.send(payload.method, payload.params ?? [])
+  sendRpcPayload: (provider: MockConnection, payload: { method: string; params?: unknown }) =>
+    provider.send(payload.method, payload.params ?? [])
 }))
 await mock.module('../../../platform/state-store/state', () => () => state)
 await mock.module('../../accounts/main', () => ({ updatePendingFees: mock() }))
@@ -201,7 +210,7 @@ const mockConnections = {
   }
 }
 
-let chains: any
+let chains: InstanceType<typeof import('./index').Chains>
 
 const resetChainState = () => {
   store.setState((current) => {
@@ -214,7 +223,7 @@ const waitForConnection = async () => {
   await Promise.resolve()
 }
 
-const connectChain = async (chain: any) => {
+const connectChain = async (chain: (typeof mockConnections)[keyof typeof mockConnections]) => {
   store.getState().toggleConnection('ethereum', Number(chain.id), 'primary', true)
   await waitForConnection()
 }
@@ -241,15 +250,13 @@ beforeEach(() => {
 })
 
 afterEach((done) => {
-  const activeConnection: any = Object.values(mockConnections).find(
-    (conn) => (conn.connection as any).connected
-  )
+  const activeConnection = Object.values(mockConnections).find((conn) => conn.connection.connected)
 
   if (!activeConnection) {
     return done()
   }
 
-  chains.once('close', ({ id }: any) => {
+  chains.once('close', ({ id }: { id: string | number }) => {
     if (id === activeConnection.id) {
       done()
     } else {

@@ -1,6 +1,6 @@
 import EventEmitter from 'events'
 
-import type { JsonRpcApiProvider } from 'ethers'
+import type { JsonRpcApiProvider, JsonRpcPayload, WebSocketLike } from 'ethers'
 import { FetchRequest, JsonRpcProvider, WebSocketProvider } from 'ethers'
 import WebSocket from 'ws'
 
@@ -159,9 +159,12 @@ export function listenForProviderClose(provider: EthersRpcProvider, onClose: () 
   }
 
   try {
-    const socket = provider.websocket as any
+    const socket = provider.websocket as WebSocketLike & {
+      on?: (event: 'close', listener: () => void) => void
+      onclose?: (...args: unknown[]) => void
+    }
 
-    if (typeof socket.on === 'function') {
+    if (socket.on) {
       socket.on('close', onClose)
     } else {
       const previousClose = socket.onclose
@@ -180,7 +183,7 @@ export function sendRpcPayload<T = unknown>(provider: EthersRpcProvider, payload
 }
 
 export async function sendRawPayload<T = unknown>(provider: EthersRpcProvider, payload: RpcPayload) {
-  const [response] = (await provider._send(payload as any)) as RpcResult[]
+  const [response] = (await provider._send(payload as JsonRpcPayload)) as RpcResult[]
 
   if (response.error) {
     throw createError(response.error)

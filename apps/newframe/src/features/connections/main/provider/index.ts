@@ -87,7 +87,7 @@ const proxyPrincipal = createMainPrincipal('provider-proxy', ['wallet:internal-s
 
 interface RequiredApproval {
   type: ApprovalType
-  data: any
+  data: unknown
 }
 
 interface TransactionMetadata {
@@ -320,7 +320,7 @@ export class Provider extends EventEmitter {
       .forEach((subscription) => this.sendSubscriptionData(subscription.id, netId))
   }
 
-  private sendSubscriptionData(subscription: string, result: any) {
+  private sendSubscriptionData(subscription: string, result: unknown) {
     const payload: RPC.Susbcription.Response = {
       jsonrpc: '2.0',
       method: 'eth_subscription',
@@ -404,7 +404,7 @@ export class Provider extends EventEmitter {
   }
 
   approveSign(req: AccountRequest, cb: Callback<string>, context?: SigningUiContext) {
-    const [address, rawMessage] = req.payload.params
+    const [address, rawMessage] = req.payload.params as [string, string]
     const message = encodePersonalSignMessage(rawMessage)
 
     this.accounts.signMessage(
@@ -430,7 +430,7 @@ export class Provider extends EventEmitter {
 
   approveSignTypedData(req: SignTypedDataRequest, cb: Callback<string>, context?: SigningUiContext) {
     const typedMessage = structuredClone(req.typedMessage)
-    const [address] = req.payload.params
+    const [address] = req.payload.params as [string]
 
     this.accounts.signTypedData(
       address,
@@ -465,7 +465,7 @@ export class Provider extends EventEmitter {
       chainId: parseInt(chainId, 16)
     }
 
-    const connection = this.connection.connections['ethereum'][txRequest.chainId] as any
+    const connection = this.connection.connections['ethereum'][txRequest.chainId]
     const connectedProvider = connection?.primary?.connected
       ? connection.primary?.provider
       : connection.secondary?.provider
@@ -483,7 +483,7 @@ export class Provider extends EventEmitter {
 
     if (feeTotalOverMax(rawTx, maxTotalFee)) {
       const chainId = parseInt(rawTx.chainId)
-      const symbol = (this.store.getState().main.networks.ethereum[chainId] as any)?.symbol
+      const symbol = this.store.getState().main.networks.ethereum[chainId]?.symbol
       const displayAmount = symbol ? ` (${Math.floor(maxTotalFee / 1e18)} ${symbol})` : ''
 
       const err = `Max fee is over hard limit${displayAmount}`
@@ -519,7 +519,7 @@ export class Provider extends EventEmitter {
                     if (response.error) {
                       cb(Object.assign(new Error(response.error.message), { code: response.error.code }))
                     } else {
-                      cb(null, response.result)
+                      cb(null, response.result as string)
                     }
                   },
                   {
@@ -556,7 +556,7 @@ export class Provider extends EventEmitter {
         return cb(Object.assign(new Error(response.error.message), { code: response.error.code }))
       }
 
-      const updatedReq = this.accounts.updateNonce(req.handlerId, response.result)
+      const updatedReq = this.accounts.updateNonce(req.handlerId, response.result as string)
 
       if (updatedReq) {
         signAndSend(updatedReq)
@@ -592,7 +592,7 @@ export class Provider extends EventEmitter {
             return reject(response.error)
           }
 
-          const estimatedLimit = parseInt(response.result, 16)
+          const estimatedLimit = parseInt(response.result as string, 16)
           const paddedLimit = Math.ceil(estimatedLimit * 1.5)
 
           log.verbose(
@@ -1043,9 +1043,12 @@ export class Provider extends EventEmitter {
   }
 
   getTransactionByHash(payload: RPCRequestPayload, cb: RPCRequestCallback, targetChain: Chain) {
-    const res = (response: any) => {
-      if (response.result && !response.result.gasPrice && response.result.maxFeePerGas) {
-        return cb({ ...response, result: { ...response.result, gasPrice: response.result.maxFeePerGas } })
+    const res = (response: RPCResponsePayload) => {
+      const result = response.result as
+        | { gasPrice?: string; maxFeePerGas?: string; [key: string]: unknown }
+        | undefined
+      if (result && !result.gasPrice && result.maxFeePerGas) {
+        return cb({ ...response, result: { ...result, gasPrice: result.maxFeePerGas } })
       }
 
       cb(response)
@@ -1069,7 +1072,7 @@ export class Provider extends EventEmitter {
   }
 
   sign(payload: RPCRequestPayload, res: RPCRequestCallback, principal: TrustedPrincipal) {
-    const [from, message] = payload.params || []
+    const [from, message] = (payload.params || []) as [string, string]
     const currentAccount = this.accounts.current()
 
     if (!message) {
@@ -1168,7 +1171,7 @@ export class Provider extends EventEmitter {
       return resError('Lattice only supports eth_signTypedData_v3+', payload, res)
     }
 
-    const handlerId = this.requests.create(res)
+    const handlerId = this.requests.create(res as RPCRequestCallback)
     const typedMessage: TypedMessage<typeof version> = {
       data: typedData,
       version
@@ -1270,7 +1273,7 @@ export class Provider extends EventEmitter {
   private getOriginConnection(payload: RPCRequestPayload) {
     const originId = payload._origin
     const origin = this.store.getState().main.origins[originId]
-    const currentAccount = this.accounts.current() as any
+    const currentAccount = this.accounts.current()
     const rawAddress = currentAccount?.address ?? currentAccount?.id ?? ''
     const address = rawAddress ? rawAddress.toLowerCase() : ''
     const permissionAddresses = Array.from(
@@ -1368,7 +1371,7 @@ export class Provider extends EventEmitter {
         throw new Error('Params not supplied')
       }
 
-      const requestedChainId = params[0].chainId
+      const requestedChainId = (params[0] as { chainId?: string }).chainId
       if (typeof requestedChainId !== 'string' || !/^0x[0-9a-f]+$/i.test(requestedChainId)) {
         throw new Error('Invalid chain id')
       }
@@ -1406,7 +1409,19 @@ export class Provider extends EventEmitter {
     }
 
     const type = 'ethereum'
-    const { chainId, chainName, nativeCurrency, rpcUrls = [], blockExplorerUrls = [] } = payload.params[0]
+    const {
+      chainId,
+      chainName,
+      nativeCurrency,
+      rpcUrls = [],
+      blockExplorerUrls = []
+    } = payload.params[0] as {
+      chainId?: string
+      chainName?: string
+      nativeCurrency?: { name?: string; symbol?: string; decimals?: number }
+      rpcUrls?: string[]
+      blockExplorerUrls?: string[]
+    }
 
     if (!chainId) {
       return resError('addChain request missing chainId', payload, res)
@@ -1476,12 +1491,12 @@ export class Provider extends EventEmitter {
       : {
           type,
           id,
-          name: chainName.trim(),
-          symbol: nativeCurrency.symbol,
+          name: chainName!.trim(),
+          symbol: nativeCurrency!.symbol,
           primaryRpc: rpcUrls[0],
           secondaryRpc: rpcUrls[1],
-          explorer: blockExplorerUrls[0] ?? '',
-          nativeCurrencyName: nativeCurrency.name,
+          explorer: blockExplorerUrls?.[0] ?? '',
+          nativeCurrencyName: nativeCurrency!.name,
           ...(icon ? { icon } : {})
         }
     this.accounts.routeRequest(principal, {
@@ -1500,7 +1515,10 @@ export class Provider extends EventEmitter {
     targetChain: Chain,
     principal: TrustedPrincipal
   ) {
-    const { type, options: tokenData } = (payload.params || {}) as any
+    const { type, options: tokenData = {} } = (payload.params || {}) as {
+      type?: string
+      options?: Partial<TokenData> & { address?: string; image?: string; logoURI?: string }
+    }
 
     if ((type ?? '').toLowerCase() !== 'erc20') {
       return resError('only ERC-20 tokens are supported', payload, cb)
@@ -1513,10 +1531,10 @@ export class Provider extends EventEmitter {
           return resError(resp.error, payload, cb)
         }
 
-        const chainId = parseInt(resp.result)
+        const chainId = parseInt(resp.result as string)
         const address = (tokenData.address ?? '').toLowerCase()
         const symbol = (tokenData.symbol ?? '').toUpperCase()
-        const decimals = parseInt(tokenData.decimals ?? '1')
+        const decimals = parseInt(String(tokenData.decimals ?? '1'))
 
         if (!address) {
           return resError('tokens must define an address', payload, cb)
@@ -1638,7 +1656,7 @@ export class Provider extends EventEmitter {
     const method = payload.method || ''
 
     // method handlers that are not chain-specific can go here, before parsing the target chain
-    if (method === 'eth_unsubscribe' && this.ifSubRemove(payload.params[0])) {
+    if (method === 'eth_unsubscribe' && this.ifSubRemove(payload.params[0] as string)) {
       return res({ id: payload.id, jsonrpc: '2.0', result: true })
     } // Subscription was ours
 
@@ -1699,7 +1717,7 @@ export class Provider extends EventEmitter {
     if (method === 'web3_clientVersion') {
       return this.clientVersion(payload, res)
     }
-    if (method === 'eth_subscribe' && payload.params[0] in this.subscriptions) {
+    if (method === 'eth_subscribe' && (payload.params[0] as PropertyKey) in this.subscriptions) {
       return this.subscribe(payload as RPC.Subscribe.Request, res, principal)
     }
 
@@ -1767,7 +1785,7 @@ export class Provider extends EventEmitter {
     this.connection.send(rpcPayload, res, targetChain)
   }
 
-  override emit(type: string | symbol, ...args: any[]) {
+  override emit(type: string | symbol, ...args: unknown[]) {
     return super.emit(type, ...args)
   }
 }

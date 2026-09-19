@@ -209,7 +209,7 @@
         ],
         "typescript/no-duplicate-enum-values": "error",
         "typescript/no-empty-object-type": "error",
-        "typescript/no-explicit-any": "warn",
+        "typescript/no-explicit-any": ["error", { "fixToUnknown": true }],
         "typescript/no-extra-non-null-assertion": "error",
         "typescript/no-floating-promises": "error",
         "typescript/no-misused-new": "error",
@@ -323,7 +323,7 @@
         ],
         "typescript/no-duplicate-enum-values": "error",
         "typescript/no-empty-object-type": "error",
-        "typescript/no-explicit-any": "warn",
+        "typescript/no-explicit-any": ["error", { "fixToUnknown": true }],
         "typescript/no-extra-non-null-assertion": "error",
         "typescript/no-floating-promises": "error",
         "typescript/no-misused-new": "error",
@@ -576,7 +576,7 @@
         "react-js/no-unstable-nested-components": "error",
         "react-js/jsx-no-constructed-context-values": "error",
         "react-js/no-array-index-key": "error",
-        "typescript/no-explicit-any": "error",
+        "typescript/no-explicit-any": ["error", { "fixToUnknown": true }],
         "typescript/no-non-null-assertion": "error"
       },
       "jsPlugins": [

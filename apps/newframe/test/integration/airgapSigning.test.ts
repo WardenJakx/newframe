@@ -96,7 +96,7 @@ function integrationFixture({
   const proxy = createProviderProxyConnection()
   const reveal = createRevealService(proxy, names)
   const chains = new Chains(f.store)
-  chains.send = rpc.send.bind(rpc)
+  chains.send = rpc.send.bind(rpc) as unknown as typeof chains.send
   const accounts = new Accounts(f.store, {
     chainRpc: {
       send: rpc.send,
@@ -340,7 +340,7 @@ it('confirms an existing Safe proposal through the owner Account and verified QR
         pending: [proposal]
       }
     }
-  })
+  } as unknown as Parameters<ReturnType<typeof f.store.getState>['upsertAccount']>[0])
   f.store.setState((state) => {
     state.main.currentAccount = safe
     state.main.networks.ethereum[1].on = true

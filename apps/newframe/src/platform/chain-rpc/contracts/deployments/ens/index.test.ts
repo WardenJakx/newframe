@@ -9,7 +9,10 @@ const to = '0x388C818CA8B9251b393131C08a736A67ccB19297'
 const tokenId = '79233663829379634837589865448569342784712482819484549289560981379859480642508'
 
 describe('registrar', () => {
-  const registrar: any = ensContracts.find((c) => c.name.toLowerCase().includes('permanent registrar'))
+  const registrar = ensContracts.find((c) => c.name.toLowerCase().includes('permanent registrar'))
+  if (!registrar) {
+    throw new Error('permanent registrar fixture missing')
+  }
 
   const registrarInterface = new Interface([
     'function transferFrom(address from, address to, uint256 tokenId)',
@@ -58,7 +61,10 @@ describe('registrar', () => {
 })
 
 describe('registrar controller', () => {
-  const registrarController: any = ensContracts.find((c) => c.name.toLowerCase().includes('controller'))
+  const registrarController = ensContracts.find((c) => c.name.toLowerCase().includes('controller'))
+  if (!registrarController) {
+    throw new Error('registrar controller fixture missing')
+  }
 
   const registrarControllerInterface = new Interface([
     'function commit(bytes32 commitment)',
@@ -107,7 +113,7 @@ describe('registrar controller', () => {
       ])
       const action = registrarController.decode(calldata)
 
-      expect(action.data.name).toBe('frame.eth')
+      expect((action as { data: { name: string } }).data.name).toBe('frame.eth')
     })
   })
 

@@ -35,6 +35,22 @@ type LatticeResponseError = {
 
 type SigningPayload = Parameters<InstanceType<typeof Client>['sign']>[0]['data']
 type SignProtocol = 'eip712' | 'signPersonal'
+type TransactionJson = ReturnType<TypedTransaction['toJSON']>
+type LatticeUnsignedTransaction = {
+  to: TransactionJson['to']
+  value: TransactionJson['value']
+  data: TransactionJson['data']
+  chainId: string
+  nonce: number
+  gasLimit: number
+  useEIP155: true
+  signerPath: number[]
+  type?: number
+  gasPrice?: number
+  maxFeePerGas?: number
+  maxPriorityFeePerGas?: number
+  currency?: never
+}
 
 const Status = {
   OK: 'ok',
@@ -299,7 +315,9 @@ export default class Lattice extends Signer {
         const unsignedTx = this.createTransaction(index, rawTx.type, latticeTx.chainId, tx)
         const signingOptions = await this.createTransactionSigningOptions(tx, unsignedTx)
 
-        const signedTx = await connection.sign(signingOptions)
+        const signedTx = await connection.sign(
+          signingOptions as Parameters<InstanceType<typeof Client>['sign']>[0]
+        )
         const sig = signedTx?.sig as LatticeSignature | undefined
 
         if (sig?.v === undefined) {
@@ -363,7 +381,7 @@ export default class Lattice extends Signer {
     const { value, to, data, ...txJson } = tx.toJSON()
     const type = hexToInt(txType)
 
-    const unsignedTx: any = {
+    const unsignedTx: LatticeUnsignedTransaction = {
       to,
       value,
       data,
@@ -378,19 +396,21 @@ export default class Lattice extends Signer {
       unsignedTx.type = type
     }
 
-    const optionalFields = ['gasPrice', 'maxFeePerGas', 'maxPriorityFeePerGas']
+    const optionalFields = ['gasPrice', 'maxFeePerGas', 'maxPriorityFeePerGas'] as const
 
     optionalFields.forEach((field) => {
       if (field in txJson) {
-        // @ts-expect-error: Transaction JSON optional fee fields are indexed dynamically.
-        unsignedTx[field] = hexToInt(txJson[field])
+        unsignedTx[field] = hexToInt(txJson[field] ?? '')
       }
     })
 
     return unsignedTx
   }
 
-  private async createTransactionSigningOptions(tx: TypedTransaction, unsignedTx: any) {
+  private async createTransactionSigningOptions(
+    tx: TypedTransaction,
+    unsignedTx: LatticeUnsignedTransaction
+  ) {
     const fwVersion = (this.connection as Client).getFwVersion()
 
     if (fwVersion && (fwVersion.major > 0 || fwVersion.minor >= 15)) {

@@ -186,11 +186,13 @@ export interface AccountRequest<T extends RequestType = RequestType> extends Req
 export interface TransactionReceipt {
   gasUsed: string
   blockNumber: string
+  effectiveGasPrice?: string
+  status?: string
 }
 
 interface Approval {
   type: string
-  data: any
+  data: unknown
   approved: boolean
 }
 
@@ -235,7 +237,7 @@ export interface TransactionRequest extends AccountRequest<'transaction'> {
   approvals: Approval[]
   locked?: boolean
   automaticFeeUpdateNotice?: {
-    previousFee: any
+    previousFee: unknown
   }
   recipient?: string // resolved name
   updatedFees?: boolean

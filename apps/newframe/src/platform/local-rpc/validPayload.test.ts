@@ -3,7 +3,7 @@ import { afterAll, beforeAll, beforeEach, expect, it } from 'bun:test'
 import validatePayloadTyped from './validPayload'
 
 // real function under test, exercised with invalid payloads
-const validatePayload = validatePayloadTyped as any
+const validatePayload = (value: unknown): unknown => validatePayloadTyped(value as string)
 
 import log from 'electron-log'
 
@@ -15,7 +15,7 @@ afterAll(() => {
   log.transports.console.level = 'debug'
 })
 
-let payload: any
+let payload: Record<string, unknown>
 
 beforeEach(() => {
   // this payload is valid

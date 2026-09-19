@@ -333,9 +333,10 @@ beforeAll(async () => {
   const handler = createSafeHandler({ ...seed, proposals: Object.values(proposals) })
   rpc = createSafeSimulationRpc({
     send(payload, callback) {
+      const respond = callback as unknown as RPCRequestCallback
       requests.push(payload.method)
       if (payload.method === 'debug_traceCall' && traceMode === 'unavailable') {
-        callback({ id: payload.id, jsonrpc: '2.0', error: { code: -32601, message: 'Tracing disabled' } })
+        respond({ id: payload.id, jsonrpc: '2.0', error: { code: -32601, message: 'Tracing disabled' } })
         return
       }
       let params = payload.params
@@ -349,10 +350,10 @@ beforeAll(async () => {
           if (payload.method === 'debug_traceCall') {
             traces.push(result as TraceCall)
           }
-          callback({ id: payload.id, jsonrpc: '2.0', result })
+          respond({ id: payload.id, jsonrpc: '2.0', result })
         },
         (error: unknown) =>
-          callback({
+          respond({
             id: payload.id,
             jsonrpc: '2.0',
             error: { code: -32000, message: error instanceof Error ? error.message : String(error) }

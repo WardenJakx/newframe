@@ -6,7 +6,7 @@ let updater: import('./index').Updater
 
 beforeAll(async () => {
   const { Updater } = await import('./index')
-  updater = new Updater(storeMock)
+  updater = new Updater(storeMock as unknown as ConstructorParameters<typeof Updater>[0])
 })
 
 beforeEach(() => {

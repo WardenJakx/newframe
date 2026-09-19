@@ -5,7 +5,9 @@ import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import { getVersionFromTypedData } from './typedData'
 
 describe('#getVersionFromTypedData', () => {
-  const typedData: any = {
+  const versionFor = (data: unknown): unknown =>
+    getVersionFromTypedData(data as Parameters<typeof getVersionFromTypedData>[0])
+  const typedData = {
     types: {
       EIP712Domain: [],
       Mail: [{ name: 'contents', type: 'string' }]
@@ -34,7 +36,7 @@ describe('#getVersionFromTypedData', () => {
     ['malformed EIP-712 data', { ...typedData, primaryType: 'missing' }, SignTypedDataVersion.V4]
   ].forEach(([description, data, version]) => {
     it(`returns ${version} for ${description}`, () => {
-      expect(getVersionFromTypedData(data)).toBe(version)
+      expect(versionFor(data)).toBe(version)
     })
   })
 })

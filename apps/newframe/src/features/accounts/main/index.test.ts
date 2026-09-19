@@ -18,6 +18,8 @@ import { gweiToHex } from '../../../../test/support/util'
 import { ActivityRecordSchema, DEFAULT_PROFILE_ID } from '../../../app/contracts/state/main'
 import store from '../../../platform/state-store'
 import { createAgentPrincipal, createRpcPrincipal } from '../../access-control/main/authority'
+import type { TrustedPrincipal } from '../../access-control/main/authority'
+import type { AccountRequest, TransactionRequest } from '../../requests/contract/requests'
 import {
   GasFeesSource,
   TRANSACTION_CONFIRMATION_TARGET,
@@ -25,8 +27,10 @@ import {
   type TransactionSimulation
 } from '../../transactions/domain'
 
+type TestRpcCallback = (response: Partial<RPCResponsePayload>) => void
+
 const providerMock = {
-  send: mock(),
+  send: mock((_payload: RPCRequestPayload, _callback: TestRpcCallback): void => undefined),
   getL1GasCost: mock(),
   emit: mock(),
   on: mock(),
@@ -64,14 +68,14 @@ const requestLifecycle = {
     callback(response)
     return true
   },
-  resolve(request: any, result?: unknown) {
+  resolve(request: AccountRequest, result?: unknown) {
     return this.respond(request.handlerId, {
       id: request.payload.id,
       jsonrpc: request.payload.jsonrpc,
       result
     })
   },
-  reject(request: any, error: EVMError) {
+  reject(request: AccountRequest, error: EVMError) {
     return this.respond(request.handlerId, {
       id: request.payload.id,
       jsonrpc: request.payload.jsonrpc,
@@ -80,8 +84,14 @@ const requestLifecycle = {
   }
 }
 
-await mock.module('../../../platform/signing/signers', () => ({ default: signersMock, ...signersMock }))
-await mock.module('../../../platform/desktop/windows', () => ({ default: windowsMock, ...windowsMock }))
+await mock.module('../../../platform/signing/signers', () => ({
+  default: signersMock,
+  ...signersMock
+}))
+await mock.module('../../../platform/desktop/windows', () => ({
+  default: windowsMock,
+  ...windowsMock
+}))
 await mock.module('../../asset-data/main/externalData', () => ({
   default: externalDataScannerFactoryMock,
   start: mock(),
@@ -96,9 +106,46 @@ await mock.module('../../name-resolution/main/nameResolution', () => ({
   }
 }))
 
-let provider: any
-let Accounts: any
-let AccountsClass: any
+const provider = providerMock
+type AccountsInstance = InstanceType<typeof import('./index').Accounts>
+type FrameAccountInstance = InstanceType<typeof import('./Account').default>
+type TestCanonicalRequest = Omit<TransactionRequest, 'tx'> & {
+  feesUpdatedByUser?: boolean
+  locked?: boolean
+  simulation?: TransactionSimulation
+  tx: { hash: string; confirmations: number }
+}
+type TestFrameAccount = Omit<
+  FrameAccountInstance,
+  'addRequest' | 'patchRequest' | 'requests' | 'resolveRequest' | 'routeRequest'
+> & {
+  addRequest(request: object, callback?: RPCRequestCallback): void
+  patchRequest(id: string | number, update: (request: TestCanonicalRequest) => void): void
+  requests: Record<string | number, TestCanonicalRequest>
+  resolveRequest(request: object, result?: unknown): void
+  routeRequest(request: object, callback?: RPCRequestCallback): unknown
+}
+type TestAccounts = Omit<
+  AccountsInstance,
+  | 'accounts'
+  | 'current'
+  | 'getFrameAccount'
+  | 'removeRequest'
+  | 'setBaseFee'
+  | 'setGasPrice'
+  | 'setPriorityFee'
+> & {
+  accounts: Record<string, TestFrameAccount>
+  current(): TestFrameAccount
+  getFrameAccount(id: string): TestFrameAccount
+  removeRequest(account: TestFrameAccount, handlerId: string): void
+  setBaseFee(value: string | undefined, handlerId: string | number, userUpdate: boolean): void
+  setGasPrice(value: string, handlerId: string | number, userUpdate: boolean): void
+  setPriorityFee(value: string, handlerId: string | number, userUpdate: boolean): void
+}
+
+let Accounts: TestAccounts
+let AccountsClass: typeof import('./index').Accounts
 
 const nameResolutionMock = {
   ready: () => true,
@@ -119,7 +166,7 @@ const simulationMock = {
 }
 
 function createAccounts(chainRpc = providerMock) {
-  return new AccountsClass(store, {
+  const dependencies = {
     chainRpc,
     transactionPolicy: transactionMock,
     simulation: simulationMock,
@@ -137,34 +184,45 @@ function createAccounts(chainRpc = providerMock) {
       signers: signersMock,
       windows: windowsMock
     }
-  })
+  } as unknown as ConstructorParameters<typeof AccountsClass>[1]
+  return new AccountsClass(store, dependencies)
 }
 
-const storeState = () => store.getState() as any
+const storeState = () => store.getState()
 const canonicalRequest = (id: string | number = request.handlerId) => Accounts.current().requests[id]
-const patchRequest = (update: (request: any) => void, id: string | number = request.handlerId) =>
-  Accounts.current().patchRequest(id, update)
+const patchRequest = (
+  update: Parameters<NonNullable<ReturnType<typeof Accounts.current>>['patchRequest']>[1],
+  id: string | number = request.handlerId
+) => Accounts.current().patchRequest(id, update)
 const flushPromises = async (count = 4) => {
   while (count-- > 0) {
     await Promise.resolve()
   }
 }
 function mockConfirmedReceipt(receiptBlock: number) {
-  provider.send = mock((payload: any, cb: any) => {
+  provider.send = mock((payload: RPCRequestPayload, cb: TestRpcCallback): void => {
     if (payload.method === 'eth_subscribe') {
       return cb({ error: { code: -32601, message: 'unsupported' } })
     }
     if (payload.method === 'eth_blockNumber') {
-      return cb({ result: intToHex(receiptBlock + TRANSACTION_CONFIRMATION_TARGET) })
+      return cb({
+        result: intToHex(receiptBlock + TRANSACTION_CONFIRMATION_TARGET)
+      })
     }
     if (payload.method === 'eth_getTransactionReceipt') {
-      return cb({ result: { status: '0x1', blockNumber: intToHex(receiptBlock), gasUsed: '0x5208' } })
+      return cb({
+        result: {
+          status: '0x1',
+          blockNumber: intToHex(receiptBlock),
+          gasUsed: '0x5208'
+        }
+      })
     }
     cb({ result: null })
   })
 }
 function setSubmittedActivity(hash: string, overrides: Record<string, unknown> = {}) {
-  store.setState((state: any) => {
+  store.setState((state) => {
     state.main.activity = {
       [hash]: {
         id: hash,
@@ -186,15 +244,14 @@ const accountAddress = '0x22dd63c3619818fdbc262c78baee43cb61e9cccf'
 const account = { id: accountAddress, address: accountAddress }
 const account2 = { address: '0xef8f1bbe054ad30c6af774ed7a7c70a74ef77ac5' }
 
-let request: any
+let request: TransactionRequest
 
 beforeAll(async () => {
   log.transports.console.level = false
 
-  provider = providerMock
   const accountsModule = await import('./index')
-  AccountsClass = accountsModule.Accounts as any
-  Accounts = createAccounts()
+  AccountsClass = accountsModule.Accounts
+  Accounts = createAccounts() as unknown as TestAccounts
 })
 
 afterAll(() => {
@@ -225,16 +282,19 @@ beforeEach((done) => {
       method: 'eth_signTransaction',
       params: [{ from: accountAddress, nonce: '0xa' }]
     }
-  }
+  } as unknown as TransactionRequest
 
-  Accounts.add(account2.address, 'Test Account 2')
-  Accounts.add(account.address, 'Test Account 1', account, (err: any, account: any) => {
-    Accounts.setSigner(account.address, done)
+  void Accounts.add(account2.address, 'Test Account 2')
+  void Accounts.add(account.address, 'Test Account 1', account, (_err, addedAccount) => {
+    if (!addedAccount) {
+      throw new Error('account fixture was not created')
+    }
+    Accounts.setSigner(addedAccount.address, done)
   })
 })
 
 afterEach(() => {
-  Object.values(Accounts.accounts).forEach((account: any) => {
+  Object.values(Accounts.accounts).forEach((account) => {
     Object.keys(account.requests).forEach((id) => {
       Accounts.removeRequest(account, id)
     })
@@ -278,9 +338,12 @@ describe('#routeRequest', () => {
       windowInstanceId: 'forged'
     }
 
-    expect(Accounts.routeRequest(forgedPrincipal as any, { ...request, account: account.address })).toBe(
-      false
-    )
+    expect(
+      Accounts.routeRequest(forgedPrincipal as unknown as TrustedPrincipal, {
+        ...request,
+        account: account.address
+      })
+    ).toBe(false)
     expect(canonicalRequest()).toBeUndefined()
     expect(respond).toHaveBeenCalledWith({
       id: request.payload.id,
@@ -319,18 +382,26 @@ describe('#routeRequest', () => {
       isActive: () => true
     })
 
-    expect(Accounts.routeRequest(principal, { ...request, account: account.address })).toBe(false)
+    expect(
+      Accounts.routeRequest(principal, {
+        ...request,
+        account: account.address
+      })
+    ).toBe(false)
     expect(respond).toHaveBeenCalledWith({
       id: request.payload.id,
       jsonrpc: request.payload.jsonrpc,
-      error: { code: 4100, message: 'Autonomous signing is not enabled for this action' }
+      error: {
+        code: 4100,
+        message: 'Autonomous signing is not enabled for this action'
+      }
     })
     expect(canonicalRequest()).toBeUndefined()
   })
 })
 
 it('selects the first remaining account when removing the current account', () => {
-  store.setState((state: any) => {
+  store.setState((state) => {
     state.main.accountOrder = [account2.address, account.address]
   })
 
@@ -348,7 +419,12 @@ it('rejects pending requests before removing their account', () => {
     type: 'sign',
     origin: '0r161n',
     account: account.address,
-    payload: { id: 42, jsonrpc: '2.0', method: 'eth_sign', params: [account.address, '0x01'] }
+    payload: {
+      id: 42,
+      jsonrpc: '2.0',
+      method: 'eth_sign',
+      params: [account.address, '0x01']
+    }
   }
 
   const removedAccount = Accounts.current()
@@ -395,7 +471,11 @@ it('retains and can settle a pending request after its account moves and the old
 
 it('uses canonical request state for transaction failure without activity', () => {
   const frameAccount = Accounts.getFrameAccount(account.address)
-  const transaction = { ...request, handlerId: 'failed-transaction', account: account.address }
+  const transaction = {
+    ...request,
+    handlerId: 'failed-transaction',
+    account: account.address
+  }
   frameAccount.addRequest(transaction, mock())
   Accounts.setRequestPending(transaction)
   Accounts.setTxSigned(transaction.handlerId, (error: Error | null) => expect(error).toBe(null))
@@ -412,7 +492,7 @@ it('uses canonical request state for transaction failure without activity', () =
   expect(storeState().main.activity).toEqual({})
   expect(notificationMock.mock.calls.length).toBe(0)
   timers.advanceTimersByTime(1_500)
-  expect(frameAccount.requests[transaction.handlerId].mode).toBe('monitor')
+  expect(frameAccount.requests[transaction.handlerId].mode as unknown).toBe('monitor')
   timers.advanceTimersByTime(8_000)
   expect(frameAccount.requests[transaction.handlerId]).toBeUndefined()
 })
@@ -435,14 +515,14 @@ describe('#initialize', () => {
 
   it('instantiates persisted accounts only during explicit post-hydration initialization', () => {
     const persistedAccounts = storeState().main.accounts
-    store.setState((state: any) => {
+    store.setState((state) => {
       state.main.accounts = {}
     })
     const accounts = createAccounts()
 
     expect(accounts.accounts[account.address]).toBeUndefined()
 
-    store.setState((state: any) => {
+    store.setState((state) => {
       state.main.accounts = persistedAccounts
     })
     accounts.initialize()
@@ -590,7 +670,7 @@ describe('transaction fee editing', () => {
   it('applies the field-specific absolute caps', () => {
     Accounts.setBaseFee(gweiToHex(10_200), 1, false)
     expect(canonicalRequest().data.maxFeePerGas).toBe(
-      intToHex(9_999e9 + parseInt(request.data.maxPriorityFeePerGas))
+      intToHex(9_999e9 + parseInt(request.data.maxPriorityFeePerGas!))
     )
 
     Accounts.setPriorityFee(gweiToHex(10_200), 1, false)
@@ -608,7 +688,7 @@ describe('#setTxSent', () => {
   it('keeps activity submitted when asynchronous confirmation monitoring fails', async () => {
     const hash = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
     notificationMock.mockClear()
-    provider.send = mock((payload: any, cb: any) => {
+    provider.send = mock((payload: RPCRequestPayload, cb: TestRpcCallback): void => {
       if (payload.method === 'eth_subscribe') {
         cb({ error: { code: -32601, message: 'subscriptions unavailable' } })
       } else if (payload.method === 'eth_blockNumber') {
@@ -626,14 +706,20 @@ describe('#setTxSent', () => {
       mode: 'monitor',
       tx: { hash, confirmations: 0 }
     })
-    expect(storeState().main.activity[hash]).toMatchObject({ status: 'submitted', hash })
+    expect(storeState().main.activity[hash]).toMatchObject({
+      status: 'submitted',
+      hash
+    })
 
     timers.advanceTimersByTime(1_000)
     for (let index = 0; index < 6; index += 1) {
       await Promise.resolve()
     }
 
-    expect(canonicalRequest()).toMatchObject({ status: 'sent', notice: 'Sent' })
+    expect(canonicalRequest()).toMatchObject({
+      status: 'sent',
+      notice: 'Sent'
+    })
     expect(storeState().main.activity[hash].status).toBe('submitted')
     expect(notificationMock.mock.calls.length).toBe(0)
     timers.advanceTimersByTime(60_000)
@@ -662,7 +748,7 @@ describe('#setTxSent', () => {
       ]
     }
     simulationMock.simulateTransactionEffects.mockResolvedValueOnce(simulation)
-    store.setState((state: any) => {
+    store.setState((state) => {
       state.main.tokens.accountTokenIds[account.address] = []
       delete state.main.tokens.byId[`1:${usdc.toLowerCase()}`]
     })
@@ -695,7 +781,7 @@ describe('#setTxSent', () => {
       expect.objectContaining(expectedToken)
     ])
     expect(storeState().main.activity[hash].positionsRefreshedAt).toEqual(expect.any(Number))
-    expect(storeState().main.activity[hash].balanceChanges).toEqual(simulation.effects)
+    expect(storeState().main.activity[hash].balanceChanges as unknown).toEqual(simulation.effects)
 
     Accounts.close()
   })
@@ -754,7 +840,10 @@ describe('#setTxSent', () => {
       const recipient = activity[`${hash}:${account2.address}`]
       if (transfer) {
         expect(recipient.balanceChanges).toEqual([incoming])
-        expect(recipient.display).toEqual({ title: 'Receive USDC', subtitle: 'Incoming transfer' })
+        expect(recipient.display).toEqual({
+          title: 'Receive USDC',
+          subtitle: 'Incoming transfer'
+        })
         ActivityRecordSchema.parse(recipient)
       } else {
         expect(recipient).toBeUndefined()
@@ -774,7 +863,7 @@ describe('#setTxSent', () => {
     timers.advanceTimersByTime(1000)
     await flushPromises()
 
-    expect(Accounts.current().requests[request.handlerId].status).toBe('confirmed')
+    expect(Accounts.current().requests[request.handlerId].status as unknown).toBe('confirmed')
     expect(Accounts.current().requests[request.handlerId].tx.confirmations).toBe(
       TRANSACTION_CONFIRMATION_TARGET
     )
@@ -811,12 +900,15 @@ describe('#setTxSent', () => {
     mockConfirmedReceipt(receiptBlock)
 
     Accounts.current().addRequest(request, mock())
-    storeState().upsertAccountRequest(account.address, otherChainRequest)
+    storeState().upsertAccountRequest(
+      account.address,
+      otherChainRequest as unknown as Parameters<ReturnType<typeof storeState>['upsertAccountRequest']>[1]
+    )
     Accounts.setTxSent(request.handlerId, hash)
     timers.advanceTimersByTime(1000)
     await flushPromises()
 
-    expect(Accounts.current().requests[otherChainRequest.handlerId].status).toBe('verifying')
+    expect(Accounts.current().requests[otherChainRequest.handlerId].status as unknown).toBe('verifying')
   })
 
   it('opens a queued request after popping the submitted transaction request', () => {
@@ -837,7 +929,7 @@ describe('#setTxSent', () => {
     provider.send = mock()
 
     Accounts.current().addRequest(request, mock())
-    store.setState((state: any) => {
+    store.setState((state) => {
       state.windows.panel.nav = [
         {
           view: 'requestView',
@@ -867,7 +959,7 @@ describe('#setTxSent', () => {
     const hash = '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
     const receiptBlock = 200
 
-    provider.send = mock((payload: any, cb: any) => {
+    provider.send = mock((payload: RPCRequestPayload, cb: TestRpcCallback): void => {
       if (payload.method === 'eth_getTransactionReceipt') {
         return cb({
           result: {
@@ -878,7 +970,9 @@ describe('#setTxSent', () => {
         })
       }
       if (payload.method === 'eth_blockNumber') {
-        return cb({ result: intToHex(receiptBlock + TRANSACTION_CONFIRMATION_TARGET) })
+        return cb({
+          result: intToHex(receiptBlock + TRANSACTION_CONFIRMATION_TARGET)
+        })
       }
 
       cb({ result: null })
@@ -908,14 +1002,14 @@ describe('#setTxSent', () => {
   it('pauses persisted activity immediately and resumes it once without overlapping RPC', async () => {
     const profileId = 'dormant-activity-profile'
     const hash = '0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'
-    const receiptCallbacks: Array<(response: any) => void> = []
-    const accounts = createAccounts()
+    const receiptCallbacks: TestRpcCallback[] = []
+    const accounts = createAccounts() as unknown as TestAccounts
 
     storeState().createProfile(profileId, 'Dormant activity')
     storeState().moveAccountToProfile(account2.address, profileId)
     storeState().selectProfile(DEFAULT_PROFILE_ID)
     setSubmittedActivity(hash)
-    provider.send = mock((payload: any, cb: any) => {
+    provider.send = mock((payload: RPCRequestPayload, cb: TestRpcCallback): void => {
       if (payload.method === 'eth_getTransactionReceipt') {
         receiptCallbacks.push(cb)
         return
@@ -930,8 +1024,14 @@ describe('#setTxSent', () => {
       expect(receiptCallbacks).toHaveLength(1)
 
       storeState().selectProfile(profileId)
-      receiptCallbacks[0]({ result: { status: '0x1', blockNumber: intToHex(100), gasUsed: '0x5208' } })
-      expect(provider.send.mock.calls.map(([payload]: any[]) => payload.method)).toEqual([
+      receiptCallbacks[0]({
+        result: {
+          status: '0x1',
+          blockNumber: intToHex(100),
+          gasUsed: '0x5208'
+        }
+      })
+      expect(provider.send.mock.calls.map(([payload]) => payload.method)).toEqual([
         'eth_getTransactionReceipt'
       ])
       expect(storeState().main.activity[hash].status).toBe('submitted')
@@ -941,12 +1041,18 @@ describe('#setTxSent', () => {
       timers.advanceTimersByTime(30_000)
       expect(receiptCallbacks).toHaveLength(2)
 
-      receiptCallbacks[1]({ result: { status: '0x1', blockNumber: intToHex(100), gasUsed: '0x5208' } })
+      receiptCallbacks[1]({
+        result: {
+          status: '0x1',
+          blockNumber: intToHex(100),
+          gasUsed: '0x5208'
+        }
+      })
       await flushPromises()
       expect(storeState().main.activity[hash].status).toBe('succeeded')
     } finally {
       accounts.close()
-      store.setState((state: any) => {
+      store.setState((state) => {
         state.main.activity = {}
       })
       storeState().selectProfile(DEFAULT_PROFILE_ID)
@@ -958,16 +1064,16 @@ describe('#setTxSent', () => {
   it('retires a live request monitor on dormancy and resumes from durable activity', () => {
     const profileId = 'dormant-live-profile'
     const hash = '0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd'
-    const accounts = createAccounts()
+    const accounts = createAccounts() as unknown as TestAccounts
     const methods: string[] = []
 
-    store.setState((state: any) => {
+    store.setState((state) => {
       state.main.activity = {}
     })
     storeState().createProfile(profileId, 'Dormant live request')
     storeState().moveAccountToProfile(account2.address, profileId)
     storeState().selectProfile(DEFAULT_PROFILE_ID)
-    provider.send = mock((payload: any, cb: any) => {
+    provider.send = mock((payload: RPCRequestPayload, cb: TestRpcCallback): void => {
       methods.push(payload.method)
       if (payload.method === 'eth_subscribe') {
         cb({ result: 'head-subscription' })
@@ -995,7 +1101,7 @@ describe('#setTxSent', () => {
       expect(methods).toEqual(['eth_subscribe', 'eth_unsubscribe', 'eth_getTransactionReceipt'])
     } finally {
       accounts.close()
-      store.setState((state: any) => {
+      store.setState((state) => {
         state.main.activity = {}
       })
       storeState().selectProfile(DEFAULT_PROFILE_ID)
@@ -1009,7 +1115,11 @@ describe('#clearRequestsByOrigin', () => {
   beforeEach(() => {
     Accounts.current().addRequest(request)
     Accounts.current().addRequest({ ...request, handlerId: '2' })
-    Accounts.current().addRequest({ ...request, handlerId: '3', origin: '07h3r' })
+    Accounts.current().addRequest({
+      ...request,
+      handlerId: '3',
+      origin: '07h3r'
+    })
   })
 
   it('should remove any request from a given origin', () => {

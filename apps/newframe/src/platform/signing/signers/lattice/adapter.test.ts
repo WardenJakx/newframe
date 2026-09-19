@@ -5,6 +5,7 @@ import log from 'electron-log'
 
 import store from '../../../state-store'
 import createCanonicalStore from '../../../state-store/createCanonicalStore'
+import { Derivation } from '../Signer/derive'
 import LatticeSignerAdapter from './adapter'
 
 const calls = <T extends unknown[]>(fn: unknown) => (fn as { mock: { calls: T[] } }).mock.calls
@@ -15,7 +16,7 @@ function fakeSigner(deviceId = 'NBaJ8e') {
     deviceId,
     deviceName: 'Newframe-testlattice',
     accountLimit: 5,
-    derivation: 'legacy',
+    derivation: Derivation.legacy,
     addresses: Array(5).fill('addr'),
     connection: undefined as { baseUrl: string; isPaired?: boolean } | undefined,
     connect: mock(async (_baseUrl?: string, _privateKey?: string) => true),
@@ -52,7 +53,7 @@ afterAll(() => (log.transports.console.level = 'debug'))
 
 beforeEach(() => {
   setDevices({})
-  setSettings({ accountLimit: 5, derivation: 'legacy', endpointMode: 'default', endpointCustom: '' })
+  setSettings({ accountLimit: 5, derivation: Derivation.legacy, endpointMode: 'default', endpointCustom: '' })
   signer = fakeSigner()
   adapter = new LatticeSignerAdapter(store, () => signer as never)
 })
@@ -145,7 +146,7 @@ it('applies endpoint, derivation, and account-limit settings without redundant w
   expect(signer.disconnect).toHaveBeenCalledTimes(2)
 
   signer.connection = { baseUrl: 'https://signing.gridpl.us' }
-  setSettings({ derivation: 'standard' })
+  setSettings({ derivation: Derivation.standard })
   setSettings({ accountLimit: 10 })
   expect(signer).toMatchObject({ derivation: 'standard', accountLimit: 10 })
   expect(signer.deriveAddresses).toHaveBeenCalledTimes(2)

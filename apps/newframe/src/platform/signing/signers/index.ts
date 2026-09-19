@@ -16,10 +16,14 @@ const createDefaultAdapters = (store: typeof canonicalStore) => [
   new AirGapAdapter(store)
 ]
 
+type AdapterListener =
+  | { event: 'add' | 'update'; handler: (signer: Signer) => void }
+  | { event: 'remove'; handler: (id: string) => void }
+
 interface AdapterSpec {
   [key: string]: {
     adapter: SignerAdapter
-    listeners: { event: string; handler: (payload: any) => void }[]
+    listeners: AdapterListener[]
   }
 }
 

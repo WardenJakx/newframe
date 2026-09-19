@@ -16,7 +16,7 @@ export function transactionFeePreset(
   recommendation:
     | {
         levels?: Partial<Record<TransactionFeeLevel, string>>
-        fees?: { maxBaseFeePerGas?: string; maxPriorityFeePerGas?: string }
+        fees?: { maxBaseFeePerGas?: string; maxPriorityFeePerGas?: string } | null
       }
     | undefined,
   level: TransactionFeeLevel,

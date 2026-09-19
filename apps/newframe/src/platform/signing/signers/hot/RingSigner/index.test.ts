@@ -10,6 +10,8 @@ import { keccak256 } from 'ethers'
 
 import { electronMock } from '../../../../../../test/support/electron.mock.ts'
 import { callbackResult, exerciseHotSignerContract } from '../../callback.test-support.ts'
+import type Signer from '../../Signer/index.ts'
+import type RingSigner from './index.ts'
 
 const USER_DATA = fs.mkdtempSync(path.join(tmpdir(), 'newframe-ring-test-'))
 const SIGNER_PATH = path.join(USER_DATA, 'signers')
@@ -54,7 +56,7 @@ const createV1Keystore = (privateKey: Buffer, password: string) => {
 let hot: typeof import('..')
 
 describe('Ring signer', () => {
-  let signer: any
+  let signer: RingSigner
 
   beforeAll(async () => {
     log.transports.console.level = false
@@ -88,7 +90,7 @@ describe('Ring signer', () => {
   })
 
   test('stores one envelope per address and loads without rewriting', async () => {
-    signer = await callbackResult((done) =>
+    signer = (await callbackResult<Signer>((done) =>
       hot.createFromPrivateKey(
         vault,
         { add: () => {}, exists: () => false },
@@ -96,7 +98,7 @@ describe('Ring signer', () => {
         '',
         done
       )
-    )
+    )) as RingSigner
     const signerFile = path.resolve(SIGNER_PATH, `${signer.id}.json`)
     const before = fs.readFileSync(signerFile, 'utf8')
     const stored = JSON.parse(before)
@@ -104,7 +106,7 @@ describe('Ring signer', () => {
     expect(stored.encryptedKeys).toHaveLength(1)
     expect(stored.encryptedKeys[0].algorithm).toBe('aes-256-gcm')
 
-    const loaded: any[] = []
+    const loaded: Signer[] = []
     fs.writeFileSync(
       path.resolve(SIGNER_PATH, 'malformed-ring.json'),
       JSON.stringify({
@@ -132,7 +134,7 @@ describe('Ring signer', () => {
 
   test('imports external V1 and V3 keystores', async () => {
     unlocked = true
-    const v1 = await callbackResult<any>((done) =>
+    const v1 = (await callbackResult<Signer>((done) =>
       hot.createFromKeystore(
         vault,
         { add: () => {}, exists: () => false },
@@ -141,10 +143,10 @@ describe('Ring signer', () => {
         '',
         done
       )
-    )
-    const v3 = await callbackResult<any>((done) =>
+    )) as RingSigner
+    const v3 = (await callbackResult<Signer>((done) =>
       hot.createFromKeystore(vault, { add: () => {}, exists: () => false }, readKeystore(), 'test', '', done)
-    )
+    )) as RingSigner
     expect(v1.addresses[0]).toBe(v1.addresses[0].toLowerCase())
     expect(v3.addresses[0]).toBe(v3.addresses[0].toLowerCase())
   })
