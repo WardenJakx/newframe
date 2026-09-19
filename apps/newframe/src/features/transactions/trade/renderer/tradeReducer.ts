@@ -108,9 +108,9 @@ function defaultAssetForChain(chainId: number, assets: readonly FlashAsset[]) {
   const sameChain = assets.filter((asset) => asset.chainId === chainId)
 
   return (
-    (sameChain.find((asset) => asset.symbol.toUpperCase() === 'WETH') ??
-      sameChain.find((asset) => !asset.isNative) ??
-      sameChain[0]) ||
+    sameChain.find((asset) => asset.symbol.toUpperCase() === 'WETH') ??
+    sameChain.find((asset) => !asset.isNative) ??
+    sameChain.at(0) ??
     getFlashDefaultTargetAsset(chainId)
   )
 }
@@ -133,10 +133,7 @@ function resolveTargetAsset({
   const fallbackChainId = parsedRoute?.chainId ?? chainId
 
   if (Number.isInteger(fallbackChainId) && Number(fallbackChainId) > 0) {
-    const asset = defaultAssetForChain(Number(fallbackChainId), assets)
-    if (asset) {
-      return asset
-    }
+    return defaultAssetForChain(Number(fallbackChainId), assets)
   }
 
   return resolveFlashAssetFromRouteAssetId(assetId, chainId)

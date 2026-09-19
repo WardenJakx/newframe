@@ -35,7 +35,8 @@ export function createAssetRateService({ store, clock }: AssetRateServiceDepende
       }
 
       const state = store.getState()
-      const accepted: Record<string, AssetRateSnapshot> = {}
+      const accepted: Record<string, AssetRateSnapshot | undefined> = {}
+      const storedRates = state.main.assetRates as Record<string, AssetRateSnapshot | undefined>
 
       rates.forEach((input) => {
         if (
@@ -57,7 +58,7 @@ export function createAssetRateService({ store, clock }: AssetRateServiceDepende
         }
 
         const key = getAssetRateKey(assetId)
-        const previous = accepted[key] || state.main.assetRates[key]
+        const previous = accepted[key] ?? storedRates[key]
         if (previous && observedAt < previous.observedAt) {
           return
         }
@@ -71,7 +72,7 @@ export function createAssetRateService({ store, clock }: AssetRateServiceDepende
       })
 
       if (Object.keys(accepted).length) {
-        state.setAssetRates(accepted)
+        state.setAssetRates(accepted as Record<string, AssetRateSnapshot>)
       }
     },
 

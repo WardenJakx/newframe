@@ -127,7 +127,7 @@ export function createRequestService(ports: RequestServicePorts) {
 
   const locate = <T extends AccountRequest = AccountRequest>(requestId: string) => {
     const accountState = Object.values(ports.store.getState().main.accounts).find(
-      (account) => account.requests?.[requestId]
+      (account) => account.requests[requestId]
     )
     if (!accountState) {
       return
@@ -192,8 +192,12 @@ export function createRequestService(ports: RequestServicePorts) {
     request: AccountRequest,
     confirmed: ReadonlySet<RequestApprovalGate['type']>
   ): RequestApprovalGate | undefined => {
-    const signerSummaries = ports.store.getState().main.signers || {}
-    const signer = account.signer ? signerSummaries[account.signer] : undefined
+    const signerSummaries = ports.store.getState().main.signers
+    const sparseSignerSummaries = signerSummaries as Record<
+      string,
+      (typeof signerSummaries)[string] | undefined
+    >
+    const signer = account.signer ? sparseSignerSummaries[account.signer] : undefined
     if (!signer) {
       const unavailable = findUnavailableSigners(account.lastSignerType, Object.values(signerSummaries))
       return unavailable.length
@@ -240,9 +244,17 @@ export function createRequestService(ports: RequestServicePorts) {
     }
 
     const chainId = parseInt(request.data.chainId, 16)
-    const network = state.networks.ethereum[chainId]
-    const nativeCurrency = state.networksMeta.ethereum[chainId]?.nativeCurrency
-    const currentSymbol = nativeCurrency?.symbol || '?'
+    const networks = state.networks.ethereum as Record<
+      number,
+      (typeof state.networks.ethereum)[number] | undefined
+    >
+    const metadata = state.networksMeta.ethereum as Record<
+      number,
+      (typeof state.networksMeta.ethereum)[number] | undefined
+    >
+    const network = networks[chainId]
+    const nativeCurrency = metadata[chainId]?.nativeCurrency
+    const currentSymbol = nativeCurrency?.symbol ?? '?'
     const nativeUSD = !network?.isTestnet
       ? resolveAssetRate(
           { chainId, address: NATIVE_CURRENCY, nativeTicker: nativeCurrency?.symbol },
@@ -273,13 +285,23 @@ export function createRequestService(ports: RequestServicePorts) {
     ports.accounts.setRequestPending(request)
 
     const continuation = continuations.get(request.handlerId)
-    const created = ports.store.getState().main.accounts[request.account]?.created
+    const initialState = ports.store.getState()
+    const initialAccounts = initialState.main.accounts as Record<
+      string,
+      (typeof initialState.main.accounts)[string] | undefined
+    >
+    const created = initialAccounts[request.account]?.created
     const actionId = request.authorization?.actionId
     const complete = (settleApproval: () => void) => {
       if (continuations.get(request.handlerId) !== continuation) {
         return
       }
-      const currentAccount = ports.store.getState().main.accounts[request.account]
+      const currentState = ports.store.getState()
+      const currentAccounts = currentState.main.accounts as Record<
+        string,
+        (typeof currentState.main.accounts)[string] | undefined
+      >
+      const currentAccount = currentAccounts[request.account]
       const currentRequest = currentAccount?.requests[request.handlerId] as AccountRequest | undefined
       if (currentAccount?.created !== created || currentRequest?.authorization?.actionId !== actionId) {
         approvalsInFlight.delete(request.handlerId)
@@ -491,9 +513,10 @@ export function createRequestService(ports: RequestServicePorts) {
       if (located?.request.type !== 'access') {
         return false
       }
-      if (approved && located.request.payload?.method === 'eth_requestAccounts') {
+      if (approved && located.request.payload.method === 'eth_requestAccounts') {
         const { main } = ports.store.getState()
-        const selected = main.accounts[main.currentAccount]
+        const accounts = main.accounts as Record<string, (typeof main.accounts)[string] | undefined>
+        const selected = accounts[main.currentAccount]
         if (!selected || !ports.accounts.getFrameAccount(selected.address)) {
           located.account.setAccess(located.request, false)
           return true
@@ -520,11 +543,16 @@ export function createRequestService(ports: RequestServicePorts) {
       if (approved) {
         const state = ports.store.getState()
         const chainId = Number(request.chain?.id)
+        const origins = state.main.origins as Record<string, (typeof state.main.origins)[string] | undefined>
+        const networks = state.main.networks.ethereum as Record<
+          number,
+          (typeof state.main.networks.ethereum)[number] | undefined
+        >
         if (
           request.chain?.type !== 'ethereum' ||
           !Number.isInteger(chainId) ||
-          !state.main.origins[request.origin] ||
-          !state.main.networks.ethereum[chainId]
+          !origins[request.origin] ||
+          !networks[chainId]
         ) {
           return false
         }
@@ -535,7 +563,8 @@ export function createRequestService(ports: RequestServicePorts) {
     },
 
     clearOrigin(accountId: string, originId: string) {
-      if (!ports.accounts.get(accountId)) {
+      const account = ports.accounts.get(accountId)
+      if (!account) {
         return false
       }
       ports.accounts.clearRequestsByOrigin(accountId, originId)
@@ -547,7 +576,7 @@ export function createRequestService(ports: RequestServicePorts) {
       if (located?.request.type !== 'transaction') {
         return false
       }
-      const approval = located.request.approvals?.find((candidate) => candidate.type === approvalType)
+      const approval = located.request.approvals.find((candidate) => candidate.type === approvalType)
       if (!approval || approval.approved) {
         return false
       }
@@ -596,7 +625,11 @@ export function createRequestService(ports: RequestServicePorts) {
 
       if (command.approved) {
         const chainId = Number(chain.id)
-        const existing = state.main.networks.ethereum[chainId]
+        const networks = state.main.networks.ethereum as Record<
+          number,
+          (typeof state.main.networks.ethereum)[number] | undefined
+        >
+        const existing = networks[chainId]
         if (existing) {
           state.activateNetwork('ethereum', chainId, true)
         } else {

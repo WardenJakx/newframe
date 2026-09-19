@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
 import type { Token } from '../../../../tokens/domain/state/token'
-import { groupByChain } from './reducers'
+import { groupByChain, type TokensByChain } from './reducers'
 
 describe('#groupByChain', () => {
   it('groups tokens by chain', () => {
@@ -13,7 +13,7 @@ describe('#groupByChain', () => {
       { chainId: 1, symbol: 'AUSDC' }
     ]
 
-    const grouped = tokens.reduce<Record<number, Token[]>>(
+    const grouped = tokens.reduce<TokensByChain>(
       (result, token) => groupByChain(result, token as unknown as Token),
       {}
     )

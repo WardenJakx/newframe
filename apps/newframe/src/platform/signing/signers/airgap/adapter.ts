@@ -21,8 +21,12 @@ export default class AirGapAdapter extends SignerAdapter {
     this.unsubscribe = this.store.subscribe(
       (state) => state.main.airgap,
       (records) => {
+        const sparseRecords = records as Record<string, (typeof records)[string] | undefined>
         for (const [id, entry] of this.known) {
-          if (!records[id] || JSON.stringify(records[id]) !== JSON.stringify(entry.signer.record)) {
+          if (
+            !sparseRecords[id] ||
+            JSON.stringify(sparseRecords[id]) !== JSON.stringify(entry.signer.record)
+          ) {
             this.detach(id)
             this.emit('remove', id)
           }
@@ -75,11 +79,13 @@ export default class AirGapAdapter extends SignerAdapter {
     this.store.getState().removeAirGap(signer.id)
   }
   override reload(signer: AirGapSigner) {
-    const record = this.store.getState().main.airgap[signer.id]
+    const state = this.store.getState()
+    const records = state.main.airgap as Record<string, (typeof state.main.airgap)[string] | undefined>
+    const record = records[signer.id]
     this.detach(signer.id)
     this.emit('remove', signer.id)
     if (record) {
-      this.store.getState().addAirGap(signer.id, record)
+      state.addAirGap(signer.id, record)
     }
   }
 }

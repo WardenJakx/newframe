@@ -344,8 +344,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       aria-expanded={expanded}
       aria-haspopup={hasPopup}
       aria-label={label}
-      aria-pressed={pressed === null ? undefined : pressed}
-      aria-selected={ariaSelected ?? (selected === null ? undefined : selected)}
+      aria-pressed={pressed}
+      aria-selected={ariaSelected ?? selected}
       className={buttonRecipe({
         appearance,
         content,

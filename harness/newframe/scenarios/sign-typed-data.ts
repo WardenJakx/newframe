@@ -106,7 +106,7 @@ async function main() {
       throw new Error(`Signature recovered ${recovered}; expected ${address}`)
     }
   } finally {
-    frame?.close()
+    frame.close()
   }
 }
 

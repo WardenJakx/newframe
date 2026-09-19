@@ -9,10 +9,13 @@ import { HomeHeaderView } from './HomeHeaderView'
 
 export function HomeHeader({ capability }: { capability: Pick<HomeCapability, 'copyText'> }) {
   const { account, showLocalNameWithENS } = useWalletSelector(
-    useShallow((state) => ({
-      account: state.accounts?.[state.currentAccount],
-      showLocalNameWithENS: !!state.showLocalNameWithENS
-    }))
+    useShallow((state) => {
+      const accounts: Partial<typeof state.accounts> = state.accounts
+      return {
+        account: accounts[state.currentAccount],
+        showLocalNameWithENS: !!state.showLocalNameWithENS
+      }
+    })
   )
   const overlay = useHomeUiStore((state) => state.overlay)
   const openOverlay = useHomeUiStore((state) => state.openOverlay)
@@ -48,7 +51,11 @@ export function HomeHeader({ capability }: { capability: Pick<HomeCapability, 'c
         overlay.type === 'accounts' ? closeOverlay() : openOverlay({ type: 'accounts' })
       }
       onOpenMenu={() => (overlay.type === 'menu' ? closeOverlay() : openOverlay({ type: 'menu' }))}
-      onReceive={() => account && openOverlay({ type: 'receive', accountId: account.id })}
+      onReceive={() => {
+        if (account) {
+          openOverlay({ type: 'receive', accountId: account.id })
+        }
+      }}
     />
   )
 }

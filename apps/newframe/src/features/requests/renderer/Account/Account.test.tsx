@@ -305,7 +305,7 @@ Issued At: 2026-09-13T12:00:00Z`
       payload: { id: 4, jsonrpc: '2.0', method: 'personal_sign', params: [decodedMessage] },
       data: { decodedMessage }
     })
-    const signingAccount = state.accounts[accountId]
+    const signingAccount = (state.accounts as Partial<typeof state.accounts>)[accountId]
     if (!signingAccount) {
       throw new Error('Missing fixture account')
     }

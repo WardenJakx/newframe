@@ -40,7 +40,9 @@ const waitForFrameConnect = () =>
 async function main() {
   frame = createFrameProvider('frame', { origin: 'frame.test' })
   const getFirstSigner = async () => {
-    const [signer] = await provider.listAccounts()
+    const signer: Awaited<ReturnType<BrowserProvider['listAccounts']>>[number] | undefined = (
+      await provider.listAccounts()
+    ).at(0)
     if (!signer) {
       throw new Error('No account available')
     }

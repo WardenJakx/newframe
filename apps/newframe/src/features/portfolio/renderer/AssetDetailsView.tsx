@@ -36,14 +36,14 @@ export function AssetDetailsView({
   canTrade: boolean
   clipboard: ClipboardCapability
   imageCapability: TokenImageCapability
-  networks: Record<string | number, NetworkLike>
-  networksMeta: Record<string | number, NetworkMetaLike>
+  networks: Partial<Record<string | number, NetworkLike>>
+  networksMeta: Partial<Record<string | number, NetworkMetaLike>>
   onBack: () => void
   onSend: () => void
   onTrade: () => void
 }) {
-  const chain = networks[asset.chainId] || {}
-  const price = Number(asset?.rate?.usdRate ?? 0)
+  const chain = networks[asset.chainId] ?? {}
+  const price = Number(asset.rate?.usdRate ?? 0)
   const nativeAsset = isNativeCurrency(asset.address)
   const detailRow = (label: string, value: React.ReactNode, monospace = false) => (
     <DetailRow code={monospace} label={label} value={value} />

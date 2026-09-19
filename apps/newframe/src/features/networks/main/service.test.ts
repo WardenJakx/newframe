@@ -9,9 +9,6 @@ describe('network mutation service', () => {
     const builtIns = createBuiltInNetworks()
     const mainnet = builtIns[1]
     const optimism = builtIns[10]
-    if (!mainnet || !optimism) {
-      throw new Error('Expected built-in network fixtures')
-    }
     const store = createTestStore({
       main: {
         networks: {

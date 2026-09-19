@@ -62,7 +62,8 @@ export function flashTypedDataChainId(typedData: unknown, fallback: number) {
 }
 
 export function buildFlashActionTransaction(action: FlashQuoteAction, expectedChainId: number) {
-  const chainId = Number(action.tx.chainId ?? expectedChainId)
+  const rawChainId = (action.tx as { chainId?: unknown }).chainId
+  const chainId = Number(rawChainId ?? expectedChainId)
   if (!Number.isInteger(chainId) || chainId <= 0 || chainId !== expectedChainId) {
     throw new Error('Invalid Flash action chain id')
   }

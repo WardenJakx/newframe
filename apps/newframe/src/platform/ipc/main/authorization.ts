@@ -111,7 +111,7 @@ export function createRendererAuthorizationRegistry(
         return
       }
       const frame = webContents.mainFrame
-      if (frame?.parent !== null || frame.url !== requestingUrl) {
+      if (frame.parent !== null || frame.url !== requestingUrl) {
         return
       }
       if (!isAllowedRendererUrl(registration.entrypoint, requestingUrl)) {

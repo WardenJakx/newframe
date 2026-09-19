@@ -57,6 +57,7 @@ const renderRequest = (req: TransactionRequestFixture) =>
 beforeEach(() => {
   capabilities = createRequestPortsFake()
   fixture.state.reset({
+    accounts: {},
     assetRates: {},
     networks: {
       ethereum: {
@@ -73,6 +74,7 @@ beforeEach(() => {
     origins: {
       'test-origin': { name: 'Test Dapp' }
     },
+    tokens: { byId: {}, accountTokenIds: {} },
     windows: {
       panel: { nav: [] }
     }
@@ -319,6 +321,7 @@ describe('confirm', () => {
   it('uses the canonical persisted token image for simulated effects', () => {
     const address = '0x0000000000000000000000000000000000000001'
     fixture.state.reset({
+      accounts: {},
       assetRates: {},
       networks: { ethereum: { 137: { name: 'Polygon', isTestnet: false } } },
       networksMeta: { ethereum: { 137: { nativeCurrency: { symbol: 'MATIC' } } } },

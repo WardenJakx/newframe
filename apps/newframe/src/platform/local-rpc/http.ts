@@ -66,10 +66,10 @@ export function createHttpRpcTransport({
   timers = systemTimers,
   createConnectionId = randomUUID
 }: HttpRpcTransportDependencies): HttpRpcTransport {
-  const polls: Record<string, string[]> = {}
-  const pollSubs: Record<string, Subscription> = {}
-  const pending: Record<string, PendingRequest> = {}
-  const cleanupTimers: Record<string, ReturnType<typeof setTimeout>> = {}
+  const polls: Record<string, string[] | undefined> = {}
+  const pollSubs: Record<string, Subscription | undefined> = {}
+  const pending: Record<string, PendingRequest | undefined> = {}
+  const cleanupTimers: Record<string, ReturnType<typeof setTimeout> | undefined> = {}
   const sessionMonitor = createOriginSessionMonitor({ store, timers })
   const logTraffic = process.env.LOG_TRAFFIC
   let active = false
@@ -77,17 +77,20 @@ export function createHttpRpcTransport({
 
   const cleanup = (id: string) => {
     delete polls[id]
-    if (pending[id]) {
-      timers.clearTimeout(pending[id].timer)
+    const pendingRequest = pending[id]
+    if (pendingRequest) {
+      timers.clearTimeout(pendingRequest.timer)
     }
     delete pending[id]
-    if (cleanupTimers[id]) {
-      timers.clearTimeout(cleanupTimers[id])
+    const cleanupTimer = cleanupTimers[id]
+    if (cleanupTimer) {
+      timers.clearTimeout(cleanupTimer)
     }
     delete cleanupTimers[id]
 
     Object.keys(pollSubs).forEach((sub) => {
-      if (pollSubs[sub].id !== id) {
+      const subscription = pollSubs[sub]
+      if (!subscription || subscription.id !== id) {
         return
       }
       Promise.resolve(
@@ -96,7 +99,7 @@ export function createHttpRpcTransport({
           id: 1,
           method: 'eth_unsubscribe',
           params: [sub],
-          _origin: pollSubs[sub].origin
+          _origin: subscription.origin
         })
       ).catch((error: unknown) => log.error('HTTP RPC subscription cleanup failed', error))
       delete pollSubs[sub]
@@ -114,8 +117,8 @@ export function createHttpRpcTransport({
     }
 
     const { id } = subscription
-    polls[id] = polls[id] || []
-    polls[id].push(JSON.stringify(payload))
+    const poll = (polls[id] ??= [])
+    poll.push(JSON.stringify(payload))
     pending[id]?.send()
   }
 
@@ -203,7 +206,7 @@ export function createHttpRpcTransport({
           }
 
           const send = (force: boolean) => {
-            const result = polls[id] || []
+            const result = polls[id] ?? []
             if (result.length || payload.params[1] === 'immediate' || force) {
               res.writeHead(200, { 'Content-Type': 'application/json' })
               const response = { id: payload.id, jsonrpc: payload.jsonrpc, result }
@@ -212,16 +215,18 @@ export function createHttpRpcTransport({
               }
               res.end(JSON.stringify(response))
               delete polls[id]
-              if (cleanupTimers[id]) {
-                timers.clearTimeout(cleanupTimers[id])
+              const cleanupTimer = cleanupTimers[id]
+              if (cleanupTimer) {
+                timers.clearTimeout(cleanupTimer)
               }
               cleanupTimers[id] = timers.setTimeout(() => cleanup(id), 20_000)
               return
             }
 
             const sendResponse = () => {
-              if (pending[id]) {
-                timers.clearTimeout(pending[id].timer)
+              const pendingRequest = pending[id]
+              if (pendingRequest) {
+                timers.clearTimeout(pendingRequest.timer)
               }
               delete pending[id]
               send(true)
@@ -284,7 +289,7 @@ export function createHttpRpcTransport({
         ...Object.keys(polls),
         ...Object.keys(pending),
         ...Object.keys(cleanupTimers),
-        ...Object.values(pollSubs).map(({ id }) => id)
+        ...Object.values(pollSubs).flatMap((subscription) => (subscription ? [subscription.id] : []))
       ])
       pollIds.forEach(cleanup)
       sessionMonitor.dispose()

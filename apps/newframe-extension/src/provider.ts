@@ -53,6 +53,24 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
+function isJsonRpcPayload(value: unknown): value is JsonRpcPayload {
+  if (!isRecord(value) || typeof value.method !== 'string') {
+    return false
+  }
+
+  return (
+    (value.id === undefined || typeof value.id === 'number' || typeof value.id === 'string') &&
+    (value.jsonrpc === undefined || value.jsonrpc === '2.0') &&
+    (value.params === undefined || Array.isArray(value.params)) &&
+    (value.chainId === undefined || typeof value.chainId === 'string') &&
+    (value.__extensionConnecting === undefined || typeof value.__extensionConnecting === 'boolean')
+  )
+}
+
+function isJsonRpcCallback(value: unknown): value is JsonRpcCallback {
+  return typeof value === 'function'
+}
+
 function isJsonRpcId(value: unknown): value is number | string {
   return typeof value === 'number' || typeof value === 'string'
 }
@@ -301,11 +319,13 @@ export default class InjectedFrameProvider extends EventEmitter {
     }
   }
 
-  async sendAsync(rawPayload: JsonRpcPayload | JsonRpcPayload[], cb: JsonRpcCallback) {
-    if (!cb || typeof cb !== 'function') {
+  async sendAsync(rawPayload: JsonRpcPayload | JsonRpcPayload[], cb: JsonRpcCallback): Promise<void | Error>
+  async sendAsync(rawPayload?: unknown, cb?: unknown): Promise<void | Error> {
+    if (!isJsonRpcCallback(cb)) {
       return new Error('Invalid or undefined callback provided to sendAsync')
     }
-    if (!rawPayload) {
+
+    if (!isJsonRpcPayload(rawPayload) && !(Array.isArray(rawPayload) && rawPayload.every(isJsonRpcPayload))) {
       return cb(new Error('Invalid Payload'))
     }
 

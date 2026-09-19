@@ -307,7 +307,7 @@ export function createWebSocketRpcTransport({
     if (typeof subscriptionId !== 'string') {
       return
     }
-    const subscription = subs[subscriptionId]
+    const subscription = (subs as Record<string, Subscription | undefined>)[subscriptionId]
     if (subscription?.socket.readyState === openReadyState) {
       subscription.socket.send(JSON.stringify(payload))
     }

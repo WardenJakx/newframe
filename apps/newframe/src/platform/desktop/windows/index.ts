@@ -48,10 +48,10 @@ const events = new EventEmitter()
 let sideTrayManager: SideTrayManager
 const isDev = process.env.NODE_ENV === 'development'
 const devToolsEnabled = isDev || process.env.ENABLE_DEV_TOOLS === 'true'
-const openedAtLogin =
-  electronApp?.getLoginItemSettings() && electronApp.getLoginItemSettings().wasOpenedAtLogin
+const optionalElectronApp = electronApp as typeof electronApp | undefined
+const openedAtLogin = optionalElectronApp?.getLoginItemSettings().wasOpenedAtLogin
 const windows: Windows = {}
-const showOnReady = true
+const trayWindow = () => windows.tray as BrowserWindow | undefined
 const isWindows = process.platform === 'win32'
 const isMacOS = process.platform === 'darwin'
 
@@ -268,15 +268,14 @@ class Tray {
       { equalityFn: shallow }
     )
     this.readyHandler = () => {
-      if (this.ready || !windows.tray || windows.tray.isDestroyed()) {
+      const currentWindow = trayWindow()
+      if (this.ready || !currentWindow || currentWindow.isDestroyed()) {
         return
       }
       this.ready = true
-      systemTray.init(windows.tray)
+      systemTray.init(currentWindow)
       systemTray.setContextMenu('hide', { displaySummonShortcut: getDisplaySummonShortcut() })
-      if (showOnReady) {
-        getStore().getState().trayOpen(true)
-      }
+      getStore().getState().trayOpen(true)
     }
     this.removeRendererReady = initTrayWindow(this.readyHandler)
   }
@@ -286,7 +285,7 @@ class Tray {
   }
 
   isVisible() {
-    return windows.tray.isVisible()
+    return trayWindow()?.isVisible() ?? false
   }
 
   canAutoHide() {
@@ -299,7 +298,7 @@ class Tray {
   }
 
   hide() {
-    if (this.recentDisplayEvent || !windows.tray?.isVisible()) {
+    if (this.recentDisplayEvent || !trayWindow()?.isVisible()) {
       return
     }
     clearTimeout(this.recentDisplayEventTimeout)
@@ -319,7 +318,7 @@ class Tray {
 
   public show() {
     clearTimeout(mouseTimeout)
-    if (!windows.tray) {
+    if (!trayWindow()) {
       return initialize()
     }
     if (this.recentDisplayEvent) {
@@ -352,7 +351,7 @@ class Tray {
       windows.tray.show()
     }
     events.emit('tray:show')
-    if (windows?.tray?.focus && !glide) {
+    if (!glide) {
       windows.tray.focus()
     }
     windows.tray.setVisibleOnAllWorkspaces(false, {
@@ -410,7 +409,9 @@ let stateUnsubscribers: Array<() => void> = []
 let sideTrayManagerStarted = false
 
 const initialize = () => {
-  if (tray && windows.tray && !windows.tray.isDestroyed()) {
+  const existingTray = tray as Tray | undefined
+  const existingWindow = trayWindow()
+  if (existingTray && existingWindow && !existingWindow.isDestroyed()) {
     return
   }
 
@@ -425,8 +426,8 @@ const initialize = () => {
     sideTrayManagerStarted = true
   }
 
-  if (tray) {
-    tray.destroy()
+  if (existingTray) {
+    existingTray.destroy()
   }
 
   tray = new Tray()
@@ -446,8 +447,9 @@ const initialize = () => {
   const updateSummonShortcut = (summonShortcut: Shortcut) => {
     const summonHandler = (accelerator: string) => {
       app.toggle()
-      if (tray?.isReady()) {
-        systemTray.setContextMenu(tray.isVisible() ? 'hide' : 'show', {
+      const currentTray = tray as Tray | undefined
+      if (currentTray?.isReady()) {
+        systemTray.setContextMenu(currentTray.isVisible() ? 'hide' : 'show', {
           displaySummonShortcut: summonShortcut.enabled,
           accelerator
         })

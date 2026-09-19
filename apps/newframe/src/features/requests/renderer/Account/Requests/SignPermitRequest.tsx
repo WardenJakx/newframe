@@ -112,56 +112,54 @@ const PermitOverview = ({
           Token Permit
         </Text>
         <Cluster>
-          {tokenData && (
-            <>
-              <ClusterRow>
-                <ClusterValue interactiveChildren onClick={() => copySpender()}>
-                  <Stack align='center' gap='xsmall'>
-                    {showCopiedMessage ? (
-                      <Text tone='accent'>Address Copied</Text>
-                    ) : (
-                      <AddressIdentity
-                        address={spender.address}
-                        accountType={identities[spender.address.toLowerCase()]?.accountType}
-                        nickname={spender.ens || identities[spender.address.toLowerCase()]?.nickname}
-                        showCopy={false}
-                      />
-                    )}
-                  </Stack>
-                </ClusterValue>
-              </ClusterRow>
-              <ClusterRow>
-                <ClusterValue>
-                  <Text align='center' tone='danger' variant='overline'>
-                    is requesting permission to spend
-                  </Text>
-                </ClusterValue>
-              </ClusterRow>
-              <ClusterRow>
-                <ClusterValue
-                  onClick={
-                    tokenData.decimals
-                      ? () => {
-                          open({ step: 'adjustPermit' })
-                        }
-                      : undefined
-                  }
-                >
-                  <Text
-                    align='center'
-                    tone='accent'
-                    variant='heading'
-                  >{`${amountDisplay} ${amountSuffix}`}</Text>
-                </ClusterValue>
-              </ClusterRow>
+          <>
+            <ClusterRow>
+              <ClusterValue interactiveChildren onClick={() => copySpender()}>
+                <Stack align='center' gap='xsmall'>
+                  {showCopiedMessage ? (
+                    <Text tone='accent'>Address Copied</Text>
+                  ) : (
+                    <AddressIdentity
+                      address={spender.address}
+                      accountType={identities[spender.address.toLowerCase()]?.accountType}
+                      nickname={spender.ens || identities[spender.address.toLowerCase()]?.nickname}
+                      showCopy={false}
+                    />
+                  )}
+                </Stack>
+              </ClusterValue>
+            </ClusterRow>
+            <ClusterRow>
+              <ClusterValue>
+                <Text align='center' tone='danger' variant='overline'>
+                  is requesting permission to spend
+                </Text>
+              </ClusterValue>
+            </ClusterRow>
+            <ClusterRow>
+              <ClusterValue
+                onClick={
+                  tokenData.decimals
+                    ? () => {
+                        open({ step: 'adjustPermit' })
+                      }
+                    : undefined
+                }
+              >
+                <Text
+                  align='center'
+                  tone='accent'
+                  variant='heading'
+                >{`${amountDisplay} ${amountSuffix}`}</Text>
+              </ClusterValue>
+            </ClusterRow>
 
-              <ClusterRow>
-                <ClusterValue>
-                  <Countdown end={Number(deadline) * 1000} title='Permit Expires In' />
-                </ClusterValue>
-              </ClusterRow>
-            </>
-          )}
+            <ClusterRow>
+              <ClusterValue>
+                <Countdown end={Number(deadline) * 1000} title='Permit Expires In' />
+              </ClusterValue>
+            </ClusterRow>
+          </>
         </Cluster>
       </Stack>
     </Stack>

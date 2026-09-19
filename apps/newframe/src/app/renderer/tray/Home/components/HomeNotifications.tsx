@@ -13,9 +13,6 @@ import type { HomeCapability } from '../homeCapability'
 import { useHomeUiStore } from '../state/HomeUiProvider'
 import StatusNotifications from '../StatusNotifications'
 
-const EMPTY_NETWORKS: WalletRendererState['networks']['ethereum'] = {}
-const EMPTY_NETWORK_METADATA: WalletRendererState['networksMeta']['ethereum'] = {}
-const EMPTY_NOTIFICATIONS: WalletRendererState['view']['notifications'] = {}
 const EMPTY_REQUESTS: WalletRendererState['accounts'][string]['requests'] = {}
 
 const requestNotificationRecipe = cva({
@@ -45,14 +42,15 @@ export function HomeNotifications({
 }) {
   const shared = useWalletSelector(
     useShallow((state) => {
-      const account = state.accounts?.[state.currentAccount]
-      const requests = account?.requests || EMPTY_REQUESTS
+      const accounts: Partial<typeof state.accounts> = state.accounts
+      const account = accounts[state.currentAccount]
+      const requests = account?.requests ?? EMPTY_REQUESTS
       const deployments = Object.values(account?.safe ?? {})
       return {
         currentAccount: state.currentAccount || '',
-        networks: state.networks?.ethereum || EMPTY_NETWORKS,
-        networksMeta: state.networksMeta?.ethereum || EMPTY_NETWORK_METADATA,
-        notifications: state.view?.notifications || EMPTY_NOTIFICATIONS,
+        networks: state.networks.ethereum,
+        networksMeta: state.networksMeta.ethereum,
+        notifications: state.view.notifications,
         hasSafeQueueError: deployments.some((deployment) => deployment.error),
         requestCount:
           Object.values(requests).filter((request) => request.mode === 'normal').length +

@@ -25,8 +25,8 @@ export function useSafeQueue({
 }) {
   const { account, networks, metadata, accounts, currentProfile } = useWalletSelector(
     useShallow((state) => ({
-      account: state.accounts[accountId],
-      accounts: state.accounts,
+      account: (state.accounts as Partial<typeof state.accounts>)[accountId],
+      accounts: state.accounts as Partial<typeof state.accounts>,
       currentProfile: state.currentProfile,
       networks: state.networks.ethereum,
       metadata: state.networksMeta.ethereum
@@ -84,7 +84,7 @@ export function useSafeQueue({
     deployment && proposal
       ? JSON.stringify([
           accountId,
-          account.created,
+          account?.created,
           currentProfile,
           selection?.lifetime,
           chainId,
@@ -174,7 +174,7 @@ export function useSafeQueue({
   }, [accountId, capabilities.safe, chainId, generation, safeTxHash, scope])
   const renderAddress = (address: string) => {
     const identity = Object.values(accounts).find(
-      (account) => account.address.toLowerCase() === address.toLowerCase()
+      (account) => account?.address.toLowerCase() === address.toLowerCase()
     )
     return (
       <AddressIdentity
@@ -272,7 +272,7 @@ export function useSafeQueue({
           id,
           {
             symbol: (metadata[Number(id)]?.nativeCurrency?.symbol || network.symbol) ?? 'native',
-            decimals: metadata[Number(id)]?.nativeCurrency?.decimals ?? 18
+            decimals: (metadata as Partial<typeof metadata>)[Number(id)]?.nativeCurrency?.decimals ?? 18
           }
         ])
       ),

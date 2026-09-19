@@ -231,7 +231,12 @@ export function createProductionOriginsService(
     touchOrigin: (id) => store.getState().addOriginRequest(id),
     switchOriginChain: (id, chainId) => store.getState().switchOriginChain(id, chainId, 'ethereum'),
     getPermission: (address, origin) => {
-      const permissions: Record<string, Permission> = store.getState().main.permissions[address] || {}
+      const state = store.getState()
+      const permissionsByAddress = state.main.permissions as Record<
+        string,
+        Record<string, Permission> | undefined
+      >
+      const permissions = permissionsByAddress[address] ?? {}
       return Object.values(permissions).find((permission) => permission.origin === origin)
     },
     getKnownExtension: (id) => store.getState().main.knownExtensions[id],

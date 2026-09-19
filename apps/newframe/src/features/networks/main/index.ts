@@ -133,6 +133,18 @@ class ChainConnection extends EventEmitter {
   private reconciling = false
   private reconcilePending = false
 
+  private currentNetwork() {
+    const networks = this.store.getState().main.networks[this.type] as Record<
+      number,
+      ReturnType<typeof this.store.getState>['main']['networks']['ethereum'][number] | undefined
+    >
+    return networks[Number(this.chainId)]
+  }
+
+  private shouldReconcileAgain() {
+    return this.reconcilePending
+  }
+
   constructor(
     type: Chain['type'],
     chainId: string,
@@ -184,11 +196,11 @@ class ChainConnection extends EventEmitter {
     try {
       do {
         this.reconcilePending = false
-        const chain = this.store.getState().main.networks[this.type][Number(this.chainId)]
+        const chain = this.currentNetwork()
         if (chain) {
           this.connect(chain)
         }
-      } while (this.reconcilePending)
+      } while (this.shouldReconcileAgain())
     } finally {
       this.reconciling = false
     }
@@ -272,7 +284,7 @@ class ChainConnection extends EventEmitter {
   }
 
   update(priority: Priority) {
-    const network = this.store.getState().main.networks[this.type][Number(this.chainId)]
+    const network = this.currentNetwork()
 
     if (!network) {
       // since we poll to re-connect there may be a timing issue where we try
@@ -285,7 +297,7 @@ class ChainConnection extends EventEmitter {
       const details = { status, connected, type, network }
       log.info(`Updating primary connection for chain ${this.chainId}`, details)
       this.store.getState().setPrimary(this.type, Number(this.chainId), details)
-    } else if (priority === 'secondary') {
+    } else {
       const { status, connected, type, network } = this.secondary
       const details = { status, connected, type, network }
       log.info(`Updating secondary connection for chain ${this.chainId}`, details)
@@ -464,11 +476,11 @@ class ChainConnection extends EventEmitter {
   send(payload: JSONRPCRequestPayload, res: RPCRequestCallback) {
     if (this.primary.provider && this.primary.connected) {
       sendRpcPayload(this.primary.provider, payload)
-        .then((result) => res({ id: payload.id, jsonrpc: payload.jsonrpc ?? '2.0', result }))
+        .then((result) => res({ id: payload.id, jsonrpc: payload.jsonrpc, result }))
         .catch((err: unknown) => resError(err, payload, res))
     } else if (this.secondary.provider && this.secondary.connected) {
       sendRpcPayload(this.secondary.provider, payload)
-        .then((result) => res({ id: payload.id, jsonrpc: payload.jsonrpc ?? '2.0', result }))
+        .then((result) => res({ id: payload.id, jsonrpc: payload.jsonrpc, result }))
         .catch((err: unknown) => resError(err, payload, res))
     } else {
       resError('Not connected to Ethereum network', payload, res)
@@ -528,14 +540,14 @@ class ChainConnection extends EventEmitter {
 }
 
 export class Chains extends EventEmitter {
-  connections: Record<string, Record<string, ChainConnection>>
+  connections: Record<Chain['type'], Record<string, ChainConnection | undefined>>
   private startRuntime: () => void = () => {}
   private disposeRuntime: () => void = () => {}
   private started = false
 
   constructor(private readonly store: CanonicalStoreApi) {
     super()
-    this.connections = {}
+    this.connections = { ethereum: {} }
 
     let systemSuspended = false
     let screenLocked = false
@@ -544,12 +556,19 @@ export class Chains extends EventEmitter {
 
     const activeConnectionIds = () =>
       Object.keys(this.connections)
-        .map((type) => Object.keys(this.connections[type]).map((chainId) => `${type}:${chainId}`))
+        .map((type) =>
+          Object.keys(this.connections[type as Chain['type']]).map((chainId) => `${type}:${chainId}`)
+        )
         .flat()
 
     const markConnectionInactive = (chainId: string, type: Chain['type'] = 'ethereum') => {
       const numericChainId = Number(chainId)
-      const network = this.store.getState().main.networks[type][numericChainId]
+      const network = (
+        this.store.getState().main.networks[type] as Record<
+          number,
+          ReturnType<typeof this.store.getState>['main']['networks']['ethereum'][number] | undefined
+        >
+      )[numericChainId]
       if (!network) {
         return
       }
@@ -570,10 +589,12 @@ export class Chains extends EventEmitter {
     }
 
     const removeConnection = (chainId: string, type: Chain['type'] = 'ethereum') => {
-      if (type in this.connections && chainId in this.connections[type]) {
-        this.connections[type][chainId].removeAllListeners()
-        this.connections[type][chainId].close(false)
-        delete this.connections[type][chainId]
+      const connections = this.connections[type]
+      const connection = connections[chainId]
+      if (connection) {
+        connection.removeAllListeners()
+        connection.close(false)
+        delete connections[chainId]
       }
     }
 
@@ -606,19 +627,24 @@ export class Chains extends EventEmitter {
       const networks = this.store.getState().main.networks
 
       ;(Object.keys(this.connections) as Chain['type'][]).forEach((type) => {
-        Object.keys(this.connections[type]).forEach((chainId) => {
-          if (!networks[type][Number(chainId)]) {
+        const connections = this.connections[type]
+        Object.keys(connections).forEach((chainId) => {
+          const networksById = networks[type] as Record<
+            number,
+            (typeof networks.ethereum)[number] | undefined
+          >
+          if (!networksById[Number(chainId)]) {
             removeConnection(chainId, type)
           }
         })
       })
       ;(Object.keys(networks) as Chain['type'][]).forEach((type) => {
-        this.connections[type] = this.connections[type] || {}
+        const connections = this.connections[type]
         Object.keys(networks[type]).forEach((chainId) => {
           const chainConfig = networks[type][Number(chainId)]
-          if (chainConfig.on && !this.connections[type][chainId]) {
+          if (chainConfig.on && !connections[chainId]) {
             const connection = new ChainConnection(type, chainId, this.store)
-            this.connections[type][chainId] = connection
+            connections[chainId] = connection
 
             connection.on('connect', (...args: unknown[]) => {
               this.emit('connect', { type, id: chainId }, ...args)
@@ -641,10 +667,10 @@ export class Chains extends EventEmitter {
             })
 
             connection.open()
-          } else if (!chainConfig.on && this.connections[type][chainId]) {
-            this.connections[type][chainId].removeAllListeners()
-            this.connections[type][chainId].close()
-            delete this.connections[type][chainId]
+          } else if (!chainConfig.on && connections[chainId]) {
+            connections[chainId].removeAllListeners()
+            connections[chainId].close()
+            delete connections[chainId]
           }
         })
       })
@@ -740,7 +766,8 @@ export class Chains extends EventEmitter {
       resError({ message: `Target chain did not exist for send`, code: -32601 }, payload, res)
     }
     const { type, id } = targetChain as Chain
-    if (!this.connections[type]?.[id]) {
+    const connection = this.connections[type]?.[id]
+    if (!connection) {
       resError(
         {
           message: `Connection for ${type} chain with chainId ${id} did not exist for send`,
@@ -750,7 +777,7 @@ export class Chains extends EventEmitter {
         res
       )
     } else {
-      this.connections[type][id].send(payload, res)
+      connection.send(payload, res)
     }
   }
 

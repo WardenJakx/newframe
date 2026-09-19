@@ -299,12 +299,36 @@ export class Provider extends EventEmitter {
     )
   }
 
+  private network(chainId: number) {
+    const networks = this.store.getState().main.networks.ethereum as Record<
+      number,
+      ReturnType<typeof this.store.getState>['main']['networks']['ethereum'][number] | undefined
+    >
+    return networks[chainId]
+  }
+
+  private networkMetadata(chainId: number) {
+    const metadata = this.store.getState().main.networksMeta.ethereum as Record<
+      number,
+      ReturnType<typeof this.store.getState>['main']['networksMeta']['ethereum'][number] | undefined
+    >
+    return metadata[chainId]
+  }
+
+  private origin(originId: string) {
+    const origins = this.store.getState().main.origins as Record<
+      string,
+      ReturnType<typeof this.store.getState>['main']['origins'][string] | undefined
+    >
+    return origins[originId]
+  }
+
   closeStoreSubscriptions() {
     this.storeUnsubscribes.splice(0).forEach((unsubscribe) => unsubscribe())
   }
 
   private getPayloadOrigin({ _origin }: RPCRequestPayload) {
-    return this.store.getState().main.origins[_origin]
+    return this.origin(_origin)
   }
 
   accountsChanged(accounts: string[]) {
@@ -358,7 +382,7 @@ export class Provider extends EventEmitter {
   }
 
   getNetVersion(payload: RPCRequestPayload, res: RPCRequestCallback, targetChain: Chain) {
-    const chain = this.store.getState().main.networks.ethereum[targetChain.id]
+    const chain = this.network(targetChain.id)
     const response = chain?.on
       ? { result: targetChain.id }
       : { error: { message: 'not connected', code: -1 } }
@@ -367,7 +391,7 @@ export class Provider extends EventEmitter {
   }
 
   getChainId(payload: RPCRequestPayload, res: RPCSuccessCallback, targetChain: Chain) {
-    const chain = this.store.getState().main.networks.ethereum[targetChain.id]
+    const chain = this.network(targetChain.id)
     const response = chain?.on
       ? { result: intToHex(targetChain.id) }
       : { error: { message: 'not connected', code: -1 } }
@@ -405,11 +429,11 @@ export class Provider extends EventEmitter {
       )
     const expected = identity(request)
     const typed = 'typedMessage' in request ? (request as SignTypedDataRequest).typedMessage : undefined
-    let chainIdValue: unknown = this.store.getState().main.origins[request.origin]?.chain.id ?? 1
+    let chainIdValue: unknown = this.origin(request.origin)?.chain.id ?? 1
     if (request.type === 'transaction') {
       chainIdValue = (request as TransactionRequest).data.chainId
     } else if (typed && !Array.isArray(typed.data)) {
-      chainIdValue = typed.data.domain?.chainId ?? chainIdValue
+      chainIdValue = typed.data.domain.chainId ?? chainIdValue
     }
     const chainId = Number(chainIdValue)
     return {
@@ -497,10 +521,14 @@ export class Provider extends EventEmitter {
       chainId: parseInt(chainId, 16)
     }
 
-    const connection = this.connection.connections['ethereum'][txRequest.chainId]
-    const connectedProvider = connection?.primary?.connected
-      ? connection.primary?.provider
-      : connection.secondary?.provider
+    const connections = this.connection.connections['ethereum'] as Record<
+      number,
+      (typeof this.connection.connections)['ethereum'][number] | undefined
+    >
+    const connection = connections[txRequest.chainId]
+    const connectedProvider = connection?.primary.connected
+      ? connection.primary.provider
+      : connection?.secondary.provider
 
     if (!connectedProvider) {
       return 0n
@@ -651,12 +679,8 @@ export class Provider extends EventEmitter {
   }
 
   async fillTransaction(newTx: RPC.SendTransaction.TxParams, cb: Callback<TransactionMetadata>) {
-    if (!newTx) {
-      return cb(new Error('No transaction data'))
-    }
-
     const connection = this.connection.connections['ethereum'][parseInt(newTx.chainId, 16)]
-    const chainConnected = connection && (connection.primary?.connected || connection.secondary?.connected)
+    const chainConnected = connection && (connection.primary.connected || connection.secondary.connected)
 
     if (!chainConnected) {
       return cb(new Error(`Chain ${newTx.chainId} not connected`))
@@ -728,14 +752,14 @@ export class Provider extends EventEmitter {
       return
     }
 
-    const account = this.accounts.getFrameAccount(principal.accountId)
-    const txParams = payload.params?.[0]
+    const account = this.accounts.getFrameAccount(principal.accountId) as AccountHandle | undefined
+    const txParams = (payload.params as unknown[])[0]
     if (!account || !txParams || typeof txParams !== 'object') {
       return resError('Agent transaction is missing its authorized account or transaction', payload, res)
     }
 
     const payloadChainId = payload.chainId ? parseInt(payload.chainId, 16) : undefined
-    const normalized = normalizeChainId(txParams, payloadChainId)
+    const normalized = normalizeChainId(txParams as RPC.SendTransaction.TxParams, payloadChainId)
     const chainId = normalized.chainId || payload.chainId
     if (!chainId || Number.isNaN(parseInt(chainId, 16))) {
       return resError('Agent transaction requires a valid chainId', payload, res)
@@ -1135,7 +1159,7 @@ export class Provider extends EventEmitter {
 
   signTypedData(
     rawPayload: RPC.SignTypedData.Request,
-    version: SignTypedDataVersion,
+    version: SignTypedDataVersion | undefined,
     res: RPCCallback<RPC.SignTypedData.Response>,
     principal: TrustedPrincipal
   ) {
@@ -1176,9 +1200,7 @@ export class Provider extends EventEmitter {
     const validatedTypedData = typedData
 
     // no explicit version called so we choose one which best fits the data
-    if (!version) {
-      version = getVersionFromTypedData(validatedTypedData)
-    }
+    version ??= getVersionFromTypedData(validatedTypedData)
 
     const targetAccount = this.accounts.get(from.toLowerCase())
 
@@ -1284,7 +1306,6 @@ export class Provider extends EventEmitter {
     const subId = addHexPrefix(crypto.randomBytes(16).toString('hex'))
     const subscriptionType = payload.params[0] as ProviderSubscriptionType
 
-    this.subscriptions[subscriptionType] = this.subscriptions[subscriptionType] || []
     this.subscriptions[subscriptionType].push({
       id: subId,
       originId: payload._origin,
@@ -1310,7 +1331,7 @@ export class Provider extends EventEmitter {
 
   private getOriginConnection(payload: RPCRequestPayload) {
     const originId = payload._origin
-    const origin = this.store.getState().main.origins[originId]
+    const origin = this.origin(originId)
     const currentAccount = this.accounts.current()
     const rawAddress = currentAccount?.address ?? currentAccount?.id ?? ''
     const address = rawAddress ? rawAddress.toLowerCase() : ''
@@ -1323,7 +1344,12 @@ export class Provider extends EventEmitter {
     let permission: Permission | undefined
 
     for (const candidate of permissionAddresses) {
-      const permissions = this.store.getState().main.permissions[candidate] || {}
+      const state = this.store.getState()
+      const permissionsByAddress = state.main.permissions as Record<
+        string,
+        (typeof state.main.permissions)[string] | undefined
+      >
+      const permissions = permissionsByAddress[candidate] ?? {}
       const permissionEntry = Object.entries(permissions).find(([id, p]) => {
         return id === originId || p.handlerId === originId || p.origin === origin?.name
       })
@@ -1337,11 +1363,11 @@ export class Provider extends EventEmitter {
       }
     }
 
-    const chainId = origin?.chain?.id ? intToHex(origin.chain.id) : undefined
+    const chainId = origin?.chain.id ? intToHex(origin.chain.id) : undefined
 
     return {
       originId,
-      originName: origin?.name || '',
+      originName: origin?.name ?? '',
       address,
       permissionAddress,
       permissionId,
@@ -1405,7 +1431,7 @@ export class Provider extends EventEmitter {
   private switchEthereumChain(payload: RPCRequestPayload, res: RPCRequestCallback) {
     try {
       const params = payload.params
-      if (!isRecord(params?.[0])) {
+      if (!isRecord(params[0])) {
         throw new Error('Params not supplied')
       }
 
@@ -1427,6 +1453,9 @@ export class Provider extends EventEmitter {
 
       const originId = payload._origin
       const origin = this.getPayloadOrigin(payload)
+      if (!origin) {
+        return resError('Unknown origin', payload, res)
+      }
       if (origin.chain.id !== chainId) {
         this.store.getState().switchOriginChain(originId, chainId, origin.chain.type)
       }
@@ -1461,7 +1490,7 @@ export class Provider extends EventEmitter {
       return resError('Invalid chain id', payload, res)
     }
 
-    const existing = this.store.getState().main.networks[type][id]
+    const existing = this.network(id)
     if (existing?.on) {
       return this.switchEthereumChain(payload, res)
     }
@@ -1499,7 +1528,7 @@ export class Provider extends EventEmitter {
     const customRpcUrls = rpcUrls as string[]
     const customExplorerUrls = blockExplorerUrls as string[]
 
-    const metadata = this.store.getState().main.networksMeta[type][id]
+    const metadata = this.networkMetadata(id)
     let icon = typeof metadata?.icon === 'string' ? metadata.icon.trim() : ''
     if (!icon && this.lookupChainIcon) {
       try {
@@ -1515,7 +1544,7 @@ export class Provider extends EventEmitter {
           id,
           type,
           name: existing.name,
-          symbol: (metadata?.nativeCurrency.symbol || existing.symbol) ?? '',
+          symbol: metadata?.nativeCurrency.symbol ?? existing.symbol ?? '',
           explorer: existing.explorer,
           ...(icon ? { icon } : {})
         }
@@ -1575,7 +1604,7 @@ export class Provider extends EventEmitter {
         }
 
         const res: RPCRequestCallback = (response) => {
-          if (response?.error) {
+          if (response.error) {
             return cb(response)
           }
           cb({ id: payload.id, jsonrpc: '2.0', result: true })
@@ -1618,15 +1647,14 @@ export class Provider extends EventEmitter {
     )
   }
 
-  private parseTargetChain(payload: RPCRequestPayload): Chain {
+  private parseTargetChain(payload: RPCRequestPayload): Chain | undefined {
     if ('chainId' in payload) {
       const chainId = parseInt(payload.chainId ?? '', 16)
-      const chainConnection = this.connection.connections['ethereum'][chainId] || {}
-
-      return chainConnection.chainConfig && { type: 'ethereum', id: chainId }
+      const chainConnection = this.connection.connections['ethereum'][chainId]
+      return chainConnection ? { type: 'ethereum', id: chainId } : undefined
     }
 
-    return this.getPayloadOrigin(payload).chain
+    return this.getPayloadOrigin(payload)?.chain
   }
 
   private getChains(payload: JSONRPCRequestPayload, res: RPCSuccessCallback) {

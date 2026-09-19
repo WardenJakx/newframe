@@ -152,8 +152,10 @@ function normalizeAmount(amount?: string | number) {
     .replace(/,/g, '')
 }
 
-function objectPayload(value: unknown): Record<string, unknown> {
-  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
+function objectPayload(value: unknown): Record<string, unknown | undefined> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown | undefined>)
+    : {}
 }
 
 function stringValue(value: unknown, fallback = '') {
@@ -168,6 +170,10 @@ function stringValue(value: unknown, fallback = '') {
   }
 
   return fallback
+}
+
+function firstPresent(...values: unknown[]) {
+  return values.find((value) => value !== undefined && value !== null)
 }
 
 function formatFlashErrorPayload(payload: unknown, fallback: string) {
@@ -396,7 +402,7 @@ function syncOrderPositions(
 }
 
 function normalizePercent(value?: string | number) {
-  if (value === undefined || value === null || String(value).trim() === '') {
+  if (value === undefined || String(value).trim() === '') {
     return undefined
   }
 
@@ -916,7 +922,7 @@ async function flashRequest(path: string, init: RequestInit = {}) {
 }
 
 function storeOrders(state: FlashServiceState) {
-  return Object.entries(state.store.getState().main.orders || {}).reduce<Record<string, FlashOrderRecord>>(
+  return Object.entries(state.store.getState().main.orders).reduce<Record<string, FlashOrderRecord>>(
     (records, [orderId, order]) => {
       const parsed = FlashOrderRecordSchema.safeParse(order)
       if (parsed.success) {
@@ -929,7 +935,7 @@ function storeOrders(state: FlashServiceState) {
 }
 
 function titleize(value: string) {
-  return String(value || '')
+  return String(value)
     .replace(/-/g, ' ')
     .split(' ')
     .filter(Boolean)
@@ -946,8 +952,8 @@ function orderNotificationId(orderId: string) {
 }
 
 function orderNotificationTitle(record: FlashOrderRecord) {
-  const side = titleize(record.side || 'trade')
-  const type = titleize(record.orderType || 'order')
+  const side = titleize(record.side)
+  const type = titleize(record.orderType)
 
   return `${side} ${assetSymbol(record.targetAsset)} ${type} Order`
 }
@@ -1313,7 +1319,12 @@ function normalizeOrderRecord(rawOrder: unknown, fallback?: FlashOrderRecord | n
   }
   const open = isOpenStatus(status)
   const filledOutputAmount = stringValue(
-    raw.filledOutputAmount ?? raw.filledAmount ?? officialFilledOutputAmount ?? fallback?.filledOutputAmount
+    firstPresent(
+      raw.filledOutputAmount,
+      raw.filledAmount,
+      officialFilledOutputAmount,
+      fallback?.filledOutputAmount
+    )
   )
   const fillHash = stringValue(
     raw.fillHash ?? raw.fillTransactionHash ?? raw.transactionHash ?? fallback?.fillHash
@@ -1355,21 +1366,26 @@ function normalizeOrderRecord(rawOrder: unknown, fallback?: FlashOrderRecord | n
     estimatedOutputAmount: stringValue(raw.estimatedOutputAmount ?? quoteLike.outputAmount),
     targetNotional:
       stringValue(
-        raw.targetNotional ??
-          raw.targetNotionalAmount ??
-          quoteTargetNotional(quoteLike) ??
+        firstPresent(
+          raw.targetNotional,
+          raw.targetNotionalAmount,
+          quoteTargetNotional(quoteLike),
           fallback?.targetNotional
+        )
       ) || undefined,
     contraNotional:
       stringValue(
-        raw.contraNotional ??
-          raw.contraNotionalAmount ??
-          quoteContraNotional(quoteLike) ??
+        firstPresent(
+          raw.contraNotional,
+          raw.contraNotionalAmount,
+          quoteContraNotional(quoteLike),
           fallback?.contraNotional
+        )
       ) || undefined,
     filledOutputAmount: filledOutputAmount || null,
     averageFillPrice:
-      stringValue(raw.averageFillPrice ?? officialAverageFillPrice ?? fallback?.averageFillPrice) || null,
+      stringValue(firstPresent(raw.averageFillPrice, officialAverageFillPrice, fallback?.averageFillPrice)) ||
+      null,
     createdAt,
     updatedAt,
     terminalAt: isTerminalStatus(status) ? (closedAt ?? fallback?.terminalAt ?? updatedAt) : null,
@@ -1398,7 +1414,7 @@ function upsertRecord(state: FlashServiceState, record: FlashOrderRecord) {
 }
 
 function getRecord(state: FlashServiceState, orderId: string) {
-  return storeOrders(state)[orderId]
+  return (storeOrders(state) as Record<string, FlashOrderRecord | undefined>)[orderId]
 }
 
 function orderEventChanged(previous: FlashOrderRecord | undefined, record: FlashOrderRecord) {
@@ -2002,7 +2018,8 @@ async function listOrders(state: FlashServiceState, request: FlashListOrdersRequ
 async function getOrder(state: FlashServiceState, request: FlashGetOrderRequest) {
   request = FlashGetOrderRequestSchema.parse(request)
   const fallback = getRecord(state, request.orderId)
-  const accountAddress = request.accountAddress?.trim() ?? fallback?.accountAddress
+  const requestedAddress = (request as { accountAddress?: string }).accountAddress
+  const accountAddress = requestedAddress?.trim() ?? fallback?.accountAddress
 
   if (!accountAddress) {
     throw new Error('Flash order lookup requires an account address')

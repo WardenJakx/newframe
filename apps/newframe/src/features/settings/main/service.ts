@@ -33,7 +33,11 @@ export function createSettingsService(
     switch (command.setting) {
       case 'gas-fee-level': {
         const value = state.main.networksMeta.ethereum[command.chainId]?.gas?.price.levels[command.value]
-        if (!state.main.networks.ethereum[command.chainId] || value === undefined) {
+        const networks = state.main.networks.ethereum as Record<
+          number,
+          (typeof state.main.networks.ethereum)[number] | undefined
+        >
+        if (!networks[command.chainId] || value === undefined) {
           throw new Error('Fee preference unavailable for this network')
         }
         return state.setGasDefault('ethereum', command.chainId, command.value, value)

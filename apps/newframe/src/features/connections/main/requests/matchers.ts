@@ -10,7 +10,7 @@ export function createRequestMatcher<T extends z.ZodType>(method: string, params
 }
 
 export function generateError(err: ZodError<unknown>) {
-  const issue = err.issues[0]
+  const issue = err.issues.at(0)
   if (!issue) {
     return new Error('Invalid request parameters')
   }

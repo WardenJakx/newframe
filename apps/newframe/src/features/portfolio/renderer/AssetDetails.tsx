@@ -19,7 +19,7 @@ export function AssetDetails({
 }) {
   const accountType = useWalletSelector((state) =>
     accountDisplayType(
-      Object.values(state.accounts || {}).find(
+      Object.values(state.accounts).find(
         (account) => account.address.toLowerCase() === asset.address.toLowerCase()
       )
     )

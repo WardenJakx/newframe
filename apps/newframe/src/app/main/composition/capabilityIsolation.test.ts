@@ -86,9 +86,11 @@ it('keeps mutable state, listeners, and deferred capability ports graph-local', 
       )
     )
 
+  const firstAccount = first.capabilities.accounts.get(address)
+  const secondAccount = second.capabilities.accounts.get(address)
   expect({
-    firstAccount: first.capabilities.accounts.get(address)?.name,
-    secondAccountMissing: second.capabilities.accounts.get(address) === undefined,
+    firstAccount: firstAccount?.name,
+    secondAccountMissing: secondAccount === undefined,
     autohide: [first.store.getState().main.autohide, second.store.getState().main.autohide],
     events,
     rpc: await Promise.all([

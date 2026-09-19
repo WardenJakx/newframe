@@ -25,9 +25,9 @@ export default function createExternalDataScanner(canonicalStore: CanonicalStore
         ? tokensForAccount(canonicalStore.getState().main.tokens, address).filter((token) => !token.custom)
         : [],
     getConnectedNetworks: () => {
-      const networks = Object.values(canonicalStore.getState().main.networks.ethereum || {})
+      const networks = Object.values(canonicalStore.getState().main.networks.ethereum)
       return networks.filter(
-        (network) => network.connection.primary?.connected || network.connection.secondary?.connected
+        (network) => network.connection.primary.connected || network.connection.secondary.connected
       )
     }
   }

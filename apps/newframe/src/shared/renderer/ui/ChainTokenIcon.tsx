@@ -13,8 +13,8 @@ interface ChainTokenIconProps {
   chainId: number
   imageCapability: TokenImageCapability
   logoURI?: string
-  networks: Record<string | number, NetworkLike>
-  networksMeta: Record<string | number, NetworkMetaLike>
+  networks: Partial<Record<string | number, NetworkLike>>
+  networksMeta: Partial<Record<string | number, NetworkMetaLike>>
   size?: ChainTokenIconSize
   symbol: string
   tokenId?: string
@@ -49,7 +49,7 @@ export default function ChainTokenIcon({
   const chainImageSource = imageSource(chainIconUrl)
   const tokenImageVisible = !!tokenImageSource && failedTokenUrl !== logoURI
   const chainImageVisible = !!chainImageSource && failedChainUrl !== chainIconUrl
-  const chain = networks[chainId] || {}
+  const chain = networks[chainId] ?? {}
   const chainName = (chain.name ?? '').toLowerCase()
 
   useTokenImageHydration(imageCapability, tokenId, !!tokenImageSource, hydrationTarget)

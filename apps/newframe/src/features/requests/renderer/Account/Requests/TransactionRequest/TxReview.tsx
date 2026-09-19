@@ -149,10 +149,11 @@ const transferRecipient = (req: TransactionRequestView): ActionIdentity | undefi
     return recognized
   }
 
-  if (req.decodedData?.signature !== 'transfer(address,uint256)') {
+  const decodedData = req.decodedData
+  if (decodedData?.signature !== 'transfer(address,uint256)') {
     return undefined
   }
-  const decoded = req.decodedData?.args?.[0]?.value
+  const decoded = decodedData.args.at(0)?.value
   return typeof decoded === 'string' ? { address: decoded } : undefined
 }
 

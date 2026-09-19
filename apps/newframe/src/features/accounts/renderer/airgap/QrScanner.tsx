@@ -49,15 +49,15 @@ export function QrScanner({
     if (!active || !visible || !video.current) {
       return
     }
-    let current = true
+    const lifecycle = { current: true }
     let ready = false
     let lastFrame = ''
     let session: ReturnType<QrCameraCapability['start']> | undefined
     const fail = (reason: Error) => {
-      if (!current) {
+      if (!lifecycle.current) {
         return
       }
-      current = false
+      lifecycle.current = false
       session?.stop()
       callbacks.current.onError(cameraErrorMessage(reason))
     }
@@ -65,21 +65,21 @@ export function QrScanner({
       session = camera.start(video.current, {
         onError: fail,
         onReady: () => {
-          if (!current) {
+          if (!lifecycle.current) {
             return
           }
           ready = true
           callbacks.current.onReady?.()
         },
         onFrame: (frame) => {
-          if (!current || !ready || inFlight.current || frame === lastFrame) {
+          if (!lifecycle.current || !ready || inFlight.current || frame === lastFrame) {
             return
           }
           lastFrame = frame
           inFlight.current = true
           void Promise.resolve()
             .then(() => {
-              if (current) {
+              if (lifecycle.current) {
                 return callbacks.current.onFrame(frame)
               }
             })
@@ -89,14 +89,14 @@ export function QrScanner({
             })
         }
       })
-      if (!current) {
+      if (!lifecycle.current) {
         session.stop()
       }
     } catch (reason) {
       fail(reason instanceof Error ? reason : new Error('Camera unavailable'))
     }
     return () => {
-      current = false
+      lifecycle.current = false
       session?.stop()
     }
   }, [active, visible, camera])

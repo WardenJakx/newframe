@@ -2,20 +2,16 @@ import { useShallow } from 'zustand/react/shallow'
 
 import { chainColorValue } from '../../../../../features/networks/domain/chain/colors'
 import { ChainDot } from '../../../../../features/networks/renderer/ChainDot'
-import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections'
 import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector'
 import { ChainIcon } from '../../../../../shared/renderer/ui/ChainIcon'
 import { useHomeUiStore } from '../state/HomeUiProvider'
 import { HomeNavigationView } from './HomeNavigationView'
 
-const EMPTY_NETWORKS: WalletRendererState['networks']['ethereum'] = {}
-const EMPTY_NETWORK_METADATA: WalletRendererState['networksMeta']['ethereum'] = {}
-
 export function HomeNavigation() {
   const shared = useWalletSelector(
     useShallow((state) => ({
-      networks: state.networks?.ethereum || EMPTY_NETWORKS,
-      networksMeta: state.networksMeta?.ethereum || EMPTY_NETWORK_METADATA,
+      networks: state.networks.ethereum,
+      networksMeta: state.networksMeta.ethereum,
       showTestnets: !!state.showTestnets
     }))
   )

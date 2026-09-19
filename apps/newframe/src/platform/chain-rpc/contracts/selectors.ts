@@ -40,7 +40,7 @@ type SelectorCacheEntry = {
   status: 'success' | 'error'
 }
 
-const selectorCache: Record<string, SelectorCacheEntry> = {}
+const selectorCache: Record<string, SelectorCacheEntry | undefined> = {}
 
 function normalizeSelector(selector: string) {
   const normalized = selector.toLowerCase()
@@ -67,16 +67,19 @@ function signatureSelector(signature: string) {
 }
 
 function createLocalSignatureMap() {
-  return localFunctionSignatures.reduce<Record<string, string[]>>((signaturesBySelector, signature) => {
-    const selector = signatureSelector(signature)
-    if (!selector) {
-      return signaturesBySelector
-    }
+  return localFunctionSignatures.reduce<Record<string, string[] | undefined>>(
+    (signaturesBySelector, signature) => {
+      const selector = signatureSelector(signature)
+      if (!selector) {
+        return signaturesBySelector
+      }
 
-    signaturesBySelector[selector] = signaturesBySelector[selector] || []
-    signaturesBySelector[selector].push(signature)
-    return signaturesBySelector
-  }, {})
+      const signatures = (signaturesBySelector[selector] ??= [])
+      signatures.push(signature)
+      return signaturesBySelector
+    },
+    {}
+  )
 }
 
 const localSignaturesBySelector = createLocalSignatureMap()
@@ -110,7 +113,7 @@ export function clearFunctionSelectorCache() {
 }
 
 export function getLocalFunctionSelectorSignatures(selector: string) {
-  return localSignaturesBySelector[normalizeSelector(selector)] || []
+  return localSignaturesBySelector[normalizeSelector(selector)] ?? []
 }
 
 export async function fetchFunctionSelectorSignatures(selector: string) {

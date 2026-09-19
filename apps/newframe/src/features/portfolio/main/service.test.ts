@@ -21,9 +21,6 @@ const account: Account = {
   created: ''
 }
 const mainnet = createBuiltInNetworks()[1]
-if (!mainnet) {
-  throw new Error('Expected built-in mainnet network')
-}
 
 describe('portfolio refresh service', () => {
   it('lists orders only on manual refresh for the selected account', async () => {

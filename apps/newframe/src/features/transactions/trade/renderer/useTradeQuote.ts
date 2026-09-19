@@ -133,16 +133,7 @@ export function useTradeQuote({
           if (cancelled) {
             return
           }
-          const quote = result?.quote || null
-
-          if (!quote) {
-            dispatch({
-              type: 'quoteFailed',
-              error: 'Flash quote did not return an order quote.',
-              requestKey
-            })
-            return
-          }
+          const quote = result.quote
 
           dispatch({
             type: 'quoteSucceeded',

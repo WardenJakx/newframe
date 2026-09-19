@@ -70,7 +70,9 @@ function profileNameError(name: string, state: ProfileState, excludedProfileId =
 }
 
 function profileError(state: ProfileState, profileId: string) {
-  const profile = state.main.profiles[profileId]
+  const profile = (
+    state.main.profiles as Record<string, CanonicalStore['main']['profiles'][string] | undefined>
+  )[profileId]
   if (!profile) {
     return 'profile_not_found'
   }
@@ -165,7 +167,11 @@ export function createProfileService(ports: ProfileServicePorts) {
 
       const state = ports.store.getState()
       let profileId = createProfileId()
-      while (state.main.profiles[profileId]) {
+      while (
+        (state.main.profiles as Record<string, CanonicalStore['main']['profiles'][string] | undefined>)[
+          profileId
+        ]
+      ) {
         profileId = createProfileId()
       }
 
@@ -262,7 +268,9 @@ export function createProfileService(ports: ProfileServicePorts) {
           return []
         }
         const account = ports.accounts.get(id)
-        const canonicalAccount = main.accounts[id]
+        const canonicalAccount = (
+          main.accounts as Record<string, CanonicalStore['main']['accounts'][string] | undefined>
+        )[id]
         if (!account || !canonicalAccount) {
           return []
         }

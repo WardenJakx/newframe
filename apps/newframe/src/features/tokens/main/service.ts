@@ -73,7 +73,11 @@ export function createTokenService(ports: TokenServicePorts) {
 
     remove(token: Pick<WalletToken, 'address' | 'chainId'>) {
       const state = ports.store.getState()
-      const canonicalToken = state.main.tokens.byId[toTokenId(token)]
+      const tokensById = state.main.tokens.byId as Record<
+        string,
+        (typeof state.main.tokens.byId)[string] | undefined
+      >
+      const canonicalToken = tokensById[toTokenId(token)]
       if (!canonicalToken) {
         return false
       }

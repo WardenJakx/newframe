@@ -35,8 +35,8 @@ const chainIconRecipe = cva({
 
 export interface ChainIconProps {
   chainId: number
-  networks: Record<string | number, NetworkLike>
-  networksMeta: Record<string | number, NetworkMetaLike>
+  networks: Partial<Record<string | number, NetworkLike>>
+  networksMeta: Partial<Record<string | number, NetworkMetaLike>>
   size?: 'compact' | 'large' | 'medium' | 'small'
 }
 

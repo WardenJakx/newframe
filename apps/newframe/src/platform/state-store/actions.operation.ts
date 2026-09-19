@@ -17,7 +17,7 @@ export function createOperationActions(set: CanonicalSet, _get: CanonicalGet) {
 
     operationAdvanced: (id: string, operation: OperationRecord) => {
       set((draft) => {
-        const current = draft.operations[id]
+        const current = draft.operations[id] as (typeof draft.operations)[string] | undefined
         if (current) {
           current.operation = operation
         }
@@ -26,7 +26,7 @@ export function createOperationActions(set: CanonicalSet, _get: CanonicalGet) {
 
     operationCompleted: (id: string, operation: OperationRecord) => {
       set((draft) => {
-        const current = draft.operations[id]
+        const current = draft.operations[id] as (typeof draft.operations)[string] | undefined
         if (current) {
           current.operation = operation
         }
@@ -35,7 +35,7 @@ export function createOperationActions(set: CanonicalSet, _get: CanonicalGet) {
 
     operationFailed: (id: string, operation: OperationRecord) => {
       set((draft) => {
-        const current = draft.operations[id]
+        const current = draft.operations[id] as (typeof draft.operations)[string] | undefined
         if (current) {
           current.operation = operation
         }

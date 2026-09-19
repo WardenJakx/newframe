@@ -14,9 +14,6 @@ function setup() {
   const metadata = createBuiltInNetworkMetadata()
   const mainnet = metadata[1]
   const polygon = metadata[137]
-  if (!mainnet || !polygon) {
-    throw new Error('Expected built-in network metadata')
-  }
   const store = createTestStore({
     main: {
       networksMeta: {

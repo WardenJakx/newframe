@@ -18,7 +18,7 @@ type NotificationRecord = MutableRecord & {
   updatedAt?: unknown
 }
 type MutableCanonicalState = Omit<Draft<CanonicalState>, 'view'> & {
-  view: MutableRecord & { notifications: Record<string, NotificationRecord> }
+  view: MutableRecord & { notifications: Record<string, NotificationRecord | undefined> }
 }
 
 const resolvedNotificationStates = new Set<NotificationState>(['completed', 'failed'])
@@ -41,7 +41,7 @@ export function createPanelActions(set: CanonicalSet, _get: CanonicalGet) {
 
     upsertPendingNotification: (value: unknown) => {
       const notification = notificationRecord(value)
-      const id = notification?.id
+      const id = notification.id
       if (!id) {
         return
       }
@@ -50,7 +50,7 @@ export function createPanelActions(set: CanonicalSet, _get: CanonicalGet) {
 
       set((draft) => {
         const notifications = mutable(draft).view.notifications
-        const existingNotification = notifications[id] || {}
+        const existingNotification = notifications[id] ?? {}
         const pendingNotification: NotificationRecord = {
           ...existingNotification,
           ...notification,
@@ -109,7 +109,7 @@ export function createPanelActions(set: CanonicalSet, _get: CanonicalGet) {
 
       set((draft) => {
         const notifications = mutable(draft).view.notifications
-        const notification = notifications[id] || { id }
+        const notification = notifications[id] ?? { id }
         notifications[id] = {
           ...notification,
           ...update,

@@ -52,12 +52,12 @@ function isHotAccount(account: AccountProjection | undefined) {
 }
 
 export function orderedAccountIds(
-  accounts: Record<string, AccountProjection>,
+  accounts: Record<string, AccountProjection | undefined>,
   projectedOrder: readonly string[]
 ) {
   const createdOrder = Object.keys(accounts).sort((left, right) => {
-    const leftCreated = String(accounts[left]?.created || '')
-    const rightCreated = String(accounts[right]?.created || '')
+    const leftCreated = String(accounts[left]?.created ?? '')
+    const rightCreated = String(accounts[right]?.created ?? '')
     return leftCreated.localeCompare(rightCreated)
   })
   const ordered = projectedOrder.filter((id) => Boolean(accounts[id]))
@@ -83,8 +83,8 @@ export function accountMatchesQuery(item: AccountListItem, query: string) {
 
 function isLastAccountForSeedPhrase(
   account: AccountProjection,
-  accounts: Record<string, AccountProjection>,
-  signers: Record<string, SignerProjection>
+  accounts: Record<string, AccountProjection | undefined>,
+  signers: Record<string, SignerProjection | undefined>
 ) {
   if (accountSignerType(account).toLowerCase() !== 'seed' || !account.signer) {
     return false
@@ -94,7 +94,7 @@ function isLastAccountForSeedPhrase(
     return false
   }
   return !Object.values(accounts).some(
-    (candidate) => candidate.id !== account.id && candidate.signer === signer.id
+    (candidate) => candidate?.id !== account.id && candidate?.signer === signer.id
   )
 }
 
@@ -130,7 +130,7 @@ export function accountBalanceLabel(input: {
 
 export function buildAccountListModel(input: {
   accountOrder: readonly string[]
-  accounts: Record<string, AccountProjection>
+  accounts: Record<string, AccountProjection | undefined>
   assetRates: WalletRendererState['assetRates']
   balances: WalletRendererState['balances']
   currentAccountId: string
@@ -141,24 +141,28 @@ export function buildAccountListModel(input: {
   selectBalanceSummaries: BalanceSummarySelector
   showLocalNameWithENS: boolean
   showTestnets: boolean
-  signers: Record<string, SignerProjection>
+  signers: Record<string, SignerProjection | undefined>
   tokens: WalletRendererState['tokens']
 }): AccountListModel {
-  const items = orderedAccountIds(input.accounts, input.accountOrder).map((id): AccountListItem => {
+  const items = orderedAccountIds(input.accounts, input.accountOrder).flatMap((id): AccountListItem[] => {
     const account = input.accounts[id]
-    return {
-      id,
-      address: account.address,
-      displayName: accountDisplayName(account, input.showLocalNameWithENS),
-      shortAddress: shortAccountAddress(account.address),
-      signerType: accountSignerType(account),
-      signerLabel: accountSignerLabel(account),
-      balanceLabel: accountBalanceLabel({ ...input, account }),
-      agentEnabled: accountSignerType(account) !== 'safe' && Boolean(account.agentEnabled),
-      hot: isHotAccount(account),
-      lastSeedAccount: isLastAccountForSeedPhrase(account, input.accounts, input.signers),
-      profileId: account.profileId
-    }
+    return account
+      ? [
+          {
+            id,
+            address: account.address,
+            displayName: accountDisplayName(account, input.showLocalNameWithENS),
+            shortAddress: shortAccountAddress(account.address),
+            signerType: accountSignerType(account),
+            signerLabel: accountSignerLabel(account),
+            balanceLabel: accountBalanceLabel({ ...input, account }),
+            agentEnabled: accountSignerType(account) !== 'safe' && Boolean(account.agentEnabled),
+            hot: isHotAccount(account),
+            lastSeedAccount: isLastAccountForSeedPhrase(account, input.accounts, input.signers),
+            profileId: account.profileId
+          }
+        ]
+      : []
   })
   return {
     currentAccountId: input.currentAccountId,

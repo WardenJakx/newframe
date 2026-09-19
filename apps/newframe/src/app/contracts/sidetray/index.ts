@@ -22,26 +22,17 @@ export interface SideTrayFrame {
   route?: string
 }
 
-interface SideTrayFrameRequestObject {
-  id: string
-  route?: string
-}
-
-/** @deprecated Use request objects with { id, route }. */
-type LegacySideTrayFrameRequest = string
-export type SideTrayFrameRequest = SideTrayFrameRequestObject | LegacySideTrayFrameRequest
-
-export function normalizeSideTrayFrameRequest(frame: SideTrayFrameRequest): SideTrayFrame | null {
+export function normalizeSideTrayFrameRequest(frame: unknown): SideTrayFrame | null {
   if (typeof frame === 'string') {
     return frame ? { id: SIDE_TRAY_FRAME_ID } : null
   }
-  if (!frame || typeof frame !== 'object' || typeof frame.id !== 'string' || !frame.id) {
+  if (!frame || typeof frame !== 'object' || !('id' in frame) || typeof frame.id !== 'string' || !frame.id) {
     return null
   }
 
   return {
     id: SIDE_TRAY_FRAME_ID,
-    ...(typeof frame.route === 'string' && frame.route ? { route: frame.route } : {})
+    ...('route' in frame && typeof frame.route === 'string' && frame.route ? { route: frame.route } : {})
   }
 }
 

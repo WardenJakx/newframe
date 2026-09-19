@@ -186,6 +186,13 @@ const requiredFrameAccount = (accounts: import('./index').Accounts, address: str
 }
 const canonicalRequest = (id: string | number = request.handlerId) =>
   currentAccount().getRequest<TransactionRequest>(String(id))
+const requiredCanonicalRequest = (id: string | number = request.handlerId) => {
+  const current = currentAccount().getRequest<TransactionRequest>(String(id))
+  if (!current) {
+    throw new Error(`Expected canonical request ${id}`)
+  }
+  return current
+}
 const patchRequest = (
   update: (request: TransactionRequest) => void,
   id: string | number = request.handlerId
@@ -293,6 +300,9 @@ beforeEach((done) => {
 
 afterEach(() => {
   Object.values(Accounts.accounts).forEach((account) => {
+    if (!account) {
+      return
+    }
     Object.keys(account.requests).forEach((id) => {
       Accounts.removeRequest(account, id)
     })
@@ -321,8 +331,8 @@ describe('#routeRequest', () => {
         }
       }
     })
-    expect(typeof canonicalRequest().authorization?.actionId).toBe('string')
-    expect(typeof canonicalRequest().authorization?.decidedAt).toBe('number')
+    expect(typeof requiredCanonicalRequest().authorization?.actionId).toBe('string')
+    expect(typeof requiredCanonicalRequest().authorization?.decidedAt).toBe('number')
   })
 
   it('rejects an unminted principal without queueing the request', () => {
@@ -471,7 +481,7 @@ it('uses canonical request state for transaction failure without activity', () =
   expect(storeState().main.activity).toEqual({})
   expect(notificationMock.mock.calls.length).toBe(0)
   timers.advanceTimersByTime(1_500)
-  expect(frameAccount.requests[transaction.handlerId].mode).toBe(RequestMode.Monitor)
+  expect(frameAccount.requests[transaction.handlerId]?.mode).toBe(RequestMode.Monitor)
   timers.advanceTimersByTime(8_000)
   expect(frameAccount.requests[transaction.handlerId]).toBeUndefined()
 })
@@ -588,8 +598,8 @@ describe('#updatePendingFees', () => {
     currentAccount().addRequest(request)
     Accounts.updatePendingFees(parseInt(request.data.chainId))
 
-    expect(canonicalRequest().data.maxFeePerGas).toBe(gweiToHex(11))
-    expect(canonicalRequest().data.maxPriorityFeePerGas).toBe(gweiToHex(2))
+    expect(requiredCanonicalRequest().data.maxFeePerGas).toBe(gweiToHex(11))
+    expect(requiredCanonicalRequest().data.maxPriorityFeePerGas).toBe(gweiToHex(2))
   })
 
   it('preserves dapp-provided and manually updated fees', () => {
@@ -634,16 +644,16 @@ describe('transaction fee editing', () => {
       current.data.maxPriorityFeePerGas = gweiToHex(2)
     })
     Accounts.setBaseFee(gweiToHex(6), request.handlerId, false)
-    expect(canonicalRequest().data.maxFeePerGas).toBe(gweiToHex(8))
+    expect(requiredCanonicalRequest().data.maxFeePerGas).toBe(gweiToHex(8))
 
     Accounts.setPriorityFee(gweiToHex(3), request.handlerId, false)
-    expect(canonicalRequest().data.maxPriorityFeePerGas).toBe(gweiToHex(3))
+    expect(requiredCanonicalRequest().data.maxPriorityFeePerGas).toBe(gweiToHex(3))
 
     patchRequest((current) => {
       current.data.type = '0x0'
     })
     Accounts.setGasPrice(gweiToHex(45), request.handlerId, false)
-    expect(canonicalRequest().data.gasPrice).toBe(gweiToHex(45))
+    expect(requiredCanonicalRequest().data.gasPrice).toBe(gweiToHex(45))
 
     Accounts.setGasPrice('0x61a8', request.handlerId, true)
     expect(canonicalRequest()).toMatchObject({
@@ -654,18 +664,18 @@ describe('transaction fee editing', () => {
 
   it('applies the field-specific absolute caps', () => {
     Accounts.setBaseFee(gweiToHex(10_200), request.handlerId, false)
-    expect(canonicalRequest().data.maxFeePerGas).toBe(
+    expect(requiredCanonicalRequest().data.maxFeePerGas).toBe(
       intToHex(9_999e9 + parseInt(request.data.maxPriorityFeePerGas ?? '0x0'))
     )
 
     Accounts.setPriorityFee(gweiToHex(10_200), request.handlerId, false)
-    expect(canonicalRequest().data.maxPriorityFeePerGas).toBe(gweiToHex(9_999))
+    expect(requiredCanonicalRequest().data.maxPriorityFeePerGas).toBe(gweiToHex(9_999))
 
     patchRequest((current) => {
       current.data.type = '0x0'
     })
     Accounts.setGasPrice(gweiToHex(10_200), request.handlerId, false)
-    expect(canonicalRequest().data.gasPrice).toBe(gweiToHex(9_999))
+    expect(requiredCanonicalRequest().data.gasPrice).toBe(gweiToHex(9_999))
   })
 })
 
@@ -848,11 +858,11 @@ describe('#setTxSent', () => {
     timers.advanceTimersByTime(1000)
     await flushPromises()
 
-    expect(currentAccount().requests[request.handlerId].status).toBe(RequestStatus.Confirmed)
+    expect(currentAccount().requests[request.handlerId]?.status).toBe(RequestStatus.Confirmed)
     const confirmedRequest = currentAccount().getRequest<
       TransactionRequest & { tx: { confirmations: number } }
     >(String(request.handlerId))
-    expect(confirmedRequest.tx.confirmations).toBe(TRANSACTION_CONFIRMATION_TARGET)
+    expect(confirmedRequest?.tx.confirmations).toBe(TRANSACTION_CONFIRMATION_TARGET)
     expect(storeState().main.activity[hash].gasSpent).toBe('0x23cfb4e356000')
 
     timers.advanceTimersByTime(2999)
@@ -891,7 +901,7 @@ describe('#setTxSent', () => {
     timers.advanceTimersByTime(1000)
     await flushPromises()
 
-    expect(currentAccount().requests[otherChainRequest.handlerId].status).toBe(RequestStatus.Verifying)
+    expect(currentAccount().requests[otherChainRequest.handlerId]?.status).toBe(RequestStatus.Verifying)
   })
 
   it('opens a queued request after popping the submitted transaction request', () => {
@@ -1089,6 +1099,8 @@ describe('#clearRequestsByOrigin', () => {
 
   it('should remove any request from a given origin', () => {
     Accounts.clearRequestsByOrigin(account.id, request.origin)
-    expect(Object.keys(Accounts.accounts[account.id].requests as Record<string, unknown>)).toHaveLength(1)
+    expect(
+      Object.keys(requiredFrameAccount(Accounts, account.id).requests as Record<string, unknown>)
+    ).toHaveLength(1)
   })
 })

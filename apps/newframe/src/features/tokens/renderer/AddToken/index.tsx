@@ -23,9 +23,6 @@ import type { Token } from '../../domain/state/token'
 import RingIcon from '../RingIcon'
 import type { TokensCapability } from '../tokensCapability'
 
-type TokenChain = WalletRendererState['networks']['ethereum'][number]
-type TokenChainMetadata = WalletRendererState['networksMeta']['ethereum'][number]
-
 type SelectedChain = {
   id: number
   color?: string
@@ -101,12 +98,9 @@ const TokenError = ({ text, onBack, onContinue }: TokenErrorProps) => {
   )
 }
 
-const EMPTY_CHAINS: Record<string | number, TokenChain> = {}
-const EMPTY_CHAIN_METADATA: Record<string | number, TokenChainMetadata> = {}
-
 const selectChainState = (state: WalletRendererState) => ({
-  chains: state.networks.ethereum || EMPTY_CHAINS,
-  chainMetadata: state.networksMeta.ethereum || EMPTY_CHAIN_METADATA
+  chains: state.networks.ethereum,
+  chainMetadata: state.networksMeta.ethereum
 })
 
 function SelectChain({
@@ -117,6 +111,7 @@ function SelectChain({
   onOpenNetworks: () => void
 }) {
   const { chains, chainMetadata } = useWalletSelector(useShallow(selectChainState))
+  const metadataByChain: Record<number, (typeof chainMetadata)[number] | undefined> = chainMetadata
   const activeChains = Object.values(chains).filter((chain) => chain.on)
 
   return (
@@ -126,15 +121,13 @@ function SelectChain({
         <Stack gap='xsmall'>
           {activeChains.map((chain) => {
             const chainId = chain.id
-            const { primaryColor, image } = chainMetadata[chainId] || {}
+            const { primaryColor, image } = metadataByChain[chainId] ?? {}
 
             return (
               <Button
                 appearance='selectionOption'
                 key={chainId}
-                onPress={() =>
-                  onNavigate({ chain: { id: chainId, color: primaryColor || '', name: chain.name } })
-                }
+                onPress={() => onNavigate({ chain: { id: chainId, color: primaryColor, name: chain.name } })}
                 width='full'
               >
                 <RingIcon color={chainColorValue(primaryColor)} img={persistedImageSource(image)} small />
@@ -257,16 +250,15 @@ const TokenDetailsForm = ({ capability, chain, tokenData, isEdit, onDone }: Toke
   const { address } = tokenData
   const accountType = useWalletSelector((state) =>
     accountDisplayType(
-      Object.values(state.accounts || {}).find(
-        (account) => account.address.toLowerCase() === address.toLowerCase()
-      )
+      Object.values(state.accounts).find((account) => account.address.toLowerCase() === address.toLowerCase())
     )
   )
   const { name: chainName } = chain
   const submittedToken = submission?.token
-  const projectedToken = useWalletSelector((state) =>
-    submittedToken ? state.tokens?.byId?.[toTokenId(submittedToken)] : undefined
-  )
+  const projectedToken = useWalletSelector((state) => {
+    const tokensById: Record<string, (typeof state.tokens.byId)[string] | undefined> = state.tokens.byId
+    return submittedToken ? tokensById[toTokenId(submittedToken)] : undefined
+  })
   const operation = useWalletSelector((state) =>
     submission ? selectOperationById(state, submission.operationId) : undefined
   )

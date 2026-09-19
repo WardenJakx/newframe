@@ -1,14 +1,10 @@
 import { useShallow } from 'zustand/react/shallow'
 
-import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
 import { accountDisplayType } from '../../../../shared/renderer/ui/signerPresentation'
 import type { ActivityCapability } from './activityCapability'
 import { ActivityDetailsView } from './ActivityDetailsView'
 import { projectActivityRecord } from './activityTypes'
-
-const EMPTY_NETWORKS: WalletRendererState['networks']['ethereum'] = {}
-const EMPTY_NETWORK_METADATA: WalletRendererState['networksMeta']['ethereum'] = {}
 
 export function ActivityDetails({
   activityId,
@@ -21,12 +17,11 @@ export function ActivityDetails({
 }) {
   const shared = useWalletSelector(
     useShallow((state) => {
-      const activity = state.activity?.[activityId]
+      const activity = (state.activity as Partial<typeof state.activity>)[activityId]
       const projected = activity ? projectActivityRecord(activity) : undefined
       const chainId = Number(activity?.chainId)
       const origin = typeof activity?.origin === 'string' ? activity.origin : ''
-      const networks = state.networks?.ethereum || EMPTY_NETWORKS
-      const networksMeta = state.networksMeta?.ethereum || EMPTY_NETWORK_METADATA
+      const origins: Partial<typeof state.origins> = state.origins
       return {
         activity,
         fromAccountType: accountDisplayType(
@@ -41,9 +36,9 @@ export function ActivityDetails({
             (account) => account.address.toLowerCase() === projected?.data?.to?.toLowerCase()
           )
         ),
-        network: networks[chainId] || {},
-        networkMeta: networksMeta[chainId] || {},
-        originName: origin ? state.origins?.[origin]?.name || origin : ''
+        network: state.networks.ethereum[chainId],
+        networkMeta: state.networksMeta.ethereum[chainId],
+        originName: origin ? (origins[origin]?.name ?? origin) : ''
       }
     })
   )

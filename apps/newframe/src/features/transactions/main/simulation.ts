@@ -75,10 +75,18 @@ export function createTransactionSimulationProjection(
 ): TransactionSimulationProjection {
   return {
     getNativeCurrency(chainId) {
-      return canonicalStore.getState().main.networksMeta.ethereum[chainId]?.nativeCurrency || {}
+      const metadata = canonicalStore.getState().main.networksMeta.ethereum as Record<
+        number,
+        ReturnType<typeof canonicalStore.getState>['main']['networksMeta']['ethereum'][number] | undefined
+      >
+      return metadata[chainId]?.nativeCurrency ?? {}
     },
     getToken(address, chainId) {
-      return canonicalStore.getState().main.tokens.byId[`${chainId}:${normalizeAddress(address)}`]
+      const tokens = canonicalStore.getState().main.tokens.byId as Record<
+        string,
+        ReturnType<typeof canonicalStore.getState>['main']['tokens']['byId'][string] | undefined
+      >
+      return tokens[`${chainId}:${normalizeAddress(address)}`]
     },
     getProfileAccounts(originatingAccountAddress) {
       const main = canonicalStore.getState().main
@@ -87,9 +95,10 @@ export function createTransactionSimulationProjection(
         return
       }
 
+      const accounts = main.accounts as Record<string, (typeof main.accounts)[string] | undefined>
       const originatingAccount =
-        main.accounts[originatingAccountAddress] ||
-        main.accounts[normalizedOrigin] ||
+        accounts[originatingAccountAddress] ??
+        accounts[normalizedOrigin] ??
         Object.values(main.accounts).find((account) => normalizeAddress(account.address) === normalizedOrigin)
 
       if (!originatingAccount) {
@@ -99,7 +108,7 @@ export function createTransactionSimulationProjection(
       const accountAddresses = [
         ...new Set(
           getProfileAccountIds(main, originatingAccount.profileId)
-            .map((id) => normalizeAddress(main.accounts[id]?.address))
+            .map((id) => normalizeAddress(accounts[id]?.address))
             .filter(Boolean)
         )
       ]
@@ -558,7 +567,7 @@ async function approvalEffects(
 }
 
 function createTraceCall(req: TransactionRequest) {
-  const data = req.data || {}
+  const data = req.data
   const call = {
     from: data.from ?? req.account,
     to: data.to,
@@ -596,10 +605,10 @@ async function traceCall(
   return new Promise<TraceCall>((resolve, reject) => {
     Promise.resolve(
       provider.send(payload, (response) => {
-        if (response?.error) {
+        if (response.error) {
           return reject(response.error)
         }
-        if (!isTraceCall(response?.result)) {
+        if (!isTraceCall(response.result)) {
           return reject(new Error('RPC returned an invalid call trace'))
         }
         resolve(response.result)
@@ -692,7 +701,7 @@ export async function simulateTransactionEffects(
     return simulationUnavailable(error)
   }
 
-  if (trace?.error || trace?.revertReason) {
+  if (trace.error || trace.revertReason) {
     return {
       status: 'error',
       source: 'debug_traceCall',

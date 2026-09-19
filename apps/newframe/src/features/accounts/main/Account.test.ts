@@ -149,16 +149,20 @@ function createAccount(profileActive = true) {
 
 beforeEach(() => {
   mock.clearAllMocks()
-  account?.close()
+  const previousAccount = account as typeof account | undefined
+  previousAccount?.close()
   requestLifecycle.pending.clear()
   store.getState().removeAccount(accountState.address.toLowerCase())
   account = createAccount()
   fetchContractMock.mockResolvedValueOnce(undefined)
+  revealMock.identity.mockResolvedValue({ type: '', ens: '' })
+  revealMock.recog.mockResolvedValue([])
   simulateTransactionEffectsMock.mockResolvedValue({ status: 'success', effects: [] })
 })
 
 afterEach(() => {
-  account?.close()
+  const currentAccount = account as typeof account | undefined
+  currentAccount?.close()
   store.getState().removeAccount(accountState.address.toLowerCase())
 })
 

@@ -20,14 +20,15 @@ export function createQrCameraCapability(
 ): QrCameraCapability {
   return {
     start(video, handlers) {
-      let stopped = false
+      const controller = new AbortController()
+      const isStopped = () => controller.signal.aborted
       let stream: MediaStream | undefined
       let timer: ReturnType<typeof setTimeout> | undefined
       const stop = () => {
-        if (stopped) {
+        if (isStopped()) {
           return
         }
-        stopped = true
+        controller.abort()
         clearTimeout(timer)
         video.srcObject = null
         for (const track of stream?.getTracks() ?? []) {
@@ -36,7 +37,7 @@ export function createQrCameraCapability(
         }
       }
       const fail = (error: unknown) => {
-        if (stopped) {
+        if (isStopped()) {
           return
         }
         stop()
@@ -45,7 +46,7 @@ export function createQrCameraCapability(
       const ended = () => fail(new Error('Camera disconnected. Connect it and retry.'))
       void Promise.resolve()
         .then(() =>
-          stopped
+          isStopped()
             ? undefined
             : browser.getUserMedia({
                 audio: false,
@@ -56,7 +57,7 @@ export function createQrCameraCapability(
           if (!media) {
             return
           }
-          if (stopped) {
+          if (isStopped()) {
             media.getTracks().forEach((track) => track.stop())
             return
           }
@@ -64,7 +65,7 @@ export function createQrCameraCapability(
           stream.getTracks().forEach((track) => track.addEventListener('ended', ended))
           video.srcObject = stream
           await video.play()
-          if (stopped) {
+          if (isStopped()) {
             return
           }
           const canvas = browser.createCanvas()
@@ -74,7 +75,7 @@ export function createQrCameraCapability(
           }
           handlers.onReady()
           const scan = () => {
-            if (stopped) {
+            if (isStopped()) {
               return
             }
             try {
@@ -98,7 +99,7 @@ export function createQrCameraCapability(
             } catch (error) {
               fail(error)
             }
-            if (!stopped) {
+            if (!isStopped()) {
               timer = setTimeout(scan, 200)
             }
           }

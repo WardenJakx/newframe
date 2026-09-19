@@ -4,14 +4,25 @@ import type { BalanceSummary } from '../../../asset-data/domain/balance'
 import { cleanAddress } from './sendTransaction'
 import type { SendAccountViewModel, SendSubmissionViewModel } from './sendViewModel'
 
+export function resolveSendRouteAsset(
+  assetId: string | null | undefined,
+  balances: BalanceSummary[]
+): BalanceSummary | null {
+  return resolveSendAssetFromRouteAssetId(assetId, balances)
+}
+
+type SparseOperation = Omit<SideTrayRendererState['operations'][string], 'entityRefs'> & {
+  entityRefs?: SideTrayRendererState['operations'][string]['entityRefs']
+}
+
 export function selectSendAsset(
   balances: BalanceSummary[],
   selectedAssetKey?: string | null
 ): BalanceSummary | null {
   return (
-    (balances.find((balance) => toCanonicalAssetId(balance) === selectedAssetKey) ??
-      resolveSendAssetFromRouteAssetId(selectedAssetKey, balances)) ||
-    balances[0] ||
+    balances.find((balance) => toCanonicalAssetId(balance) === selectedAssetKey) ??
+    resolveSendRouteAsset(selectedAssetKey, balances) ??
+    balances.at(0) ??
     null
   )
 }
@@ -39,9 +50,9 @@ export function projectSendSubmission({
     return { error: '', status: '', submitting: false }
   }
 
-  const operation = operations[operationId]
+  const operation = (operations as Record<string, SparseOperation | undefined>)[operationId]
   const transactionId = operation?.entityRefs?.find((reference) => reference.type === 'transaction')?.id
-  const projectedActivity = transactionId ? activity[transactionId] : undefined
+  const projectedActivity = transactionId ? (activity as Partial<typeof activity>)[transactionId] : undefined
   const submitting =
     !operation || operation.status === 'pending' || (operation.status === 'succeeded' && !projectedActivity)
   let status = ''

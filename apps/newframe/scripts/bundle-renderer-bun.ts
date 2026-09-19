@@ -125,7 +125,7 @@ async function main() {
   const selected = targets.length > 0 ? targets : Object.keys(renderers)
 
   for (const target of selected) {
-    const renderer = renderers[target]
+    const renderer = (renderers as Partial<typeof renderers>)[target]
 
     if (!renderer) {
       throw new Error(`Unknown renderer "${target}". Expected one of: ${Object.keys(renderers).join(', ')}`)

@@ -35,8 +35,8 @@ const endpointMap = {
 
 async function parseResponse<T>(response: Response): Promise<T | undefined> {
   if (
-    response?.status === 200 &&
-    (response?.headers.get('content-type') ?? '').toLowerCase().includes('json')
+    response.status === 200 &&
+    (response.headers.get('content-type') ?? '').toLowerCase().includes('json')
   ) {
     return response.json() as Promise<T>
   }

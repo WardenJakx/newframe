@@ -106,7 +106,11 @@ export function createPlatformService(ports: PlatformServicePorts) {
 
     openSideTray(command: SideTrayOpenCommand) {
       const state = ports.store.getState()
-      if (command.chainId && !state.main.networks.ethereum[command.chainId]) {
+      const networks = state.main.networks.ethereum as Record<
+        number,
+        (typeof state.main.networks.ethereum)[number] | undefined
+      >
+      if (command.chainId && !networks[command.chainId]) {
         return false
       }
 
@@ -118,7 +122,8 @@ export function createPlatformService(ports: PlatformServicePorts) {
           command.feature === 'trade' ? command.chainId : undefined
         )
       })!
-      const exists = (state.main.frames as Record<string, unknown>)[frame.id]
+      const frames = state.main.frames as Record<string, (typeof state.main.frames)[string] | undefined>
+      const exists = frames[frame.id]
       state.setSideTray(frame)
       if (exists) {
         ports.windows.refocusSideTray(frame.id)
@@ -127,7 +132,12 @@ export function createPlatformService(ports: PlatformServicePorts) {
     },
 
     openTransactionExplorer(chainId: number, transactionHash?: string) {
-      const chain = ports.store.getState().main.networks.ethereum[chainId]
+      const state = ports.store.getState()
+      const networks = state.main.networks.ethereum as Record<
+        number,
+        (typeof state.main.networks.ethereum)[number] | undefined
+      >
+      const chain = networks[chainId]
       if (!chain) {
         return false
       }
@@ -142,7 +152,7 @@ export function createPlatformService(ports: PlatformServicePorts) {
     respondToExtension(extensionId: string, approved: boolean) {
       const state = ports.store.getState()
       const pending = state.view.notifyData as { id?: string }
-      if (state.view.notify !== 'extensionConnect' || pending?.id !== extensionId) {
+      if (state.view.notify !== 'extensionConnect' || pending.id !== extensionId) {
         return false
       }
 
@@ -199,7 +209,11 @@ export function createPlatformService(ports: PlatformServicePorts) {
 
     updateNotification(notificationId: string, action: 'dismiss' | 'expire') {
       const state = ports.store.getState()
-      if (!state.view.notifications[notificationId]) {
+      const notifications = state.view.notifications as Record<
+        string,
+        (typeof state.view.notifications)[string] | undefined
+      >
+      if (!notifications[notificationId]) {
         return false
       }
       if (action === 'dismiss') {

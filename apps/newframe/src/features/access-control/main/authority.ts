@@ -189,7 +189,7 @@ export function createMainPrincipal(
 }
 
 function buildAction(principal: TrustedPrincipal, request: AccountRequest): WalletAction | undefined {
-  if (!requestTypes.has(request.type) || !request.account || !request.handlerId || !request.payload?.method) {
+  if (!requestTypes.has(request.type) || !request.account || !request.handlerId || !request.payload.method) {
     return
   }
 

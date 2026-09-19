@@ -611,6 +611,7 @@ export function createTradeService(ports: TradeServicePorts) {
             sameOwner(execution.reference.owner, owner) &&
             !ports.operations.lookup(execution.reference)?.finishedAt
         )
+      const quoteIsUnavailable = () => disposed || activeExecution()
       if (activeExecution()) {
         return { ok: false, error: 'quote_failed', message: 'Trade confirmation is in progress.' }
       }
@@ -640,7 +641,7 @@ export function createTradeService(ports: TradeServicePorts) {
         if (chainIds.some((chainId) => !current.snapshot.networks[chainId]?.on)) {
           throw new TradeFailure('network_unavailable', 'Chain is unavailable.')
         }
-        if (quoteGenerations.get(ownerScope) !== generation || disposed || activeExecution()) {
+        if (quoteGenerations.get(ownerScope) !== generation || quoteIsUnavailable()) {
           throw new TradeFailure('quote_unavailable', 'Flash quote is no longer available.')
         }
         const rawQuote = flashObject(result.quote.raw)

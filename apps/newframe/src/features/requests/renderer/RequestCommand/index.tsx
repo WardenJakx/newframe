@@ -336,9 +336,7 @@ export function RequestCommand(props: RequestCommandProps) {
 
   function transactionCommand(req: TransactionRequest) {
     const requiredApproval =
-      !req.status && req.mode !== 'monitor'
-        ? (req.approvals || []).find((approval) => !approval.approved)
-        : undefined
+      !req.status && req.mode !== 'monitor' ? req.approvals.find((approval) => !approval.approved) : undefined
     if (requiredApproval) {
       return (
         <TxApproval
@@ -409,9 +407,6 @@ export function RequestCommand(props: RequestCommandProps) {
     )
   }
 
-  if (!request) {
-    return null
-  }
   if (request.type === 'transaction' && props.shared.step === 'confirm') {
     return transactionCommand(request)
   }
@@ -432,18 +427,19 @@ export default function RequestCommandContainer(props: Omit<RequestCommandProps,
       (
         state: WalletRendererState
       ): Omit<RequestCommandSharedState, 'step' | 'airgapSigning'> & Partial<AirGapRequestReference> => {
-        const account = state.accounts[accountId]
-        const signer = account?.signer ? state.signers[account.signer] : undefined
+        const account = (state.accounts as Partial<typeof state.accounts>)[accountId]
+        const signers: Partial<typeof state.signers> = state.signers
+        const signer = account?.signer ? signers[account.signer] : undefined
         const pending = signer?.airgapRequest
         const matching = state.currentAccount === accountId && pending?.requestId === request.handlerId
         return {
           signerId: matching ? signer?.id : undefined,
-          requestId: matching ? pending?.requestId : undefined,
-          sessionId: matching ? pending?.sessionId : undefined,
+          requestId: matching ? pending.requestId : undefined,
+          sessionId: matching ? pending.sessionId : undefined,
           appLocked: state.appLock.locked,
-          chain: state.networks.ethereum[chainId] || EMPTY_CHAIN,
-          explorerWarningMuted: !!state.mute?.explorerWarning,
-          signerAttached: Boolean(account?.signer && state.signers[account.signer])
+          chain: (state.networks.ethereum as Partial<typeof state.networks.ethereum>)[chainId] ?? EMPTY_CHAIN,
+          explorerWarningMuted: !!state.mute.explorerWarning,
+          signerAttached: Boolean(account?.signer && signers[account.signer])
         }
       },
     [accountId, chainId, request.handlerId]

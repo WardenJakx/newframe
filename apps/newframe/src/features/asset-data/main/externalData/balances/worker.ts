@@ -4,9 +4,9 @@ import createProvider from '../../../../connections/main/provider/connection.js'
 
 log.transports.console.format = '[scanWorker] {h}:{i}:{s}.{ms} {text}'
 log.transports.console.level = process.env.LOG_WORKER ? 'debug' : 'info'
-log.transports.file.level = ['development', 'test'].includes(process.env.NODE_ENV || 'development')
-  ? false
-  : 'verbose'
+const nodeEnv = (process.env as Record<string, string | undefined>).NODE_ENV
+const runtimeEnvironment = nodeEnv === '' ? 'development' : (nodeEnv ?? 'development')
+log.transports.file.level = ['development', 'test'].includes(runtimeEnvironment) ? false : 'verbose'
 
 import type { Token } from '../../../../../platform/state-store/state/index.js'
 import type { BalanceLoader } from './scan.js'
@@ -95,6 +95,5 @@ const messageHandler: { [command: string]: (...params: never[]) => void } = {
 process.on('message', (message: ExternalDataWorkerMessage) => {
   log.debug(`received message: ${message.command} [${message.args}]`)
 
-  const args = message.args || []
-  messageHandler[message.command](...(args as never[]))
+  messageHandler[message.command](...(message.args as never[]))
 })

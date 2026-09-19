@@ -80,7 +80,7 @@ export const safeWatchStage: VisualStage = {
           )
           const headers = element.querySelectorAll('header')
           const bounds = headers[0]?.getBoundingClientRect()
-          return headers.length === 1 && !!bounds && bounds.top >= 0 && bounds.bottom <= innerHeight
+          return headers.length === 1 && bounds.top >= 0 && bounds.bottom <= innerHeight
         })
         if (!headerVisible) {
           runtime.fail('Request review must keep its only header visible after scrolling')

@@ -283,7 +283,7 @@ async function sendEventToTab(tabId: number, event: string, args?: unknown) {
     await chrome.tabs.sendMessage(tabId, { type: 'eth:event', event, args })
   } catch (e) {
     // tabs without our content script (chrome:// pages, stale tabs) can't receive — expected
-    if ((e as Error)?.message?.includes('Receiving end does not exist')) {
+    if (e instanceof Error && e.message.includes('Receiving end does not exist')) {
       return
     }
     console.error(`Error sending event "${event}"`, e)
@@ -365,7 +365,7 @@ function initProvider(requestApproval = false) {
             tabId,
             send: (subload) => {
               chrome.tabs.sendMessage(tabId, subload).catch((error: unknown) => {
-                if ((error as Error)?.message?.includes('Receiving end does not exist')) {
+                if (error instanceof Error && error.message.includes('Receiving end does not exist')) {
                   return
                 }
                 console.error('Error sending subscription payload', error)

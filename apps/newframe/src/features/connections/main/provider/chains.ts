@@ -12,10 +12,10 @@ const createStoreApi = (store: CanonicalStoreApi) => ({
     return store.getState().main.origins
   },
   getChains: (): Record<string, Chain> => {
-    return store.getState().main.networks.ethereum || {}
+    return store.getState().main.networks.ethereum
   },
   getChainsMeta: (): Record<string, ChainMetadata> => {
-    return store.getState().main.networksMeta.ethereum || {}
+    return store.getState().main.networksMeta.ethereum
   }
 })
 
@@ -52,7 +52,7 @@ function createOriginChainObserver(
   store: CanonicalStoreApi,
   handler: ChainChangedHandler & NetworkChangedHandler
 ) {
-  const knownOrigins: Record<string, Origin> = {}
+  const knownOrigins: Record<string, Origin | undefined> = {}
   const storeApi = createStoreApi(store)
 
   return function () {
@@ -82,7 +82,9 @@ function getActiveChains(store: CanonicalStoreApi): RPC.GetEthereumChains.Chain[
     .sort((a, b) => a.id - b.id)
     .map((chain) => {
       const { id, explorer, name } = chain
-      const { icon, image, nativeCurrency, primaryColor } = meta[id]
+      const chainMeta = meta[id]
+      const { icon, image, nativeCurrency } = chainMeta
+      const primaryColor = (chainMeta as { primaryColor?: ChainMetadata['primaryColor'] }).primaryColor
       const { name: currencyName, symbol, decimals } = nativeCurrency
 
       const iconUrl = persistedImageSource(image) || icon

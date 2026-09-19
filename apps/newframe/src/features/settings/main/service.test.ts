@@ -8,9 +8,6 @@ describe('settings service', () => {
     const store = createTestStore()
     store.store.setState((state) => {
       const metadata = state.main.networksMeta.ethereum[1]
-      if (!metadata) {
-        throw new Error('Expected built-in mainnet metadata')
-      }
       metadata.gas.price.selected = 'slow'
       metadata.gas.price.levels.fast = '0x5'
       Reflect.deleteProperty(metadata.gas.price.levels, 'asap')

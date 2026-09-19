@@ -53,8 +53,11 @@ type RequestsProps = RequestsWithStateProps & {
 const requestsRecipe = cva({ base: { width: '100%', paddingBlockStart: '10' } })
 
 function Requests(props: RequestsProps) {
+  const networks: Record<number, (typeof props.networks)[number] | undefined> = props.networks
+  const networkMetadata: Record<number, (typeof props.networkMetadata)[number] | undefined> =
+    props.networkMetadata
   const requestCard = (req: RenderableRequest, index: number) => {
-    let title = 'Request'
+    let title: string
     let svgName: IconName | undefined
     let img: string | undefined
     let detail: ReactNode
@@ -73,8 +76,8 @@ function Requests(props: RequestsProps) {
       svgName = 'edit'
     } else if (req.type === 'signErc20Permit') {
       const chainId = req.typedMessage.data.domain.chainId
-      title = `${props.networks[chainId]?.name || 'Network'} Token Permit`
-      img = persistedImageSource(props.networkMetadata[chainId]?.image)
+      title = `${networks[chainId]?.name ?? 'Network'} Token Permit`
+      img = persistedImageSource(networkMetadata[chainId]?.image)
     } else if (req.type === 'addChain') {
       title = 'Add Chain'
       svgName = 'window'
@@ -84,12 +87,12 @@ function Requests(props: RequestsProps) {
     } else if (req.type === 'addToken') {
       title = 'Add Tokens'
       svgName = 'tokens'
-    } else if (req.type === 'transaction') {
+    } else {
       const chainId = parseInt(req.data.chainId, 16)
-      const chainName = props.networks[chainId]?.name
-      const metadata = props.networkMetadata[chainId]
-      const currentSymbol = metadata?.nativeCurrency?.symbol || '?'
-      title = `${chainName || 'Network'} Transaction`
+      const chainName = networks[chainId]?.name
+      const metadata = networkMetadata[chainId]
+      const currentSymbol = metadata?.nativeCurrency.symbol ?? '?'
+      title = `${chainName ?? 'Network'} Transaction`
       img = persistedImageSource(metadata?.image)
       detail = (
         <TxOverview
@@ -120,8 +123,10 @@ function Requests(props: RequestsProps) {
 
   const requests = Object.values(props.accountRequests).sort((a, b) => (b.created ?? 0) - (a.created ?? 0))
   const originSortedRequests = requests.reduce<Record<string, RenderableRequest[]>>((groups, request) => {
-    groups[request.origin] = groups[request.origin] || []
-    groups[request.origin].push(request)
+    const sparseGroups = groups as Record<string, RenderableRequest[] | undefined>
+    const group = sparseGroups[request.origin] ?? []
+    group.push(request)
+    groups[request.origin] = group
     return groups
   }, {})
   const groups = Object.entries(originSortedRequests)

@@ -33,7 +33,15 @@ export function hasSubscriptionPermission(
     return false
   }
 
-  const permissions = canonicalStore.getState().main.permissions[address] || {}
+  const state = canonicalStore.getState()
+  const permissionsByAddress = state.main.permissions as Record<
+    string,
+    (typeof state.main.permissions)[string] | undefined
+  >
+  const permissions = permissionsByAddress[address]
+  if (!permissions) {
+    return false
+  }
   const permission = Object.values(permissions).find(({ origin }) => {
     return uuid(origin, uuid.DNS) === subscription.originId
   })

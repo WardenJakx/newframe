@@ -185,7 +185,7 @@ await mock.module('../../connections/main/provider/connection', () => ({
   createJsonRpcProvider: (target: keyof typeof mockConnections) => mockConnections[target].connection,
   listenForProviderClose: mock(),
   sendRpcPayload: (provider: MockConnection, payload: RPCRequestPayload) =>
-    provider.send(payload.method, payload.params ?? [])
+    provider.send(payload.method, payload.params)
 }))
 await mock.module('../../../platform/state-store/state', () => () => state)
 await mock.module('../../accounts/main', () => ({ updatePendingFees: mock() }))

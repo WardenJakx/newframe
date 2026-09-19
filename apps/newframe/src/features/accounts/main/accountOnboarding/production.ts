@@ -108,7 +108,7 @@ export function createProductionAccountOnboardingAdapters(
     keystore: {
       async locate() {
         const selection = await openFileDialog()
-        const filePath = selection?.filePaths?.[0]
+        const filePath = selection.filePaths[0]
         if (!filePath) {
           return
         }

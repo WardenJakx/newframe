@@ -61,11 +61,10 @@ function displayValue(value: unknown): string {
   }
 
   try {
-    return (
-      JSON.stringify(value, (_key, nestedValue: unknown) =>
-        typeof nestedValue === 'bigint' ? nestedValue.toString() : nestedValue
-      ) ?? ''
-    )
+    const serialized = JSON.stringify(value, (_key, nestedValue: unknown) =>
+      typeof nestedValue === 'bigint' ? nestedValue.toString() : nestedValue
+    ) as string | undefined
+    return serialized ?? ''
   } catch {
     return ''
   }

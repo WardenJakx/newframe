@@ -17,9 +17,10 @@ export function ConnectedDapps({
   const { accountId, permissions } = useWalletSelector(
     useShallow((state) => {
       const accountId = state.currentAccount || ''
+      const permissionsByAccount: Partial<typeof state.permissions> = state.permissions
       return {
         accountId,
-        permissions: (accountId && state.permissions?.[accountId]) || EMPTY_RECORD
+        permissions: accountId ? (permissionsByAccount[accountId] ?? EMPTY_RECORD) : EMPTY_RECORD
       }
     })
   )

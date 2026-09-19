@@ -166,9 +166,10 @@ function OverlayRoute({
   const selectedChainId = useHomeUiStore((state) => state.selectedChainId)
   const setSelectedChainId = useHomeUiStore((state) => state.setSelectedChainId)
   const currentAccount = useWalletSelector((state) => state.currentAccount || '')
-  const originatingAccountExists = useWalletSelector((state) =>
-    overlay.type === 'asset' ? !!state.accounts?.[overlay.accountId] : true
-  )
+  const originatingAccountExists = useWalletSelector((state) => {
+    const accounts: Record<string, (typeof state.accounts)[string] | undefined> = state.accounts
+    return overlay.type === 'asset' ? !!accounts[overlay.accountId] : true
+  })
 
   const staleAssetOverlay =
     overlay.type === 'asset' &&

@@ -175,7 +175,7 @@ function normalizeProfileState(main: UnknownRecord) {
       ? main.currentAccount
       : (Object.keys(sourceAccounts).find((id) => unknownRecord(sourceAccounts[id]).active) ??
         requestedOrderAccount ??
-        Object.keys(sourceAccounts)[0])) ?? ''
+        Object.keys(sourceAccounts).at(0))) ?? ''
   const requestedAccountProfileValue = unknownRecord(sourceAccounts[requestedAccount]).profileId
   const requestedAccountProfile =
     typeof requestedAccountProfileValue === 'string'
@@ -190,7 +190,7 @@ function normalizeProfileState(main: UnknownRecord) {
     currentProfile = requestedProfile
   }
 
-  const accounts: Record<string, UnknownRecord> = Object.fromEntries(
+  const accounts: Record<string, UnknownRecord | undefined> = Object.fromEntries(
     Object.entries(sourceAccounts).map(([id, candidate]) => {
       const account = unknownRecord(candidate)
       const accountProfileId = typeof account.profileId === 'string' ? account.profileId : ''

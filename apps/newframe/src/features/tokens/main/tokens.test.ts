@@ -38,9 +38,6 @@ describe('bundled token startup', () => {
     const builtIns = createBuiltInNetworks()
     const mainnet = builtIns[1]
     const base = builtIns[8453]
-    if (!mainnet || !base) {
-      throw new Error('Expected built-in network fixtures')
-    }
     const first = createTestStore({
       main: { networks: { ethereum: { 1: mainnet } } }
     })

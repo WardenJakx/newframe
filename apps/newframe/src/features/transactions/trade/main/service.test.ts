@@ -87,7 +87,11 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
   }
   const testStore = createTestStore()
   const operations = createOperationService({ store: testStore.store, clock: { now: () => time } })
-  const operation = (id: string) => testStore.getState().operations[id]?.operation
+  const operation = (id: string) => {
+    const state = testStore.getState()
+    const operations = state.operations as Record<string, (typeof state.operations)[string] | undefined>
+    return operations[id]?.operation
+  }
   const flashQuote = mock(async (_request: unknown): Promise<{ quote: FlashQuote; flash: unknown }> => ({
     quote: quote(),
     flash: { actions: { evm: { orderTypedData: typedData, permitTypedData } }, secret: 'private' }
@@ -378,7 +382,11 @@ it('keeps cross-chain provider state private and validates both networks and the
   }
   const testStore = createTestStore()
   const operations = createOperationService({ store: testStore.store, clock: { now: () => time } })
-  const operation = (id: string) => testStore.getState().operations[id]?.operation
+  const operation = (id: string) => {
+    const state = testStore.getState()
+    const operations = state.operations as Record<string, (typeof state.operations)[string] | undefined>
+    return operations[id]?.operation
+  }
   const crossQuote = ({
     actionChainId,
     orderChainId = 8453

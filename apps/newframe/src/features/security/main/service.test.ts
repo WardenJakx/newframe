@@ -50,7 +50,11 @@ function harness(overrides: Partial<SecurityServicePorts> = {}) {
     ...overrides
   }
   const service = createSecurityService(ports)
-  const operation = (id: string) => testStore.getState().operations[id]?.operation
+  const operation = (id: string) => {
+    const state = testStore.getState()
+    const operations = state.operations as Record<string, (typeof state.operations)[string] | undefined>
+    return operations[id]?.operation
+  }
   return { operation, ports, service, ...testStore }
 }
 

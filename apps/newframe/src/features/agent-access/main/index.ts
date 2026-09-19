@@ -273,21 +273,28 @@ async function rpc(
     })
   }
 
-  const payload = (await readJson(req)) as JSONRPCRequestPayload
+  const payload: unknown = await readJson(req)
   if (
-    payload?.jsonrpc !== '2.0' ||
+    typeof payload !== 'object' ||
+    payload === null ||
+    !('jsonrpc' in payload) ||
+    payload.jsonrpc !== '2.0' ||
+    !('id' in payload) ||
     (typeof payload.id !== 'string' && typeof payload.id !== 'number') ||
+    !('method' in payload) ||
+    typeof payload.method !== 'string' ||
     !AGENT_RPC_METHODS.has(payload.method) ||
+    !('params' in payload) ||
     !Array.isArray(payload.params)
   ) {
     return sendJson(res, 400, {
       jsonrpc: '2.0',
-      id: payload?.id ?? null,
+      id: typeof payload === 'object' && payload !== null && 'id' in payload ? payload.id : null,
       error: { code: -32600, message: 'Invalid or unsupported agent request' }
     })
   }
 
-  const agentPayload = { ...payload, _origin: AGENT_ORIGIN }
+  const agentPayload = { ...(payload as JSONRPCRequestPayload), _origin: AGENT_ORIGIN }
   const respond: RPCRequestCallback = (response) => sendJson(res, response.error ? 400 : 200, response)
 
   if (payload.method === 'eth_sendTransaction') {

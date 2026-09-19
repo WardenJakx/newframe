@@ -53,8 +53,8 @@ function parseMetadataFile(content: string): SourcifyMetadataFileContent | undef
 
 async function parseResponse(response: Response): Promise<unknown | undefined> {
   if (
-    response?.status === 200 &&
-    (response?.headers.get('content-type') ?? '').toLowerCase().includes('json')
+    response.status === 200 &&
+    (response.headers.get('content-type') ?? '').toLowerCase().includes('json')
   ) {
     return await response.json()
   }

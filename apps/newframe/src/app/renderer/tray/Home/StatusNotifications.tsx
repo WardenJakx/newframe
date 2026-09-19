@@ -122,10 +122,10 @@ export default function StatusNotifications({
   onExpire,
   onOpen
 }: StatusNotificationsProps) {
-  const entries = Object.values(notifications || {})
+  const entries = Object.values(notifications)
 
   useEffect(() => {
-    const timers = Object.values(notifications || {}).map((notification) => {
+    const timers = Object.values(notifications).map((notification) => {
       const wait = Math.max(0, notificationExpiresAt(notification) - Date.now())
       return setTimeout(() => onExpire(notification.id), wait)
     })
@@ -133,7 +133,7 @@ export default function StatusNotifications({
   }, [notifications, onExpire])
 
   const visible = entries
-    .filter((notification) => notification?.id && !notification.hidden)
+    .filter((notification) => notification.id && !notification.hidden)
     .sort(
       (a, b) =>
         timestamp(b.createdAt, timestamp(b.updatedAt, 0)) - timestamp(a.createdAt, timestamp(a.updatedAt, 0))
@@ -147,7 +147,7 @@ export default function StatusNotifications({
   return (
     <section aria-label='Status notifications' className={notificationListRecipe()}>
       {visible.map((notification) => {
-        const state = notification.state || 'pending'
+        const state = notification.state
         const label = notificationLabel(state)
         const metadata = notificationMetadata(notification, label)
         const shownAt = notificationTimestamp(notification)

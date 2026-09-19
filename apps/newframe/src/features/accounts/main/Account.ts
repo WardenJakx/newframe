@@ -11,7 +11,7 @@ import type {
   SignerRequestContext,
   SignerSummary
 } from '../../../platform/signing/signers/Signer/index.js'
-import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
+import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.js'
 import type { NameResolutionService } from '../../name-resolution/main/nameResolution.js'
 import { RequestMode } from '../../requests/contract/requests.js'
 import type {
@@ -95,7 +95,7 @@ class FrameAccount {
     this.address = formattedAddress
     this.profileActive = profileActive
 
-    if (!this.store.getState().main.accounts[this.id]) {
+    if (!this.canonicalAccount(this.id)) {
       this.store.getState().upsertAccount({
         id: this.id,
         address: this.address,
@@ -145,11 +145,20 @@ class FrameAccount {
   }
 
   private get state() {
-    const account = this.store.getState().main.accounts[this.id]
+    const account = this.canonicalAccount(this.id)
     if (!account) {
       throw new Error(`Account ${this.id} is not in canonical state`)
     }
     return account as unknown as Account
+  }
+
+  private canonicalAccount(id: string): CanonicalStore['main']['accounts'][string] | undefined {
+    return (
+      this.store.getState().main.accounts as Record<
+        string,
+        CanonicalStore['main']['accounts'][string] | undefined
+      >
+    )[id]
   }
 
   get name() {
@@ -185,7 +194,7 @@ class FrameAccount {
   }
 
   get requests() {
-    return this.state.requests as Record<string, AccountRequest>
+    return this.state.requests as Record<string, AccountRequest | undefined>
   }
 
   patch(update: Partial<Omit<Account, 'id' | 'address' | 'requests'>>) {
@@ -207,12 +216,12 @@ class FrameAccount {
     this.addressLookupPending = true
     try {
       const ensName = await this.nameResolution.reverseLookup(this.address)
-      if (this.store.getState().main.accounts[this.id]) {
+      if (this.canonicalAccount(this.id)) {
         this.patch({ ensName })
       }
     } catch (e) {
       log.error('lookupAddress Error:', e)
-      if (this.store.getState().main.accounts[this.id]) {
+      if (this.canonicalAccount(this.id)) {
         this.patch({ ensName: '' })
       }
     } finally {
@@ -235,7 +244,7 @@ class FrameAccount {
       .filter((signer) => signer.addresses.some((addr) => addr.toLowerCase() === address))
       .sort((a, b) => signerOrdinal(b) - signerOrdinal(a))
 
-    return availableSigners[0]
+    return availableSigners.at(0)
   }
 
   setAccess(req: AccessRequest, access: boolean, targetAddress: Address = this.address) {
@@ -254,28 +263,24 @@ class FrameAccount {
   }
 
   getRequest<T extends AccountRequest>(id: string) {
-    return this.requests[id] as T
+    return this.requests[id] as T | undefined
   }
 
-  resolveRequest({ handlerId, payload }: AccountRequest, result?: unknown) {
+  resolveRequest({ handlerId }: AccountRequest, result?: unknown) {
     const knownRequest = this.requests[handlerId]
 
     if (knownRequest) {
-      if (payload) {
-        this.requestLifecycle.resolve(knownRequest, result)
-      }
+      this.requestLifecycle.resolve(knownRequest, result)
 
       this.clearRequest(knownRequest.handlerId)
     }
   }
 
-  rejectRequest({ handlerId, payload }: AccountRequest, error: EVMError) {
+  rejectRequest({ handlerId }: AccountRequest, error: EVMError) {
     const knownRequest = this.requests[handlerId]
 
     if (knownRequest) {
-      if (payload) {
-        this.requestLifecycle.reject(knownRequest, error)
-      }
+      this.requestLifecycle.reject(knownRequest, error)
 
       this.clearRequest(knownRequest.handlerId)
     }
@@ -284,7 +289,7 @@ class FrameAccount {
   clearRequest(handlerId: string) {
     log.info(`clearRequest(${handlerId}) for account ${this.id}`)
 
-    const panelNav = (this.store.getState().windows.panel.nav || []) as PanelNavigationEntry[]
+    const panelNav = this.store.getState().windows.panel.nav as PanelNavigationEntry[]
     const wasCurrentRequest =
       panelNav[0]?.view === 'requestView' && panelNav[0]?.data?.requestId === handlerId
 
@@ -293,12 +298,14 @@ class FrameAccount {
     this.store.getState().navClearReq(handlerId, Object.keys(this.requests).length > 0)
 
     const nextRequest = Object.values(this.requests)
+      .filter((request): request is AccountRequest => request !== undefined)
       .filter(
         (req) =>
           req.mode !== RequestMode.Monitor &&
           !['confirmed', 'declined', 'error', 'success'].includes(req.status ?? '')
       )
-      .sort((a, b) => (a.created ?? 0) - (b.created ?? 0))[0]
+      .sort((a, b) => (a.created ?? 0) - (b.created ?? 0))
+      .at(0)
 
     if (wasCurrentRequest && nextRequest) {
       if (isTransactionRequest(nextRequest)) {
@@ -318,7 +325,7 @@ class FrameAccount {
 
   clearRequestsByOrigin(origin: string) {
     Object.entries(this.requests).forEach(([_handlerId, req]) => {
-      if (req.origin === origin) {
+      if (req?.origin === origin) {
         const err = { code: 4001, message: 'User rejected the request' }
         this.rejectRequest(req, err)
       }
@@ -327,7 +334,7 @@ class FrameAccount {
 
   approveRequest(reqId: string, type: ApprovalType, _data: unknown) {
     const request = this.getRequest<TransactionRequest>(reqId)
-    const approval = request?.approvals?.find((candidate) => candidate.type === type)
+    const approval = request?.approvals.find((candidate) => candidate.type === type)
     if (!approval) {
       return false
     }
@@ -372,14 +379,14 @@ class FrameAccount {
       // Get recipient identity
       try {
         const recipient = await this.reveal.identity(to)
-        const knownTxRequest = this.requests[req.handlerId] as TransactionRequest
+        const knownTxRequest = this.getRequest<TransactionRequest>(req.handlerId)
 
-        if (recipient && knownTxRequest) {
+        if (knownTxRequest) {
           const updated = this.patchRequest<TransactionRequest>(req.handlerId, (request) => {
             request.recipient = recipient.ens
           })
           if (updated) {
-            this.accounts.syncTransactionActivity?.(this, updated)
+            this.accounts.syncTransactionActivity(this, updated)
           }
         }
       } catch (e) {
@@ -396,14 +403,14 @@ class FrameAccount {
         // Decode calldata
         const decodedData = await this.reveal.decode(to, parseInt(chainId, 16), calldata)
 
-        const knownTxRequest = this.requests[req.handlerId] as TransactionRequest
+        const knownTxRequest = this.getRequest<TransactionRequest>(req.handlerId)
 
         if (knownTxRequest && decodedData) {
           const updated = this.patchRequest<TransactionRequest>(req.handlerId, (request) => {
             request.decodedData = decodedData
           })
           if (updated) {
-            this.accounts.syncTransactionActivity?.(this, updated)
+            this.accounts.syncTransactionActivity(this, updated)
             await this.enrichErc20TokenData(updated)
           }
         }
@@ -428,14 +435,14 @@ class FrameAccount {
     try {
       const contract = new Erc20Contract(to, parseInt(chainId, 16), this.chainRpc)
       const tokenData = await contract.getTokenData()
-      const knownTxRequest = this.requests[req.handlerId] as TransactionRequest
+      const knownTxRequest = this.getRequest<TransactionRequest>(req.handlerId)
 
       if (knownTxRequest) {
         const updated = this.patchRequest<TransactionRequest>(req.handlerId, (request) => {
           request.tokenData = tokenData
         })
         if (updated) {
-          this.accounts.syncTransactionActivity?.(this, updated)
+          this.accounts.syncTransactionActivity(this, updated)
         }
       }
     } catch (e) {
@@ -444,11 +451,8 @@ class FrameAccount {
   }
 
   private async simulateTransaction(req: TransactionRequest, force = false) {
-    const knownTxRequest = this.requests[req.handlerId] as TransactionRequest | undefined
+    const knownTxRequest = this.getRequest<TransactionRequest>(req.handlerId)
     if (!knownTxRequest) {
-      return
-    }
-    if (!knownTxRequest.data?.chainId) {
       return
     }
     if (!force && knownTxRequest.simulation?.status === 'loading') {
@@ -463,17 +467,19 @@ class FrameAccount {
       }
     })
 
-    const simulation = await this.simulation.simulateTransactionEffects(
-      this.getRequest<TransactionRequest>(req.handlerId)
-    )
-    const currentTxRequest = this.requests[req.handlerId] as TransactionRequest | undefined
+    const requestToSimulate = this.getRequest<TransactionRequest>(req.handlerId)
+    if (!requestToSimulate) {
+      return
+    }
+    const simulation = await this.simulation.simulateTransactionEffects(requestToSimulate)
+    const currentTxRequest = this.getRequest<TransactionRequest>(req.handlerId)
 
     if (currentTxRequest) {
       const updated = this.patchRequest<TransactionRequest>(req.handlerId, (request) => {
         request.simulation = simulation
       })
       if (updated) {
-        this.accounts.syncTransactionActivity?.(this, updated)
+        this.accounts.syncTransactionActivity(this, updated)
       }
     }
   }
@@ -490,9 +496,9 @@ class FrameAccount {
           account: this.address
         })
 
-        const knownTxRequest = this.requests[req.handlerId] as TransactionRequest
+        const knownTxRequest = this.getRequest<TransactionRequest>(req.handlerId)
 
-        if (knownTxRequest && actions) {
+        if (knownTxRequest) {
           const handlers = new Map<string, Action<unknown>>()
           const recognizedActions = actions.map(({ update, ...action }) => {
             if (update) {
@@ -505,7 +511,7 @@ class FrameAccount {
             request.recognizedActions = recognizedActions
           })
           if (updated) {
-            this.accounts.syncTransactionActivity?.(this, updated)
+            this.accounts.syncTransactionActivity(this, updated)
           }
         }
       } catch (e) {
@@ -522,7 +528,7 @@ class FrameAccount {
 
     try {
       const erc7730 = await getErc7730TypedDataDisplay(req.typedMessage)
-      const updatedRequest = this.requests[req.handlerId] as SignTypedDataRequest | undefined
+      const updatedRequest = this.getRequest<SignTypedDataRequest>(req.handlerId)
       if (!erc7730 || !updatedRequest) {
         return
       }
@@ -587,7 +593,7 @@ class FrameAccount {
       void this.decodeCalldata(req)
       await this.recognizeActions(req)
 
-      const enrichedRequest = this.requests[req.handlerId] as TransactionRequest | undefined
+      const enrichedRequest = this.getRequest<TransactionRequest>(req.handlerId)
       if (enrichedRequest) {
         await this.simulateTransaction(enrichedRequest)
       }
@@ -628,7 +634,7 @@ class FrameAccount {
       const accountOpen = this.store.getState().main.currentAccount === account
 
       // Does the current panel nav include a 'requestView'
-      const panelNav = (this.store.getState().windows.panel.nav || []) as PanelNavigationEntry[]
+      const panelNav = this.store.getState().windows.panel.nav as PanelNavigationEntry[]
       const inExpandedRequestsView =
         panelNav[0]?.view === 'expandedModule' && panelNav[0]?.data?.id === 'requests'
       const inRequestView = panelNav.map((crumb) => crumb.view).includes('requestView')
@@ -744,7 +750,7 @@ class FrameAccount {
         (response: RPCResponsePayload) => {
           this.creationBlockLookupPending = false
           if (typeof response.result === 'string' && response.result) {
-            if (this.store.getState().main.accounts[this.id]) {
+            if (this.canonicalAccount(this.id)) {
               this.patch({ created: `${parseInt(response.result, 16)}:${createdSuffix}` })
             }
             this.stopCreationBlockLookup()
@@ -769,7 +775,7 @@ class FrameAccount {
 
     this.nameResolutionReadyListener = () => {
       this.nameResolutionReadyListener = undefined
-      if (this.profileActive && this.store.getState().main.accounts[this.id]) {
+      if (this.profileActive && this.canonicalAccount(this.id)) {
         void this.lookupAddress()
       }
     }
@@ -831,15 +837,17 @@ class FrameAccount {
       context?: SignerRequestContext
     ) => void
   ) {
-    let signer: Signer
+    let signer: Signer | undefined
     let index: number
     let value: T
-    const captured = this.store.getState().main.accounts[this.id]
+    const captured = this.canonicalAccount(this.id)
     const cancelled = () =>
       Object.assign(new Error('Signing cancelled because its approval is no longer active.'), { code: 4001 })
     const validate = () => {
       const main = this.store.getState().main
-      const owner = main.accounts[this.id]
+      const owner = (main.accounts as Record<string, CanonicalStore['main']['accounts'][string] | undefined>)[
+        this.id
+      ]
       if (owner?.safe) {
         throw new Error('Safe accounts are read-only')
       }
@@ -865,7 +873,9 @@ class FrameAccount {
         throw cancelled()
       }
       const currentSigner = this.runtime.signers.get(owner.signer)
-      const summary = main.signers[owner.signer]
+      const summary = (main.signers as Record<string, CanonicalStore['main']['signers'][string] | undefined>)[
+        owner.signer
+      ]
       if (!currentSigner || !summary || !getSignerType(currentSigner.type.toLowerCase())) {
         throw new Error('No signer attached.')
       }
@@ -963,9 +973,6 @@ class FrameAccount {
   }
 
   signTypedData(typedMessage: TypedMessage, cb: Callback<string>, context?: SigningApprovalContext) {
-    if (!typedMessage.data) {
-      return cb(new Error('No data to sign'))
-    }
     if (typeof typedMessage.data !== 'object') {
       return cb(new Error('Data to sign has the wrong format'))
     }
@@ -975,7 +982,7 @@ class FrameAccount {
   }
 
   signTransaction(rawTx: TransactionData, cb: Callback<string>, context?: SigningApprovalContext) {
-    if (this.store.getState().main.accounts[this.id]?.safe) {
+    if (this.canonicalAccount(this.id)?.safe) {
       return cb(new Error('Safe accounts are read-only'))
     }
     this.validateTransaction(rawTx, (err) => {

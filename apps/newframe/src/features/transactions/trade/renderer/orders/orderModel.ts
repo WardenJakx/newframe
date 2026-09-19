@@ -250,7 +250,8 @@ export function orderJson(value: unknown) {
   }
 
   try {
-    return JSON.stringify(value, null, 2) ?? ''
+    const serialized = JSON.stringify(value, null, 2) as string | undefined
+    return serialized ?? ''
   } catch {
     return ''
   }
@@ -299,8 +300,8 @@ export function createOrderRows({
           Number.isInteger(chainId) && chainId > 0 && values.indexOf(chainId) === index
       )
       const visibleChainIds = chainIds.filter((chainId) => {
-        const chain = networks[chainId]
-        return !!chain && (!chain.isTestnet || showTestnets)
+        const chain = (networks as Partial<typeof networks>)[chainId]
+        return chain !== undefined && (!chain.isTestnet || showTestnets)
       })
       return (
         orderAddress === address &&

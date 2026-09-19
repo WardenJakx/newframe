@@ -14,9 +14,11 @@ export async function connectRendererState(
   state: RendererStateStore,
   client: RendererStateConnectionClient
 ) {
-  let stopped = false
+  const controller = new AbortController()
+  const isStopped = () => controller.signal.aborted
   let reconnecting = false
-  let retryRequested = false
+  const retry = { requested: false }
+  const isRetryRequested = () => retry.requested
   let resolveInitialSnapshot!: () => void
   const initialSnapshot = new Promise<void>((resolve) => {
     resolveInitialSnapshot = resolve
@@ -31,33 +33,33 @@ export async function connectRendererState(
   }
 
   const reconnect = async () => {
-    retryRequested = true
-    if (reconnecting || stopped) {
+    retry.requested = true
+    if (reconnecting || isStopped()) {
       return
     }
     reconnecting = true
 
-    while (!stopped) {
-      retryRequested = false
+    while (!isStopped()) {
+      retry.requested = false
       try {
         await client.disconnectState()
-        if (stopped) {
+        if (isStopped()) {
           break
         }
         await establishConnection()
-        if (stopped) {
+        if (isStopped()) {
           await client.disconnectState()
           break
         }
-        if (!retryRequested) {
+        if (!isRetryRequested()) {
           break
         }
       } catch (error) {
         console.error('Could not reconnect renderer state', error)
-        retryRequested = true
+        retry.requested = true
       }
 
-      if (retryRequested) {
+      if (isRetryRequested()) {
         await new Promise((resolve) => setTimeout(resolve, reconnectDelay))
       }
     }
@@ -79,7 +81,7 @@ export async function connectRendererState(
   await initialSnapshot
 
   return async () => {
-    stopped = true
+    controller.abort()
     await client.disconnectState()
   }
 }

@@ -25,11 +25,7 @@ export interface SideTrayWalletSelectorValue {
   runtime: SideTrayRendererState['runtime']
 }
 
-const EMPTY_ACCOUNTS: Record<string, SideTrayWalletAccount> = {}
 const EMPTY_BALANCES: Balance[] = []
-const EMPTY_NETWORKS: Record<string | number, SideTrayWalletEthereumNetwork> = {}
-const EMPTY_NETWORKS_META: Record<string | number, SideTrayWalletEthereumNetworkMeta> = {}
-const EMPTY_ASSET_RATES: SideTrayRendererState['assetRates'] = {}
 const EMPTY_ORDERS: NonNullable<SideTrayRendererState['orders']> = {}
 
 function createSelectableBalancesSelector() {
@@ -89,11 +85,11 @@ export function createSideTrayWalletSelector() {
 
   return (state: SideTrayRendererState): SideTrayWalletSelectorValue => {
     const selectedAccountId = state.currentAccount
-    const accountsById = state.accounts || EMPTY_ACCOUNTS
-    const currentAccount = accountsById[selectedAccountId] || null
+    const accountsById = state.accounts
+    const currentAccount = (accountsById as Partial<typeof accountsById>)[selectedAccountId] ?? null
     const accounts = selectOrderedAccounts(accountsById, state.accountOrder)
     const accountBalances = currentAccount?.address
-      ? state.balances[currentAccount.address] || EMPTY_BALANCES
+      ? ((state.balances as Partial<typeof state.balances>)[currentAccount.address] ?? EMPTY_BALANCES)
       : EMPTY_BALANCES
     if (state.tokens.byId !== previousTokensById) {
       previousTokensById = state.tokens.byId
@@ -102,11 +98,11 @@ export function createSideTrayWalletSelector() {
     const globalTokens = previousGlobalTokens
     const rawBalances = selectSelectableBalances(accountBalances, globalTokens)
     const globalTokenIds = new Set(globalTokens.map(toTokenId))
-    const networks = state.networks.ethereum || EMPTY_NETWORKS
-    const networksMeta = state.networksMeta.ethereum || EMPTY_NETWORKS_META
+    const networks = state.networks.ethereum
+    const networksMeta = state.networksMeta.ethereum
     const operations = state.operations
     const orders = state.orders ?? EMPTY_ORDERS
-    const assetRates = state.assetRates || EMPTY_ASSET_RATES
+    const assetRates = state.assetRates
     const activity = state.activity
     const tokens = state.tokens
     const runtime = state.runtime
@@ -118,7 +114,7 @@ export function createSideTrayWalletSelector() {
       networksMeta,
       includeChain: (chain) => !!chain.on,
       includeBalance: (balance) => hasPositiveBalance(balance) || globalTokenIds.has(toTokenId(balance)),
-      cacheKey: currentAccount?.address || ''
+      cacheKey: currentAccount?.address ?? ''
     })
 
     if (

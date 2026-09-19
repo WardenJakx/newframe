@@ -217,7 +217,7 @@ describe('renderer state stream', () => {
     expect(snapshot.state).not.toHaveProperty('portfolioApiKey')
     expect(snapshot.state.portfolioApiKeyConfigured).toBe(true)
     const projectedAccount = snapshot.state.accounts[accountId]
-    if (!projectedAccount?.requests) {
+    if (!projectedAccount.requests) {
       throw new Error('Expected projected account')
     }
     expect(projectedAccount).not.toHaveProperty('futureCredential')
@@ -465,7 +465,7 @@ describe('renderer state stream', () => {
     ])
     const account = snapshot.state.accounts[id]
     expect(account).toMatchObject({ id, address: id, name: 'Side Tray Account', lastSignerType: 'address' })
-    expect(account && 'accountType' in account ? account.accountType : undefined).toBe('address')
+    expect('accountType' in account ? account.accountType : undefined).toBe('address')
     expect(snapshot.state.accounts).not.toHaveProperty(dormantId)
     expect(snapshot.state.accountOrder).toEqual([id])
     expect(snapshot.state.orders).toEqual({})

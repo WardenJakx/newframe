@@ -349,7 +349,7 @@ export function SafeProposalDetailsView({
                 (!retryPublication && !signingReady && !recoverable),
               onPress: () => {
                 if (recoverable && !retryPublication) {
-                  onRecoverSigner?.()
+                  onRecoverSigner()
                 } else {
                   confirmation?.onSign()
                 }

@@ -53,6 +53,21 @@ export function createImageService(
   let active = false
   let unsubscribeOrigins: (() => void) | undefined
   let unsubscribeNetworks: (() => void) | undefined
+  const tokenById = (tokenId: string) => {
+    const tokens = canonicalStore.getState().main.tokens.byId as Record<string, TokenRecord | undefined>
+    return tokens[tokenId]
+  }
+  const networkMetadata = (chainId: number) => {
+    const metadata = canonicalStore.getState().main.networksMeta.ethereum as Record<
+      number,
+      ChainMetadata | undefined
+    >
+    return metadata[chainId]
+  }
+  const originById = (originId: string) => {
+    const origins = canonicalStore.getState().main.origins as Record<string, Origin | undefined>
+    return origins[originId]
+  }
 
   const drainQueue = () => {
     if (!active) {
@@ -105,8 +120,8 @@ export function createImageService(
       hydrationId,
       async () => {
         try {
-          const current = canonicalStore.getState().main.tokens.byId[tokenId]
-          if (httpsImageUrl(current?.logoURI) !== sourceUrl || current.image?.sourceUrl === sourceUrl) {
+          const current = tokenById(tokenId)
+          if (httpsImageUrl(current?.logoURI) !== sourceUrl || current?.image?.sourceUrl === sourceUrl) {
             return
           }
 
@@ -114,7 +129,7 @@ export function createImageService(
           if (!active) {
             return
           }
-          const latest = canonicalStore.getState().main.tokens.byId[tokenId]
+          const latest = tokenById(tokenId)
           if (httpsImageUrl(latest?.logoURI) === sourceUrl) {
             canonicalStore.getState().setTokenImage(tokenId, image)
           }
@@ -127,7 +142,7 @@ export function createImageService(
   }
 
   const requestTokenImage = (tokenId: string) => {
-    const token = canonicalStore.getState().main.tokens.byId[tokenId]
+    const token = tokenById(tokenId)
     if (token) {
       hydrateToken(token)
     }
@@ -165,7 +180,7 @@ export function createImageService(
           if (!active) {
             return
           }
-          const current = canonicalStore.getState().main.networksMeta.ethereum[chainId]
+          const current = networkMetadata(chainId)
           if (!current) {
             return
           }
@@ -192,8 +207,8 @@ export function createImageService(
       hydrationId,
       async () => {
         try {
-          const current = canonicalStore.getState().main.networksMeta.ethereum[chainId]?.nativeCurrency
-          if (httpsImageUrl(current?.icon) !== sourceUrl || current.image?.sourceUrl === sourceUrl) {
+          const current = networkMetadata(chainId)?.nativeCurrency
+          if (httpsImageUrl(current?.icon) !== sourceUrl || current?.image?.sourceUrl === sourceUrl) {
             return
           }
 
@@ -201,7 +216,7 @@ export function createImageService(
           if (!active) {
             return
           }
-          const latest = canonicalStore.getState().main.networksMeta.ethereum[chainId]?.nativeCurrency
+          const latest = networkMetadata(chainId)?.nativeCurrency
           if (httpsImageUrl(latest?.icon) === sourceUrl) {
             canonicalStore.getState().setNativeCurrencyImage('ethereum', chainId, image)
           }
@@ -213,7 +228,10 @@ export function createImageService(
     )
   }
 
-  const hydrateOrigins = (origins: Record<string, Origin>, previousOrigins: Record<string, Origin> = {}) => {
+  const hydrateOrigins = (
+    origins: Record<string, Origin>,
+    previousOrigins: Record<string, Origin | undefined> = {}
+  ) => {
     for (const [originId, origin] of Object.entries(origins)) {
       const sourceUrl = originImageSource(origin.faviconSource)
       if (
@@ -227,7 +245,7 @@ export function createImageService(
         `origin:${originId}:${sourceUrl}`,
         async () => {
           try {
-            const current = canonicalStore.getState().main.origins[originId]
+            const current = originById(originId)
             if (current?.faviconSource !== sourceUrl || current.image?.sourceUrl === sourceUrl) {
               return
             }

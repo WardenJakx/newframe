@@ -55,10 +55,10 @@ export function createSafeSimulationRpc(
         chains.send(
           { id: crypto.randomUUID(), jsonrpc: '2.0', method, params },
           (response) => {
-            if (response?.error) {
+            if (response.error) {
               done(new Error(response.error.message || 'Safe simulation RPC failed'))
             } else {
-              done(null, response?.result)
+              done(null, response.result)
             }
           },
           { type: 'ethereum', id: chainId }
@@ -91,7 +91,7 @@ export function createSafeSimulationRpc(
             callback(new Error('Unsupported token metadata read'))
             return
           }
-          const params = payload.method === 'eth_call' ? [payload.params?.[0], blockTag] : []
+          const params = payload.method === 'eth_call' ? [payload.params[0], blockTag] : []
           void request(chainId, payload.method, params, signal).then(
             (result) => callback(null, { id: payload.id, jsonrpc: '2.0', result }),
             (error: unknown) => callback(error instanceof Error ? error : new Error(String(error)))

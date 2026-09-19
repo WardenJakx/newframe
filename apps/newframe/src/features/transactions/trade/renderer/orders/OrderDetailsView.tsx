@@ -76,7 +76,7 @@ export function OrderDetailsView({
     )
   }
   const chainDetail = (chainId: number) => {
-    const chain = networks[chainId] || {}
+    const chain = (networks as Partial<typeof networks>)[chainId] ?? {}
 
     return (
       <Stack align='center' direction='row' gap='xsmall' justify='end'>

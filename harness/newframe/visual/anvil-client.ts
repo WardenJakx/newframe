@@ -51,18 +51,19 @@ export class AnvilClient {
   }
 
   startBackgroundMining(intervalMs: number) {
-    let stopped = false
+    const controller = new AbortController()
+    const isRunning = () => !controller.signal.aborted
     const promise = (async () => {
-      while (!stopped) {
+      while (isRunning()) {
         await sleep(intervalMs)
-        if (!stopped) {
+        if (isRunning()) {
           await this.mineBlocks(1).catch(() => undefined)
         }
       }
     })()
 
     return async () => {
-      stopped = true
+      controller.abort()
       await promise
     }
   }
