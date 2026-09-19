@@ -212,7 +212,7 @@ let chains: import('./index').Chains
 
 const resetChainState = () => {
   store.setState((current) => {
-    current.main = JSON.parse(JSON.stringify(state.main))
+    Object.assign(current.main, structuredClone(state.main))
   })
 }
 

@@ -2,7 +2,8 @@
 import FrameBackgroundProvider, {
   RawFrameConnection,
   type ConnectionRetryState,
-  type JsonRpcPayload
+  type JsonRpcPayload,
+  type JsonRpcResponse
 } from './frameConnection'
 import { frameStateStore, type AvailableChain, type ConnectionStatus } from './frameState'
 
@@ -72,12 +73,26 @@ interface ExtensionPayload {
   tab?: chrome.tabs.Tab
 }
 
+interface TabLike {
+  id?: number
+  url?: string
+}
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value)
 
 const isDappPayload = (value: unknown): value is DappPayload => isRecord(value)
 const isExtensionPayload = (value: unknown): value is ExtensionPayload =>
   isRecord(value) && typeof value.method === 'string'
+
+function tabFromMessage(value: unknown): TabLike | undefined {
+  if (!isRecord(value)) {
+    return undefined
+  }
+  const id = typeof value.id === 'number' ? value.id : undefined
+  const url = typeof value.url === 'string' ? value.url : undefined
+  return id === undefined && url === undefined ? undefined : { id, url }
+}
 
 const subs: Record<string, Subscription> = {}
 const pending: Record<string, PendingRequest> = {}
@@ -106,7 +121,8 @@ const subType = (pendingPayload: PendingRequest) => {
   if (!Array.isArray(pendingPayload.params)) {
     return 'unknown'
   }
-  const type = pendingPayload.params[0]
+  const params: unknown[] = pendingPayload.params
+  const type = params[0]
   return typeof type === 'string' && subTypes.includes(type) ? type : 'unknown'
 }
 
@@ -191,20 +207,21 @@ async function fetchAvailableChains() {
   }
 }
 
-async function getActiveTab() {
+async function getActiveTab(): Promise<TabLike | undefined> {
   if (activeTabId) {
     try {
-      return await chrome.tabs.get(activeTabId)
+      const activeTab: unknown = await chrome.tabs.get(activeTabId)
+      return tabFromMessage(activeTab)
     } catch (e) {
       // fall through to querying the active tab
     }
   }
 
-  const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
-  return tabs[0]
+  const tabs: unknown = await chrome.tabs.query({ active: true, currentWindow: true })
+  return Array.isArray(tabs) ? tabFromMessage((tabs as unknown[])[0]) : undefined
 }
 
-async function refreshActiveOriginStatus(tab?: chrome.tabs.Tab) {
+async function refreshActiveOriginStatus(tab?: TabLike) {
   const activeTab = tab ?? (await getActiveTab())
   const origin = originFromUrl(activeTab?.url)
 
@@ -239,7 +256,7 @@ async function refreshActiveOriginStatus(tab?: chrome.tabs.Tab) {
   }
 }
 
-async function disconnectActiveOrigin(tab?: chrome.tabs.Tab) {
+async function disconnectActiveOrigin(tab?: TabLike) {
   const activeTab = tab ?? (await getActiveTab())
   const origin = originFromUrl(activeTab?.url)
 
@@ -306,7 +323,7 @@ function initProvider(requestApproval = false) {
     console.log('Connected to Newframe')
 
     dappConnection = new RawFrameConnection(companionUrl, retryOptions(DAPP_RETRY_KEY))
-    dappConnection.on('payload', (payload) => {
+    dappConnection.on('payload', (payload: JsonRpcResponse) => {
       handleDappPayload(payload).catch(console.error)
     })
     setConnectionStatus('connected')
@@ -442,18 +459,20 @@ function addStateListeners() {
       }
     } else if (payload.method === 'media_blob') {
       const location = payload.location
+      const tabId = sender.tab?.id
+
+      if (typeof payload.src !== 'string' || tabId === undefined) {
+        return
+      }
 
       try {
-        if (typeof payload.src !== 'string') {
-          return
-        }
         const res = await fetch(payload.src)
         const blob = await res.blob()
         const blobURL = URL.createObjectURL(blob)
 
         chrome.scripting
           .executeScript({
-            target: { tabId: sender.tab!.id! },
+            target: { tabId },
             func: setMediaBlob,
             args: [blobURL, location]
           })
@@ -461,7 +480,7 @@ function addStateListeners() {
       } catch (e) {
         chrome.scripting
           .executeScript({
-            target: { tabId: sender.tab!.id! },
+            target: { tabId },
             func: setMediaBlob,
             args: ['', location, (e as Error).message]
           })
@@ -626,9 +645,7 @@ async function addTabListeners() {
         tabOrigins[tabId] = origin
         unsubscribeTab(tabId)
         if (tabId === activeTabId) {
-          refreshActiveOriginStatus({ id: tabId, url: changeInfo.url } as chrome.tabs.Tab).catch(
-            console.error
-          )
+          refreshActiveOriginStatus({ id: tabId, url: changeInfo.url }).catch(console.error)
         }
       }
     }
@@ -711,7 +728,10 @@ addStateListeners()
 addTabListeners().catch(console.error)
 setupClientStatusAlarm().catch(console.error)
 const connectionReady = chrome.storage.local.get([PRIMARY_RETRY_KEY, DAPP_RETRY_KEY]).then((saved) => {
-  retryStates = saved
+  retryStates = {
+    [PRIMARY_RETRY_KEY]: saved[PRIMARY_RETRY_KEY],
+    [DAPP_RETRY_KEY]: saved[DAPP_RETRY_KEY]
+  }
   initProvider()
 })
 connectionReady.catch(console.error)

@@ -84,7 +84,7 @@ export interface WebSocketRpcTransportDependencies {
   origins: OriginsService
   requestHandler: RpcRequestHandler
   windows: { toggleTray(): unknown }
-  createServer(server: Server): WebSocketServerPort
+  createServer: (server: Server) => WebSocketServerPort
   openReadyState: number
   timers?: ApiTimerPort
   createConnectionId?: () => string
@@ -232,7 +232,8 @@ export function createWebSocketRpcTransport({
           },
           acceptsProviderResponse: () => true,
           writeResponse: (response) => respond(response),
-          postValidationInterceptor: ({ chainId, respond: respondLocal }) => {
+          postValidationInterceptor: (context) => {
+            const { chainId } = context
             if (!socket.frameExtension || proxiedExtensionRequest) {
               return false
             }
@@ -243,11 +244,11 @@ export function createWebSocketRpcTransport({
 
             const { id, jsonrpc } = rawPayload
             if (rawPayload.method === 'eth_chainId' || requestExtensionConnection) {
-              respondLocal({ id, jsonrpc, result: chainId })
+              context.respond({ id, jsonrpc, result: chainId })
               return true
             }
             if (rawPayload.method === 'net_version') {
-              respondLocal({ id, jsonrpc, result: parseInt(chainId, 16) })
+              context.respond({ id, jsonrpc, result: parseInt(chainId, 16) })
               return true
             }
             return false

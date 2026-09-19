@@ -27,7 +27,7 @@ function isValidOriginName(origin: string) {
 }
 
 export function normalizeRequestChainId(chainId: unknown) {
-  const value = Array.isArray(chainId) ? chainId[0] : chainId
+  const value: unknown = Array.isArray(chainId) ? chainId[0] : chainId
 
   if (typeof value === 'number' && Number.isInteger(value)) {
     return `0x${value.toString(16)}`

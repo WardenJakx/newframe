@@ -204,7 +204,7 @@ it('limits concurrent image work even when many visible tokens request hydration
   )
 
   const images = startImages()
-  Object.keys(tokens).forEach(images.requestTokenImage)
+  Object.keys(tokens).forEach((tokenId) => images.requestTokenImage(tokenId))
 
   expect(downloadImage).toHaveBeenCalledTimes(2)
   resolveDownloads.shift()?.()

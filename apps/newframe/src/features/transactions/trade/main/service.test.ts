@@ -204,7 +204,7 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
     entityRefs: expect.arrayContaining([
       { type: 'transaction', id: `0x${'a'.repeat(64)}` },
       { type: 'order', id: 'order-1' }
-    ])
+    ]) as unknown
   })
 
   const cancel = { type: 'flash.order-cancel' as const, operationId: 'cancel-1', orderId: 'order-cancel' }
@@ -508,7 +508,7 @@ it('keeps cross-chain provider state private and validates both networks and the
     entityRefs: expect.arrayContaining([
       { type: 'chain', id: '1' },
       { type: 'chain', id: '8453' }
-    ])
+    ]) as unknown
   })
 
   const unavailable = await service.quote(request, owner)

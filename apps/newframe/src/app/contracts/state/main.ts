@@ -204,6 +204,7 @@ export const MainSchema = z
 
 export type Main = z.infer<typeof MainSchema>
 export type ActivityRecord = z.infer<typeof ActivityRecordSchema>
+export type OrderRecord = z.infer<typeof OrderRecordSchema>
 
 export function getProfileAccountIds(
   main: Pick<Main, 'accounts' | 'accountOrder'>,

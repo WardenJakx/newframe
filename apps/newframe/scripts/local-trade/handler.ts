@@ -48,9 +48,9 @@ import {
 type LocalOrderStatus = 'accepted' | 'filled' | 'cancelled' | 'rejected'
 
 interface LocalQuoteRecord {
-  body: Record<string, any>
+  body: Record<string, unknown>
   quote: FlashQuote
-  response: Record<string, any>
+  response: Record<string, unknown>
 }
 
 interface LocalOrderRecord {
@@ -89,9 +89,9 @@ class LocalTradeValidationError extends Error {}
 
 const quotes = new Map<string, LocalQuoteRecord>()
 const orders = new Map<string, LocalOrderRecord>()
-const orderListeners = new Set<(order: Record<string, any>) => void>()
+const orderListeners = new Set<(order: Record<string, unknown>) => void>()
 
-export function subscribeLocalTradeOrders(listener: (order: Record<string, any>) => void) {
+export function subscribeLocalTradeOrders(listener: (order: Record<string, unknown>) => void) {
   orderListeners.add(listener)
   return () => orderListeners.delete(listener)
 }
@@ -179,6 +179,10 @@ function objectRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
 }
 
+function stringValue(value: unknown) {
+  return typeof value === 'string' ? value : ''
+}
+
 function cleanOptionalAmount(amount: unknown, label: string) {
   if (amount === undefined || amount === null || amount === '') {
     return ''
@@ -258,13 +262,17 @@ function ensureNoTriggers(triggers: LocalTrigger[], orderType: FlashOrderType) {
   }
 }
 
-function ensureNoTwapFields(body: Record<string, any>, orderType: FlashOrderType) {
+function ensureNoTwapFields(body: Record<string, unknown>, orderType: FlashOrderType) {
   if (body.durationSeconds !== undefined || body.twapBucketCount !== undefined) {
     validationError(`Local Flash TWAP fields are not allowed for ${orderType}`)
   }
 }
 
-function validateOrderParameters(body: Record<string, any>, orderType: FlashOrderType, side: FlashTradeSide) {
+function validateOrderParameters(
+  body: Record<string, unknown>,
+  orderType: FlashOrderType,
+  side: FlashTradeSide
+) {
   const limitNotionalPrice = cleanOptionalAmount(body.limitNotionalPrice, 'limitNotionalPrice')
   const maxSlippage = optionalProtection(body.maxSlippage, 'maxSlippage')
   const maxPriceImpact = optionalProtection(body.maxPriceImpact, 'maxPriceImpact')
@@ -661,7 +669,7 @@ function localBridgeQuoteId({
   contraAsset,
   targetAsset
 }: {
-  body: Record<string, any>
+  body: Record<string, unknown>
   contraAsset: FlashAsset
   targetAsset: FlashAsset
 }) {
@@ -693,11 +701,10 @@ function localBridgeQuoteId({
   return `local-bridge-${createHash('sha256').update(serialized).digest('hex')}`
 }
 
-async function buildQuote(body: Record<string, any>) {
-  const accountAddress = checksumAddress(String(body.funderAddress ?? ''), 'funder')
-  const recipientAddress = body.recipientAddress
-    ? checksumAddress(String(body.recipientAddress), 'recipient')
-    : accountAddress
+async function buildQuote(body: Record<string, unknown>) {
+  const accountAddress = checksumAddress(stringValue(body.funderAddress), 'funder')
+  const recipient = stringValue(body.recipientAddress)
+  const recipientAddress = recipient ? checksumAddress(recipient, 'recipient') : accountAddress
   if (recipientAddress !== accountAddress) {
     validationError('Local Flash recipientAddress must match funderAddress')
   }
@@ -849,6 +856,7 @@ async function buildQuote(body: Record<string, any>) {
 
 function orderResponse(order: LocalOrderRecord) {
   const localParameters = objectRecord(objectRecord(order.quote.raw).local)
+  const triggers: unknown[] = Array.isArray(localParameters.triggers) ? localParameters.triggers : []
   const targetAmount = order.side === 'sell' ? order.quote.inputAmount : order.quote.outputAmount
   const contraAmount = order.side === 'buy' ? order.quote.inputAmount : order.quote.outputAmount
   let closeReason: string | null = 'REASON_FULLY_FILLED'
@@ -889,7 +897,7 @@ function orderResponse(order: LocalOrderRecord) {
           }
         : null,
     limitNotionalPrice: localParameters.limitNotionalPrice ?? null,
-    trigger: Array.isArray(localParameters.triggers) ? (localParameters.triggers[0] ?? null) : null,
+    trigger: triggers[0] ?? null,
     brackets: null,
     maxPriceImpact: localParameters.maxPriceImpact ?? null,
     twapBucketCount: localParameters.twapBucketCount ?? null,
@@ -906,15 +914,15 @@ function orderResponse(order: LocalOrderRecord) {
   }
 }
 
-function validateSubmitBody(quoteRecord: LocalQuoteRecord, body: Record<string, any>) {
+function validateSubmitBody(quoteRecord: LocalQuoteRecord, body: Record<string, unknown>) {
   const quoteBody = quoteRecord.body
   const quoteResponse = quoteRecord.response
   const wrappedAssetValue = objectRecord(quoteResponse.wrap).wrappedAsset
   const wrappedAsset = typeof wrappedAssetValue === 'string' ? wrappedAssetValue : ''
   const expectedTargetAsset =
-    wrappedAsset && quoteBody.side === 'sell' ? wrappedAsset : String(quoteResponse.targetAsset ?? '')
+    wrappedAsset && quoteBody.side === 'sell' ? wrappedAsset : stringValue(quoteResponse.targetAsset)
   const expectedContraAsset =
-    wrappedAsset && quoteBody.side === 'buy' ? wrappedAsset : String(quoteResponse.contraAsset ?? '')
+    wrappedAsset && quoteBody.side === 'buy' ? wrappedAsset : stringValue(quoteResponse.contraAsset)
   const expectedFields: Record<string, unknown> = {
     targetChain: quoteBody.targetChain,
     contraChain: quoteBody.contraChain,
@@ -934,12 +942,12 @@ function validateSubmitBody(quoteRecord: LocalQuoteRecord, body: Record<string, 
     triggers: quoteBody.triggers
   }
 
-  const expectedQuoteId = String(quoteResponse.quoteId ?? '')
-  const expectedBridgeQuoteId = String(quoteResponse.bridgeQuoteId ?? '')
-  if (String(body.quoteId ?? '') !== expectedQuoteId) {
+  const expectedQuoteId = stringValue(quoteResponse.quoteId)
+  const expectedBridgeQuoteId = stringValue(quoteResponse.bridgeQuoteId)
+  if (stringValue(body.quoteId) !== expectedQuoteId) {
     validationError('Local Flash submit quoteId must match the quote response')
   }
-  if (String(body.bridgeQuoteId ?? '') !== expectedBridgeQuoteId) {
+  if (stringValue(body.bridgeQuoteId) !== expectedBridgeQuoteId) {
     validationError('Local Flash submit bridgeQuoteId must match the quote response')
   }
 
@@ -971,17 +979,17 @@ function validateSubmitBody(quoteRecord: LocalQuoteRecord, body: Record<string, 
   }
 }
 
-function storeOrder(quoteRecord: LocalQuoteRecord, body: Record<string, any>) {
+function storeOrder(quoteRecord: LocalQuoteRecord, body: Record<string, unknown>) {
   const now = nowIso()
   const orderId = `local-order-${crypto.randomUUID()}`
   const orderType = quoteRecord.quote.orderType
   const chains = getFlashAssetPairChains(quoteRecord.quote)
   const order: LocalOrderRecord = {
     accountAddress: checksumAddress(
-      String(quoteRecord.body.funderAddress ?? body.funderAddress ?? ''),
+      stringValue(quoteRecord.body.funderAddress) || stringValue(body.funderAddress),
       'funder'
     ),
-    bridgeQuoteId: String(quoteRecord.response.bridgeQuoteId ?? '') || undefined,
+    bridgeQuoteId: stringValue(quoteRecord.response.bridgeQuoteId) || undefined,
     cancellable: orderType !== FLASH_MARKET_ORDER_TYPE || chains.isCrossChain,
     chain: getFlashChainSlug(chains.spentChainId),
     createdAt: now,

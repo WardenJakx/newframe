@@ -14,7 +14,7 @@ export default class SideTrayManager {
   constructor(private readonly store: typeof canonicalStore) {}
 
   private getFrames(): Record<string, Frame> {
-    return this.store.getState().main.frames as Record<string, Frame>
+    return this.store.getState().main.frames
   }
 
   start(registerRenderer: RendererAuthorizationRegistry['registerRenderer']) {

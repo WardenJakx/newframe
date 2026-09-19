@@ -20,7 +20,7 @@ export function AirGapSigning({
   capability: AccountsCapability
   camera: QrCameraCapability
   reference: AirGapRequestReference
-  dismiss(): void
+  dismiss: () => void
 }) {
   const { signerId, requestId, sessionId } = reference
   const { live, active, progress } = useWalletSelector(

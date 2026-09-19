@@ -3,7 +3,14 @@ import { expect, it } from 'bun:test'
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 
 import { signerFixture, transaction, vectors } from '../../../../../test/integration/fixtures/airgap.js'
+import { TypedDataV4Schema } from '../../../../app/contracts/operations.js'
 import type { TypedMessage } from '../../../../features/requests/contract/requests.js'
+
+function parseTypedData(value: string): TypedMessage<SignTypedDataVersion.V4>['data'] {
+  return TypedDataV4Schema.parse(
+    JSON.parse(value)
+  ) as unknown as TypedMessage<SignTypedDataVersion.V4>['data']
+}
 
 it('requires an approving account context and valid derivation index before any exchange', () => {
   const fixture = signerFixture()
@@ -32,7 +39,7 @@ for (const vector of vectors.messages) {
       fixture.signer.signMessage(0, message, done, fixture.owner.context)
     } else {
       const typedMessage: TypedMessage<SignTypedDataVersion.V4> = {
-        data: JSON.parse(Buffer.from(vector.signData, 'hex').toString('utf8')),
+        data: parseTypedData(Buffer.from(vector.signData, 'hex').toString('utf8')),
         version: SignTypedDataVersion.V4
       }
       fixture.signer.signTypedData(0, typedMessage, done, fixture.owner.context)
@@ -127,10 +134,10 @@ it('rejects unsupported transaction types, creation and typed-data versions befo
   ]) {
     fixture.signer.signTransaction(0, raw, (error) => errors.push(error), fixture.owner.context)
   }
-  const data = {
+  const data: TypedMessage<SignTypedDataVersion.V3> = {
     version: SignTypedDataVersion.V3,
-    data: JSON.parse(Buffer.from(vectors.messages[1].signData, 'hex').toString())
-  } as TypedMessage
+    data: parseTypedData(Buffer.from(vectors.messages[1].signData, 'hex').toString())
+  }
   fixture.signer.signTypedData(0, data, (error) => errors.push(error), fixture.owner.context)
   expect(errors).toHaveLength(4)
   expect(errors.every((error) => error instanceof Error)).toBe(true)

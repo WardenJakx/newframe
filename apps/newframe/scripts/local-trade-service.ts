@@ -38,8 +38,12 @@ function sendError(socket: ServerWebSocket<LocalFlashSocketData>, code: string, 
   send(socket, { type: 'error', code, message })
 }
 
-function subscribe(socket: ServerWebSocket<LocalFlashSocketData>, frame: Record<string, any>) {
-  const apiKey = String(frame.apiKey ?? '').trim()
+function stringValue(value: unknown) {
+  return typeof value === 'string' ? value : ''
+}
+
+function subscribe(socket: ServerWebSocket<LocalFlashSocketData>, frame: Record<string, unknown>) {
+  const apiKey = stringValue(frame.apiKey).trim()
   if (!apiKey || (socket.data.apiKey && socket.data.apiKey !== apiKey)) {
     sendError(socket, 'UNAUTHORIZED', 'apiKey does not match this connection')
     return
@@ -47,9 +51,7 @@ function subscribe(socket: ServerWebSocket<LocalFlashSocketData>, frame: Record<
   socket.data.apiKey = apiKey
 
   if (frame.channel === 'orders') {
-    const funderAddress = String(frame.funderAddress ?? '')
-      .trim()
-      .toLowerCase()
+    const funderAddress = stringValue(frame.funderAddress).trim().toLowerCase()
     if (!funderAddress) {
       sendError(socket, 'FUNDER_REQUIRED', 'orders subscriptions require funderAddress')
       return
@@ -76,7 +78,7 @@ function subscribe(socket: ServerWebSocket<LocalFlashSocketData>, frame: Record<
     return
   }
 
-  sendError(socket, 'UNKNOWN_CHANNEL', `unknown channel: ${String(frame.channel ?? '')}`)
+  sendError(socket, 'UNKNOWN_CHANNEL', `unknown channel: ${stringValue(frame.channel)}`)
 }
 
 const server = Bun.serve<LocalFlashSocketData>({
@@ -103,10 +105,13 @@ const server = Bun.serve<LocalFlashSocketData>({
       sockets.add(socket)
     },
     message(socket, message) {
-      let frame: Record<string, any>
+      let frame: Record<string, unknown>
       try {
-        const parsed = JSON.parse(String(message))
-        frame = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
+        const parsed: unknown = JSON.parse(String(message))
+        frame =
+          parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+            ? (parsed as Record<string, unknown>)
+            : {}
       } catch {
         sendError(socket, 'BAD_JSON', 'message must be valid JSON')
         return
@@ -117,12 +122,12 @@ const server = Bun.serve<LocalFlashSocketData>({
         return
       }
       if (frame.type === 'unsubscribe') {
-        socket.data.subscriptions.delete(String(frame.channel ?? ''))
+        socket.data.subscriptions.delete(stringValue(frame.channel))
         acknowledge(socket)
         return
       }
 
-      sendError(socket, 'UNKNOWN_TYPE', `unknown message type: ${String(frame.type ?? '')}`)
+      sendError(socket, 'UNKNOWN_TYPE', `unknown message type: ${stringValue(frame.type)}`)
     },
     close(socket) {
       sockets.delete(socket)
@@ -131,7 +136,7 @@ const server = Bun.serve<LocalFlashSocketData>({
 })
 
 subscribeLocalTradeOrders((order) => {
-  const funderAddress = String(order.funderAddress ?? order.accountAddress ?? '').toLowerCase()
+  const funderAddress = (stringValue(order.funderAddress) || stringValue(order.accountAddress)).toLowerCase()
   for (const socket of sockets) {
     if (!socket.data.subscriptions.has('orders') || socket.data.funderAddress !== funderAddress) {
       continue

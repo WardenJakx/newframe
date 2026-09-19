@@ -100,7 +100,7 @@ it('opens owner QR for a future Safe proposal and follows publication retry with
     chainId: 1,
     safeTxHash: hash,
     ownerId: owner.accountId,
-    operationId: expect.any(String)
+    operationId: expect.any(String) as string
   })
   const progress = (phase: string, outcome: 'pending' | 'failed' | 'succeeded' = 'pending') => {
     const current = fixture.state.wallet.getState()
@@ -1069,7 +1069,9 @@ it('keeps matching Safe checks silent and exposes raw integer arguments, confirm
   expect(capabilities.external.writeText).toHaveBeenCalledWith(hash)
   await user.click(screen.getByRole('button', { name: 'Raw transaction' }))
   await user.click(screen.getByRole('button', { name: 'Copy raw transaction' }))
-  expect(capabilities.external.writeText).toHaveBeenLastCalledWith(expect.stringContaining('"nonce": "3"'))
+  expect(capabilities.external.writeText).toHaveBeenLastCalledWith(
+    expect.stringContaining('"nonce": "3"') as unknown
+  )
   expectSafeSubmissionDisabled()
 })
 
