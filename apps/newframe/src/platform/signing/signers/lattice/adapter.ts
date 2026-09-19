@@ -101,9 +101,9 @@ export default class LatticeAdapter extends SignerAdapter {
           }
           if (baseUrl !== lattice.connection.baseUrl) {
             // if any connection settings have changed, re-connect
-            this.reload(lattice)
+            void this.reload(lattice)
           } else if (reloadAddresses) {
-            lattice.deriveAddresses()
+            void lattice.deriveAddresses()
           } else if (needsUpdate) {
             this.emit('update', lattice)
           }
@@ -147,7 +147,7 @@ export default class LatticeAdapter extends SignerAdapter {
               // client is already paired between sessions
               const { derivation } = getLatticeSettings(this.store, deviceId)
 
-              lattice.deriveAddresses(derivation)
+              void lattice.deriveAddresses(derivation)
             }
           })
 
@@ -159,7 +159,7 @@ export default class LatticeAdapter extends SignerAdapter {
 
             if (hasActiveWallet) {
               const { derivation } = getLatticeSettings(this.store, deviceId)
-              lattice.deriveAddresses(derivation)
+              void lattice.deriveAddresses(derivation)
             }
           })
 

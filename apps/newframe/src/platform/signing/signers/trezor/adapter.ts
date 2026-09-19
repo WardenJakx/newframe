@@ -46,7 +46,7 @@ export default class TrezorSignerAdapter extends SignerAdapter {
             trezor.derivation = trezorDerivation
 
             if (trezor.status === Status.OK) {
-              trezor.deriveAddresses()
+              void trezor.deriveAddresses()
             }
           }
         })
@@ -83,7 +83,7 @@ export default class TrezorSignerAdapter extends SignerAdapter {
         const derivationTimeout = setTimeout(() => {
           this.derivationTimeouts.delete(derivationTimeout)
           if (this.opened) {
-            trezor.deriveAddresses()
+            void trezor.deriveAddresses()
           }
         }, 200)
         this.derivationTimeouts.add(derivationTimeout)
@@ -167,7 +167,7 @@ export default class TrezorSignerAdapter extends SignerAdapter {
       })
     })
 
-    this.bridge.open()
+    void this.bridge.open()
     super.open()
   }
 
@@ -244,11 +244,11 @@ export default class TrezorSignerAdapter extends SignerAdapter {
 
     if (trezor.device) {
       // this Trezor is already open, just reset and derive addresses again
-      trezor.open(trezor.device).then(() => trezor.deriveAddresses())
+      void trezor.open(trezor.device).then(() => trezor.deriveAddresses())
     } else {
       // this Trezor is not open because it was never connected,
       // attempt to force a reload by calling this method
-      this.bridge.getFeatures({ device: { path: trezor.path as DeviceUniquePath } })
+      void this.bridge.getFeatures({ device: { path: trezor.path as DeviceUniquePath } })
     }
   }
 

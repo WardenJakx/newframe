@@ -152,7 +152,7 @@ export const createFromKeystore = (
     return
   }
   const signer = new RingSigner(undefined, vault)
-  signer.addKeystore(keystore, keystorePassword, vaultKey, (error) => {
+  void signer.addKeystore(keystore, keystorePassword, vaultKey, (error) => {
     if (error) {
       return cb(error, undefined)
     }
