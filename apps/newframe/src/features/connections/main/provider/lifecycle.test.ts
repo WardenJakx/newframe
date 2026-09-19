@@ -42,7 +42,7 @@ function createProviderFixture(chainId?: number, start = false) {
   }) as unknown as Chains
   const store = createCanonicalStore(memoryStorage).store
   if (chainId) {
-    store.setState((state: any) => {
+    store.setState((state) => {
       state.main.networks.ethereum[chainId] = { ...state.main.networks.ethereum[1], id: chainId, on: true }
     })
   }

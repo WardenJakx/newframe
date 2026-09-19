@@ -5,9 +5,47 @@ import createCanonicalStore from '../../state-store/createCanonicalStore'
 import createInitialState from '../../state-store/state'
 import { StateMessageChannel } from '../../state-sync/contract/protocol'
 import { projectRendererState } from '../../state-sync/main/projections'
+import type { AuthorizationContext } from './authorization'
 import { createStateStream, type StateStream } from './stateStream'
 
-const authorizeRenderer = mock()
+type TestProjectedState = {
+  assetRates: Record<string, unknown>
+  accountOrder: string[]
+  accounts: Record<string, Record<string, unknown> & { requests?: Record<string, Record<string, unknown>> }>
+  networksMeta: { ethereum: Record<number, Record<string, unknown>> }
+  operations: Record<string, unknown>
+  orders: Record<string, unknown>
+  portfolioApiKeyConfigured: boolean
+  selected: Record<string, unknown>
+  signers: Record<string, Record<string, unknown>>
+  tokens: unknown
+  tray: { homeCommand: unknown }
+  view: Record<string, unknown>
+  windows: { panel: { nav: unknown[] } }
+}
+
+type TestStateMessage = {
+  changes: Partial<TestProjectedState>
+  state: TestProjectedState
+  streamId: string
+}
+
+const authorizeRenderer = mock(
+  (_event: Electron.IpcMainInvokeEvent): AuthorizationContext | undefined => undefined
+)
+
+function authorization(
+  clientType: AuthorizationContext['clientType'],
+  webContentsId: number,
+  windowInstanceId = `window-${webContentsId}`
+): AuthorizationContext {
+  return {
+    clientType,
+    entrypoint: clientType === 'wallet-ui' ? 'tray' : 'sidetray',
+    webContentsId,
+    windowInstanceId
+  }
+}
 
 let stateStream: StateStream
 let connectState: StateStream['connectState']
@@ -35,7 +73,7 @@ function renderer(id = 1) {
     id,
     isDestroyed: mock(() => false),
     once: mock(),
-    send: mock()
+    send: mock((_channel: string, _message: TestStateMessage) => {})
   }
 
   return { event: { sender } as unknown as Electron.IpcMainInvokeEvent, sender }
@@ -160,7 +198,7 @@ describe('renderer state stream', () => {
       selected: { ...state.selected, futureSelection: 'must-not-cross-ipc' },
       view: { ...state.view, futureViewState: 'must-not-cross-ipc' }
     } as unknown as Parameters<typeof store.setState>[0])
-    authorizeRenderer.mockReturnValue({ clientType: 'wallet-ui', webContentsId: sender.id })
+    authorizeRenderer.mockReturnValue(authorization('wallet-ui', sender.id))
 
     expect(connectState(event)).toEqual({ ok: true })
     expect(sender.send).toHaveBeenCalledTimes(1)
@@ -174,9 +212,13 @@ describe('renderer state stream', () => {
     expect(snapshot.state).not.toHaveProperty('futureCredential')
     expect(snapshot.state).not.toHaveProperty('portfolioApiKey')
     expect(snapshot.state.portfolioApiKeyConfigured).toBe(true)
-    expect(snapshot.state.accounts[accountId]).not.toHaveProperty('futureCredential')
-    expect(snapshot.state.accounts[accountId].requests.request).not.toHaveProperty('futureCredential')
-    expect(snapshot.state.accounts[accountId].requests.request).not.toHaveProperty('authorization')
+    const projectedAccount = snapshot.state.accounts[accountId]
+    if (!projectedAccount?.requests) {
+      throw new Error('Expected projected account')
+    }
+    expect(projectedAccount).not.toHaveProperty('futureCredential')
+    expect(projectedAccount.requests.request).not.toHaveProperty('futureCredential')
+    expect(projectedAccount.requests.request).not.toHaveProperty('authorization')
     expect(snapshot.state.signers.signer).not.toHaveProperty('futureCredential')
     expect(snapshot.state.windows).not.toHaveProperty('frames')
     expect(snapshot.state.windows).not.toHaveProperty('futureWindowState')
@@ -212,7 +254,7 @@ describe('renderer state stream', () => {
 
   it('publishes a wallet asset-rates-only mutation as only the assetRates slice', () => {
     const { event, sender } = renderer()
-    authorizeRenderer.mockReturnValue({ clientType: 'wallet-ui', webContentsId: sender.id })
+    authorizeRenderer.mockReturnValue(authorization('wallet-ui', sender.id))
     expect(connectState(event)).toEqual({ ok: true })
 
     store.getState().setAssetRates({
@@ -271,10 +313,9 @@ describe('renderer state stream', () => {
     })
     const wallet = renderer(1)
     const sideTray = renderer(2)
-    authorizeRenderer.mockImplementation((event) => ({
-      clientType: event.sender.id === 1 ? 'wallet-ui' : 'sidetray',
-      webContentsId: event.sender.id
-    }))
+    authorizeRenderer.mockImplementation((event) =>
+      authorization(event.sender.id === 1 ? 'wallet-ui' : 'sidetray', event.sender.id)
+    )
     expect(connectState(wallet.event)).toEqual({ ok: true })
     expect(connectState(sideTray.event)).toEqual({ ok: true })
 
@@ -299,7 +340,7 @@ describe('renderer state stream', () => {
 
   it('does not publish a batch when only excluded Electron secrets change', () => {
     const { event, sender } = renderer()
-    authorizeRenderer.mockReturnValue({ clientType: 'wallet-ui', webContentsId: sender.id })
+    authorizeRenderer.mockReturnValue(authorization('wallet-ui', sender.id))
     expect(connectState(event)).toEqual({ ok: true })
 
     store.getState().updateLattice('device', { privKey: 'another-secret' })
@@ -313,7 +354,7 @@ describe('renderer state stream', () => {
 
   it('invalidates a stream when a changed projection cannot be validated', () => {
     const { event, sender } = renderer()
-    authorizeRenderer.mockReturnValue({ clientType: 'wallet-ui', webContentsId: sender.id })
+    authorizeRenderer.mockReturnValue(authorization('wallet-ui', sender.id))
     expect(connectState(event)).toEqual({ ok: true })
 
     const state = store.getState()
@@ -400,7 +441,7 @@ describe('renderer state stream', () => {
     store.setState({ ...state, ...actions() } as unknown as Parameters<typeof store.setState>[0], true)
 
     const { event, sender } = renderer(2)
-    authorizeRenderer.mockReturnValue({ clientType: 'sidetray', webContentsId: sender.id })
+    authorizeRenderer.mockReturnValue(authorization('sidetray', sender.id))
     expect(connectState(event)).toEqual({ ok: true })
 
     const snapshot = sender.send.mock.calls[0][1]
@@ -474,11 +515,9 @@ describe('renderer state stream', () => {
     })
     store.getState().operationStarted(firstOwner, pending('first-operation'))
     store.getState().operationStarted(secondOwner, pending('second-operation'))
-    authorizeRenderer.mockImplementation((event) => ({
-      clientType: 'wallet-ui',
-      webContentsId: event.sender.id,
-      windowInstanceId: event.sender.id === 11 ? 'wallet-one' : 'wallet-two'
-    }))
+    authorizeRenderer.mockImplementation((event) =>
+      authorization('wallet-ui', event.sender.id, event.sender.id === 11 ? 'wallet-one' : 'wallet-two')
+    )
 
     expect(connectState(first.event)).toEqual({ ok: true })
     expect(connectState(second.event)).toEqual({ ok: true })
@@ -507,7 +546,7 @@ describe('renderer state stream', () => {
 
   it('removes a stream as soon as its WebContents is destroyed', () => {
     const { event, sender } = renderer(3)
-    authorizeRenderer.mockReturnValue({ clientType: 'wallet-ui', webContentsId: sender.id })
+    authorizeRenderer.mockReturnValue(authorization('wallet-ui', sender.id))
     expect(connectState(event)).toEqual({ ok: true })
 
     const destroyed = sender.once.mock.calls[0][1] as () => void
@@ -521,7 +560,7 @@ describe('renderer state stream', () => {
 
   it('disposes IPC handlers, store subscriptions, and active connections together', () => {
     const { event, sender } = renderer(4)
-    authorizeRenderer.mockReturnValue({ clientType: 'wallet-ui', webContentsId: sender.id })
+    authorizeRenderer.mockReturnValue(authorization('wallet-ui', sender.id))
     expect(connectState(event)).toEqual({ ok: true })
 
     stateStream.dispose()

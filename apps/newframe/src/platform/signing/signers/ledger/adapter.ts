@@ -12,11 +12,14 @@ import Ledger, { Status } from './Ledger/index.js'
 function updateDerivation(
   store: typeof canonicalStore,
   ledger: Ledger,
-  derivation = store.getState().main.ledger.derivation,
+  derivation = (store.getState().main.ledger as { derivation: Derivation }).derivation,
   accountLimit = 0
 ) {
   const liveAccountLimit =
-    accountLimit || (derivation === Derivation.live ? store.getState().main.ledger.liveAccountLimit : 0)
+    accountLimit ||
+    (derivation === Derivation.live
+      ? (store.getState().main.ledger as { liveAccountLimit: number }).liveAccountLimit
+      : 0)
 
   ledger.derivation = derivation
   ledger.accountLimit = liveAccountLimit
@@ -55,7 +58,10 @@ export default class LedgerSignerAdapter extends SignerAdapter {
 
     this.unsubscribeDerivation?.()
     this.unsubscribeDerivation = this.store.subscribe(
-      (state) => [state.main.ledger.derivation, state.main.ledger.liveAccountLimit] as const,
+      (state) => {
+        const settings = state.main.ledger as { derivation: Derivation; liveAccountLimit: number }
+        return [settings.derivation, settings.liveAccountLimit] as const
+      },
       ([ledgerDerivation, liveAccountLimit]) => {
         Object.values(this.knownSigners).forEach((ledger) => {
           if (
@@ -144,8 +150,12 @@ export default class LedgerSignerAdapter extends SignerAdapter {
     this.disconnections = pendingDisconnections
 
     detachedLedgers.forEach((ledger) => this.handleDisconnectedDevice(ledger))
-    reconnections.forEach((disconnection) => this.handleReconnectedDevice(disconnection))
-    attachedDevices.forEach((device) => this.handleAttachedDevice(device))
+    reconnections.forEach((disconnection) => {
+      void this.handleReconnectedDevice(disconnection)
+    })
+    attachedDevices.forEach((device) => {
+      void this.handleAttachedDevice(device)
+    })
   }
 
   private async handleAttachedDevice(device: ConnectedDevice) {
@@ -167,7 +177,7 @@ export default class LedgerSignerAdapter extends SignerAdapter {
     })
 
     ledger.on('unlock', () => {
-      ledger.connect()
+      void ledger.connect()
     })
 
     this.knownSigners[ledger.devicePath] = ledger
@@ -269,7 +279,7 @@ export default class LedgerSignerAdapter extends SignerAdapter {
     log.info(`Ledger ${ledger.model} disconnected from ${ledger.devicePath}`)
     this.resetReconnect(ledger)
 
-    ledger.disconnect()
+    void ledger.disconnect()
 
     // when a user exits the eth app, it takes a few seconds for the
     // main ledger to reconnect via USB, so attempt to wait for this event

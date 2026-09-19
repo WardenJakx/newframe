@@ -9,6 +9,8 @@ import {
   orderAssetAmounts,
   orderContraAmount,
   orderContraNotional,
+  orderErrorMessage,
+  orderJson,
   orderPairIntent,
   orderTargetNotional,
   orderStatusLabel
@@ -39,6 +41,20 @@ describe('orderModel', () => {
     expect(orderPairIntent(order)).toContain('ETH')
     expect(orderPairIntent(order)).toContain('USDC')
     expect(formatOrderAmount('1.234567891')).toBe('1.234568')
+  })
+
+  it('formats only supported order values and error messages', () => {
+    expect(formatOrderAmount('market')).toBe('market')
+    expect(formatOrderAmount({ toString: () => '1.5' })).toBe('')
+    expect(orderJson({ side: 'buy' })).toBe('{\n  "side": "buy"\n}')
+
+    const circular: Record<string, unknown> = {}
+    circular.self = circular
+    expect(orderJson(circular)).toBe('')
+    expect(orderJson(Symbol('unsupported'))).toBe('')
+    expect(orderErrorMessage({ message: 'Direct error' }, 'Fallback')).toBe('Direct error')
+    expect(orderErrorMessage({ error: { message: 'Nested error' } }, 'Fallback')).toBe('Nested error')
+    expect(orderErrorMessage({ message: { detail: 'Unsafe' } }, 'Fallback')).toBe('Fallback')
   })
 
   it('maps input and output amounts to their visible assets', () => {

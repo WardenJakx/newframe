@@ -3,6 +3,7 @@ import log from 'electron-log'
 
 import type canonicalStore from '../../../state-store/index.js'
 import { SignerAdapter } from '../adapters.js'
+import type { Derivation } from '../Signer/derive.js'
 import TrezorBridge from './bridge.js'
 import Trezor, { Status } from './Trezor.js'
 
@@ -37,7 +38,7 @@ export default class TrezorSignerAdapter extends SignerAdapter {
 
     this.unsubscribeDerivation?.()
     this.unsubscribeDerivation = this.store.subscribe(
-      (state) => state.main.trezor.derivation,
+      (state) => (state.main.trezor as { derivation: Derivation }).derivation,
       (trezorDerivation) => {
         Object.values(this.knownSigners).forEach((signerInfo) => {
           const trezor = signerInfo.signer
@@ -45,7 +46,7 @@ export default class TrezorSignerAdapter extends SignerAdapter {
             trezor.derivation = trezorDerivation
 
             if (trezor.status === Status.OK) {
-              trezor.deriveAddresses()
+              void trezor.deriveAddresses()
             }
           }
         })
@@ -63,32 +64,36 @@ export default class TrezorSignerAdapter extends SignerAdapter {
       }
     })
 
-    this.bridge.on('trezor:connect', async (device: TrezorDevice) => {
-      const id = Trezor.generateId(device.path)
-      const trezor = this.knownSigners[id]?.signer || this.initTrezor(device.path)
+    this.bridge.on('trezor:connect', (device: TrezorDevice) => {
+      void (async () => {
+        const id = Trezor.generateId(device.path)
+        const trezor = this.knownSigners[id]?.signer || this.initTrezor(device.path)
 
-      trezor.derivation = this.store.getState().main.trezor.derivation
+        trezor.derivation = (this.store.getState().main.trezor as { derivation: Derivation }).derivation
 
-      try {
-        await trezor.open(device)
+        try {
+          await trezor.open(device)
 
-        const version = [trezor.appVersion.major, trezor.appVersion.minor, trezor.appVersion.patch].join('.')
-        log.info(`Trezor ${trezor.id} connected: ${trezor.model}, firmware v${version}`)
+          const version = [trezor.appVersion.major, trezor.appVersion.minor, trezor.appVersion.patch].join(
+            '.'
+          )
+          log.info(`Trezor ${trezor.id} connected: ${trezor.model}, firmware v${version}`)
 
-        // arbitrary delay to attempt to minimize message conflicts on first connection
-        if (!this.opened) {
-          return
-        }
-        const derivationTimeout = setTimeout(() => {
-          this.derivationTimeouts.delete(derivationTimeout)
-          if (this.opened) {
-            trezor.deriveAddresses()
+          // arbitrary delay to attempt to minimize message conflicts on first connection
+          if (!this.opened) {
+            return
           }
-        }, 200)
-        this.derivationTimeouts.add(derivationTimeout)
-      } catch (e) {
-        log.error('could not open Trezor', e)
-      }
+          const derivationTimeout = setTimeout(() => {
+            this.derivationTimeouts.delete(derivationTimeout)
+            if (this.opened) {
+              void trezor.deriveAddresses()
+            }
+          }, 200)
+          this.derivationTimeouts.add(derivationTimeout)
+        } catch (e) {
+          log.error('could not open Trezor', e)
+        }
+      })()
     })
 
     this.bridge.on('trezor:disconnect', (device: TrezorDevice) => {
@@ -166,7 +171,7 @@ export default class TrezorSignerAdapter extends SignerAdapter {
       })
     })
 
-    this.bridge.open()
+    void this.bridge.open()
     super.open()
   }
 
@@ -243,11 +248,11 @@ export default class TrezorSignerAdapter extends SignerAdapter {
 
     if (trezor.device) {
       // this Trezor is already open, just reset and derive addresses again
-      trezor.open(trezor.device).then(() => trezor.deriveAddresses())
+      void trezor.open(trezor.device).then(() => trezor.deriveAddresses())
     } else {
       // this Trezor is not open because it was never connected,
       // attempt to force a reload by calling this method
-      this.bridge.getFeatures({ device: { path: trezor.path as DeviceUniquePath } })
+      void this.bridge.getFeatures({ device: { path: trezor.path as DeviceUniquePath } })
     }
   }
 

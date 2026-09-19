@@ -103,9 +103,11 @@ async function flashRequest(path: string, init: RequestInit) {
     ...init,
     headers
   })
-  const body = (await response.json()) as Record<string, any>
+  const body = (await response.json()) as Record<string, unknown>
   if (!response.ok) {
-    throw new Error(body.message ?? `Local Flash request failed with ${response.status}`)
+    throw new Error(
+      typeof body.message === 'string' ? body.message : `Local Flash request failed with ${response.status}`
+    )
   }
   return body
 }
@@ -128,7 +130,10 @@ async function submitExternalFlashOrder(credentials: AgentCredentials) {
     method: 'POST',
     body: JSON.stringify(quoteRequest)
   })
-  const evmOrderTypedData = String(quote.evm?.orderTypedData ?? '')
+  const evm = quote.evm
+  const evmOrderTypedData = String(
+    evm && typeof evm === 'object' && 'orderTypedData' in evm ? evm.orderTypedData : ''
+  )
   if (!evmOrderTypedData) {
     throw new Error('Local Flash quote omitted its order typed data')
   }
@@ -150,7 +155,7 @@ async function submitExternalFlashOrder(credentials: AgentCredentials) {
       evmOrderTypedData
     })
   })
-  const orderId = String(submitted.orderId ?? '')
+  const orderId = typeof submitted.orderId === 'string' ? submitted.orderId : ''
   if (!orderId) {
     throw new Error('Local Flash submit omitted its order id')
   }

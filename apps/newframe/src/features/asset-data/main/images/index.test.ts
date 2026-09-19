@@ -129,6 +129,40 @@ it('does not download images that already match their configured sources', async
   images.dispose()
 })
 
+it('ignores object image URLs instead of stringifying them', async () => {
+  const address = '0x1111111111111111111111111111111111111111'
+  const tokenId = `1:${address}`
+  const state = {
+    main: {
+      origins: {},
+      tokens: {
+        byId: {
+          [tokenId]: {
+            address,
+            chainId: 1,
+            decimals: 18,
+            logoURI: { toString: () => 'https://cdn.example/token.png' },
+            name: 'Token',
+            symbol: 'TKN'
+          }
+        }
+      },
+      networksMeta: { ethereum: {} }
+    },
+    setNativeCurrencyImage: mock(),
+    setNetworkImage: mock(),
+    setTokenImage: mock()
+  }
+  getState.mockReturnValue(state)
+
+  const images = startImages()
+  images.requestTokenImage(tokenId)
+  await flushHydration()
+
+  expect(downloadImage).not.toHaveBeenCalled()
+  images.dispose()
+})
+
 it('limits concurrent image work even when many visible tokens request hydration together', async () => {
   const tokens = Object.fromEntries(
     Array.from({ length: 5 }, (_, index) => {

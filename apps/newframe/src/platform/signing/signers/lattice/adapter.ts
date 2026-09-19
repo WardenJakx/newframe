@@ -22,19 +22,26 @@ type CreateLattice = (deviceId: string, deviceName: string, tag: string) => Latt
 
 function getLatticeSettings(store: typeof canonicalStore, deviceId: string): LatticeSettings {
   const { baseUrl, derivation, accountLimit } = getGlobalLatticeSettings(store)
-  const device = store.getState().main.lattice[deviceId]
+  const devices = store.getState().main.lattice as Record<
+    string,
+    Omit<LatticeSettings, keyof GlobalLatticeSettings>
+  >
+  const device = devices[deviceId]
 
   return { ...device, baseUrl, derivation, accountLimit }
 }
 
 function getGlobalLatticeSettings(store: typeof canonicalStore): GlobalLatticeSettings {
-  const accountLimit = store.getState().main.latticeSettings.accountLimit
-  const derivation = store.getState().main.latticeSettings.derivation
-  const endpointMode = store.getState().main.latticeSettings.endpointMode
-  const baseUrl =
-    endpointMode === 'custom'
-      ? store.getState().main.latticeSettings.endpointCustom
-      : 'https://signing.gridpl.us'
+  const settings = store.getState().main.latticeSettings as {
+    accountLimit: number
+    derivation: Derivation
+    endpointCustom: string
+    endpointMode: string
+  }
+  const accountLimit = settings.accountLimit
+  const derivation = settings.derivation
+  const endpointMode = settings.endpointMode
+  const baseUrl = endpointMode === 'custom' ? settings.endpointCustom : 'https://signing.gridpl.us'
 
   return { baseUrl, derivation, accountLimit }
 }
@@ -67,7 +74,7 @@ export default class LatticeAdapter extends SignerAdapter {
 
     this.unsubscribeSettings?.()
     this.unsubscribeSettings = this.store.subscribe(
-      (state) => state.main.latticeSettings,
+      (state) => state.main.latticeSettings as unknown,
       () => {
         const { baseUrl, derivation, accountLimit } = getGlobalLatticeSettings(this.store)
 
@@ -94,9 +101,9 @@ export default class LatticeAdapter extends SignerAdapter {
           }
           if (baseUrl !== lattice.connection.baseUrl) {
             // if any connection settings have changed, re-connect
-            this.reload(lattice)
+            void this.reload(lattice)
           } else if (reloadAddresses) {
-            lattice.deriveAddresses()
+            void lattice.deriveAddresses()
           } else if (needsUpdate) {
             this.emit('update', lattice)
           }
@@ -140,7 +147,7 @@ export default class LatticeAdapter extends SignerAdapter {
               // client is already paired between sessions
               const { derivation } = getLatticeSettings(this.store, deviceId)
 
-              lattice.deriveAddresses(derivation)
+              void lattice.deriveAddresses(derivation)
             }
           })
 
@@ -152,7 +159,7 @@ export default class LatticeAdapter extends SignerAdapter {
 
             if (hasActiveWallet) {
               const { derivation } = getLatticeSettings(this.store, deviceId)
-              lattice.deriveAddresses(derivation)
+              void lattice.deriveAddresses(derivation)
             }
           })
 

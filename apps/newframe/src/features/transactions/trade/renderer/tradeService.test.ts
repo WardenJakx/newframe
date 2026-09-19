@@ -38,11 +38,13 @@ it('maps semantic trade actions to their exact catalog operations', async () => 
       targetAsset: FLASH_WETH_ASSET
     }
   })
-  expect(host.executeCommand.mock.calls.map(([command]) => command)).toEqual([
-    { type: 'request.create', operationId: 'operation-1', quoteId: 'quote-1', action: 'approve' },
-    { type: 'trade.submit', operationId: 'operation-1', quoteId: 'quote-1' },
-    { type: 'operation.cancel', operationId: 'operation-1' },
-    { type: 'sidetray.close' },
-    { type: 'token.image-hydrate', tokenId: '1:0x1111111111111111111111111111111111111111' }
-  ])
+  expect(host.executeCommand.mock.calls).toEqual(
+    [
+      { type: 'request.create', operationId: 'operation-1', quoteId: 'quote-1', action: 'approve' },
+      { type: 'trade.submit', operationId: 'operation-1', quoteId: 'quote-1' },
+      { type: 'operation.cancel', operationId: 'operation-1' },
+      { type: 'sidetray.close' },
+      { type: 'token.image-hydrate', tokenId: '1:0x1111111111111111111111111111111111111111' }
+    ].map((command) => [command])
+  )
 })

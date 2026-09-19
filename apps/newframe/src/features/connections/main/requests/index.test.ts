@@ -2,16 +2,17 @@ import { describe, expect, it } from 'bun:test'
 
 import { mapRequest as mapRequestTyped } from './index'
 
-// real function under test, exercised with loose payload fixtures
-const mapRequest = mapRequestTyped as any
+// Real function under test, exercised with deliberately loose payload fixtures.
+const mapRequest = (request: unknown) => mapRequestTyped(request as RPCRequestPayload)
 
 describe('#mapRequest', () => {
   it('passes through a request that does not require mapping', () => {
-    const request = {
+    const request: RPCRequestPayload = {
       jsonrpc: '2.0',
       id: 4,
       method: 'eth_signTransaction',
-      params: ['atx']
+      params: ['atx'],
+      _origin: 'test'
     }
 
     expect(mapRequest(request)).toStrictEqual(request)
@@ -77,9 +78,9 @@ describe('#mapRequest', () => {
         }
       }
 
-      expect(() => mapRequest(req)).toThrow(
-        new Error('Chain ID must be CAIP-2 chain representation and start with "eip155"')
-      )
+      expect(() => {
+        mapRequest(req)
+      }).toThrow(new Error('Chain ID must be CAIP-2 chain representation and start with "eip155"'))
     })
 
     it('does not map a request with no chain id param', () => {
@@ -93,7 +94,9 @@ describe('#mapRequest', () => {
         }
       }
 
-      expect(() => mapRequest(req)).toThrow(new Error('chainId parameter is required'))
+      expect(() => {
+        mapRequest(req)
+      }).toThrow(new Error('chainId parameter is required'))
     })
 
     it('does not map a request with no session param', () => {
@@ -107,7 +110,9 @@ describe('#mapRequest', () => {
         }
       }
 
-      expect(() => mapRequest(req)).toThrow(new Error('session parameter is required'))
+      expect(() => {
+        mapRequest(req)
+      }).toThrow(new Error('session parameter is required'))
     })
   })
 

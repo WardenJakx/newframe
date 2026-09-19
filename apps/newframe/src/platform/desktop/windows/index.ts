@@ -92,7 +92,8 @@ const systemTrayEventHandlers: SystemTrayEventHandlers = {
   clickShow: () => app.show()
 }
 const systemTray = new SystemTray(systemTrayEventHandlers)
-const getDisplaySummonShortcut = () => getStore().getState().main.shortcuts.altSlash
+const getDisplaySummonShortcut = () =>
+  (getStore().getState().main.shortcuts as { altSlash: boolean }).altSlash
 
 const detectMouse = () => {
   const m1 = screen.getCursorScreenPoint()
@@ -459,12 +460,12 @@ const initialize = () => {
   const state = getStore().getState()
   updateHomeCommand(state.tray.homeCommand)
   updateNotification(state.view.notify)
-  updateSummonShortcut(state.main.shortcuts.summon)
+  updateSummonShortcut((state.main.shortcuts as { summon: Shortcut }).summon)
 
   stateUnsubscribers = [
     getStore().subscribe((next) => next.tray.homeCommand, updateHomeCommand),
     getStore().subscribe((next) => next.view.notify, updateNotification),
-    getStore().subscribe((next) => next.main.shortcuts.summon, updateSummonShortcut)
+    getStore().subscribe((next) => (next.main.shortcuts as { summon: Shortcut }).summon, updateSummonShortcut)
   ]
 }
 

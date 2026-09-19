@@ -104,7 +104,11 @@ export function createHttpRpcTransport({
   }
 
   const subscriptionHandler = (payload: RPC.Susbcription.Response) => {
-    const subscription = pollSubs[payload.params.subscription]
+    const subscriptionId = (payload.params as { subscription?: unknown }).subscription
+    if (typeof subscriptionId !== 'string') {
+      return
+    }
+    const subscription = pollSubs[subscriptionId]
     if (!subscription) {
       return
     }

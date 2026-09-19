@@ -175,8 +175,8 @@ async function readJson(req: Request) {
   }
 }
 
-function objectRecord(value: unknown): Record<string, any> {
-  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, any>) : {}
+function objectRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
 }
 
 function cleanOptionalAmount(amount: unknown, label: string) {
@@ -393,17 +393,20 @@ function checksumAddress(address: string, label: string) {
 }
 
 function localAssetFromAddress(chain: unknown, address: unknown, label: string) {
-  const chainSlug = String(chain ?? LOCAL_CHAIN_SLUG)
-    .trim()
-    .toLowerCase()
+  const chainCandidate = chain ?? LOCAL_CHAIN_SLUG
+  if (typeof chainCandidate !== 'string') {
+    throw new Error(`Unsupported local Flash ${label} chain`)
+  }
+  const chainSlug = chainCandidate.trim().toLowerCase()
   const chainId = getFlashChainIdFromSlug(chainSlug)
   if (!chainId) {
     throw new Error(`Unsupported local Flash ${label} chain`)
   }
 
-  const normalized = String(address ?? '')
-    .trim()
-    .toLowerCase()
+  if (typeof address !== 'string') {
+    throw new Error(`Unsupported local Flash ${label} asset`)
+  }
+  const normalized = address.trim().toLowerCase()
   const asset = getFlashAssetsForChain(chainId).find((candidate) => {
     return toFlashApiAssetAddress(candidate).toLowerCase() === normalized
   })
@@ -424,7 +427,7 @@ function localSide(side: unknown): FlashTradeSide {
 }
 
 function localOrderType(orderType: unknown): FlashOrderType {
-  const value = String(orderType ?? FLASH_MARKET_ORDER_TYPE)
+  const value = orderType ?? FLASH_MARKET_ORDER_TYPE
   const supported = [
     FLASH_MARKET_ORDER_TYPE,
     FLASH_LIMIT_ORDER_TYPE,
@@ -435,7 +438,7 @@ function localOrderType(orderType: unknown): FlashOrderType {
     FLASH_BRACKET_ORDER_TYPE
   ]
 
-  if (supported.includes(value)) {
+  if (typeof value === 'string' && supported.includes(value)) {
     return value as FlashOrderType
   }
 
@@ -845,7 +848,7 @@ async function buildQuote(body: Record<string, any>) {
 }
 
 function orderResponse(order: LocalOrderRecord) {
-  const localParameters = objectRecord(order.quote.raw).local
+  const localParameters = objectRecord(objectRecord(order.quote.raw).local)
   const targetAmount = order.side === 'sell' ? order.quote.inputAmount : order.quote.outputAmount
   const contraAmount = order.side === 'buy' ? order.quote.inputAmount : order.quote.outputAmount
   let closeReason: string | null = 'REASON_FULLY_FILLED'
@@ -906,7 +909,8 @@ function orderResponse(order: LocalOrderRecord) {
 function validateSubmitBody(quoteRecord: LocalQuoteRecord, body: Record<string, any>) {
   const quoteBody = quoteRecord.body
   const quoteResponse = quoteRecord.response
-  const wrappedAsset = String(objectRecord(quoteResponse.wrap).wrappedAsset ?? '')
+  const wrappedAssetValue = objectRecord(quoteResponse.wrap).wrappedAsset
+  const wrappedAsset = typeof wrappedAssetValue === 'string' ? wrappedAssetValue : ''
   const expectedTargetAsset =
     wrappedAsset && quoteBody.side === 'sell' ? wrappedAsset : String(quoteResponse.targetAsset ?? '')
   const expectedContraAsset =
@@ -1134,7 +1138,8 @@ export async function handleLocalTradeRequest(req: Request) {
 
     if (req.method === 'POST' && url.pathname === '/v1/order') {
       const body = await readJson(req)
-      const quoteReference = String(body.quoteId ?? body.bridgeQuoteId ?? '')
+      const quoteReferenceValue = body.quoteId ?? body.bridgeQuoteId
+      const quoteReference = typeof quoteReferenceValue === 'string' ? quoteReferenceValue : ''
       const quoteRecord = quotes.get(quoteReference)
 
       if (!quoteRecord) {

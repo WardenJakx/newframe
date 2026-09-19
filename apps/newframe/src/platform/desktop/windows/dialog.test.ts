@@ -1,4 +1,4 @@
-import { describe, expect, it, mock } from 'bun:test'
+import { describe, expect, it, mock, type Mock } from 'bun:test'
 
 import { electronMock } from '../../../../test/support/electron.mock'
 import { showUnhandledExceptionDialog } from './dialog'
@@ -34,7 +34,9 @@ describe('#showUnhandledExceptionDialog', () => {
   })
 
   it('will relaunch the app when the user clicks OK', () => {
-    showMessageBoxSync.mockImplementation(() => 0)
+    ;(
+      showMessageBoxSync as unknown as Mock<typeof import('electron').dialog.showMessageBoxSync>
+    ).mockImplementation(() => 0)
 
     showUnhandledExceptionDialog('something bad happened')
 
@@ -43,7 +45,9 @@ describe('#showUnhandledExceptionDialog', () => {
   })
 
   it('will not relaunch the app when the user clicks quit', () => {
-    showMessageBoxSync.mockImplementation(() => 1)
+    ;(
+      showMessageBoxSync as unknown as Mock<typeof import('electron').dialog.showMessageBoxSync>
+    ).mockImplementation(() => 1)
 
     showUnhandledExceptionDialog('something bad happened')
 

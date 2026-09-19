@@ -62,23 +62,27 @@ function isBalanceChange(effect: TransactionEffect) {
   )
 }
 
-function cloneForActivity(value: any) {
+function cloneForActivity<T>(value: T): T | undefined {
   if (value === undefined) {
     return undefined
   }
 
   try {
     return JSON.parse(
-      JSON.stringify(value, (_key, nextValue) => {
+      JSON.stringify(value, (_key, nextValue: unknown) => {
         if (typeof nextValue === 'function') {
           return undefined
         }
         return nextValue
       })
-    )
+    ) as T
   } catch {
     return undefined
   }
+}
+
+function unknownRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
 }
 
 function transactionActivityId(hash: string) {
@@ -308,7 +312,9 @@ export class Accounts extends EventEmitter {
 
   private getTransactionActivityDisplay(req: TransactionRequest, chain?: Chain) {
     const value = req.data?.value
-    const network = chain ? (this.store.getState().main.networks.ethereum[chain.id] as any) : undefined
+    const network = chain
+      ? (this.store.getState().main.networks.ethereum[chain.id] as { symbol?: string })
+      : undefined
     const chainSymbol =
       network?.symbol ??
       (chain ? this.store.getState().main.networksMeta.ethereum[chain.id].nativeCurrency.symbol : '') ??
@@ -341,7 +347,9 @@ export class Accounts extends EventEmitter {
 
   private getTransactionNativeSymbol(req: TransactionRequest) {
     const chain = this.getTransactionChain(req)
-    const network = chain ? (this.store.getState().main.networks.ethereum[chain.id] as any) : undefined
+    const network = chain
+      ? (this.store.getState().main.networks.ethereum[chain.id] as { symbol?: string })
+      : undefined
     const metadata = chain ? this.store.getState().main.networksMeta.ethereum[chain.id] : undefined
 
     return network?.symbol ?? metadata?.nativeCurrency.symbol ?? 'ETH'
@@ -639,7 +647,7 @@ export class Accounts extends EventEmitter {
     }
 
     const receipt = cloneForActivity(req.tx?.receipt)
-    const receiptStatus = (req.tx?.receipt as any)?.status
+    const receiptStatus = unknownRecord(req.tx?.receipt).status
 
     if (receiptStatus === '0x0') {
       return this.finalizeTransactionActivity(req, 'reverted', {
@@ -668,7 +676,12 @@ export class Accounts extends EventEmitter {
   private finalizeTransactionActivity(
     req: TransactionRequest,
     status: 'succeeded' | 'reverted',
-    update: any = {}
+    update: {
+      completedAt?: number
+      confirmations?: number
+      receipt?: unknown
+      updatedAt?: number
+    } = {}
   ) {
     const hash = req.tx?.hash
     if (!hash) {
@@ -730,7 +743,7 @@ export class Accounts extends EventEmitter {
   }
 
   private receiptWasReverted(req: TransactionRequest) {
-    return (req.tx?.receipt as any)?.status === '0x0'
+    return unknownRecord(req.tx?.receipt).status === '0x0'
   }
 
   private transactionChainId(req: TransactionRequest) {
@@ -751,15 +764,28 @@ export class Accounts extends EventEmitter {
   }
 
   private activityChainId(activity: ActivityRecord) {
-    return normalizeChainId(activity.chainId ?? (activity.data as any)?.chainId)
+    const dataChainId = unknownRecord(activity.data).chainId
+    return normalizeChainId(
+      activity.chainId ??
+        (typeof dataChainId === 'string' || typeof dataChainId === 'number' ? dataChainId : undefined)
+    )
   }
 
   private activityNonce(activity: ActivityRecord) {
-    return normalizeQuantity(activity.nonce ?? (activity.data as any)?.nonce)
+    const dataNonce = unknownRecord(activity.data).nonce
+    return normalizeQuantity(
+      activity.nonce ??
+        (typeof dataNonce === 'string' || typeof dataNonce === 'number' ? dataNonce : undefined)
+    )
   }
 
   private activityAccount(activity: ActivityRecord) {
-    return (activity.account ?? activity.address ?? (activity.data as any)?.from ?? '').toLowerCase()
+    const dataFrom = unknownRecord(activity.data).from
+    return (
+      activity.account ??
+      activity.address ??
+      (typeof dataFrom === 'string' ? dataFrom : '')
+    ).toLowerCase()
   }
 
   private isNonTerminalActivity(activity?: ActivityRecord) {
@@ -780,10 +806,11 @@ export class Accounts extends EventEmitter {
 
   private toActivityRequest(activity: ActivityRecord): TransactionRequest {
     const chainId = this.activityChainId(activity)
+    const activityData = unknownRecord(activity.data)
     const data = {
-      ...(activity.data as any),
-      chainId: (activity.data as any)?.chainId ?? (chainId ? addHexPrefix(chainId.toString(16)) : undefined),
-      nonce: (activity.data as any)?.nonce ?? activity.nonce
+      ...activityData,
+      chainId: activityData.chainId ?? (chainId ? addHexPrefix(chainId.toString(16)) : undefined),
+      nonce: activityData.nonce ?? activity.nonce
     }
 
     return {
@@ -986,7 +1013,7 @@ export class Accounts extends EventEmitter {
 
         this.pruneSameNonceActivityLosers(currentActivity)
 
-        if ((receipt as any)?.status === '0x0') {
+        if (unknownRecord(receipt).status === '0x0') {
           this.finalizeTransactionActivity(txRequest, 'reverted', { confirmations, receipt })
           return this.stopActivityMonitor(activity.id)
         }
@@ -1032,7 +1059,7 @@ export class Accounts extends EventEmitter {
   }
 
   private openNextActionableRequest(account: FrameAccount) {
-    const panelNav = (this.store.getState().windows.panel.nav || []) as any[]
+    const panelNav = (this.store.getState().windows.panel.nav || []) as Array<{ view?: string }>
     if (panelNav[0]?.view === 'requestView') {
       return
     }
@@ -1200,7 +1227,7 @@ export class Accounts extends EventEmitter {
 
       const txRequest = this.getTransactionRequest(currentAccount, id)
 
-      const data = JSON.parse(JSON.stringify(txRequest.data))
+      const data = JSON.parse(JSON.stringify(txRequest.data)) as TransactionData
       const targetChain = { type: 'ethereum', id: parseInt(data.chainId, 16) }
       const { levels } = this.store.getState().main.networksMeta.ethereum[targetChain.id].gas.price
 
@@ -1338,7 +1365,9 @@ export class Accounts extends EventEmitter {
                       const feeAtTime = (
                         Math.round(
                           weiIntToEthInt(
-                            hexToInt(gasUsed) * hexToInt(txRequest.data.gasPrice ?? '0x0') * res.result.ethusd
+                            hexToInt(gasUsed) *
+                              hexToInt(txRequest.data.gasPrice ?? '0x0') *
+                              Number(unknownRecord(res.result).ethusd)
                           ) * 100
                         ) / 100
                       ).toFixed(2)
@@ -1363,7 +1392,7 @@ export class Accounts extends EventEmitter {
 
                 this.updateTransactionActivity(txRequest, confirmations)
 
-                const receiptStatus = receiptRes.result.status
+                const receiptStatus = unknownRecord(receiptRes.result).status
 
                 if (receiptStatus === '0x0' && txRequest.status === RequestStatus.Verifying) {
                   txRequest = account.patchRequest<TransactionRequest>(id, (request) => {
@@ -1624,7 +1653,10 @@ export class Accounts extends EventEmitter {
               if (!isCurrentMonitor()) {
                 return
               }
-              if (payload.method === 'eth_subscription' && (payload.params as any).subscription === headSub) {
+              if (
+                payload.method === 'eth_subscription' &&
+                unknownRecord(payload.params).subscription === headSub
+              ) {
                 // const newHead = payload.params.result
                 let confirmations
                 try {

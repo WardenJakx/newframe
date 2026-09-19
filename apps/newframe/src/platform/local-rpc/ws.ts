@@ -95,6 +95,16 @@ const systemTimers: ApiTimerPort = {
   clearTimeout: (timer) => clearTimeout(timer)
 }
 
+function rawDataText(data: WebSocket.RawData): string {
+  if (Array.isArray(data)) {
+    return Buffer.concat(data).toString('utf8')
+  }
+  if (Buffer.isBuffer(data)) {
+    return data.toString('utf8')
+  }
+  return Buffer.from(data).toString('utf8')
+}
+
 export function createWebSocketRpcTransport({
   provider,
   store,
@@ -155,7 +165,7 @@ export function createWebSocketRpcTransport({
     }
 
     const processMessage = async (data: WebSocket.RawData) => {
-      const rawPayload = validPayload<ExtensionPayload>(data.toString())
+      const rawPayload = validPayload<ExtensionPayload>(rawDataText(data))
       if (!rawPayload) {
         log.warn('Invalid WebSocket RPC payload')
         return
@@ -293,7 +303,11 @@ export function createWebSocketRpcTransport({
   }
 
   const subscriptionHandler = (payload: RPC.Susbcription.Response) => {
-    const subscription = subs[payload.params.subscription]
+    const subscriptionId = (payload.params as { subscription?: unknown }).subscription
+    if (typeof subscriptionId !== 'string') {
+      return
+    }
+    const subscription = subs[subscriptionId]
     if (subscription?.socket.readyState === openReadyState) {
       subscription.socket.send(JSON.stringify(payload))
     }
