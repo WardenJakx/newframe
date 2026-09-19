@@ -29,13 +29,21 @@ export interface Chain {
 }
 
 type Priority = 'primary' | 'secondary'
+type ConnectionStatus =
+  | 'chain mismatch'
+  | 'connected'
+  | 'disconnected'
+  | 'error'
+  | 'loading'
+  | 'off'
+  | 'standby'
 
 type StoredConnection = {
   connected: boolean
   current: string
   custom: string
   on: boolean
-  status: string
+  status: ConnectionStatus
 }
 
 type StoredChainSettings = {
@@ -67,7 +75,7 @@ const selectConnectionSettings = (chain: StoredChainSettings | null | undefined)
 }
 
 interface ConnectionState {
-  status: string
+  status: ConnectionStatus
   network: string
   type: string
   connected: boolean
@@ -276,7 +284,7 @@ class ChainConnection extends EventEmitter {
     }
   }
 
-  _updateStatus(priority: Priority, status: string) {
+  _updateStatus(priority: Priority, status: ConnectionStatus) {
     log.debug('Chains.updateStatus', { priority, status })
 
     this[priority].status = status
@@ -285,7 +293,7 @@ class ChainConnection extends EventEmitter {
     this.emit('update', { type: 'status', status })
   }
 
-  resetConnection(priority: Priority, status: string, target?: string) {
+  resetConnection(priority: Priority, status: ConnectionStatus, target?: string) {
     log.debug('resetConnection', { priority, status, target })
 
     const provider = this[priority].provider

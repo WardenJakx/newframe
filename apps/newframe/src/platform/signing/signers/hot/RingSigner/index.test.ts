@@ -159,7 +159,14 @@ describe('Ring signer', () => {
       )
     )
     const v3 = await callbackResult<Signer>((done) =>
-      hot.createFromKeystore(vault, { add: () => {}, exists: () => false }, readKeystore(), 'test', '', done)
+      hot.createFromKeystore(
+        vault,
+        { add: () => {}, exists: () => false },
+        readKeystore() as string | Record<string, unknown>,
+        'test',
+        '',
+        done
+      )
     )
     expect(v1.addresses[0]).toBe(v1.addresses[0].toLowerCase())
     expect(v3.addresses[0]).toBe(v3.addresses[0].toLowerCase())

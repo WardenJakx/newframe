@@ -137,7 +137,7 @@ describe('#connect', () => {
   it('detects that the app is locked', async () => {
     ethInstance.getAppConfiguration.mockResolvedValue({ version: '1.9.2' })
     ethInstance.getAddress.mockRejectedValue({ statusCode: 27404 })
-    const statuses: any[] = []
+    const statuses: unknown[] = []
     ledger.on('update', () => statuses.push(ledger.status))
     const locked = waitForEvent('lock')
 
@@ -151,7 +151,7 @@ describe('#connect', () => {
 
   it('derives addresses after connecting', async () => {
     ethInstance.getAppConfiguration.mockResolvedValue({ version: '1.9.2' })
-    const statuses: any[] = []
+    const statuses: unknown[] = []
     ledger.on('update', () => statuses.push(ledger.status))
     const connected = waitForEvent('update', () => ledger.status === Status.OK)
 
@@ -195,7 +195,7 @@ describe('#deriveAddress', () => {
   beforeEach(connectEthApp)
 
   it('derives hardware addresses with ordered status transitions', async () => {
-    const statuses: any[] = []
+    const statuses: unknown[] = []
     ledger.on('update', () => {
       statuses.push(ledger.status)
       if (ledger.status === Status.DERIVING) {

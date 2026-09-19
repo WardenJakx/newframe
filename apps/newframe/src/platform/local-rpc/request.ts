@@ -210,12 +210,10 @@ export function createRpcRequestHandler({
             return
           }
 
-          if (response.result) {
-            if (payload.method === 'eth_subscribe') {
-              request.onSubscriptionOpen?.(String(response.result), payload._origin)
-            } else if (payload.method === 'eth_unsubscribe') {
-              request.onSubscriptionClose?.(payload.params)
-            }
+          if (payload.method === 'eth_subscribe' && typeof response.result === 'string') {
+            request.onSubscriptionOpen?.(response.result, payload._origin)
+          } else if (response.result && payload.method === 'eth_unsubscribe') {
+            request.onSubscriptionClose?.(payload.params)
           }
 
           request.observeProviderResponse?.(response, payload)

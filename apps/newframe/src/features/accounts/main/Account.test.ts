@@ -10,6 +10,7 @@ import type { AccountRequest, CanonicalAccountRequest, TypedMessage } from '../.
 import { RequestMode, RequestStatus } from '../../requests/contract/requests'
 import { ApprovalType } from '../../requests/domain/approval'
 import { GasFeesSource, type TransactionData } from '../../transactions/domain'
+import type { RevealService } from '../../transactions/main/reveal'
 
 const revealMock = {
   recog: mock(),
@@ -125,7 +126,7 @@ beforeAll(async () => {
 function createAccount(profileActive = true) {
   return new Account(
     accountState,
-    accounts as any,
+    accounts as unknown as ConstructorParameters<typeof Account>[1],
     store,
     providerMock,
     { simulateTransactionEffects: simulateTransactionEffectsMock },
@@ -194,7 +195,7 @@ describe('#addRequest', () => {
     }
     Object.assign(request, { authorization: decision.authorization })
 
-    requestLifecycle.bind(request as any)
+    requestLifecycle.bind(request)
     account.addRequest(request)
 
     expect(navMock.forward).toHaveBeenCalledTimes(1)
@@ -287,9 +288,12 @@ describe('#addRequest', () => {
     })
 
     it('waits for token recognition before simulating the transaction', async () => {
-      let resolveRecognition: (actions: any[]) => void = () => {}
+      let resolveRecognition: (actions: Awaited<ReturnType<RevealService['recog']>>) => void = () => {}
       revealMock.recog.mockImplementationOnce(
-        () => new Promise<any[]>((resolve) => (resolveRecognition = resolve))
+        () =>
+          new Promise<Awaited<ReturnType<RevealService['recog']>>>(
+            (resolve) => (resolveRecognition = resolve)
+          )
       )
       revealMock.decode.mockResolvedValueOnce(undefined)
 
@@ -510,9 +514,9 @@ it('rejects every Safe signing method even when an owner signer is associated', 
     signTransaction: signed
   })
   for (const sign of [
-    (callback: any) => account.signMessage('0x1234', callback),
-    (callback: any) => account.signTypedData(validTypedMessage(), callback),
-    (callback: any) =>
+    (callback: Callback<unknown>) => account.signMessage('0x1234', callback),
+    (callback: Callback<unknown>) => account.signTypedData(validTypedMessage(), callback),
+    (callback: Callback<unknown>) =>
       account.signTransaction(
         {
           chainId: '0x1',

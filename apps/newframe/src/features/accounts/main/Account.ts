@@ -257,7 +257,7 @@ class FrameAccount {
     return this.requests[id] as T
   }
 
-  resolveRequest({ handlerId, payload }: AccountRequest, result?: any) {
+  resolveRequest({ handlerId, payload }: AccountRequest, result?: unknown) {
     const knownRequest = this.requests[handlerId]
 
     if (knownRequest) {
@@ -325,7 +325,7 @@ class FrameAccount {
     })
   }
 
-  approveRequest(reqId: string, type: ApprovalType, _data: any) {
+  approveRequest(reqId: string, type: ApprovalType, _data: unknown) {
     const request = this.getRequest<TransactionRequest>(reqId)
     const approval = request?.approvals?.find((candidate) => candidate.type === type)
     if (!approval) {
@@ -341,7 +341,7 @@ class FrameAccount {
     return true
   }
 
-  updateRecognizedAction(reqId: string, actionId: string, data: any) {
+  updateRecognizedAction(reqId: string, actionId: string, data: Record<string, unknown>) {
     const runtimeAction = this.actionUpdateHandlers.get(reqId)?.get(actionId)
     if (!runtimeAction?.update) {
       return false

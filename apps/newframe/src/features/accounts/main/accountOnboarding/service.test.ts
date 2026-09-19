@@ -80,12 +80,12 @@ it('owns account creation and authorized hardware sessions while keeping all onb
   })
   expect(JSON.stringify(operation('import-phrase'))).not.toContain('secret recovery')
   expect(JSON.stringify(operation('import-phrase'))).not.toContain('frame password')
-  expect((ports.accounts.add as Mock<any>).mock.calls.at(-1)).toEqual([
+  expect((ports.accounts.add as Mock<typeof ports.accounts.add>).mock.calls.at(-1)).toEqual([
     addressA,
     'Imported',
     { type: 'seed' }
   ])
-  expect((ports.accounts.select as Mock<any>).mock.calls.at(-1)).toEqual([addressA])
+  expect((ports.accounts.select as Mock<typeof ports.accounts.select>).mock.calls.at(-1)).toEqual([addressA])
 
   service.createAccount(
     {
@@ -99,7 +99,9 @@ it('owns account creation and authorized hardware sessions while keeping all onb
   )
   await flush()
   expect(operation('watch')).toMatchObject({ status: 'succeeded', phase: 'selected' })
-  expect((ports.nameResolution.resolve as Mock<any>).mock.calls).toEqual([['alice.eth']])
+  expect((ports.nameResolution.resolve as Mock<typeof ports.nameResolution.resolve>).mock.calls).toEqual([
+    ['alice.eth']
+  ])
 
   accounts.clear()
   service.createAccount(
@@ -113,7 +115,7 @@ it('owns account creation and authorized hardware sessions while keeping all onb
     owner
   )
   await flush()
-  expect((ports.accounts.add as Mock<any>).mock.calls.at(-1)).toEqual([
+  expect((ports.accounts.add as Mock<typeof ports.accounts.add>).mock.calls.at(-1)).toEqual([
     addressA,
     'Hot Account',
     { type: 'seed' }
@@ -123,7 +125,9 @@ it('owns account creation and authorized hardware sessions while keeping all onb
   accounts.set(addressA, { address: addressA })
   expect(await service.exportPrivateKey(addressA)).toBe('0xsecret')
   expect(await service.exportPrivateKey('missing')).toBeUndefined()
-  expect((ports.secrets.exportPrivateKey as Mock<any>).mock.calls).toContainEqual([addressA])
+  expect(
+    (ports.secrets.exportPrivateKey as Mock<typeof ports.secrets.exportPrivateKey>).mock.calls
+  ).toContainEqual([addressA])
   expect(await service.generateSeedPhrase()).toBe('seed phrase')
 
   expect(
@@ -152,7 +156,9 @@ it('owns account creation and authorized hardware sessions while keeping all onb
   expect(service.sessionInput({ ...pinCommand, signerId: 'ledger-1' }, owner)).toBeFalse()
   expect(service.sessionInput(pinCommand, owner)).toBeTrue()
   await flush()
-  expect((ports.hardware.submitTrezorInput as Mock<any>).mock.calls).toEqual([[pinCommand]])
+  expect(
+    (ports.hardware.submitTrezorInput as Mock<typeof ports.hardware.submitTrezorInput>).mock.calls
+  ).toEqual([[pinCommand]])
   expect(operation('trezor-session')).toMatchObject({ status: 'pending', phase: 'pin_submitted' })
   expect(operation('trezor-pin')).toMatchObject({ status: 'succeeded', phase: 'accepted' })
   expect(
@@ -160,7 +166,9 @@ it('owns account creation and authorized hardware sessions while keeping all onb
   ).not.toContain('938475')
   expect(service.sessionInput(pinCommand, owner)).toBeTrue()
   await flush()
-  expect((ports.hardware.submitTrezorInput as Mock<any>).mock.calls).toHaveLength(1)
+  expect(
+    (ports.hardware.submitTrezorInput as Mock<typeof ports.hardware.submitTrezorInput>).mock.calls
+  ).toHaveLength(1)
   expect(
     service.finishSession(
       {
@@ -244,7 +252,9 @@ it('owns account creation and authorized hardware sessions while keeping all onb
     owner
   )
   await flush()
-  expect((ports.hardware.loadAccounts as Mock<any>).mock.calls).toEqual([['ledger-1', 10]])
+  expect((ports.hardware.loadAccounts as Mock<typeof ports.hardware.loadAccounts>).mock.calls).toEqual([
+    ['ledger-1', 10]
+  ])
   expect(operation('ledger-load')).toMatchObject({ status: 'succeeded', phase: 'requested' })
 
   let phraseCallback: (error: unknown, value?: string) => void = () => undefined

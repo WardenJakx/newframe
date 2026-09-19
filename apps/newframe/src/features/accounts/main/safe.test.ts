@@ -158,9 +158,10 @@ it('invalidates delayed work after remove/re-add, profile switch, and disposal',
   for (const change of ['remove', 'profile', 'dispose']) {
     const { store, operations, accounts } = setup()
     const config: SafeConfiguration = { owners: [ownerAddress], threshold: 1, nonce: '0' }
-    store
-      .getState()
-      .upsertAccount({ id: address, safe: { '1': { chainId: 1, address, configuration: config } } })
+    store.getState().upsertAccount({
+      id: address,
+      safe: { '1': { chainId: 1, address, configuration: config } }
+    })
     let release!: (value: Pick<SafeConfiguration, 'nonce'>) => void
     const service = createSafeService({
       accounts,

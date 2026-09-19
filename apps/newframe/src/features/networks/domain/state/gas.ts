@@ -40,7 +40,7 @@ export const GasSchema = z.object({
   price: z.object({
     selected: GasLevelsSchema.keyof(),
     levels: GasLevelsSchema,
-    fees: GasFeesSchema.optional()
+    fees: GasFeesSchema.nullish()
   })
 })
 

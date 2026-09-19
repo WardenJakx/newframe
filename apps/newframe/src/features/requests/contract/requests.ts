@@ -192,7 +192,7 @@ export interface TransactionReceipt {
 
 interface Approval {
   type: string
-  data: any
+  data: unknown
   approved: boolean
 }
 

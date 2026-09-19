@@ -13,45 +13,99 @@ import {
 describe('#createBalance', () => {
   it('creates a balance with an unknown price when no quote is available', () => {
     const quote = undefined
-    const balance = createBalance({ balance: '0x2ed3afa800', decimals: 18 } as any, quote)
+    const balance = createBalance(
+      {
+        address: '0x0000000000000000000000000000000000000001',
+        balance: '0x2ed3afa800',
+        chainId: 1,
+        decimals: 18,
+        displayBalance: '',
+        name: 'Token',
+        symbol: 'TKN'
+      },
+      quote
+    )
 
     expect(balance.price).toBe('?')
   })
 
   it('creates a balance with no price change data when no quote is available', () => {
     const quote = undefined
-    const balance = createBalance({ balance: '0x2ed3afa800', decimals: 18 } as any, quote)
+    const balance = createBalance(
+      {
+        address: '0x0000000000000000000000000000000000000001',
+        balance: '0x2ed3afa800',
+        chainId: 1,
+        decimals: 18,
+        displayBalance: '',
+        name: 'Token',
+        symbol: 'TKN'
+      },
+      quote
+    )
 
     expect(balance.priceChange).toBeFalsy()
   })
 
   it('creates a balance with zero total value when no quote is available', () => {
     const quote = undefined
-    const balance = createBalance({ balance: '0x2ed3afa800', decimals: 18 } as any, quote)
+    const balance = createBalance(
+      {
+        address: '0x0000000000000000000000000000000000000001',
+        balance: '0x2ed3afa800',
+        chainId: 1,
+        decimals: 18,
+        displayBalance: '',
+        name: 'Token',
+        symbol: 'TKN'
+      },
+      quote
+    )
 
     expect(balance.totalValue).toBe(0)
   })
 
   it('creates a balance with an unknown display value when no quote is available', () => {
     const quote = undefined
-    const balance = createBalance({ balance: '0x2ed3afa800', decimals: 18 } as any, quote)
+    const balance = createBalance(
+      {
+        address: '0x0000000000000000000000000000000000000001',
+        balance: '0x2ed3afa800',
+        chainId: 1,
+        decimals: 18,
+        displayBalance: '',
+        name: 'Token',
+        symbol: 'TKN'
+      },
+      quote
+    )
 
     expect(balance.displayValue).toBe('?')
   })
 })
 
 describe('#sortByTotalValue', () => {
+  type MockBalance = {
+    balance: number
+    decimals: number
+    totalValue: number
+  }
   const mockBalance = (totalValue: number, balance = 0, decimals = 0) => ({
     totalValue,
     decimals,
     balance
   })
+  const compareMockBalances = (a: MockBalance, b: MockBalance) =>
+    byTotalValue(
+      a as unknown as Parameters<typeof byTotalValue>[0],
+      b as unknown as Parameters<typeof byTotalValue>[1]
+    )
 
   it('should sort balances in descending order by total value', () => {
     const values = [10, 100, 60]
     const unsorted = values.map((value) => mockBalance(value))
 
-    const sortedValues = unsorted.sort(byTotalValue as any).map((b) => b.totalValue)
+    const sortedValues = unsorted.sort(compareMockBalances).map((b) => b.totalValue)
 
     expect(sortedValues).toStrictEqual([100, 60, 10])
   })
@@ -60,7 +114,7 @@ describe('#sortByTotalValue', () => {
     const values = [10, 100, 60]
     const unsorted = values.map((value) => mockBalance(10, value))
 
-    const sortedValues = unsorted.sort(byTotalValue as any).map((b) => b.balance)
+    const sortedValues = unsorted.sort(compareMockBalances).map((b) => b.balance)
 
     expect(sortedValues).toStrictEqual([100, 60, 10])
   })
@@ -72,7 +126,7 @@ describe('#sortByTotalValue', () => {
     const bal4 = mockBalance(100, 989)
 
     const unsorted = [bal1, bal2, bal3, bal4]
-    const sortedValues = unsorted.sort(byTotalValue as any)
+    const sortedValues = unsorted.sort(compareMockBalances)
 
     expect(sortedValues).toStrictEqual([bal2, bal4, bal1, bal3])
   })

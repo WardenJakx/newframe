@@ -65,16 +65,29 @@ const queuedJsonResponses = (payloads: unknown[]) => {
     return jsonResponse(payload)
   }
 }
-function installFetch(implementation: any) {
+type FetchImplementation = (...args: Parameters<typeof fetch>) => ReturnType<typeof fetch>
+function installFetch(implementation: FetchImplementation) {
   const fetchMock = mock(implementation)
   globalThis.fetch = fetchMock as unknown as typeof fetch
   return fetchMock
 }
-function flashWithFetch(implementation: any, overrides: Record<string, unknown> = {}) {
+function flashWithFetch(implementation: FetchImplementation, overrides: Record<string, unknown> = {}) {
   const fetchMock = installFetch(implementation)
   const flash = createFlashService({ assetRateService, store, ...overrides })
   services.push(flash)
   return { fetchMock, flash }
+}
+function fetchUrl(input: Parameters<typeof fetch>[0] | undefined) {
+  if (typeof input === 'string') {
+    return input
+  }
+  if (input instanceof URL) {
+    return input.href
+  }
+  if (input instanceof Request) {
+    return input.url
+  }
+  throw new Error('Expected a fetch URL')
 }
 class FakeFlashWebSocket extends EventEmitter {
   readyState: number = WebSocket.CONNECTING
@@ -574,7 +587,7 @@ describe('main Flash facade helpers', () => {
       status: ['partially-filled', 'ORDER_STATUS_CANCELLED']
     })
     const order = result.orders[0]
-    const url = new URL(String(fetchMock.mock.calls[0]?.[0]))
+    const url = new URL(fetchUrl(fetchMock.mock.calls[0]?.[0]))
     expect(url.pathname).toBe('/v1/orders')
     expect(url.searchParams.get('funderAddress')).toBe(accountAddress)
     expect(url.searchParams.get('statuses')).toBe('ORDER_STATUS_PARTIALLY_FILLED,ORDER_STATUS_CANCELLED')
@@ -678,7 +691,7 @@ describe('main Flash facade helpers', () => {
     ]
     const { flash, fetchMock } = flashWithFetch(queuedJsonResponses(responses))
     const detail = await flash.getOrder({ accountAddress, orderId })
-    const getUrl = new URL(String(fetchMock.mock.calls[0]?.[0]))
+    const getUrl = new URL(fetchUrl(fetchMock.mock.calls[0]?.[0]))
     expect(getUrl.pathname).toBe(`/v1/orders/${orderId}`)
     expect(getUrl.searchParams.get('funderAddress')).toBe(accountAddress)
     expect(detail.order).toMatchObject({
@@ -691,7 +704,7 @@ describe('main Flash facade helpers', () => {
       receiveAsset: { symbol: 'WETH' }
     })
     const cancelled = await flash.cancelOrder({ orderId, signature: '0xcancel-signature' })
-    const cancelUrl = new URL(String(fetchMock.mock.calls[1]?.[0]))
+    const cancelUrl = new URL(fetchUrl(fetchMock.mock.calls[1]?.[0]))
     const cancelInit = fetchMock.mock.calls[1]?.[1] as RequestInit
     if (typeof cancelInit.body !== 'string') {
       throw new Error('Expected a JSON request body')

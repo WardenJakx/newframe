@@ -29,7 +29,7 @@ interface Account {
   signer: string
   signerStatus?: string
   agentEnabled?: boolean
-  requests: Record<string, any>
+  requests: Record<string, unknown>
   ensName: string
   created: string
   balances: {

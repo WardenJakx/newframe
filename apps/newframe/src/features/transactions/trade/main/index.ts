@@ -1077,7 +1077,7 @@ function orderAssetFromReference(value: unknown, fallback?: FlashAsset | null): 
   })
 }
 
-function rawOrderQuote(raw: Record<string, any>) {
+function rawOrderQuote(raw: Record<string, unknown>) {
   return objectPayload(raw.quote ?? raw.flashQuote ?? raw.quotePayload)
 }
 

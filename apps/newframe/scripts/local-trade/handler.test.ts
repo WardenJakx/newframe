@@ -119,7 +119,7 @@ describe('local trade service handler', () => {
     sendTransaction = spyOn(Wallet.prototype, 'sendTransaction').mockResolvedValue({
       hash: `0x${'1'.repeat(64)}`,
       wait: async () => ({ status: 1 })
-    } as any)
+    } as unknown as Awaited<ReturnType<Wallet['sendTransaction']>>)
   })
 
   afterEach(() => {

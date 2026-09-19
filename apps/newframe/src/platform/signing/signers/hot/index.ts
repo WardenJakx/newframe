@@ -52,7 +52,7 @@ export const newPhrase = (cb: Callback<string>) => {
   cb(null, Mnemonic.fromEntropy(randomBytes(16)).phrase)
 }
 
-const acquireVaultKey = (vault: VaultPort, password: string, cb: Callback<any>) => {
+const acquireVaultKey = <T>(vault: VaultPort, password: string, cb: Callback<T>) => {
   try {
     return vault.acquireKey(password)
   } catch (error) {
@@ -136,7 +136,7 @@ export const createFromPrivateKey = (
 export const createFromKeystore = (
   vault: VaultPort,
   signers: SignerCollection,
-  keystore: any,
+  keystore: string | Record<string, unknown>,
   keystorePassword: string,
   password: string,
   cb: Callback<Signer>

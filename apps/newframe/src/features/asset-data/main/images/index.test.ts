@@ -67,7 +67,7 @@ it('hydrates networks in the background and tokens only when requested by the re
   }
   getState.mockReturnValue(state)
   subscribe.mockImplementation(
-    (selector: (value: typeof state) => unknown, listener: (value: any) => void) => {
+    (selector: (value: typeof state) => unknown, listener: (value: unknown) => void) => {
       listener(selector(state))
       return mock()
     }
@@ -116,7 +116,7 @@ it('does not download images that already match their configured sources', async
   }
   getState.mockReturnValue(state)
   subscribe.mockImplementation(
-    (selector: (value: typeof state) => unknown, listener: (value: any) => void) => {
+    (selector: (value: typeof state) => unknown, listener: (value: unknown) => void) => {
       listener(selector(state))
       return mock()
     }

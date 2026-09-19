@@ -1,6 +1,6 @@
 import log from 'electron-log'
 
-const has = (value: any) => value !== null && value !== undefined
+const has = (value: unknown) => value !== null && value !== undefined
 
 export default function <T extends JSONRPCRequestPayload>(data: string): T | false {
   try {

@@ -551,7 +551,7 @@ export class Provider extends EventEmitter {
                     if (response.error) {
                       cb(Object.assign(new Error(response.error.message), { code: response.error.code }))
                     } else {
-                      cb(null, response.result)
+                      cb(null, response.result as string)
                     }
                   },
                   {
@@ -588,7 +588,7 @@ export class Provider extends EventEmitter {
         return cb(Object.assign(new Error(response.error.message), { code: response.error.code }))
       }
 
-      const updatedReq = this.accounts.updateNonce(req.handlerId, response.result)
+      const updatedReq = this.accounts.updateNonce(req.handlerId, response.result as string)
 
       if (updatedReq) {
         signAndSend(updatedReq)
@@ -624,7 +624,7 @@ export class Provider extends EventEmitter {
             return reject(response.error)
           }
 
-          const estimatedLimit = parseInt(response.result, 16)
+          const estimatedLimit = parseInt(response.result as string, 16)
           const paddedLimit = Math.ceil(estimatedLimit * 1.5)
 
           log.verbose(
@@ -1209,7 +1209,7 @@ export class Provider extends EventEmitter {
       return resError('Lattice only supports eth_signTypedData_v3+', payload, res)
     }
 
-    const handlerId = this.requests.create(res)
+    const handlerId = this.requests.create(res as RPCRequestCallback)
     const typedMessage: TypedMessage<typeof version> = {
       data: validatedTypedData,
       version
@@ -1561,7 +1561,7 @@ export class Provider extends EventEmitter {
           return resError(resp.error, payload, cb)
         }
 
-        const chainId = parseInt(resp.result)
+        const chainId = parseInt(resp.result as string)
         const address = typeof tokenData.address === 'string' ? tokenData.address.toLowerCase() : ''
         const symbol = typeof tokenData.symbol === 'string' ? tokenData.symbol.toUpperCase() : ''
         const decimals = parseInt(
@@ -1697,7 +1697,7 @@ export class Provider extends EventEmitter {
     const method = payload.method || ''
 
     // method handlers that are not chain-specific can go here, before parsing the target chain
-    if (method === 'eth_unsubscribe' && this.ifSubRemove(payload.params[0])) {
+    if (method === 'eth_unsubscribe' && this.ifSubRemove(payload.params[0] as string)) {
       return res({ id: payload.id, jsonrpc: '2.0', result: true })
     } // Subscription was ours
 
@@ -1758,7 +1758,7 @@ export class Provider extends EventEmitter {
     if (method === 'web3_clientVersion') {
       return this.clientVersion(payload, res)
     }
-    if (method === 'eth_subscribe' && payload.params[0] in this.subscriptions) {
+    if (method === 'eth_subscribe' && (payload.params[0] as PropertyKey) in this.subscriptions) {
       return this.subscribe(payload as RPC.Subscribe.Request, res, principal)
     }
 
@@ -1826,7 +1826,7 @@ export class Provider extends EventEmitter {
     this.connection.send(rpcPayload, res, targetChain)
   }
 
-  override emit(type: string | symbol, ...args: any[]) {
+  override emit(type: string | symbol, ...args: unknown[]) {
     return super.emit(type, ...args)
   }
 }

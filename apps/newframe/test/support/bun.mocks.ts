@@ -5,6 +5,9 @@ import { immer } from 'zustand/middleware/immer'
 import { createStore } from 'zustand/vanilla'
 
 import { createCanonicalActions } from '../../src/platform/state-store/actions'
+import type { CanonicalGet, CanonicalSet } from '../../src/platform/state-store/actions.panel'
+
+type CanonicalActions = ReturnType<typeof createCanonicalActions>
 
 const defaultState = () => ({
   main: {
@@ -90,30 +93,31 @@ const defaultState = () => ({
   }
 })
 
-let actionImplementations: Record<string, (...args: any[]) => unknown> = {}
-let actionMocks: Record<string, ReturnType<typeof mock>> = {}
+let actionMocks: Partial<Record<keyof CanonicalActions, ReturnType<typeof mock>>> = {}
 
-const createMockActions = (set: any, get: any) => {
-  actionImplementations = createCanonicalActions(set, get) as Record<string, (...args: any[]) => unknown>
+const createMockActions = (set: CanonicalSet, get: CanonicalGet) => {
+  const actionImplementations = createCanonicalActions(set, get)
   actionMocks = Object.fromEntries(
     Object.entries(actionImplementations).map(([name, action]) => [
       name,
-      mock((...args: any[]): unknown => action(...args))
+      mock((...args: never[]): unknown => Reflect.apply(action, undefined, args) as unknown)
     ])
   )
 
-  return actionMocks
+  return actionMocks as CanonicalActions
 }
 
-export const storeMock = createStore<any>()(
+type MockStore = ReturnType<typeof defaultState> & CanonicalActions
+
+export const storeMock = createStore<MockStore>()(
   subscribeWithSelector(
     immer((set, get) => ({
       ...defaultState(),
-      ...createMockActions(set, get)
+      ...createMockActions(set as unknown as CanonicalSet, get as unknown as CanonicalGet)
     }))
   )
 )
 
 export const resetStoreState = () => {
-  storeMock.setState({ ...defaultState(), ...actionMocks }, true)
+  storeMock.setState({ ...defaultState(), ...actionMocks } as MockStore, true)
 }

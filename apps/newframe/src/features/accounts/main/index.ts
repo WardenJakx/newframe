@@ -902,7 +902,7 @@ export class Accounts extends EventEmitter {
                   return reject(new Error(JSON.stringify(blockRes.error)))
                 }
 
-                const blockHeight = parseInt(blockRes.result, 16)
+                const blockHeight = parseInt(blockRes.result as string, 16)
                 const receiptBlock = parseInt(receipt.blockNumber, 16)
 
                 resolve({
@@ -1215,7 +1215,7 @@ export class Accounts extends EventEmitter {
         return false
       }
 
-      return currentAccount.updateRecognizedAction(reqId, actionId, data)
+      return currentAccount.updateRecognizedAction(reqId, actionId, data as Record<string, unknown>)
     }
 
     if (request.type === 'signErc20Permit') {
@@ -1293,7 +1293,7 @@ export class Accounts extends EventEmitter {
       params,
       chainId,
       _origin = frameOriginId
-    }: { method: string; params: any[]; chainId: string; _origin?: string },
+    }: { method: string; params: unknown[]; chainId: string; _origin?: string },
     cb: RPCRequestCallback,
     principal?: TrustedPrincipal
   ) {
@@ -1399,7 +1399,7 @@ export class Accounts extends EventEmitter {
                   }
                 }
 
-                const blockHeight = parseInt(res.result, 16)
+                const blockHeight = parseInt(res.result as string, 16)
                 const receiptBlock = parseInt(receipt.blockNumber, 16)
                 const confirmations = blockHeight - receiptBlock
 

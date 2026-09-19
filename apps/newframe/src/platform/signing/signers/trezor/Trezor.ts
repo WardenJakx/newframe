@@ -277,7 +277,7 @@ export default class Trezor extends Signer {
           )
 
           const messageHash = TypedDataUtils.hashStruct(
-            primaryType as any,
+            primaryType as string,
             message,
             types,
             SignTypedDataVersion.V4

@@ -136,7 +136,7 @@ export default class BalancesWorkerController extends EventEmitter {
   }
 
   // sending messages
-  private sendCommandToWorker(command: string, args: any[] = []) {
+  private sendCommandToWorker(command: string, args: unknown[] = []) {
     log.debug(`sending command ${command} to worker`)
 
     try {

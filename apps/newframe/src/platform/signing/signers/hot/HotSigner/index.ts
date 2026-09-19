@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import { Common, createCustomCommon, Holesky, Mainnet, Sepolia, type ChainConfig } from '@ethereumjs/common'
-import { createTx } from '@ethereumjs/tx'
+import { createTx, type TypedTxData } from '@ethereumjs/tx'
 import { bytesToHex } from '@ethereumjs/util'
 import { personalSign, recoverPersonalSignature, signTypedData } from '@metamask/eth-sig-util'
 import { app } from 'electron'
@@ -125,7 +125,7 @@ abstract class HotSigner extends Signer {
       }
       const chainId = Number.parseInt(String(rawTx.chainId), 16)
       const hardfork = Number.parseInt(String(rawTx.type)) === 2 ? 'london' : 'berlin'
-      const tx = createTx(rawTx as any, { common: chainConfig(chainId, hardfork) })
+      const tx = createTx(rawTx as TypedTxData, { common: chainConfig(chainId, hardfork) })
       return bytesToHex(tx.sign(privateKey).serialize())
     })
   }
