@@ -32,7 +32,7 @@ type RequestReference = { handlerId: string }
 interface RequestCommandSharedState {
   airgapSigning?: AirGapRequestReference
   appLocked: boolean
-  chain: { explorer?: string; isTestnet?: boolean }
+  chain: { explorer?: string; isTestnet?: boolean; name?: string }
   explorerWarningMuted: boolean
   transactionSignerAttached: boolean
   step: RequestViewStep
@@ -393,6 +393,9 @@ export function RequestCommand(props: RequestCommandProps) {
     if (capability?.type === 'safe') {
       const progress = req.safeMessageProgress
       const confirmed = new Set(progress?.confirmations.map((address) => address.toLowerCase()) ?? [])
+      const networkDescription = props.shared.chain.name
+        ? `${props.shared.chain.name} (chain ${capability.chainId})`
+        : `chain ${capability.chainId}`
       const retryPublication = progress?.status === 'failed'
       const selectedOwner = capability.candidates.find((candidate) => candidate.accountId === selectedOwnerId)
       const selectedConfirmed = selectedOwner ? confirmed.has(selectedOwner.address.toLowerCase()) : false
@@ -409,22 +412,33 @@ export function RequestCommand(props: RequestCommandProps) {
 
       return (
         <Stack gap='xsmall'>
-          <SigningAccount label='Owner signer'>
-            <SafeOwnerSelector
-              owners={capability.candidates}
-              label='Owner signer'
-              placeholder='Choose an owner'
-              emptyLabel='No available owner signer'
-              selectedOwnerId={selectedOwnerId}
-              onSelectOwner={(ownerId) => setOwnerSelection({ requestId: request.handlerId, ownerId })}
-              ownerDisabled={(owner) =>
-                owner.status !== 'ready' || (!retryPublication && confirmed.has(owner.address.toLowerCase()))
-              }
-            />
-          </SigningAccount>
-          <Text tone='secondary' variant='caption'>
-            {confirmed.size} / {capability.threshold} verified confirmations
-          </Text>
+          {capability.configured ? (
+            <>
+              <SigningAccount label='Owner signer'>
+                <SafeOwnerSelector
+                  owners={capability.candidates}
+                  label='Owner signer'
+                  placeholder='Choose an owner'
+                  emptyLabel='No available owner signer'
+                  selectedOwnerId={selectedOwnerId}
+                  onSelectOwner={(ownerId) => setOwnerSelection({ requestId: request.handlerId, ownerId })}
+                  ownerDisabled={(owner) =>
+                    owner.status !== 'ready' ||
+                    (!retryPublication && confirmed.has(owner.address.toLowerCase()))
+                  }
+                />
+              </SigningAccount>
+              <Text tone='secondary' variant='caption'>
+                {confirmed.size} / {capability.threshold} verified confirmations
+              </Text>
+            </>
+          ) : (
+            <div aria-label='Safe network unavailable' role='alert'>
+              <Text tone='danger' variant='caption'>
+                This Safe is not configured on {networkDescription}.
+              </Text>
+            </div>
+          )}
           {progress?.message ? (
             <div role={progress.status === 'failed' ? 'alert' : 'status'}>
               <Text tone={progress.status === 'failed' ? 'danger' : 'secondary'} variant='caption'>
@@ -442,7 +456,7 @@ export function RequestCommand(props: RequestCommandProps) {
           <RequestActions
             primary={{
               disabled: !selectedReady,
-              label: actionLabel,
+              label: capability.configured ? actionLabel : 'Safe unavailable',
               onPress: () => {
                 if (!selectedOwner) {
                   return
@@ -538,7 +552,7 @@ export function RequestCommand(props: RequestCommandProps) {
 
 export default function RequestCommandContainer(props: Omit<RequestCommandProps, 'shared'>) {
   const request = props.req as TransactionRequest | SignatureRequest
-  const chainId = request.type === 'transaction' ? parseInt(request.data.chainId || '0', 16) : 0
+  const chainId = request.type === 'transaction' ? parseInt(request.data.chainId || '0', 16) : request.chainId
   const signingAccount = useAccountIdentity(request.account)
   const accountId = signingAccount?.id ?? request.account
   const { step, adjustments, feeNoticeDismissed, dismissFeeNotice } = useRequestView()

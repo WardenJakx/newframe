@@ -179,6 +179,7 @@ export type SigningCapability =
       type: 'safe'
       status: 'ready' | 'unavailable'
       chainId: number
+      configured: boolean
       threshold: number
       coordination: 'service' | 'local-only'
       candidates: SigningCandidate[]
