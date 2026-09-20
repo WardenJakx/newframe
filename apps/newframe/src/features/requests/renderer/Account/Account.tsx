@@ -116,7 +116,7 @@ const isTransactionRequest = (
     return false
   }
   const firstParam: unknown = Array.isArray(request.payload.params) ? request.payload.params[0] : undefined
-  if (!isRecord(firstParam) || typeof firstParam.chainId !== 'string' || !isOptionalString(firstParam.data)) {
+  if (!isRecord(firstParam) || !isOptionalString(firstParam.chainId) || !isOptionalString(firstParam.data)) {
     return false
   }
 
