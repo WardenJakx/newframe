@@ -267,6 +267,7 @@ export const WalletRequestSchema = z
           type: z.literal('safe'),
           status: z.enum(['ready', 'unavailable']),
           chainId: z.number().int().positive(),
+          configured: z.boolean(),
           threshold: z.number().int().nonnegative(),
           coordination: z.enum(['service', 'local-only']),
           candidates: z.array(SafeOwnerAccountSchema)

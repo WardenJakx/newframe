@@ -162,6 +162,34 @@ const safeOwner = (index: number, status: 'ready' | 'unavailable' = 'ready') => 
   status
 })
 
+it('explains when the Safe is not configured on the request chain', () => {
+  const req: RequestCommandRequest = {
+    type: 'sign',
+    handlerId: 'safe-request',
+    account: `0x${'a'.repeat(40)}`,
+    signingCapability: {
+      type: 'safe',
+      status: 'unavailable',
+      chainId: 1,
+      configured: false,
+      threshold: 0,
+      coordination: 'service',
+      candidates: []
+    }
+  }
+  const props = createProps(false, req, false)
+  props.shared.chain = { name: 'Ethereum' }
+  render(<RequestCommand {...props} />)
+
+  expect(screen.getByRole('alert', { name: 'Safe network unavailable' }).textContent).toBe(
+    'This Safe is not configured on Ethereum (chain 1).'
+  )
+  expect(screen.queryByText(/verified confirmations/)).toBeNull()
+  expect(screen.queryByText('No available owner signer')).toBeNull()
+  expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Safe unavailable' }).disabled).toBe(true)
+  expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Decline' }).disabled).toBe(false)
+})
+
 it('selects a projected Safe owner and sends its ID without replacing the Safe request account', async () => {
   const req: RequestCommandRequest = {
     type: 'sign',
@@ -171,6 +199,7 @@ it('selects a projected Safe owner and sends its ID without replacing the Safe r
       type: 'safe',
       status: 'ready',
       chainId: 1,
+      configured: true,
       threshold: 2,
       coordination: 'service',
       candidates: [safeOwner(1), safeOwner(2)]
@@ -210,6 +239,7 @@ it('shows verified Safe progress and permits another projected owner while the R
       type: 'safe',
       status: 'ready',
       chainId: 1,
+      configured: true,
       threshold: 2,
       coordination: 'service',
       candidates: [first, second]
@@ -243,6 +273,7 @@ it('shows a retryable Safe publication failure', async () => {
       type: 'safe',
       status: 'ready',
       chainId: 1,
+      configured: true,
       threshold: 2,
       coordination: 'service',
       candidates: [owner]

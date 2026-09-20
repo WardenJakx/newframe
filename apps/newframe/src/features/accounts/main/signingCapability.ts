@@ -6,6 +6,7 @@ import type {
   SigningCapability,
   SigningCandidate
 } from '../../requests/contract/requests.js'
+import type { SafeDeployment } from '../domain/safe.js'
 import type { Account } from '../domain/state/account.js'
 
 type SignerSummary = {
@@ -134,13 +135,15 @@ export function deriveSigningCapability(
   }
 
   const chainId = String(request.chainId)
-  const deployment = account.safe[chainId]
+  const deployments: Record<string, SafeDeployment | undefined> = account.safe
+  const deployment = deployments[chainId]
   const candidates = safeOwnerCandidates(account, request.chainId, accounts, signers, appLock)
   return {
     type: 'safe',
     status: candidates.some((candidate) => candidate.status === 'ready') ? 'ready' : 'unavailable',
     chainId: request.chainId,
-    threshold: Object.hasOwn(account.safe, chainId) ? deployment.configuration.threshold : 0,
+    configured: deployment !== undefined,
+    threshold: deployment?.configuration.threshold ?? 0,
     coordination: version === SignTypedDataVersion.V1 ? 'local-only' : 'service',
     candidates
   }
