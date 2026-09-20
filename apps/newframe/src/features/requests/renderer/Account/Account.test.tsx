@@ -199,12 +199,19 @@ describe('request projection validation', () => {
   })
 
   it('fails safely when transaction RPC params are empty or malformed', () => {
-    for (const params of [[], [{}]]) {
+    for (const params of [[], [null]]) {
       resetWithRequest(transactionWithParams(params))
       renderAccount()
       expectSafeFallback()
       cleanup()
     }
+  })
+
+  it('renders a transaction whose original params omit chainId', () => {
+    resetWithRequest(transactionWithParams([{ from: accountId, to: spenderAddress, value: '0x1' }]))
+    renderAccount()
+
+    expect(screen.getByLabelText('Request summary')).toBeTruthy()
   })
 
   it('renders a complete permit projection', () => {

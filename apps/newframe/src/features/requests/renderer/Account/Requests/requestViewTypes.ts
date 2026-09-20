@@ -103,7 +103,7 @@ export type AddTokenRequestView = RequestViewBase<'addToken'> & {
 }
 
 type TransactionParamView = {
-  chainId: string
+  chainId?: string
   data?: string
 }
 
