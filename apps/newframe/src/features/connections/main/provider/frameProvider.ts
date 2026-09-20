@@ -233,6 +233,13 @@ class FrameProxyProvider extends EventedRequestProvider {
     this.markClosed()
   }
 
+  protected override createPayload(
+    methodOrPayload: string | ProviderRequest,
+    params?: RpcParams
+  ): RpcPayload {
+    return { ...super.createPayload(methodOrPayload, params), id: crypto.randomUUID() }
+  }
+
   protected sendPayload<T = unknown>(payload: RpcPayload) {
     return new Promise<T>((resolve, reject) => {
       this.promises[payload.id] = {

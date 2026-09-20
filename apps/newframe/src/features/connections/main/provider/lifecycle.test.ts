@@ -75,7 +75,8 @@ it('round trips a canonical response through the real provider proxy', async () 
   proxy.start()
 
   expect(await frameProvider.request<string>({ method: 'eth_chainId', chainId: '0xa' })).toBe('0xa')
-  expect(responses).toEqual([{ id: 1, jsonrpc: '2.0', result: '0xa' }])
+  expect(responses).toMatchObject([{ jsonrpc: '2.0', result: '0xa' }])
+  expect(typeof (responses[0] as { id: unknown }).id).toBe('string')
   expect(responses[0]).not.toHaveProperty('method')
 
   frameProvider.close()
@@ -108,6 +109,58 @@ it('rejects a correlated malformed proxy response', async () => {
   expect(error).toBeInstanceOf(Error)
   expect((error as Error).message).toBe('Invalid JSON-RPC response')
   frameProvider.close()
+})
+
+it('correlates concurrent requests with duplicate caller ids in one proxy provider', async () => {
+  const sent: Array<{ id: string | number }> = []
+  const connection = Object.assign(new EventEmitter(), {
+    send(payload: { id: string | number }) {
+      sent.push(payload)
+    }
+  })
+  const frameProvider = createProxyProvider(connection)
+  connection.emit('connect')
+
+  const first = frameProvider.request<string>({ id: 1, method: 'first' })
+  const second = frameProvider.request<string>({ id: 1, method: 'second' })
+
+  expect(sent).toHaveLength(2)
+  expect(typeof sent[0].id).toBe('string')
+  expect(typeof sent[1].id).toBe('string')
+  expect(sent[0].id).not.toBe(sent[1].id)
+
+  connection.emit('payload', { id: sent[1].id, jsonrpc: '2.0', result: 'second result' })
+  connection.emit('payload', { id: sent[0].id, jsonrpc: '2.0', result: 'first result' })
+
+  expect(await Promise.all([first, second])).toEqual(['first result', 'second result'])
+  frameProvider.close()
+})
+
+it('correlates duplicate caller ids across proxy providers sharing one connection', async () => {
+  const sent: Array<{ id: string | number }> = []
+  const connection = Object.assign(new EventEmitter(), {
+    send(payload: { id: string | number }) {
+      sent.push(payload)
+    }
+  })
+  const firstProvider = createProxyProvider(connection)
+  const secondProvider = createProxyProvider(connection)
+  connection.emit('connect')
+
+  const first = firstProvider.request<string>({ id: 1, method: 'first' })
+  const second = secondProvider.request<string>({ id: 1, method: 'second' })
+
+  expect(sent).toHaveLength(2)
+  expect(typeof sent[0].id).toBe('string')
+  expect(typeof sent[1].id).toBe('string')
+  expect(sent[0].id).not.toBe(sent[1].id)
+
+  connection.emit('payload', { id: sent[1].id, jsonrpc: '2.0', result: 'second result' })
+  connection.emit('payload', { id: sent[0].id, jsonrpc: '2.0', result: 'first result' })
+
+  expect(await Promise.all([first, second])).toEqual(['first result', 'second result'])
+  firstProvider.close()
+  secondProvider.close()
 })
 
 it('constructs without listeners and owns an idempotent start/dispose lifecycle', () => {
