@@ -254,6 +254,88 @@ export const safeWatchStage: VisualStage = {
         }
         runtime.evidence('safeMessageOwnerApproved', safeSeed.owners[0])
         runtime.evidence('safeMessageEip1271', EIP1271_MAGIC_VALUE)
+
+        const sendState = { settled: false }
+        const transactionHashPromise = dappProvider
+          .send('eth_sendTransaction', [
+            {
+              from: safeSeed.safe,
+              to: safeSeed.owners[1],
+              value: '0x0',
+              data: '0x'
+            }
+          ])
+          .finally(() => {
+            sendState.settled = true
+          })
+        const transactionRequest = await driver.waitForCurrentRequest('transaction', new Set(), 15_000)
+        if (transactionRequest.accountId.toLowerCase() !== id) {
+          runtime.fail('Safe transaction request was attached to a different account')
+        }
+        const requestSafeTxHash = transactionRequest.safeTxHash
+        if (typeof requestSafeTxHash !== 'string' || !/^0x[0-9a-f]{64}$/i.test(requestSafeTxHash)) {
+          return runtime.fail('Safe transaction request did not expose its canonical SafeTx hash')
+        }
+        const transactionReview = tray.getByRole('dialog', { name: 'Requests' })
+        await transactionReview.getByText('Safe owner approval', { exact: true }).waitFor()
+        await transactionReview.getByText(safeSeed.safe, { exact: true }).first().waitFor()
+        await transactionReview.getByRole('button', { name: 'Sign', exact: true }).click()
+        await transactionReview.getByText('Ready · awaiting execution', { exact: true }).waitFor({
+          timeout: 15_000
+        })
+        if (sendState.settled) {
+          return runtime.fail(
+            'Safe eth_sendTransaction completed after owner approval without explicit execution'
+          )
+        }
+        await transactionReview.getByText('Gas-paying executor', { exact: true }).first().waitFor()
+        await transactionReview.getByRole('region', { name: 'Reviewed executor transaction' }).waitFor()
+        await transactionReview
+          .getByRole('button', { name: 'Execute transaction', exact: true })
+          .waitFor({ timeout: 15_000 })
+        await runtime.screenshot(tray, '08h-safe-dapp-execution-review.png')
+        await transactionReview.getByRole('button', { name: 'Execute transaction', exact: true }).click()
+        const outerTxHash: unknown = await transactionHashPromise
+        if (
+          typeof outerTxHash !== 'string' ||
+          !/^0x[0-9a-f]{64}$/i.test(outerTxHash) ||
+          outerTxHash.toLowerCase() === requestSafeTxHash.toLowerCase()
+        ) {
+          return runtime.fail(
+            `Safe eth_sendTransaction returned an invalid outer hash: ${String(outerTxHash)}`
+          )
+        }
+        const receipt = await chainProvider.waitForTransaction(outerTxHash, 1, 15_000)
+        const outerTransaction = await chainProvider.getTransaction(outerTxHash)
+        if (
+          receipt?.status !== 1 ||
+          receipt.hash.toLowerCase() !== outerTxHash.toLowerCase() ||
+          outerTransaction?.to?.toLowerCase() !== id ||
+          outerTransaction.from.toLowerCase() !== safeSeed.owners[0].toLowerCase()
+        ) {
+          runtime.fail('Safe execution was not broadcast as the reviewed outer EOA transaction')
+        }
+        await driver.waitForState(
+          (state) =>
+            state.main?.accounts?.[id]?.safe?.[chain]?.pending?.some(
+              (candidate) =>
+                candidate.safeTxHash.toLowerCase() === requestSafeTxHash.toLowerCase() &&
+                candidate.local?.execution.transactionHash?.toLowerCase() === outerTxHash.toLowerCase()
+            ) === true,
+          15_000,
+          'Safe proposal did not retain the submitted outer transaction hash'
+        )
+        const executedSafe = new Contract(
+          safeSeed.safe,
+          ['function nonce() view returns (uint256)'],
+          chainProvider
+        )
+        if ((await executedSafe.nonce()) !== 1n) {
+          runtime.fail('Safe execution did not advance the onchain Safe nonce')
+        }
+        runtime.evidence('safeDappSafeTxHash', requestSafeTxHash)
+        runtime.evidence('safeDappOuterTxHash', outerTxHash)
+        runtime.evidence('safeDappSeparateExecution', true)
       } finally {
         dappProvider.destroy()
         chainProvider.destroy()

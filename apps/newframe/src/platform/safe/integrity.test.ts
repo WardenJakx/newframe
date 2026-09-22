@@ -9,6 +9,7 @@ import {
   getSafeMessageTypedData,
   getSafeTypedMessage,
   packSafeMessageSignatures,
+  packSafeSignatures,
   recoverSafeConfirmationOwner,
   verifySafeConfirmation,
   verifySafeHash,
@@ -103,12 +104,25 @@ test('recovers current owners and packs EOA confirmations by ascending owner', a
   )
   expect(recoverSafeConfirmationOwner(hash, signatures[0])).toBe(wallets[0].address)
   expect(
-    packSafeMessageSignatures(
+    packSafeSignatures(
       hash,
       wallets.map((wallet) => wallet.address),
       descending
     )
   ).toBe(`0x${ascending.map(({ signature }) => signature.slice(2)).join('')}`)
+  expect(
+    packSafeMessageSignatures(
+      hash,
+      wallets.map((wallet) => wallet.address),
+      descending
+    )
+  ).toBe(
+    packSafeSignatures(
+      hash,
+      wallets.map((wallet) => wallet.address),
+      descending
+    )
+  )
 
   const personal = await wallets[0].signMessage(getBytes(hash))
   const safeEthSign = `${personal.slice(0, -2)}${(Number.parseInt(personal.slice(-2), 16) + 4).toString(16)}`
@@ -127,6 +141,7 @@ test('rejects non-owners, duplicate owners, reported-owner mismatches, and malfo
   expect(() => packSafeMessageSignatures(hash, [owner.address], [{ signature }, { signature }])).toThrow(
     'Duplicate'
   )
+  expect(() => packSafeSignatures(hash, [owner.address], [{ signature }, { signature }])).toThrow('Duplicate')
   expect(() =>
     packSafeMessageSignatures(hash, [owner.address], [{ signature: signature.slice(0, -2) }])
   ).toThrow('owner')

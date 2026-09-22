@@ -24,7 +24,12 @@ import type {
   TypedMessage,
   PermitSignatureRequest
 } from '../../requests/contract/requests.js'
-import { ReplacementType, RequestStatus, RequestMode } from '../../requests/contract/requests.js'
+import {
+  ReplacementType,
+  RequestStatus,
+  RequestMode,
+  TxClassification
+} from '../../requests/contract/requests.js'
 import type { ApprovalType } from '../../requests/domain/approval.js'
 import type { PromptedRequestLifecyclePort } from '../../requests/main/service.js'
 import { NATIVE_CURRENCY } from '../../tokens/domain/constants.js'
@@ -475,7 +480,7 @@ export class Accounts extends EventEmitter {
       address: account.address,
       chainId: chain?.id,
       chainType: chain?.type ?? 'ethereum',
-      nonce: req.data.nonce,
+      nonce: req.safeTxHash ? undefined : req.data.nonce,
       origin: req.origin,
       submittedAt: this.dependencies.runtime.now(),
       updatedAt: this.dependencies.runtime.now(),
@@ -492,6 +497,17 @@ export class Accounts extends EventEmitter {
       classification: req.classification,
       recipient: req.recipient,
       recipientType: req.recipientType,
+      ...(req.safeTxHash
+        ? {
+            metadata: {
+              safe: {
+                safeTxHash: req.safeTxHash,
+                inner: cloneForActivity(req.data),
+                outer: cloneForActivity(req.safeExecution)
+              }
+            }
+          }
+        : {}),
       display
     }
   }
@@ -719,7 +735,7 @@ export class Accounts extends EventEmitter {
     const now = this.dependencies.runtime.now()
     const notificationState = status === 'succeeded' ? 'completed' : 'failed'
     const display = this.getTransactionActivityDisplay(req, this.getTransactionChain(req))
-    const gasSpent = getPaidTransactionFee(req)
+    const gasSpent = req.safeTxHash ? null : getPaidTransactionFee(req)
     const balanceChanges =
       status === 'succeeded'
         ? getTransactionEffects(req, this.getTransactionNativeSymbol(req)).filter(isBalanceChange)
@@ -835,6 +851,7 @@ export class Accounts extends EventEmitter {
   private toActivityRequest(activity: ActivityRecord): TransactionRequest {
     const chainId = this.activityChainId(activity)
     const activityData = unknownRecord(activity.data)
+    const safeMetadata = unknownRecord(unknownRecord(activity.metadata).safe)
     const data = {
       ...activityData,
       chainId: activityData.chainId ?? (chainId ? addHexPrefix(chainId.toString(16)) : undefined),
@@ -855,6 +872,12 @@ export class Accounts extends EventEmitter {
             params: [data]
           } as RPC.SendTransaction.Request),
       data,
+      ...(typeof safeMetadata.safeTxHash === 'string'
+        ? {
+            safeTxHash: safeMetadata.safeTxHash,
+            safeExecution: unknownRecord(safeMetadata.outer) as TransactionRequest['safeExecution']
+          }
+        : {}),
       decodedData: activity.decodedData,
       tokenData: activity.tokenData,
       chainData: activity.chainData,
@@ -1260,6 +1283,9 @@ export class Accounts extends EventEmitter {
       }
 
       const txRequest = currentAccount.requests[id] as TransactionRequest
+      if (txRequest.safeTxHash) {
+        return reject(new Error('Safe execution transactions cannot be replaced or cancelled'))
+      }
 
       const data = JSON.parse(JSON.stringify(txRequest.data)) as TransactionData
       const targetChain: Chain = { type: 'ethereum', id: parseInt(data.chainId, 16) }
@@ -2074,6 +2100,75 @@ export class Accounts extends EventEmitter {
       this.resumeActivityMonitor(activity)
     }
     return true
+  }
+
+  trackSafeExecution(safeTxHash: string, outerTxHash: string) {
+    const normalizedHash = safeTxHash.toLowerCase()
+    for (const accountState of Object.values(this.store.getState().main.accounts)) {
+      if (!accountState.safe) {
+        continue
+      }
+      for (const [chainIdText, deployment] of Object.entries(accountState.safe)) {
+        const proposal = deployment.pending?.find(
+          (candidate) => candidate.safeTxHash.toLowerCase() === normalizedHash
+        )
+        const executorId = proposal?.local?.execution.executorId
+        if (!proposal || !executorId) {
+          continue
+        }
+        const account = this.getFrameAccount(accountState.id)
+        if (!account) {
+          return false
+        }
+        const chainId = Number(chainIdText)
+        const data: TransactionData = {
+          chainId: addHexPrefix(chainId.toString(16)),
+          type: '0x0',
+          gasFeesSource: GasFeesSource.Dapp,
+          from: deployment.address,
+          to: proposal.to,
+          value: addHexPrefix(BigInt(proposal.value).toString(16)),
+          data: proposal.data
+        }
+        const request: TransactionRequest = {
+          handlerId: `safe:${normalizedHash}`,
+          type: 'transaction',
+          origin: proposal.local?.origin ?? frameOriginId,
+          account: account.id,
+          payload: {
+            id: normalizedHash,
+            jsonrpc: '2.0',
+            method: 'eth_sendTransaction',
+            chainId: data.chainId,
+            params: [{ from: deployment.address, to: proposal.to, value: data.value, data: proposal.data }]
+          } as RPC.SendTransaction.Request,
+          data,
+          safeTxHash: normalizedHash,
+          safeExecution: {
+            executorId,
+            ...(proposal.local?.execution.transaction
+              ? { reviewedTransaction: proposal.local.execution.transaction }
+              : {}),
+            submitted: { outerTxHash, executorId }
+          },
+          approvals: [],
+          feesUpdatedByUser: false,
+          recipientType: '',
+          recognizedActions: [],
+          classification:
+            proposal.data !== '0x' ? TxClassification.CONTRACT_CALL : TxClassification.NATIVE_TRANSFER
+        }
+        this.recordSubmittedTransaction(account, request.handlerId, request, outerTxHash)
+        const activity = this.store.getState().main.activity[transactionActivityId(outerTxHash)] as
+          | ActivityRecord
+          | undefined
+        if (activity) {
+          this.resumeActivityMonitor(activity)
+        }
+        return true
+      }
+    }
+    return false
   }
 
   removeRequests(handlerId: string) {

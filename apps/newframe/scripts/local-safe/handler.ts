@@ -1,5 +1,6 @@
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import { computeAddress, SigningKey, TypedDataEncoder, ZeroAddress } from 'ethers'
+import { z } from 'zod'
 
 import {
   safeAddressSchema,
@@ -16,6 +17,39 @@ import {
   verifySafeHash
 } from '../../src/platform/safe/integrity.js'
 import type { OriginalMessage } from '../../src/platform/signing/signatures/digests.js'
+
+const proposalPostSchema = z.strictObject({
+  safe: safeAddressSchema,
+  to: safeAddressSchema,
+  value: z.string(),
+  data: z.string(),
+  operation: z.number(),
+  safeTxGas: z.string(),
+  baseGas: z.string(),
+  gasPrice: z.string(),
+  gasToken: safeAddressSchema,
+  refundReceiver: safeAddressSchema,
+  nonce: z.string(),
+  contractTransactionHash: z.string().regex(/^0x[0-9a-f]{64}$/i),
+  sender: safeAddressSchema,
+  signature: z.string().regex(/^0x[0-9a-f]{130}$/i),
+  origin: z.string().max(200).optional()
+})
+
+const canonicalProposalFields = [
+  'safeTxHash',
+  'safe',
+  'nonce',
+  'to',
+  'value',
+  'operation',
+  'data',
+  'safeTxGas',
+  'baseGas',
+  'gasPrice',
+  'gasToken',
+  'refundReceiver'
+] as const
 
 function parseOriginalMessage(value: unknown): OriginalMessage | undefined {
   if (typeof value === 'string') {
@@ -162,6 +196,91 @@ export function createSafeHandler(options: {
             headers: current.retryAfter ? { 'Retry-After': current.retryAfter } : undefined
           }
         )
+      }
+      const proposalCreateRoute = new RegExp(`^/api/v1/safes/${safe}/multisig-transactions/$`, 'i').test(
+        url.pathname
+      )
+      if (proposalCreateRoute && request.method === 'POST') {
+        let body: unknown
+        try {
+          body = await request.json()
+        } catch {
+          return Response.json({ error: 'Invalid JSON' }, { status: 400 })
+        }
+        const parsed = proposalPostSchema.safeParse(body)
+        if (!parsed.success || parsed.data.safe !== safe) {
+          return Response.json({ error: 'Invalid transaction' }, { status: 400 })
+        }
+        const input = parsed.data
+        const candidate = safeProposalSchema.safeParse({
+          safeTxHash: input.contractTransactionHash,
+          safe: input.safe,
+          nonce: input.nonce,
+          to: input.to,
+          value: input.value,
+          operation: input.operation,
+          data: input.data,
+          safeTxGas: input.safeTxGas,
+          baseGas: input.baseGas,
+          gasPrice: input.gasPrice,
+          gasToken: input.gasToken,
+          refundReceiver: input.refundReceiver,
+          confirmations: [input.sender]
+        })
+        const recovered = recoverSafeConfirmationOwner(input.contractTransactionHash, input.signature)
+        if (
+          !candidate.success ||
+          verifySafeHash(candidate.data, options.chainId, safe, configuration.version).status !== 'matched' ||
+          recovered !== input.sender ||
+          !configuration.owners.includes(input.sender)
+        ) {
+          return Response.json({ error: 'Invalid transaction owner signature' }, { status: 400 })
+        }
+        const existing = proposals.find((proposal) => proposal.safeTxHash === candidate.data.safeTxHash)
+        if (existing && canonicalProposalFields.some((field) => existing[field] !== candidate.data[field])) {
+          return Response.json({ error: 'Transaction conflict' }, { status: 409 })
+        }
+        const proposal = existing ?? candidate.data
+        if (!existing) {
+          proposals.push(proposal)
+        }
+        const stored = confirmations.get(proposal.safeTxHash) ?? new Map<string, string>()
+        const retained = stored.get(input.sender)
+        if (retained && retained.toLowerCase() !== input.signature.toLowerCase()) {
+          return Response.json({ error: 'Signature conflict' }, { status: 409 })
+        }
+        stored.set(input.sender, input.signature)
+        confirmations.set(proposal.safeTxHash, stored)
+        if (!proposal.confirmations.includes(input.sender)) {
+          proposal.confirmations.push(input.sender)
+        }
+        return Response.json({}, { status: existing ? 409 : 201 })
+      }
+      const transactionRoute = /^\/api\/v1\/multisig-transactions\/(0x[0-9a-f]{64})\/$/i.exec(url.pathname)
+      if (transactionRoute && request.method === 'GET') {
+        const proposal = proposals.find((item) => item.safeTxHash === transactionRoute[1].toLowerCase())
+        if (!proposal) {
+          return Response.json({ error: 'Transaction not found' }, { status: 404 })
+        }
+        const stored = confirmations.get(proposal.safeTxHash) ?? new Map<string, string>()
+        const owners = new Set([...proposal.confirmations, ...stored.keys()])
+        return Response.json({
+          ...proposal,
+          isExecuted: false,
+          transactionHash: null,
+          confirmations: [...owners].map((owner) => {
+            const signature = stored.get(owner)
+            let signatureType: 'EOA' | 'ETH_SIGN' | undefined
+            if (signature !== undefined) {
+              signatureType = Number.parseInt(signature.slice(-2), 16) > 30 ? 'ETH_SIGN' : 'EOA'
+            }
+            return {
+              owner,
+              signature: signature ?? null,
+              signatureType
+            }
+          })
+        })
       }
       const confirmationRoute = /^\/api\/v1\/multisig-transactions\/(0x[0-9a-f]{64})\/confirmations\/$/i.exec(
         url.pathname

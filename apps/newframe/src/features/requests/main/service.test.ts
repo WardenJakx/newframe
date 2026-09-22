@@ -1,13 +1,15 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
+import type { SafeTransactionPort } from '../../accounts/main/safeTransactionPort'
 import { GasFeesSource } from '../../transactions/domain'
 import type { AccessRequest, AccountRequest, AddChainRequest, TransactionRequest } from '../contract/requests'
-import { TxClassification } from '../contract/requests'
+import { RequestStatus, TxClassification } from '../contract/requests'
 import { createRequestService, type RequestService } from './service'
 
 const accountId = '0x1111111111111111111111111111111111111111'
 const signerId = 'signer-1'
 const otherAccountId = '0x2222222222222222222222222222222222222222'
+const safeTxHash = `0x${'a'.repeat(64)}`
 
 function transactionRequest(requestId: string): TransactionRequest {
   return {
@@ -115,6 +117,12 @@ function fixture() {
   }
   const approval = Promise.withResolvers<string>()
   const approveTransactionRequest = mock(() => approval.promise)
+  const approveSafeTransaction = mock((..._args: Parameters<SafeTransactionPort['approve']>) => true)
+  const executeSafeTransaction = mock(
+    async (..._args: Parameters<SafeTransactionPort['execute']>) => `0x${'b'.repeat(64)}`
+  )
+  const removeUnsigned = mock(() => true)
+  const trackSafeExecution = mock(() => true)
   const accounts = {
     clearRequestsByOrigin: mock(),
     current: () => account,
@@ -141,7 +149,8 @@ function fixture() {
     }),
     setTxSent: mock((requestId: string, hash: string) => {
       Object.assign(requests[requestId] ?? {}, { status: 'verifying', tx: { hash, confirmations: 0 } })
-    })
+    }),
+    trackSafeExecution
   }
   const signerCompatibility = mock(() => ({ signer: 'ledger', tx: 'london', compatible: true }))
   const vault = { exists: mock(() => false), isUnlocked: mock(() => true) }
@@ -154,6 +163,16 @@ function fixture() {
       approveSign: mock(),
       approveSignTypedData: mock(),
       approveTransactionRequest
+    },
+    safeTransactions: {
+      prepareDraft: mock() as never,
+      attach: mock() as never,
+      approve: approveSafeTransaction,
+      removeUnsigned,
+      cleanupUnsigned: mock(),
+      prepareExecution: mock() as never,
+      execute: executeSafeTransaction,
+      status: mock() as never
     },
     store: { getState: () => state } as never,
     transactionPolicy: { signerCompatibility },
@@ -172,11 +191,15 @@ function fixture() {
     accounts,
     add,
     approval,
+    approveSafeTransaction,
     approveTransactionRequest,
     requests,
+    executeSafeTransaction,
+    removeUnsigned,
     service,
     signerCompatibility,
-    state
+    state,
+    trackSafeExecution
   }
 }
 
@@ -217,6 +240,120 @@ describe('prompted request lifecycle', () => {
       expect(test.approveTransactionRequest).not.toHaveBeenCalled()
     }
   )
+
+  it('keeps selected Safe owner approvals pending and allocates a fresh operation for retries', () => {
+    const request = transactionRequest('safe-owner')
+    request.safeTxHash = safeTxHash
+    delete request.data.nonce
+    delete request.data.gasLimit
+    test.add(request, mock())
+    const context = { owner: { clientType: 'wallet-ui', windowInstanceId: 'window' } } as never
+
+    expect(test.service.approve(request.handlerId, context, undefined, otherAccountId)).toBeTrue()
+    expect(test.approveSafeTransaction).toHaveBeenCalledTimes(1)
+    const [command, approvalContext] = test.approveSafeTransaction.mock.calls[0]
+    expect(command).toMatchObject({
+      type: 'request.approve',
+      accountId,
+      chainId: 1,
+      safeTxHash,
+      ownerId: otherAccountId
+    })
+    expect(command.operationId).toMatch(new RegExp(`^${request.handlerId}:${otherAccountId}:[0-9a-f-]{36}$`))
+    expect(approvalContext).toBe(context)
+    expect(test.approveTransactionRequest).not.toHaveBeenCalled()
+    expect(test.accounts.setTxSent).not.toHaveBeenCalled()
+    expect(request.status).toBe(RequestStatus.Pending)
+
+    expect(test.service.approve(request.handlerId, context, undefined, otherAccountId)).toBeTrue()
+    expect(test.approveSafeTransaction).toHaveBeenCalledTimes(2)
+    expect(test.approveSafeTransaction.mock.calls[1][0].operationId).not.toBe(command.operationId)
+  })
+
+  it('executes a reviewed Safe outer transaction and settles its live RPC once from the submitted sink', async () => {
+    const request = transactionRequest('safe-executor')
+    request.safeTxHash = safeTxHash
+    delete request.data.nonce
+    delete request.data.gasLimit
+    const respond = mock()
+    test.add(request, respond)
+    const context = { owner: { clientType: 'wallet-ui', windowInstanceId: 'window' } } as never
+    const adjustments = { gasLimit: '0x1234' }
+
+    expect(
+      test.service.approve(request.handlerId, context, adjustments, undefined, otherAccountId)
+    ).toBeTrue()
+    await Promise.resolve()
+    expect(test.executeSafeTransaction).toHaveBeenCalledTimes(1)
+    const execution = test.executeSafeTransaction.mock.calls[0]
+    expect(execution.slice(0, 4)).toEqual([
+      { accountId, chainId: 1, safeTxHash },
+      otherAccountId,
+      adjustments,
+      context
+    ])
+    expect(execution[4]).toMatch(new RegExp(`^${request.handlerId}:${otherAccountId}:execute:[0-9a-f-]{36}$`))
+
+    const outerTxHash = `0x${'c'.repeat(64)}`
+    expect(test.service.notifySafeTransactionSubmitted({ safeTxHash, outerTxHash })).toBeTrue()
+    expect(test.service.notifySafeTransactionSubmitted({ safeTxHash, outerTxHash })).toBeTrue()
+    expect(respond).toHaveBeenCalledTimes(1)
+    expect(respond).toHaveBeenCalledWith({ id: 7, jsonrpc: '2.0', result: outerTxHash })
+    expect(test.accounts.setTxSent).toHaveBeenCalledTimes(1)
+    expect(test.accounts.setTxSent).toHaveBeenCalledWith(request.handlerId, outerTxHash)
+    expect(test.trackSafeExecution).not.toHaveBeenCalled()
+  })
+
+  it('retries a failed Safe execution with a fresh operation and settles after submission', async () => {
+    const request = transactionRequest('safe-execution-retry')
+    request.safeTxHash = safeTxHash
+    delete request.data.nonce
+    delete request.data.gasLimit
+    const respond = mock()
+    test.add(request, respond)
+    const context = { owner: { clientType: 'wallet-ui', windowInstanceId: 'window' } } as never
+    test.executeSafeTransaction
+      .mockRejectedValueOnce(new Error('broadcast failed'))
+      .mockResolvedValueOnce(`0x${'b'.repeat(64)}`)
+
+    expect(test.service.approve(request.handlerId, context, undefined, undefined, otherAccountId)).toBeTrue()
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(test.service.approve(request.handlerId, context, undefined, undefined, otherAccountId)).toBeTrue()
+    await Promise.resolve()
+
+    expect(test.executeSafeTransaction).toHaveBeenCalledTimes(2)
+    const first = test.executeSafeTransaction.mock.calls[0][4]
+    const second = test.executeSafeTransaction.mock.calls[1][4]
+    expect(second).not.toBe(first)
+    expect(respond).not.toHaveBeenCalled()
+
+    const outerTxHash = `0x${'c'.repeat(64)}`
+    expect(test.service.notifySafeTransactionSubmitted({ safeTxHash, outerTxHash })).toBeTrue()
+    expect(respond).toHaveBeenCalledWith({ id: 7, jsonrpc: '2.0', result: outerTxHash })
+  })
+
+  it('records queue-initiated Safe execution without requiring an RPC continuation', () => {
+    const outerTxHash = `0x${'d'.repeat(64)}`
+    expect(test.service.notifySafeTransactionSubmitted({ safeTxHash, outerTxHash })).toBeTrue()
+    expect(test.trackSafeExecution).toHaveBeenCalledTimes(1)
+    expect(test.trackSafeExecution).toHaveBeenCalledWith(safeTxHash, outerTxHash)
+  })
+
+  it('asks the Safe coordinator to remove only unsigned rejected drafts', () => {
+    const request = transactionRequest('safe-reject')
+    request.safeTxHash = safeTxHash
+    test.add(request, mock())
+
+    expect(test.service.rejectRequest(request.handlerId)).toBeTrue()
+    expect(test.removeUnsigned).toHaveBeenCalledWith({
+      type: 'safe.confirmation-status',
+      accountId,
+      chainId: 1,
+      safeTxHash,
+      ownerId: accountId
+    })
+  })
 
   it('freezes accepted equal fees while a warning is pending and signs the stored candidate', () => {
     const request = transactionRequest('adjusted')

@@ -1,93 +1,118 @@
 import { Disclosure } from '@newframe/ui/disclosure'
+import { Inline } from '@newframe/ui/inline'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
-import { formatUnits } from 'ethers'
 import { useState, type ReactNode } from 'react'
 
 import { getCalldataDigest } from '../../../shared/domain/calldata'
 import { AddressIdentity, shortAddress } from '../../../shared/renderer/ui/AddressIdentity'
-import type {
-  SafeDeployment,
-  SafeOwnerAccount,
-  SafeProposal,
-  SafeProposalSimulation
-} from '../../accounts/domain/safe'
-import TransactionInformation from './Account/Requests/TransactionRequest/TransactionInformation'
+import type { SafeDeployment, SafeProposal, SafeProposalSimulation } from '../../accounts/domain/safe'
+import type { TransactionApprovalAdjustments } from '../../transactions/domain/approval'
+import type { TransactionFeeField } from '../../transactions/domain/fees'
+import { TxClassification, type SafeExecutionMetadata, type SigningCandidate } from '../contract/requests'
+import type { useAssetRate, useAddressIdentities, useTokens } from './Account/Requests/state'
+import AdjustFee from './Account/Requests/TransactionRequest/AdjustFee'
+import { TxReviewView, type TxReviewData } from './Account/Requests/TransactionRequest/TxReview'
 import type { RequestRendererCapabilities } from './requestCapabilities'
 import { RequestActions } from './ui/RequestActions'
+import { RequestSigningFooter } from './ui/RequestSigningFooter'
 import { SafeOwnerSelector } from './ui/SafeOwnerSelector'
 import { SigningAccount } from './ui/SigningAccount'
-import type { SafeConfirmationModel } from './useSafeConfirmation'
 
 export type SafePreview = SafeProposalSimulation | { status: 'loading' }
+
+type SafeAction = {
+  disabled?: boolean
+  label: string
+  onPress: () => void
+}
+
+export type SafeProposalActionModel = {
+  status:
+    | 'collecting'
+    | 'signing'
+    | 'publishing'
+    | 'publication_failed'
+    | 'ready'
+    | 'preparing'
+    | 'executing'
+    | 'submitted'
+    | 'failed'
+  confirmations: string[]
+  threshold: number
+  publication: 'local' | 'publishing' | 'published' | 'failed'
+  owners: SigningCandidate[]
+  selectedOwnerId?: string
+  onSelectOwner?: (accountId: string) => void
+  ownerAction?: SafeAction
+  executors: SigningCandidate[]
+  selectedExecutorId?: string
+  onSelectExecutor?: (accountId: string) => void
+  executionAction?: SafeAction
+  reviewedTransaction?: SafeExecutionMetadata['reviewedTransaction']
+  executionWarnings?: string[]
+  outerTxHash?: string
+  adjustments?: TransactionApprovalAdjustments
+  onUpdateFee?: (field: TransactionFeeField, value: bigint) => void
+  decline?: SafeAction
+  message?: string
+}
 
 export function SafeProposalDetailsView({
   renderAddress,
   deployment,
   proposal,
-  owners = [],
-  selectedOwnerId,
-  onSelectOwner,
-  confirmation,
-  onRecoverSigner,
   simulation,
   networkName,
   networkIcon,
   symbol,
   decimals = 18,
-  capabilities
+  originName,
+  favicon,
+  accountName,
+  isTestnet = false,
+  nativeCurrencyRate,
+  identities,
+  tokens,
+  capabilities,
+  actions
 }: {
   renderAddress?: (address: string) => ReactNode
   deployment: SafeDeployment
   proposal: SafeProposal
-  owners?: Array<SafeOwnerAccount & { accountType?: string }>
-  selectedOwnerId?: string
-  onSelectOwner?: (accountId: string) => void
-  confirmation?: SafeConfirmationModel
-  onRecoverSigner?: () => void
   simulation: SafePreview
   networkName: string
   networkIcon?: string
   symbol: string
   decimals?: number
+  originName?: string
+  favicon?: string
+  accountName?: string
+  isTestnet?: boolean
+  nativeCurrencyRate?: ReturnType<typeof useAssetRate>
+  identities?: ReturnType<typeof useAddressIdentities>
+  tokens?: ReturnType<typeof useTokens>
   capabilities: Pick<RequestRendererCapabilities, 'external'>
+  actions?: SafeProposalActionModel
 }) {
   const [confirmationsOpen, setConfirmationsOpen] = useState(false)
-  const selectedOwner = owners.find((owner) => owner.accountId === selectedOwnerId)
-  const busy = confirmation?.status === 'signing' || confirmation?.status === 'publishing'
-  const published = confirmation?.status === 'published'
-  const retryPublication = confirmation?.status === 'publication_failed'
-  const appLocked = selectedOwner?.signerStatus === 'Wallet locked'
-  const recoverable =
-    !!selectedOwner?.signerAttached &&
-    selectedOwner.status === 'unavailable' &&
-    !appLocked &&
-    !!onRecoverSigner
-  const signingReady = selectedOwner?.status === 'ready'
-  let actionLabel = 'Sign'
-  if (published) {
-    actionLabel = 'Confirmation published'
-  } else if (confirmation?.status === 'publishing') {
-    actionLabel = 'Publishing…'
-  } else if (confirmation?.status === 'signing') {
-    actionLabel = 'Signing…'
-  } else if (retryPublication) {
-    actionLabel = 'Retry publication'
-  } else if (selectedOwner && !selectedOwner.signerAttached) {
-    actionLabel = 'No signer attached'
-  } else if (recoverable) {
-    actionLabel = 'Connect signer'
-  }
+  const [feesOpen, setFeesOpen] = useState(false)
+  const [executionDetailsOpen, setExecutionDetailsOpen] = useState(false)
+  const owners = actions?.owners ?? []
+  const selectedOwner = owners.find((owner) => owner.accountId === actions?.selectedOwnerId)
   const currentNonce =
     simulation.status !== 'loading' && simulation.currentNonce !== undefined
       ? simulation.currentNonce
       : deployment.configuration.nonce
   const waiting = BigInt(proposal.nonce) > BigInt(currentNonce)
   const stale = BigInt(proposal.nonce) < BigInt(currentNonce)
-  const confirmedOwners = new Set(proposal.confirmations.map((address) => address.toLowerCase()))
-  const hasEnoughConfirmations =
-    deployment.configuration.owners.filter((owner) => confirmedOwners.has(owner.toLowerCase())).length >=
-    deployment.configuration.threshold
+  const confirmations = actions?.confirmations ?? proposal.confirmations
+  const threshold = actions?.threshold ?? deployment.configuration.threshold
+  const confirmedOwners = new Set(confirmations.map((address) => address.toLowerCase()))
+  const hasEnoughConfirmations = actions
+    ? ['ready', 'preparing', 'executing', 'submitted'].includes(actions.status)
+    : deployment.configuration.owners.filter((owner) => confirmedOwners.has(owner.toLowerCase())).length >=
+      threshold
   const effects =
     simulation.status === 'success' || (simulation.status === 'error' && simulation.failure === 'inner')
       ? simulation.effects
@@ -115,22 +140,25 @@ export function SafeProposalDetailsView({
       />
     )
   const nativeTransfer = proposal.data === '0x' && proposal.operation === 0
-  const nativeAmount = `${formatUnits(proposal.value, decimals)} ${symbol}`
-  const details = [
-    { label: nativeTransfer ? 'To' : 'On contract', value: addressValue(proposal.to) },
-    ...(!nativeTransfer && BigInt(proposal.value) > 0n
-      ? [{ label: 'Attached value', value: nativeAmount }]
-      : []),
-    ...(proposal.localDecoded?.parameters.map((parameter) => ({
-      label: `${parameter.name} (${parameter.type})`,
-      value: parameter.type === 'address' ? addressValue(parameter.value) : parameter.value
-    })) ?? []),
-    ...(!nativeTransfer && !proposal.localDecoded
-      ? [{ label: 'Selector', value: proposal.data.slice(0, 10) }]
-      : [])
-  ]
+  const review: TxReviewData = {
+    origin: proposal.local?.origin ?? 'Safe proposal',
+    data: {
+      chainId: `0x${deployment.chainId.toString(16)}`,
+      from: proposal.safe,
+      to: proposal.to,
+      value: proposal.value,
+      data: proposal.data,
+      ...(proposal.data !== '0x' ? { calldataDigest: getCalldataDigest(proposal.data) } : {})
+    },
+    classification: nativeTransfer ? TxClassification.NATIVE_TRANSFER : TxClassification.CONTRACT_CALL,
+    // Local decoding has no verified ABI signature. Keep it as generic method/argument display.
+    decodedData: proposal.localDecoded
+      ? { method: proposal.localDecoded.method, args: proposal.localDecoded.parameters }
+      : undefined
+  }
   const verification = [
     { label: 'Safe transaction hash', value: proposal.safeTxHash },
+    ...(actions?.outerTxHash ? [{ label: 'Outer transaction hash', value: actions.outerTxHash }] : []),
     ...(proposal.integrity?.status === 'mismatch' && proposal.integrity.computedHash
       ? [
           {
@@ -140,44 +168,114 @@ export function SafeProposalDetailsView({
         ]
       : [])
   ]
-  let actionTitle = 'Call contract'
-  if (nativeTransfer) {
-    actionTitle = `Send ${nativeAmount}`
-  } else if (proposal.localDecoded) {
-    actionTitle = `Call ${proposal.localDecoded.method}`
-  }
   let statusLabel = 'Pending proposal'
   if (stale) {
     statusLabel = 'Stale proposal'
   } else if (waiting) {
     statusLabel = 'Waiting for earlier transactions'
   } else if (hasEnoughConfirmations) {
-    statusLabel = 'Awaiting execution'
+    statusLabel = actions?.status === 'submitted' ? 'Submitted' : 'Ready · awaiting execution'
   }
 
+  const reviewed = actions?.reviewedTransaction
+  const selectedExecutor = actions?.executors.find(
+    (candidate) => candidate.accountId === actions.selectedExecutorId
+  )
+  const outerDetails = reviewed
+    ? [
+        {
+          label: 'Executor',
+          value: reviewed.from ? addressValue(reviewed.from) : (selectedExecutor?.name ?? 'Unknown executor')
+        },
+        ...(reviewed.nonce ? [{ label: 'Outer nonce', value: BigInt(reviewed.nonce).toString() }] : []),
+        ...(reviewed.gasLimit ? [{ label: 'Gas limit', value: BigInt(reviewed.gasLimit).toString() }] : [])
+      ]
+    : []
+  const showExecution = Boolean(actions) && hasEnoughConfirmations
+  const primary = showExecution ? actions?.executionAction : actions?.ownerAction
+  const secondary = actions?.decline ?? { label: 'Decline', disabled: true, onPress: () => {} }
+  let accountAction: ReactNode
+  if (actions && !showExecution) {
+    accountAction = (
+      <Stack gap='none'>
+        <Text tone='secondary' variant='caption'>
+          Safe owner approval
+        </Text>
+        <SigningAccount label='Signer'>
+          <SafeOwnerSelector
+            owners={owners}
+            label='Signer'
+            disabled={actions.status === 'signing' || actions.status === 'publishing'}
+            selectedOwnerId={actions.selectedOwnerId}
+            onSelectOwner={actions.onSelectOwner}
+          />
+        </SigningAccount>
+      </Stack>
+    )
+  } else if (actions && actions.status !== 'submitted') {
+    accountAction = (
+      <SigningAccount label='Gas-paying executor'>
+        <SafeOwnerSelector
+          owners={actions.executors}
+          label='Gas-paying executor'
+          placeholder='Choose an executor'
+          emptyLabel='No available executor'
+          disabled={actions.status === 'preparing' || actions.status === 'executing'}
+          selectedOwnerId={actions.selectedExecutorId}
+          onSelectOwner={actions.onSelectExecutor}
+          ownerDisabled={(candidate) => candidate.status !== 'ready'}
+        />
+      </SigningAccount>
+    )
+  }
+  let simulationActionWarning: string | undefined
+  if (simulation.status === 'loading') {
+    simulationActionWarning = 'Simulation is still loading. You can continue before it finishes.'
+  } else if (hasEnoughConfirmations) {
+    simulationActionWarning =
+      'Simulation failed or is unavailable. Review the warning before explicit execution.'
+  } else {
+    simulationActionWarning = 'Simulation failed or is unavailable. You can still sign this proposal.'
+  }
+  let fallbackPrimaryLabel = 'Sign'
+  if (actions) {
+    fallbackPrimaryLabel = showExecution ? 'Choose an executor' : 'Choose an owner'
+  }
+  const canAdjustFee = actions?.status === 'ready' && Boolean(actions.onUpdateFee)
+
   return (
-    <section aria-label='Request review'>
-      <TransactionInformation
-        imageCapability={capabilities.external}
-        originName='Safe proposal'
-        clipboard={capabilities.external}
-        actionTitle={actionTitle}
-        actionNotice={
-          !nativeTransfer && !proposal.localDecoded ? (
-            <Text variant='caption' tone='secondary'>
-              Cannot decode calldata. Inspect the selector and raw bytes.
-            </Text>
-          ) : undefined
-        }
-        statusDetails={
+    <TxReviewView
+      req={review}
+      capabilities={capabilities}
+      originName={originName ?? review.origin}
+      favicon={favicon}
+      network={{ name: networkName, isTestnet }}
+      networkMetadata={{ nativeCurrency: { symbol, decimals } }}
+      networkIcon={networkIcon}
+      nativeCurrencyRate={nativeCurrencyRate}
+      identities={identities}
+      tokens={tokens}
+      renderAddress={renderAddress}
+      fee={
+        reviewed
+          ? {
+              data: reviewed,
+              editable: canAdjustFee,
+              selectedRate: 'custom',
+              openAdjustFee: () => setFeesOpen(true)
+            }
+          : undefined
+      }
+      extensions={{
+        statusDetails: (
           <Disclosure
-            label={`${proposal.confirmations.length} / ${deployment.configuration.threshold} confirmations`}
+            label={`${confirmations.length} / ${threshold} confirmations`}
             open={confirmationsOpen}
             onToggle={() => setConfirmationsOpen((open) => !open)}
           >
             <Stack gap='xsmall'>
-              {proposal.confirmations.length ? (
-                proposal.confirmations.map((address) => <div key={address}>{addressValue(address)}</div>)
+              {confirmations.length ? (
+                confirmations.map((address) => <div key={address}>{addressValue(address)}</div>)
               ) : (
                 <Text variant='caption' tone='secondary'>
                   No confirmations yet
@@ -185,9 +283,9 @@ export function SafeProposalDetailsView({
               )}
             </Stack>
           </Disclosure>
-        }
-        verification={verification}
-        rawTransaction={JSON.stringify(
+        ),
+        verification,
+        rawTransaction: JSON.stringify(
           {
             safe: proposal.safe,
             to: proposal.to,
@@ -203,23 +301,18 @@ export function SafeProposalDetailsView({
           },
           null,
           2
-        )}
-        networkName={networkName}
-        networkIcon={networkIcon}
-        nativeCurrency={{ symbol }}
-        statusLabel={statusLabel}
-        effects={effects}
-        effectsEmptyText={effectsEmptyText}
-        effectsNotice={
-          effectsNotice ? (
-            <div role={simulation.status === 'error' ? 'alert' : 'status'}>
-              <Text variant='caption' tone={simulation.status === 'error' ? 'danger' : 'secondary'}>
-                {effectsNotice}
-              </Text>
-            </div>
-          ) : undefined
-        }
-        beforeDetails={
+        ),
+        statusLabel,
+        effects,
+        effectsEmptyText,
+        effectsNotice: effectsNotice ? (
+          <div role={simulation.status === 'error' ? 'alert' : 'status'}>
+            <Text variant='caption' tone={simulation.status === 'error' ? 'danger' : 'secondary'}>
+              {effectsNotice}
+            </Text>
+          </div>
+        ) : undefined,
+        beforeDetails: (
           <Stack gap='small'>
             {proposal.integrity?.status !== 'matched' ? (
               <div aria-label='Proposal integrity' role='alert'>
@@ -253,59 +346,81 @@ export function SafeProposalDetailsView({
               </div>
             ) : null}
           </Stack>
-        }
-        details={details}
-        wrapDetailValues
-        calldata={{ digest: getCalldataDigest(proposal.data), data: proposal.data }}
-      >
-        <Stack gap='xsmall'>
-          <SigningAccount label='Account'>{addressValue(proposal.safe)}</SigningAccount>
-          <SigningAccount label='Signer'>
-            <SafeOwnerSelector
-              owners={owners}
-              disabled={busy}
-              selectedOwnerId={selectedOwnerId}
-              onSelectOwner={onSelectOwner}
-            />
-          </SigningAccount>
-          {confirmation && selectedOwner && !published && simulation.status !== 'success' ? (
-            <Text tone='secondary'>
-              {simulation.status === 'loading'
-                ? 'Simulation is still loading. You can sign before it finishes.'
-                : 'Simulation failed or is unavailable. You can still sign this proposal.'}
-            </Text>
+        )
+      }}
+      footer={
+        <RequestSigningFooter
+          account={{ address: proposal.safe, name: accountName, accountType: 'safe' }}
+          clipboard={capabilities.external}
+          label='Account'
+        >
+          {reviewed && canAdjustFee && feesOpen && actions.onUpdateFee ? (
+            <Disclosure label='Adjust gas fee' open={feesOpen} onToggle={() => setFeesOpen(false)}>
+              <AdjustFee
+                key={`${reviewed.from}:${reviewed.nonce}`}
+                req={{ data: reviewed }}
+                onUpdateFee={actions.onUpdateFee}
+              />
+            </Disclosure>
           ) : null}
-          {confirmation?.message ? (
-            <div role={confirmation.status.endsWith('failed') ? 'alert' : 'status'}>
-              <Text tone={confirmation.status.endsWith('failed') ? 'danger' : 'secondary'}>
-                {confirmation.message}
+          {accountAction}
+          {reviewed ? (
+            <Disclosure
+              label='Execution details'
+              open={executionDetailsOpen}
+              onToggle={() => setExecutionDetailsOpen((open) => !open)}
+            >
+              <section aria-label='Reviewed executor transaction'>
+                <Stack gap='xsmall'>
+                  {outerDetails.map((detail) => (
+                    <Inline key={detail.label} justify='between' gap='small'>
+                      <Text tone='secondary' variant='caption'>
+                        {detail.label}
+                      </Text>
+                      <Text variant='caption'>{detail.value}</Text>
+                    </Inline>
+                  ))}
+                </Stack>
+              </section>
+            </Disclosure>
+          ) : null}
+          {reviewed?.warning ? (
+            <div role='alert'>
+              <Text tone='danger' variant='caption'>
+                {reviewed.warning}
               </Text>
             </div>
           ) : null}
+          {actions?.executionWarnings?.map((warning) => (
+            <div key={warning} role='alert'>
+              <Text tone='danger' variant='caption'>
+                {warning}
+              </Text>
+            </div>
+          ))}
+          {actions &&
+          (selectedOwner || hasEnoughConfirmations) &&
+          actions.status !== 'submitted' &&
+          simulation.status !== 'success' ? (
+            <Text tone='secondary'>{simulationActionWarning}</Text>
+          ) : null}
+          {actions?.message ? (
+            <div role={actions.status.endsWith('failed') ? 'alert' : 'status'}>
+              <Text tone={actions.status.endsWith('failed') ? 'danger' : 'secondary'}>{actions.message}</Text>
+            </div>
+          ) : null}
           <RequestActions
-            primary={{
-              label: actionLabel,
-              disabled:
-                !confirmation ||
-                !selectedOwner ||
-                busy ||
-                published ||
-                appLocked ||
-                confirmation.status === 'loading' ||
-                proposal.integrity?.status !== 'matched' ||
-                (!retryPublication && !signingReady && !recoverable),
-              onPress: () => {
-                if (recoverable && !retryPublication) {
-                  onRecoverSigner()
-                } else {
-                  confirmation?.onSign()
-                }
+            primary={
+              primary ?? {
+                label: fallbackPrimaryLabel,
+                disabled: true,
+                onPress: () => {}
               }
-            }}
-            secondary={{ label: 'Decline', disabled: true, onPress: () => {} }}
+            }
+            secondary={secondary}
           />
-        </Stack>
-      </TransactionInformation>
-    </section>
+        </RequestSigningFooter>
+      }
+    />
   )
 }

@@ -44,7 +44,7 @@ and account removal through the compiled app. Use the existing harness password
 setup; the Safe owner includes the local harness account.
 The service binds loopback port 8423 (`NEWFRAME_LOCAL_SAFE_PORT` to override).
 
-Safe confirmations: `src/features/accounts/main/safeConfirmation.test.ts` covers
+Safe confirmations: `src/features/accounts/main/safeTransaction.test.ts` covers
 exact proposal data, Safe scope changes, publication reconciliation, and retained-signature
 retry. Generic signing guards belong to Account tests. The AirGap integration suite
 connects Safe approval through account signing, QR response verification, and the local

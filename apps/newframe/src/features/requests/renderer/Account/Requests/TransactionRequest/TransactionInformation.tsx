@@ -506,7 +506,7 @@ export default function TransactionInformation({
     path: `${detail.label}-${position}`
   }))
   return (
-    <div className={transactionFrameRecipe()}>
+    <section aria-label='Request review' className={transactionFrameRecipe()}>
       <div className={transactionRecipe()}>
         <Stack gap='small' grow>
           <section aria-label='Request summary' className={requestSummaryRecipe()}>
@@ -621,6 +621,6 @@ export default function TransactionInformation({
           {children ? <div className={controlsRecipe()}>{children}</div> : null}
         </Stack>
       </div>
-    </div>
+    </section>
   )
 }

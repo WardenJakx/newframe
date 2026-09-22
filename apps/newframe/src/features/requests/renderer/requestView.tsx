@@ -12,9 +12,12 @@ import {
 import type { TransactionRequestView } from './Account/Requests/requestViewTypes'
 
 type FeeRequest = Pick<TransactionRequestView, 'data' | 'status' | 'mode' | 'locked'>
+type FeeData = Pick<
+  FeeRequest['data'],
+  'type' | 'chainId' | 'gasLimit' | 'gasPrice' | 'maxFeePerGas' | 'maxPriorityFeePerGas'
+>
 const editable = (request: FeeRequest) => !request.status && !request.locked && request.mode !== 'monitor'
-const fees = (request: FeeRequest): TransactionFeeValues => {
-  const { data } = request
+const fees = (data: FeeData): TransactionFeeValues => {
   const priorityFee = BigInt(data.maxPriorityFeePerGas ?? '0x0')
   return {
     gasLimit: BigInt(data.gasLimit ?? '0x0'),
@@ -22,6 +25,19 @@ const fees = (request: FeeRequest): TransactionFeeValues => {
       ? { baseFee: BigInt(data.maxFeePerGas ?? '0x0') - priorityFee, priorityFee }
       : { gasPrice: BigInt(data.gasPrice ?? '0x0') })
   }
+}
+
+export function updateTransactionFee(
+  data: FeeData,
+  adjustments: TransactionApprovalAdjustments | undefined,
+  field: TransactionFeeField,
+  value: bigint
+): TransactionApprovalAdjustments {
+  const current = fees({ ...data, ...adjustments })
+  return adjustmentsFor({
+    ...current,
+    [field]: limitTransactionFee(field, value, current, data.chainId)
+  })
 }
 const adjustmentsFor = (values: TransactionFeeValues): TransactionApprovalAdjustments => {
   const hex = (value: bigint) => `0x${value.toString(16)}`
@@ -70,10 +86,11 @@ export function RequestViewProvider({ children }: { children: ReactNode }) {
   }>({})
   const draftRef = useRef(draft)
   const [feeNoticeDismissed, setFeeNoticeDismissed] = useState(false)
-  const latestFees = (request: FeeRequest) =>
-    fees({ ...request, data: { ...request.data, ...draftRef.current.adjustments } })
-  const saveFees = (values: TransactionFeeValues, feeLevel: TransactionFeeLevel | 'custom') => {
-    draftRef.current = { adjustments: adjustmentsFor(values), feeLevel }
+  const saveFees = (
+    adjustments: TransactionApprovalAdjustments,
+    feeLevel: TransactionFeeLevel | 'custom'
+  ) => {
+    draftRef.current = { adjustments, feeLevel }
     setDraft(draftRef.current)
   }
   const current = history.at(-1) ?? initialView
@@ -92,18 +109,21 @@ export function RequestViewProvider({ children }: { children: ReactNode }) {
         if (!editable(request)) {
           return
         }
-        const current = latestFees(request)
-        saveFees(
-          { ...current, [field]: limitTransactionFee(field, value, current, request.data.chainId) },
-          'custom'
-        )
+        saveFees(updateTransactionFee(request.data, draftRef.current.adjustments, field, value), 'custom')
       },
       selectFeeLevel(request, level, recommendation) {
         if (!editable(request)) {
           return
         }
         saveFees(
-          transactionFeePreset(latestFees(request), recommendation, level, request.data.chainId),
+          adjustmentsFor(
+            transactionFeePreset(
+              fees({ ...request.data, ...draftRef.current.adjustments }),
+              recommendation,
+              level,
+              request.data.chainId
+            )
+          ),
           level
         )
       },

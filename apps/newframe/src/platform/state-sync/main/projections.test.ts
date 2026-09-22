@@ -1,7 +1,11 @@
 import { expect, it } from 'bun:test'
 
+import { Wallet } from 'ethers'
+
 import { DEFAULT_PROFILE_ID } from '../../../app/contracts/state/main'
 import type { SafeDeployment } from '../../../features/accounts/domain/safe'
+import { TxClassification } from '../../../features/requests/contract/requests'
+import { GasFeesSource } from '../../../features/transactions/domain'
 import createInitialState from '../../state-store/state'
 import { projectionStateSchemas } from '../contract/projections'
 import { projectSideTrayState, projectWalletState } from './projections'
@@ -46,6 +50,48 @@ const signer = (id: string, type: string, status = 'ok') => ({
   appVersion: { major: 1, minor: 0, patch: 0 }
 })
 
+function safeTransactionState(deployment: SafeDeployment, safeTxHash: string) {
+  const state = createInitialState()
+  state.main.appLock = { locked: false, vaultExists: true }
+  state.main.accounts = {
+    [safeAddress]: {
+      ...account(safeAddress, DEFAULT_PROFILE_ID),
+      safe: { '1': deployment },
+      requests: {
+        'request-1': {
+          handlerId: 'request-1',
+          type: 'transaction',
+          origin: 'app.test',
+          account: safeAddress,
+          payload: {
+            id: 1,
+            jsonrpc: '2.0',
+            method: 'eth_sendTransaction',
+            params: [{ from: safeAddress, to: otherOwnerAddress }]
+          },
+          data: {
+            chainId: '0x1',
+            type: '0x0',
+            gasFeesSource: GasFeesSource.Dapp,
+            from: safeAddress,
+            to: otherOwnerAddress,
+            value: '0x0',
+            data: '0x'
+          },
+          safeTxHash,
+          approvals: [],
+          feesUpdatedByUser: false,
+          recipientType: '',
+          recognizedActions: [],
+          classification: TxClassification.NATIVE_TRANSFER
+        }
+      }
+    }
+  }
+  state.main.accountOrder = [safeAddress]
+  return state
+}
+
 it('projects same-profile owner accounts per deployment from retained snapshots without changing identity', () => {
   const state = createInitialState()
   const chain10Owner = `0x${'3'.repeat(40)}`
@@ -84,6 +130,11 @@ it('projects same-profile owner accounts per deployment from retained snapshots 
   }
   const wallet = projectWalletState(state)
   const owners = wallet.accounts[safeAddress].safeOwners
+  expect(wallet.accounts[safeAddress].safeExecutors?.map(({ accountId }) => accountId)).toEqual([
+    ownerAddress,
+    otherOwnerAddress,
+    chain10Owner
+  ])
   expect(owners?.['1'].map((owner) => [owner.accountId, owner.status])).toEqual([
     [ownerAddress, 'ready'],
     [otherOwnerAddress, 'ready']
@@ -107,6 +158,121 @@ it('projects same-profile owner accounts per deployment from retained snapshots 
     projectionStateSchemas['wallet-ui'].parse(JSON.parse(JSON.stringify(wallet))).accounts[safeAddress]
       .safeOwners
   ).toEqual(owners)
+})
+
+it('derives Safe transaction owner, executor, progress, and exact reviewed outer transaction', () => {
+  const safeTxHash = `0x${'a'.repeat(64)}`
+  const outerTxHash = `0x${'b'.repeat(64)}`
+  const reviewed = {
+    chainId: '0x1',
+    type: '0x2',
+    gasFeesSource: 'Frame' as const,
+    from: ownerAddress,
+    to: safeAddress,
+    value: '0x0',
+    data: '0x1234',
+    nonce: '0x4',
+    gasLimit: '0x5208',
+    maxFeePerGas: '0x10',
+    maxPriorityFeePerGas: '0x1'
+  }
+  const deployment = safeDeployment(1, [ownerAddress])
+  deployment.pending = [
+    {
+      safeTxHash,
+      safe: safeAddress,
+      nonce: '0',
+      to: otherOwnerAddress,
+      value: '0',
+      operation: 0,
+      data: '0x',
+      confirmations: [ownerAddress],
+      local: {
+        createdAt: 1,
+        requestId: 'request-1',
+        confirmations: [],
+        publication: { status: 'local' },
+        execution: {
+          status: 'submitted',
+          executorId: ownerAddress,
+          transaction: reviewed,
+          transactionHash: outerTxHash
+        }
+      }
+    }
+  ]
+  const state = safeTransactionState(deployment, safeTxHash)
+  state.main.accounts[ownerAddress] = {
+    ...account(ownerAddress, DEFAULT_PROFILE_ID),
+    signer: 'owner-signer',
+    lastSignerType: 'seed'
+  }
+  state.main.accountOrder = [safeAddress, ownerAddress]
+  state.main.signers = { 'owner-signer': signer('owner-signer', 'seed') }
+
+  const request = projectWalletState(state).accounts[safeAddress].requests['request-1']
+  expect(request).toMatchObject({
+    safeTxHash,
+    safeTransactionProgress: {
+      status: 'submitted',
+      chainId: 1,
+      threshold: 1,
+      confirmations: [ownerAddress],
+      publication: 'local'
+    },
+    safeExecution: {
+      executorId: ownerAddress,
+      reviewedTransaction: reviewed,
+      submitted: { outerTxHash, executorId: ownerAddress }
+    }
+  })
+  expect(
+    (request as never as { safeTransactionProgress: { ownerCandidates: unknown[] } }).safeTransactionProgress
+      .ownerCandidates
+  ).toHaveLength(1)
+  expect(
+    (request as never as { safeTransactionProgress: { executorCandidates: unknown[] } })
+      .safeTransactionProgress.executorCandidates
+  ).toHaveLength(1)
+  expect(state.main.accounts[safeAddress].requests['request-1']).not.toHaveProperty('safeTransactionProgress')
+})
+
+it('does not treat contract-owner display confirmations as executable EOA signatures', () => {
+  const signerWallet = new Wallet(`0x${'45'.repeat(32)}`)
+  const contractOwner = `0x${'4'.repeat(40)}`
+  const safeTxHash = `0x${'c'.repeat(64)}`
+  const deployment = safeDeployment(1, [signerWallet.address, contractOwner])
+  deployment.configuration.threshold = 2
+  deployment.pending = [
+    {
+      safeTxHash,
+      safe: safeAddress,
+      nonce: '0',
+      to: otherOwnerAddress,
+      value: '0',
+      operation: 0,
+      data: '0x',
+      confirmations: [signerWallet.address, contractOwner],
+      local: {
+        createdAt: 1,
+        requestId: 'request-1',
+        confirmations: [
+          { owner: signerWallet.address, signature: signerWallet.signingKey.sign(safeTxHash).serialized }
+        ],
+        publication: { status: 'published' },
+        execution: { status: 'idle' }
+      }
+    }
+  ]
+  const state = safeTransactionState(deployment, safeTxHash)
+
+  expect(projectWalletState(state).accounts[safeAddress].requests['request-1']).toMatchObject({
+    safeTransactionProgress: {
+      status: 'collecting',
+      threshold: 2,
+      confirmations: [signerWallet.address, contractOwner]
+    }
+  })
 })
 
 it('distinguishes ready signers, unavailable signing accounts, and watch-only owners', () => {

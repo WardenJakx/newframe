@@ -21,9 +21,11 @@ import {
   getSafeMessageHash,
   isEip1271MagicValue,
   packSafeMessageSignatures,
+  recoverSafeConfirmationOwner,
   serviceCalldataMismatch,
   verifySafeHash,
   verifySafeMessageConfirmation,
+  type SafeMessageConfirmationInput,
   type VerifiedSafeMessageConfirmation
 } from './integrity.js'
 
@@ -122,6 +124,11 @@ const infoSchema = z.object({
   nonce: decimalInput,
   version: z.string().optional()
 })
+const serviceProposalConfirmationSchema = z.object({
+  owner: safeAddressSchema,
+  signature: z.string().max(262146).nullable().optional(),
+  signatureType: z.string().max(100).optional()
+})
 const proposalInput = z.object({
   safeTxHash: z.string(),
   safe: z.string(),
@@ -130,14 +137,19 @@ const proposalInput = z.object({
   value: z.string(),
   operation: z.number(),
   data: z.string().nullable(),
-  confirmations: z.array(z.object({ owner: z.string() })),
+  confirmations: z.array(serviceProposalConfirmationSchema).max(1000),
   safeTxGas: decimalInput.optional(),
   baseGas: decimalInput.optional(),
   gasPrice: decimalInput.optional(),
   gasToken: z.string().optional(),
   refundReceiver: z.string().optional(),
   dataDecoded: z.unknown().optional(),
-  isExecuted: z.boolean()
+  isExecuted: z.boolean(),
+  transactionHash: z
+    .string()
+    .regex(/^0x[0-9a-f]{64}$/i)
+    .nullable()
+    .optional()
 })
 const pageSchema = z.object({ next: z.string().nullable(), results: z.array(proposalInput) })
 const confirmationPageSchema = z.object({
@@ -146,10 +158,12 @@ const confirmationPageSchema = z.object({
 })
 const confirmationSchema = z.object({
   owner: safeAddressSchema,
-  signature: z.string().regex(/^0x[0-9a-f]{130}$/i)
+  signature: z.string().max(262146).nullable().optional(),
+  signatureType: z.string().max(100).optional()
 })
 const transactionHashSchema = z.string().regex(/^0x[0-9a-f]{64}$/i)
 const messageSignatureSchema = z.string().regex(/^0x[0-9a-f]{130}$/i)
+const proposalOriginSchema = z.string().max(200)
 const typedDataFieldSchema = z.strictObject({
   name: z.string().min(1).max(200),
   type: z.string().min(1).max(200)
@@ -241,7 +255,12 @@ export function createSafeClient({
     }
     return url.replace(/\/$/, '')
   }
-  async function json(url: string, signal?: AbortSignal, body?: unknown): Promise<unknown> {
+  async function json(
+    url: string,
+    signal?: AbortSignal,
+    body?: unknown,
+    acceptedStatuses: readonly number[] = []
+  ): Promise<unknown> {
     const origin = new URL(url).origin
     const remaining = (cooldowns.get(origin) ?? 0) - now()
     if (remaining > 0) {
@@ -274,7 +293,7 @@ export function createSafeClient({
         cooldowns.set(origin, now() + (Number.isFinite(seconds) && seconds > 0 ? seconds : 60000))
         throw new Error('Safe service rate limited')
       }
-      if (!response.ok) {
+      if (!response.ok && !acceptedStatuses.includes(response.status)) {
         throw new Error(`Safe service HTTP ${response.status}`)
       }
       // Confirmation responses are acknowledgements, not evidence of stored signature bytes.
@@ -379,8 +398,186 @@ export function createSafeClient({
       ...(info.version === undefined ? {} : { version: info.version })
     })
   }
+  function proposalFromService(raw: z.infer<typeof proposalInput>): SafeProposal {
+    return safeProposalSchema.parse({
+      safeTxHash: raw.safeTxHash,
+      safe: raw.safe,
+      nonce: raw.nonce,
+      to: raw.to,
+      value: raw.value,
+      operation: raw.operation,
+      data: raw.data ?? '0x',
+      safeTxGas: raw.safeTxGas,
+      baseGas: raw.baseGas,
+      gasPrice: raw.gasPrice,
+      gasToken: raw.gasToken,
+      refundReceiver: raw.refundReceiver,
+      confirmations: [...new Set(raw.confirmations.map(({ owner }) => owner))],
+      dataDecoded: safeDecodedSchema.safeParse(raw.dataDecoded).data
+    })
+  }
+  async function exactTransaction(chainId: number, hash: string, signal?: AbortSignal) {
+    const expectedHash = transactionHashSchema.parse(hash).toLowerCase()
+    const raw = proposalInput.parse(
+      await json(`${base(chainId)}/v1/multisig-transactions/${expectedHash}/`, signal)
+    )
+    if (raw.safeTxHash.toLowerCase() !== expectedHash) {
+      throw new Error('Safe transaction hash mismatch')
+    }
+    return { raw, proposal: proposalFromService(raw) }
+  }
+  function verifiedProposalConfirmations(
+    hash: string,
+    owners: readonly string[],
+    confirmations: readonly z.infer<typeof serviceProposalConfirmationSchema>[]
+  ) {
+    const currentOwners = new Set(owners.map((owner) => owner.toLowerCase()))
+    const displayOwners = [] as string[]
+    const seen = new Set<string>()
+    for (const confirmation of confirmations) {
+      const key = confirmation.owner.toLowerCase()
+      if (!currentOwners.has(key)) {
+        throw new Error('Safe transaction confirmation owner mismatch')
+      }
+      if (seen.has(key)) {
+        throw new Error('Duplicate Safe transaction confirmation')
+      }
+      seen.add(key)
+      if (confirmation.signatureType === 'CONTRACT_SIGNATURE') {
+        displayOwners.push(confirmation.owner)
+        continue
+      }
+      if (confirmation.signature === undefined || confirmation.signature === null) {
+        continue
+      }
+      if (
+        confirmation.signatureType !== undefined &&
+        confirmation.signatureType !== 'EOA' &&
+        confirmation.signatureType !== 'ETH_SIGN'
+      ) {
+        throw new Error('Unsupported Safe transaction confirmation type')
+      }
+      const parsed = messageSignatureSchema.safeParse(confirmation.signature)
+      if (!parsed.success) {
+        throw new Error('Invalid Safe transaction owner signature')
+      }
+      const item = verifySafeMessageConfirmation(hash, owners, {
+        owner: confirmation.owner,
+        signature: parsed.data
+      })
+      displayOwners.push(item.owner)
+    }
+    return displayOwners
+  }
   return {
     discover,
+    async propose(
+      chainId: number,
+      candidate: SafeProposal,
+      confirmation: SafeMessageConfirmationInput,
+      origin?: string,
+      signal?: AbortSignal
+    ): Promise<SafeProposal> {
+      const proposal = safeProposalSchema.parse(candidate)
+      const boundedOrigin = origin === undefined ? undefined : proposalOriginSchema.parse(origin)
+      const required = [
+        proposal.safeTxGas,
+        proposal.baseGas,
+        proposal.gasPrice,
+        proposal.gasToken,
+        proposal.refundReceiver
+      ]
+      if (required.some((field) => field === undefined)) {
+        throw new Error('Unable to publish: transaction gas or refund fields are missing.')
+      }
+      const sender = recoverSafeConfirmationOwner(proposal.safeTxHash, confirmation.signature)
+      if (!sender) {
+        throw new Error('Invalid Safe transaction owner signature')
+      }
+      if (confirmation.owner && safeAddressSchema.parse(confirmation.owner) !== sender) {
+        throw new Error('Safe transaction confirmation owner mismatch')
+      }
+      const body = {
+        safe: proposal.safe,
+        to: proposal.to,
+        value: proposal.value,
+        data: proposal.data,
+        operation: proposal.operation,
+        safeTxGas: proposal.safeTxGas,
+        baseGas: proposal.baseGas,
+        gasPrice: proposal.gasPrice,
+        gasToken: proposal.gasToken,
+        refundReceiver: proposal.refundReceiver,
+        nonce: proposal.nonce,
+        contractTransactionHash: proposal.safeTxHash,
+        sender,
+        signature: confirmation.signature,
+        ...(boundedOrigin === undefined ? {} : { origin: boundedOrigin })
+      }
+      await json(`${base(chainId)}/v1/safes/${proposal.safe}/multisig-transactions/`, signal, body, [409])
+      const stored = await exactTransaction(chainId, proposal.safeTxHash, signal)
+      const signedFields = [
+        'safeTxHash',
+        'safe',
+        'nonce',
+        'to',
+        'value',
+        'operation',
+        'safeTxGas',
+        'baseGas',
+        'gasPrice',
+        'gasToken',
+        'refundReceiver'
+      ] as const
+      if (
+        signedFields.some((field) => stored.proposal[field] !== proposal[field]) ||
+        stored.proposal.data.toLowerCase() !== proposal.data.toLowerCase() ||
+        serviceCalldataMismatch(stored.proposal)
+      ) {
+        throw new Error('Safe proposal reconciliation mismatch')
+      }
+      const retained = stored.raw.confirmations.some(
+        (item) =>
+          item.owner === sender && item.signature?.toLowerCase() === confirmation.signature.toLowerCase()
+      )
+      if (!retained) {
+        throw new Error('Safe proposal signature was not retained')
+      }
+      return stored.proposal
+    },
+    async transaction(
+      chainId: number,
+      expectedSafeAddress: string,
+      hash: string,
+      configuration: SafeConfiguration,
+      signal?: AbortSignal
+    ): Promise<SafeProposal> {
+      const expectedSafe = safeAddressSchema.parse(expectedSafeAddress)
+      const config = safeConfigurationSchema.parse(configuration)
+      const { raw, proposal } = await exactTransaction(chainId, hash, signal)
+      if (proposal.safe !== expectedSafe) {
+        throw new Error('Safe transaction identity mismatch')
+      }
+      const integrity = verifySafeHash(proposal, chainId, expectedSafe, config.version)
+      if (integrity.status !== 'matched') {
+        throw new Error(integrity.reason)
+      }
+      if (serviceCalldataMismatch(proposal)) {
+        throw new Error('Integrity mismatch: the service description does not match the calldata.')
+      }
+      const confirmations = verifiedProposalConfirmations(
+        proposal.safeTxHash,
+        config.owners,
+        raw.confirmations
+      )
+      const validated: SafeProposal = {
+        ...proposal,
+        confirmations,
+        integrity
+      }
+      delete validated.dataDecoded
+      return validated
+    },
     async confirmations(
       chainId: number,
       hash: string,
@@ -401,9 +598,27 @@ export function createSafeClient({
         for (const raw of page.results) {
           const confirmation = confirmationSchema.safeParse(raw)
           // Other owners may have contract or on-chain confirmations we cannot verify.
-          if (confirmation.success) {
-            const item = confirmation.data
-            confirmations.set(`${item.owner}:${item.signature}`, item)
+          if (
+            confirmation.success &&
+            confirmation.data.signature !== undefined &&
+            confirmation.data.signature !== null &&
+            (confirmation.data.signatureType === undefined ||
+              confirmation.data.signatureType === 'EOA' ||
+              confirmation.data.signatureType === 'ETH_SIGN')
+          ) {
+            const parsed = messageSignatureSchema.safeParse(confirmation.data.signature)
+            if (!parsed.success) {
+              continue
+            }
+            try {
+              const item = verifySafeMessageConfirmation(hash, [confirmation.data.owner], {
+                owner: confirmation.data.owner,
+                signature: parsed.data
+              })
+              confirmations.set(`${item.owner}:${item.signature}`, item)
+            } catch {
+              // Malformed and non-owner EOA entries are isolated from the verified result.
+            }
           }
         }
         if (!page.next) {
@@ -428,7 +643,7 @@ export function createSafeClient({
     },
     async confirm(chainId: number, hash: string, signature: string, signal?: AbortSignal): Promise<void> {
       transactionHashSchema.parse(hash)
-      confirmationSchema.shape.signature.parse(signature)
+      messageSignatureSchema.parse(signature)
       await json(`${base(chainId)}/v1/multisig-transactions/${hash}/confirmations/`, signal, { signature })
     },
     async createMessage(
@@ -576,6 +791,11 @@ export function createSafeClient({
         const page = pageSchema.parse(await json(next.href, signal))
         const before = proposals.size
         for (const raw of page.results) {
+          const confirmations = verifiedProposalConfirmations(
+            raw.safeTxHash,
+            config.owners,
+            raw.confirmations
+          )
           const proposal = safeProposalSchema.parse({
             safeTxHash: raw.safeTxHash,
             safe: raw.safe,
@@ -589,9 +809,7 @@ export function createSafeClient({
             gasPrice: raw.gasPrice,
             gasToken: raw.gasToken,
             refundReceiver: raw.refundReceiver,
-            confirmations: [
-              ...new Set(raw.confirmations.map((confirmation) => safeAddressSchema.parse(confirmation.owner)))
-            ],
+            confirmations,
             dataDecoded: safeDecodedSchema.safeParse(raw.dataDecoded).data
           })
           if (proposal.safe !== expected) {

@@ -13,14 +13,19 @@ import type { SigningUiContext } from '../../../platform/signing/signers/Signer/
 import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.js'
 import {
   safeConfigurationSchema,
+  safeProposalSchema,
   SafeProposalSimulationSchema,
   type SafeConfiguration,
   type SafeDeployment,
   type SafeProposal,
   type SafeProposalSimulation
 } from '../domain/safe.js'
-import { createSafeConfirmationService, type SafeConfirmationPorts } from './safeConfirmation.js'
 import type { SafeSimulationInput, SafeSimulationPorts } from './safeSimulation.js'
+import {
+  createSafeTransactionService,
+  type SafeTransactionClient,
+  type SafeTransactionProvider
+} from './safeTransaction.js'
 
 export interface SafeServicePorts {
   accounts: { add(address: string, name: string, options: { type: string }): void }
@@ -49,14 +54,18 @@ export interface SafeServicePorts {
       address: string,
       signal?: AbortSignal
     ): Promise<{ version: string; owners: string[] }>
-  }
+  } & Partial<Omit<SafeTransactionClient, 'configuration'>>
   simulate?: (
     input: SafeSimulationInput,
     signal: AbortSignal,
     observeConfiguration: NonNullable<SafeSimulationPorts['observeConfiguration']>
   ) => Promise<SafeProposalSimulation>
   now?: () => number
-  confirmations?: Pick<SafeConfirmationPorts, 'accounts' | 'client'>
+  transactions?: {
+    accounts: { getFrameAccount(id: string): import('./Account.js').default | null }
+    provider: SafeTransactionProvider
+    submitted?: (result: { safeTxHash: string; outerTxHash: string }) => void
+  }
 }
 
 export type SafeService = ReturnType<typeof createSafeService>
@@ -67,19 +76,44 @@ export function createSafeService({
   operations,
   client,
   simulate: simulateProposal,
-  confirmations,
+  transactions,
   now = Date.now
 }: SafeServicePorts) {
-  const confirmationService = createSafeConfirmationService({
+  const unavailableError = () => new Error('Safe transaction service is unavailable.')
+  const propose = client.propose
+  const transaction = client.transaction
+  const confirmations = client.confirmations
+  const confirm = client.confirm
+  const transactionService = createSafeTransactionService({
     store,
     operations,
-    accounts: confirmations?.accounts ?? {
+    accounts: transactions?.accounts ?? {
       getFrameAccount: () => null
     },
-    client: confirmations?.client ?? {
-      confirmations: () => Promise.reject(new Error('Safe confirmation service is unavailable.')),
-      confirm: () => Promise.reject(new Error('Safe confirmation service is unavailable.'))
-    }
+    client: {
+      configuration: (chainId, address, signal, blockTag) =>
+        client.configuration(chainId, address, signal, blockTag),
+      propose: propose
+        ? (chainId, candidate, confirmation, origin, signal) =>
+            propose(chainId, candidate, confirmation, origin, signal)
+        : () => Promise.reject(unavailableError()),
+      transaction: transaction
+        ? (chainId, safe, hash, configuration, signal) =>
+            transaction(chainId, safe, hash, configuration, signal)
+        : () => Promise.reject(unavailableError()),
+      confirmations: confirmations
+        ? (chainId, hash, signal) => confirmations(chainId, hash, signal)
+        : () => Promise.reject(unavailableError()),
+      confirm: confirm
+        ? (chainId, hash, signature, signal) => confirm(chainId, hash, signature, signal)
+        : () => Promise.reject(unavailableError())
+    },
+    provider: transactions?.provider ?? {
+      prepare: () => Promise.reject(unavailableError()),
+      execute: () => Promise.reject(unavailableError())
+    },
+    submitted: transactions?.submitted,
+    now
   })
   const lifecycle = { disposed: false }
   const isDisposed = () => lifecycle.disposed
@@ -347,15 +381,12 @@ export function createSafeService({
       let validated = false
       try {
         const address = getAddress(accountId)
-        const observed = importing
-          ? await client.configuration(chainId, address, controller.signal)
-          : await client.queueState(chainId, address, controller.signal)
+        // Service proposals are untrusted coordination data. Always refresh the full
+        // onchain owner set, threshold, version, and nonce before importing them.
+        const observed = await client.configuration(chainId, address, controller.signal)
         assertActive()
         const latest = accountState(accountId)?.safe?.[String(chainId)]
-        const configuration =
-          !importing && latest && latest.configuration !== deployment?.configuration
-            ? latest.configuration
-            : safeConfigurationSchema.parse({ ...latest?.configuration, ...observed })
+        const configuration = safeConfigurationSchema.parse(observed)
         validated = true
         // Retain observed state even if the queue service fails afterward.
         save({ ...latest, chainId, address, configuration })
@@ -365,11 +396,32 @@ export function createSafeService({
         if (!current) {
           throw new Error('Safe deployment was removed during refresh')
         }
+        const local = new Map((current.pending ?? []).map((proposal) => [proposal.safeTxHash, proposal]))
+        const merged = pending.map((proposal) => {
+          const existing = local.get(proposal.safeTxHash)
+          local.delete(proposal.safeTxHash)
+          if (!existing?.local) {
+            return proposal
+          }
+          return safeProposalSchema.parse({
+            ...proposal,
+            confirmations: [
+              ...new Set([
+                ...proposal.confirmations,
+                ...existing.local.confirmations.map(({ owner }) => owner)
+              ])
+            ],
+            local: existing.local
+          })
+        })
+        for (const proposal of local.values()) {
+          if (proposal.local && BigInt(proposal.nonce) >= BigInt(current.configuration.nonce)) {
+            merged.push(proposal)
+          }
+        }
         save({
           ...current,
-          pending: pending.filter(
-            (proposal) => BigInt(proposal.nonce) >= BigInt(current.configuration.nonce)
-          ),
+          pending: merged.filter((proposal) => BigInt(proposal.nonce) >= BigInt(current.configuration.nonce)),
           refreshedAt: now(),
           error: undefined
         })
@@ -457,10 +509,33 @@ export function createSafeService({
   )
   refreshSelected()
   return {
+    approve: (command: SafeApprovalCommand, context: SigningUiContext) =>
+      transactionService.approve(command, context),
+    status: (query: SafeConfirmationStatusQuery, owner?: OperationOwner) =>
+      transactionService.status(query, owner),
+    attach: (draft: Parameters<typeof transactionService.attach>[0], requestId: string) =>
+      transactionService.attach(draft, requestId),
+    removeUnsigned: (identity: Parameters<typeof transactionService.removeUnsigned>[0]) =>
+      transactionService.removeUnsigned(identity),
+    cleanupUnsigned: (liveRequestIds: ReadonlySet<string>) =>
+      transactionService.cleanupUnsigned(liveRequestIds),
     confirm: (command: SafeApprovalCommand, context: SigningUiContext) =>
-      confirmationService.confirm(command, context),
+      transactionService.approve(command, context),
     confirmationStatus: (query: SafeConfirmationStatusQuery, owner?: OperationOwner) =>
-      confirmationService.confirmationStatus(query, owner),
+      transactionService.status(query, owner),
+    prepareDraft: (input: Parameters<typeof transactionService.prepareDraft>[0]) =>
+      transactionService.prepareDraft(input),
+    attachDraft: (draft: Parameters<typeof transactionService.attach>[0], requestId: string) =>
+      transactionService.attach(draft, requestId),
+    removeUnsignedDraft: (identity: Parameters<typeof transactionService.removeUnsigned>[0]) =>
+      transactionService.removeUnsigned(identity),
+    cleanupUnsignedDrafts: (liveRequestIds: ReadonlySet<string>) =>
+      transactionService.cleanupUnsigned(liveRequestIds),
+    prepareExecution: (
+      identity: Parameters<typeof transactionService.prepareExecution>[0],
+      executorId: string
+    ) => transactionService.prepareExecution(identity, executorId),
+    execute: (...args: Parameters<typeof transactionService.execute>) => transactionService.execute(...args),
     discoverNetworks,
     simulate,
     refresh,
@@ -502,7 +577,7 @@ export function createSafeService({
       return true
     },
     dispose() {
-      confirmationService.dispose()
+      transactionService.dispose()
       lifecycle.disposed = true
       unsubscribe()
       invalidate()

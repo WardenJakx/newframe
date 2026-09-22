@@ -7,7 +7,7 @@ import { createSafeHandler } from '../../scripts/local-safe/handler.js'
 import type { SafeProposal } from '../../src/features/accounts/domain/safe.js'
 import { createProductionAirGapService } from '../../src/features/accounts/main/airgap/production.js'
 import { Accounts } from '../../src/features/accounts/main/index.js'
-import { createSafeConfirmationService } from '../../src/features/accounts/main/safeConfirmation.js'
+import { createSafeTransactionService } from '../../src/features/accounts/main/safeTransaction.js'
 import { Provider } from '../../src/features/connections/main/provider/index.js'
 import { createRequestApprovalAdapter } from '../../src/features/connections/main/provider/infrastructure/production.js'
 import { createProviderProxyConnection } from '../../src/features/connections/main/provider/proxy.js'
@@ -182,6 +182,7 @@ function integrationFixture({
     ...f,
     service,
     accounts,
+    provider,
     airgap,
     broadcasts,
     responses,
@@ -198,6 +199,47 @@ function integrationFixture({
     }
   }
 }
+
+it('executes a reviewed Safe outer transaction with a named AirGap EOA without changing selection', async () => {
+  const f = integrationFixture({ ordinaryRequest: false })
+  const safe = '0x1111111111111111111111111111111111111111'
+  f.store.getState().upsertAccount({
+    id: safe,
+    address: safe,
+    created: 'safe:executor-test',
+    safe: {
+      '1': {
+        chainId: 1,
+        address: safe,
+        configuration: { owners: [f.address], threshold: 1, nonce: '0', version: '1.4.1' }
+      }
+    }
+  })
+  f.store.getState().setAccount({ id: safe })
+  try {
+    const pending = f.provider.executeAccountTransaction(
+      f.address,
+      transaction(),
+      undefined,
+      f.owner.context,
+      'safe-execute-airgap'
+    )
+    for (let index = 0; index < 200 && !f.signer.summary().airgapRequest; index++) {
+      await Bun.sleep(1)
+    }
+    expect(f.reference().requestId).toBe('safe-execute-airgap')
+    const frame = f.frames(vectors.transactions[0].signature)[0]
+    expect(
+      await f.airgap.scan({ ...f.reference(), type: 'signer.session-input', frame }, f.owner.context.owner)
+    ).toBeTrue()
+    expect(await pending).toBe(`0x${'ab'.repeat(32)}`)
+    expect(f.broadcasts).toHaveLength(1)
+    expect(f.store.getState().main.currentAccount).toBe(safe)
+    expect(f.store.getState().main.accounts[f.address].requests).toEqual({})
+  } finally {
+    f.dispose()
+  }
+})
 
 it('existing review approval opens AirGap, verifies its response and broadcasts exactly once', async () => {
   const f = integrationFixture()
@@ -296,7 +338,7 @@ it('warning confirmation binds the final approving window before opening AirGap'
   }
 })
 
-it('confirms an existing Safe proposal through the owner Account and verified QR exchange', async () => {
+it('locally confirms an existing Safe proposal through the owner Account and verified QR exchange', async () => {
   const master = HDNodeWallet.fromSeed(new Uint8Array(32).fill(42))
   const origin = master.derivePath("m/44'/60'/0'")
   const wallet = origin.derivePath('0/0')
@@ -363,11 +405,19 @@ it('confirms an existing Safe proposal through the owner Account and verified QR
     }
   })
   const operations = createOperationService({ store: f.store, clock: { now: Date.now } })
-  const confirmations = createSafeConfirmationService({
+  const confirmations = createSafeTransactionService({
     store: f.store,
     operations,
     accounts: f.accounts,
-    client
+    client,
+    provider: {
+      prepare: async () => {
+        throw new Error('Execution is not part of this confirmation test')
+      },
+      execute: async () => {
+        throw new Error('Execution is not part of this confirmation test')
+      }
+    }
   })
   const command = {
     type: 'request.approve',
@@ -386,11 +436,11 @@ it('confirms an existing Safe proposal through the owner Account and verified QR
   } as const
   try {
     expect(f.address).toBe(wallet.address.toLowerCase())
-    expect(confirmations.confirm(command, f.owner.context)).toBeTrue()
+    expect(confirmations.approve(command, f.owner.context)).toBeTrue()
     for (let n = 0; n < 200 && !f.signer.summary().airgapRequest; n++) {
       await Bun.sleep(1)
     }
-    expect(confirmations.confirmationStatus(query).status).toBe('signing')
+    expect(confirmations.status(query).status).toBe('reconciling')
     expect(f.store.getState().main.currentAccount).toBe(safe)
     expect(f.store.getState().main.accounts[f.address].requests).toEqual({})
     const envelope = f.envelope()
@@ -403,13 +453,15 @@ it('confirms an existing Safe proposal through the owner Account and verified QR
         await f.airgap.scan({ ...reference, type: 'signer.session-input', frame }, f.owner.context.owner)
       ).toBeTrue()
     }
-    for (let n = 0; n < 200 && confirmations.confirmationStatus(query).status !== 'published'; n++) {
+    for (let n = 0; n < 200 && confirmations.status(query).status !== 'ready'; n++) {
       await Bun.sleep(1)
     }
-    expect(confirmations.confirmationStatus(query).status).toBe('published')
-    expect(await client.confirmations(1, proposal.safeTxHash)).toEqual([{ owner: wallet.address, signature }])
-    expect(confirmations.confirm(command, f.owner.context)).toBeTrue()
-    expect(posts).toBe(1)
+    expect(confirmations.status(query).status).toBe('ready')
+    expect(f.store.getState().main.accounts[safe].safe?.['1'].pending?.[0].local?.confirmations).toEqual([
+      { owner: wallet.address, signature }
+    ])
+    expect(await client.confirmations(1, proposal.safeTxHash)).toEqual([])
+    expect(posts).toBe(0)
     expect(f.store.getState().main.currentAccount).toBe(safe)
     expect(f.store.getState().main.accounts[f.address].requests).toEqual({})
     expect(f.broadcasts).toEqual([])

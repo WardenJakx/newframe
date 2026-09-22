@@ -77,6 +77,8 @@ const safes = fakes(
   'simulate',
   'confirm',
   'confirmationStatus',
+  'prepareExecution',
+  'execute',
   'dispose'
 )
 const tokens = fakes('add', 'lookup', 'remove')
@@ -480,7 +482,8 @@ describe('typed operation dispatcher', () => {
       'request-1',
       expect.objectContaining({ owner }),
       undefined,
-      ownerId
+      ownerId,
+      undefined
     )
   })
 })
@@ -648,4 +651,50 @@ it('authorizes strict Safe confirmation identities and binds approval/status to 
     status: 'validation_failed',
     message: 'Safe confirmation status is unavailable.'
   })
+})
+
+it('prepares and starts Safe execution through strict tray-only operations', async () => {
+  const identity = {
+    accountId: '0x1111111111111111111111111111111111111111',
+    executorId: '0x2222222222222222222222222222222222222222',
+    chainId: 1,
+    safeTxHash: `0x${'a'.repeat(64)}`
+  }
+  const transaction = {
+    chainId: '0x1',
+    type: '0x2',
+    gasFeesSource: 'Frame',
+    from: identity.executorId,
+    to: identity.accountId,
+    value: '0x0',
+    data: '0x12',
+    nonce: '0x1',
+    gasLimit: '0x5208',
+    maxFeePerGas: '0x2',
+    maxPriorityFeePerGas: '0x1'
+  }
+  authorizeRenderer.mockReturnValue(trayContext)
+  safes.prepareExecution.mockResolvedValue({ transaction, warnings: ['Simulation unavailable'] })
+  expect(await dispatcher.dispatchQuery(event, { type: 'safe.execution-prepare', ...identity })).toEqual({
+    ok: true,
+    transaction,
+    warnings: ['Simulation unavailable']
+  })
+  const sender = Object.assign(new EventEmitter(), { isDestroyed: () => false })
+  safes.execute.mockResolvedValue(`0x${'b'.repeat(64)}`)
+  expect(
+    await dispatcher.dispatchCommand({ sender } as unknown as Electron.IpcMainInvokeEvent, {
+      type: 'request.approve',
+      action: 'execute-safe',
+      operationId: 'execute-1',
+      ...identity
+    })
+  ).toEqual({ ok: true })
+  expect(safes.execute).toHaveBeenCalledWith(
+    expect.objectContaining(identity),
+    identity.executorId,
+    undefined,
+    expect.objectContaining({ owner }),
+    'execute-1'
+  )
 })

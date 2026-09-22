@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
 
-import { within } from '@testing-library/react'
+import { act, waitFor, within } from '@testing-library/react'
 
 import { fireEvent, screen, render } from '../../../../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../../../../test/support/rendererClient'
 import { erc20Interface } from '../../../../../../shared/domain/evm'
+import { TransactionApprovalAdjustmentsSchema } from '../../../../../transactions/domain/approval'
 import { RequestStatus, TxClassification } from '../../../../contract/requests'
 import {
   createRequestRendererCapabilitiesFake as createRequestPortsFake,
@@ -81,7 +82,295 @@ beforeEach(() => {
   })
 })
 
+function safeRequestFixture() {
+  const safe = `0x${'1'.repeat(40)}`
+  const owner = `0x${'2'.repeat(40)}`
+  const recipient = `0x${'3'.repeat(40)}`
+  const safeTxHash = `0x${'a'.repeat(64)}`
+  const candidate = {
+    accountId: owner,
+    name: 'Local owner',
+    address: owner,
+    created: 'owner:1',
+    signerType: 'seed',
+    signerAttached: true,
+    signerStatus: 'ok',
+    status: 'ready' as const
+  }
+  const proposal = {
+    safeTxHash,
+    safe,
+    nonce: '0',
+    to: recipient,
+    value: '0',
+    operation: 0 as const,
+    data: '0x',
+    confirmations: [owner],
+    safeTxGas: '0',
+    baseGas: '0',
+    gasPrice: '0',
+    gasToken: '0x0000000000000000000000000000000000000000',
+    refundReceiver: '0x0000000000000000000000000000000000000000',
+    integrity: { status: 'matched' as const, reason: 'Hash matches.' },
+    local: {
+      createdAt: 1,
+      confirmations: [],
+      publication: { status: 'local' as const },
+      execution: {
+        status: 'ready' as const,
+        executorId: owner,
+        transaction: {
+          chainId: '0x89',
+          type: '0x2',
+          gasFeesSource: 'Frame' as const,
+          from: owner,
+          to: safe,
+          value: '0x0',
+          data: '0x1234',
+          nonce: '0x4',
+          gasLimit: '0x5208',
+          maxFeePerGas: '0x77359400',
+          maxPriorityFeePerGas: '0x3b9aca00'
+        }
+      }
+    }
+  }
+  fixture.state.reset({
+    accounts: {
+      [safe]: {
+        id: safe,
+        address: safe,
+        name: 'Team Safe',
+        signer: 'watch',
+        requests: {},
+        safe: {
+          '137': {
+            chainId: 137,
+            address: safe,
+            configuration: { owners: [owner], threshold: 1, nonce: '0' },
+            pending: [proposal]
+          }
+        }
+      }
+    },
+    assetRates: {},
+    networks: { ethereum: { 137: { name: 'Polygon', isTestnet: false } } },
+    networksMeta: { ethereum: { 137: { nativeCurrency: { symbol: 'MATIC', decimals: 18 } } } },
+    origins: { 'test-origin': { name: 'Test Dapp' } },
+    tokens: { byId: {}, accountTokenIds: {} },
+    windows: { panel: { nav: [] } }
+  })
+  capabilities.safe.simulate.mockResolvedValue({
+    status: 'unavailable',
+    error: 'Trace unavailable'
+  })
+  const req = {
+    handlerId: 'safe-request',
+    type: 'transaction',
+    origin: 'test-origin',
+    account: safe,
+    safeTxHash,
+    safeTransactionProgress: {
+      status: 'ready',
+      chainId: 137,
+      threshold: 1,
+      confirmations: [owner],
+      publication: 'local',
+      ownerCandidates: [candidate],
+      executorCandidates: [candidate]
+    },
+    data: { chainId: '0x89', from: safe, to: recipient, value: '0x0', data: '0x' },
+    classification: TxClassification.NATIVE_TRANSFER
+  } satisfies TransactionRequestFixture
+  return { req, safe, owner }
+}
+
 describe('confirm', () => {
+  it.each(['EOA', 'Safe'] as const)(
+    'reviews a native %s transfer with the dapp origin and shared transaction details',
+    async (accountType) => {
+      const { req, safe, owner } = safeRequestFixture()
+      const recipient = `0x${'3'.repeat(40)}`
+      const prepared = structuredClone(fixture.state.wallet.getState())
+      const proposal = prepared.accounts[safe].safe!['137'].pending![0]
+      proposal.value = '1500000000000000000'
+      fixture.state.reset(prepared)
+      const nativeTransfer = {
+        ...req,
+        account: accountType === 'Safe' ? safe : owner,
+        safeTxHash: accountType === 'Safe' ? req.safeTxHash : undefined,
+        safeTransactionProgress: accountType === 'Safe' ? req.safeTransactionProgress : undefined,
+        data: {
+          chainId: '0x89',
+          from: accountType === 'Safe' ? safe : owner,
+          to: accountType === 'Safe' ? owner : recipient,
+          value: accountType === 'Safe' ? '0x1' : '0x14d1120d7b160000',
+          data: '0x'
+        }
+      } satisfies TransactionRequestFixture
+
+      renderRequest(nativeTransfer)
+
+      if (accountType === 'Safe') {
+        await waitFor(() =>
+          expect(screen.getByLabelText('Transaction effects').textContent).toContain('Trace unavailable')
+        )
+      }
+      expect(screen.getByLabelText('Request summary').textContent).toContain('Test Dapp')
+      expect(screen.queryByText('Safe proposal')).toBeNull()
+      const details = screen.getByLabelText('Transaction details')
+      expect(details.textContent).toMatch(/Send 1\.5 MATIC.*To.*0x333333/)
+      expect(details.textContent).not.toContain('0x1234')
+      expect(screen.queryByRole('button', { name: /calldata digest/i })).toBeNull()
+      if (accountType === 'Safe') {
+        expect(screen.queryByLabelText('Reviewed executor transaction')).toBeNull()
+        expect(screen.getByRole('button', { name: 'Execution details' })).toBeTruthy()
+      }
+    }
+  )
+
+  it('uses the ordinary call details for verified Safe decoding instead of service or RPC descriptions', async () => {
+    const { req, safe, owner } = safeRequestFixture()
+    const calldata = '0x60fe47b1000000000000000000000000000000000000000000000000000000000000002a'
+    const args = [{ name: 'newValue', type: 'uint256', value: '42' }]
+    const prepared = structuredClone(fixture.state.wallet.getState())
+    const proposal = prepared.accounts[safe].safe!['137'].pending![0]
+    proposal.value = '1000000000000000000'
+    proposal.data = calldata
+    proposal.localDecoded = { method: 'setValue', parameters: args, source: 'Function selector registry' }
+    proposal.dataDecoded = { method: 'forgedService', parameters: [] }
+    fixture.state.reset(prepared)
+    const ordinary = {
+      ...req,
+      account: owner,
+      safeTxHash: undefined,
+      safeTransactionProgress: undefined,
+      classification: TxClassification.CONTRACT_CALL,
+      data: { chainId: '0x89', from: owner, to: proposal.to, value: '0xde0b6b3a7640000', data: calldata },
+      decodedData: { method: 'setValue', signature: 'setValue(uint256)', args }
+    } satisfies TransactionRequestFixture
+    const { unmount } = renderRequest(ordinary)
+    const ordinaryDetails = screen.getByLabelText('Transaction details').textContent
+    expect(ordinaryDetails).toMatch(/Call setValue.*newValue \(uint256\).*42.*Attached value.*1.0 MATIC/)
+    unmount()
+
+    renderRequest({
+      ...req,
+      classification: TxClassification.CONTRACT_CALL,
+      decodedData: { method: 'forgedRPC', signature: 'forgedRPC()', args: [] }
+    })
+
+    await waitFor(() =>
+      expect(screen.getByLabelText('Transaction effects').textContent).toContain('Trace unavailable')
+    )
+    expect(screen.getByLabelText('Transaction details').textContent).toBe(ordinaryDetails)
+    expect(screen.queryByText(/forgedService|forgedRPC/)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Show full calldata/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Copy full calldata' }))
+    expect(capabilities.external.writeText).toHaveBeenCalledWith(calldata)
+  })
+
+  it('moves one owner approval through reviewed execution and submitted state', async () => {
+    const { req, safe, owner } = safeRequestFixture()
+    const collecting = structuredClone(fixture.state.wallet.getState())
+    const proposal = collecting.accounts[safe].safe!['137'].pending![0]
+    const reviewedTransaction = structuredClone(proposal.local!.execution.transaction!)
+    proposal.confirmations = []
+    proposal.local!.execution = { status: 'idle' }
+    fixture.state.reset(collecting)
+    const collectingRequest = {
+      ...req,
+      safeTransactionProgress: {
+        ...req.safeTransactionProgress,
+        status: 'collecting' as const,
+        confirmations: []
+      }
+    }
+    const view = (request: TransactionRequestFixture) => (
+      <RequestViewProvider>
+        <TxRequest capabilities={capabilities} req={completeRequest(request)} />
+      </RequestViewProvider>
+    )
+    const { rerender, user } = render(view(collectingRequest))
+
+    expect(await screen.findByText('Pending proposal')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Execute transaction' })).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Sign' }))
+    expect(capabilities.review.approve).toHaveBeenCalledWith({ requestId: req.handlerId, ownerId: owner })
+    expect(capabilities.review.approve).toHaveBeenCalledTimes(1)
+    expect(capabilities.safe.prepareExecution).not.toHaveBeenCalled()
+
+    const thresholdComplete = structuredClone(collecting)
+    thresholdComplete.accounts[safe].safe!['137'].pending![0].confirmations = [owner]
+    const awaitingMain = {
+      ...collectingRequest,
+      safeTransactionProgress: { ...collectingRequest.safeTransactionProgress, confirmations: [owner] }
+    }
+    await act(async () => fixture.state.reset(thresholdComplete))
+    rerender(view(awaitingMain))
+    expect(await screen.findByText('Pending proposal')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Execute transaction' })).toBeNull()
+    expect(capabilities.safe.prepareExecution).not.toHaveBeenCalled()
+
+    const ready = structuredClone(thresholdComplete)
+    const readyProposal = ready.accounts[safe].safe!['137'].pending![0]
+    readyProposal.local!.execution = {
+      status: 'ready',
+      executorId: owner,
+      transaction: reviewedTransaction
+    }
+    await act(async () => fixture.state.reset(ready))
+    rerender(view(req))
+
+    expect(await screen.findByText('Ready · awaiting execution')).toBeTruthy()
+    expect(screen.getByText('Gas-paying executor')).toBeTruthy()
+    expect(capabilities.review.approve).toHaveBeenCalledTimes(1)
+    await user.click(screen.getByRole('button', { name: 'Show gas fee settings' }))
+    await user.click(screen.getByRole('button', { name: 'Custom' }))
+    fireEvent.change(screen.getByLabelText('Gas Limit (UNITS)'), { target: { value: '22000' } })
+    fireEvent.change(screen.getByLabelText('Base Fee (GWEI)'), { target: { value: '3' } })
+    fireEvent.change(screen.getByLabelText('Max Priority Fee (GWEI)'), { target: { value: '2' } })
+    expect(screen.getByLabelText('Network fee').textContent).toContain('5 Gwei')
+    await user.click(screen.getByRole('button', { name: 'Execute transaction' }))
+
+    const approval = capabilities.review.approve.mock.calls[1][0]
+    const adjustments = 'adjustments' in approval ? approval.adjustments : undefined
+    expect(TransactionApprovalAdjustmentsSchema.safeParse(adjustments).success).toBe(true)
+    expect(approval).toEqual({
+      requestId: req.handlerId,
+      executorId: owner,
+      adjustments: {
+        gasLimit: '0x55f0',
+        maxFeePerGas: '0x12a05f200',
+        maxPriorityFeePerGas: '0x77359400'
+      }
+    })
+
+    const outerTxHash = `0x${'d'.repeat(64)}`
+    const submitted = structuredClone(ready)
+    submitted.accounts[safe].safe!['137'].pending![0].local!.execution = {
+      status: 'submitted',
+      executorId: owner,
+      transaction: { ...reviewedTransaction, ...adjustments },
+      transactionHash: outerTxHash
+    }
+    const submittedRequest = {
+      ...req,
+      safeTransactionProgress: { ...req.safeTransactionProgress, status: 'submitted' as const }
+    }
+    await act(async () => fixture.state.reset(submitted))
+    rerender(view(submittedRequest))
+
+    expect(await screen.findByText('Submitted')).toBeTruthy()
+    expect(screen.getByText(outerTxHash)).toBeTruthy()
+    expect(screen.getByLabelText('Network fee').textContent).toContain('5 Gwei')
+    expect(screen.queryByRole('button', { name: 'Custom' })).toBeNull()
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Transaction submitted' }).disabled).toBe(
+      true
+    )
+    expect(screen.queryByRole('button', { name: 'Execute transaction' })).toBeNull()
+  })
+
   it('renders a transaction notice', () => {
     const req = {
       handlerId: 'test-req',

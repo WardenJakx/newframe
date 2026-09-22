@@ -283,6 +283,28 @@ export const WalletRequestSchema = z
         message: z.string().max(256).optional()
       })
       .optional(),
+    safeTxHash: z
+      .string()
+      .regex(/^0x[0-9a-f]{64}$/i)
+      .optional(),
+    safeTransactionProgress: z
+      .strictObject({
+        status: z.enum(['collecting', 'ready', 'preparing', 'executing', 'submitted', 'failed']),
+        chainId: z.number().int().positive(),
+        threshold: z.number().int().positive(),
+        confirmations: z.array(z.string()),
+        publication: z.enum(['local', 'publishing', 'published', 'failed']),
+        ownerCandidates: z.array(SafeOwnerAccountSchema),
+        executorCandidates: z.array(SafeOwnerAccountSchema)
+      })
+      .optional(),
+    safeExecution: z
+      .strictObject({
+        executorId: z.string().optional(),
+        reviewedTransaction: z.unknown().optional(),
+        submitted: z.strictObject({ outerTxHash: z.string(), executorId: z.string() }).optional()
+      })
+      .optional(),
     mode: z.enum(['normal', 'monitor']).optional(),
     notice: z.string().optional(),
     created: z.number().optional(),
@@ -341,6 +363,7 @@ export const WalletRequestSchema = z
 
 const WalletAccountSchema = AccountSchema.extend({
   safeOwners: z.record(z.string(), z.array(SafeOwnerAccountSchema)).optional(),
+  safeExecutors: z.array(SafeOwnerAccountSchema).optional(),
   requests: z.record(z.string(), WalletRequestSchema)
 }).strip()
 

@@ -29,6 +29,8 @@ import {
   type TrustedPrincipal
 } from '../../../access-control/main/authority.js'
 import { hasAddress } from '../../../accounts/domain/index.js'
+import { safeDecodedSchema } from '../../../accounts/domain/safe.js'
+import type { SafeTransactionPort } from '../../../accounts/main/safeTransactionPort.js'
 import type { Chains } from '../../../networks/main/index.js'
 import type { Chain } from '../../../networks/main/index.js'
 import { estimateL1GasCost } from '../../../networks/main/l1GasFees.js'
@@ -51,12 +53,17 @@ import { ApprovalType } from '../../../requests/domain/approval.js'
 import { isSignatureRequest } from '../../../requests/domain/index.js'
 import type { PromptedRequestContinuationPort } from '../../../requests/main/service.js'
 import { toTokenId } from '../../../tokens/domain/index.js'
+import {
+  applyTransactionAdjustments,
+  type TransactionApprovalAdjustments
+} from '../../../transactions/domain/approval.js'
 import type { TransactionData } from '../../../transactions/domain/index.js'
 import { normalizeChainId } from '../../../transactions/domain/index.js'
 import {
   populate as populateTransaction,
   maxFee,
-  classifyTransaction
+  classifyTransaction,
+  signerCompatibility
 } from '../../../transactions/main/index.js'
 import type { RevealService } from '../../../transactions/main/reveal.js'
 import { mapRequest } from '../requests/index.js'
@@ -97,6 +104,12 @@ interface TransactionMetadata {
   approvals: RequiredApproval[]
 }
 
+export interface PreparedAccountTransaction {
+  transaction: TransactionData &
+    Required<Pick<TransactionData, 'from' | 'to' | 'value' | 'data' | 'nonce' | 'gasLimit'>>
+  warnings: string[]
+}
+
 type ProviderSubscriptionType = SubscriptionType | 'chainChanged' | 'networkChanged'
 
 type AccountHandle = NonNullable<ReturnType<AccountRequestPort['getFrameAccount']>>
@@ -128,8 +141,9 @@ export interface ProviderDependencies {
   proxy: ProviderProxyConnection
   state: ProviderStatePort
   store: CanonicalStoreReader
-  reveal: Pick<RevealService, 'resolveEntityType'>
+  reveal: Pick<RevealService, 'decode' | 'resolveEntityType'>
   requests: PromptedRequestContinuationPort
+  safeTransactions?: Pick<SafeTransactionPort, 'prepareDraft' | 'attach'>
 }
 
 export class Provider extends EventEmitter {
@@ -151,8 +165,9 @@ export class Provider extends EventEmitter {
   private readonly proxy: ProviderProxyConnection
   private readonly state: ProviderStatePort
   private readonly store: CanonicalStoreReader
-  private readonly reveal: Pick<RevealService, 'resolveEntityType'>
+  private readonly reveal: Pick<RevealService, 'decode' | 'resolveEntityType'>
   private readonly requests: PromptedRequestContinuationPort
+  private readonly safeTransactions?: Pick<SafeTransactionPort, 'prepareDraft' | 'attach'>
 
   constructor({
     accounts,
@@ -162,7 +177,8 @@ export class Provider extends EventEmitter {
     state,
     store,
     reveal,
-    requests
+    requests,
+    safeTransactions
   }: ProviderDependencies) {
     super()
     this.accounts = accounts
@@ -173,6 +189,7 @@ export class Provider extends EventEmitter {
     this.store = store
     this.reveal = reveal
     this.requests = requests
+    this.safeTransactions = safeTransactions
     this.getNonce = this.getNonce.bind(this)
   }
 
@@ -545,6 +562,24 @@ export class Provider extends EventEmitter {
     return estimateL1GasCost(connectedProvider, txRequest)
   }
 
+  private sendRawTransaction(
+    signedTransaction: string | undefined,
+    chainId: string,
+    payload: Pick<RPCRequestPayload, 'id' | 'jsonrpc'>,
+    respond: RPCRequestCallback
+  ) {
+    this.connection.send(
+      {
+        id: payload.id,
+        jsonrpc: payload.jsonrpc,
+        method: 'eth_sendRawTransaction',
+        params: [signedTransaction]
+      },
+      respond,
+      { type: 'ethereum', id: parseInt(chainId, 16) }
+    )
+  }
+
   signAndSend(req: TransactionRequest, cb: Callback<string>, context?: SigningUiContext) {
     const rawTx = structuredClone(req.data)
     const maxTotalFee = maxFee(rawTx)
@@ -571,30 +606,18 @@ export class Provider extends EventEmitter {
               }
               let done = false
               const cast = () => {
-                this.connection.send(
-                  {
-                    id: req.payload.id,
-                    jsonrpc: req.payload.jsonrpc,
-                    method: 'eth_sendRawTransaction',
-                    params: [signedTx]
-                  },
-                  (response) => {
-                    clearInterval(broadcastTimer)
-                    if (done) {
-                      return
-                    }
-                    done = true
-                    if (response.error) {
-                      cb(Object.assign(new Error(response.error.message), { code: response.error.code }))
-                    } else {
-                      cb(null, response.result as string)
-                    }
-                  },
-                  {
-                    type: 'ethereum',
-                    id: parseInt(req.data.chainId, 16)
+                this.sendRawTransaction(signedTx, req.data.chainId, req.payload, (response) => {
+                  clearInterval(broadcastTimer)
+                  if (done) {
+                    return
                   }
-                )
+                  done = true
+                  if (response.error) {
+                    cb(Object.assign(new Error(response.error.message), { code: response.error.code }))
+                  } else {
+                    cb(null, response.result as string)
+                  }
+                })
               }
               const broadcastTimer = setInterval(() => cast(), 1000)
               cast()
@@ -737,6 +760,141 @@ export class Provider extends EventEmitter {
       log.error('error creating transaction', e)
       cb(e as Error)
     }
+  }
+
+  /** Prepare an ordinary EOA transaction without changing the selected account. */
+  async prepareAccountTransaction(
+    accountId: string,
+    transaction: Omit<RPC.SendTransaction.TxParams, 'from'> & { chainId: string }
+  ): Promise<PreparedAccountTransaction> {
+    const normalizedId = accountId.toLowerCase()
+    const account = this.accounts.getFrameAccount(normalizedId)
+    if (!account || account.id !== normalizedId || this.accounts.get(normalizedId)?.safe) {
+      throw new Error('Executor account is unavailable or is not an ordinary EOA.')
+    }
+    const metadata = await new Promise<TransactionMetadata>((resolve, reject) => {
+      void this.fillTransaction({ ...transaction, from: normalizedId }, (error, value) => {
+        if (error || !value) {
+          reject(error ?? new Error('Could not prepare executor transaction.'))
+        } else {
+          resolve(value)
+        }
+      })
+    })
+    const nonce = await new Promise<string>((resolve, reject) => {
+      this.getNonce(metadata.tx, (response) => {
+        if (response.error || typeof response.result !== 'string') {
+          reject(
+            Object.assign(new Error(response.error?.message ?? 'Could not determine executor nonce.'), {
+              code: response.error?.code
+            })
+          )
+        } else {
+          resolve(response.result)
+        }
+      })
+    })
+    const { feesUpdated: _feesUpdated, recipientType: _recipientType, ...prepared } = metadata.tx
+    const candidate = { ...prepared, nonce }
+    if (
+      !candidate.from ||
+      !candidate.to ||
+      candidate.value === undefined ||
+      candidate.data === undefined ||
+      !candidate.gasLimit
+    ) {
+      throw new Error('Prepared executor transaction is incomplete.')
+    }
+    const canonical = this.accounts.get(normalizedId)
+    const signer = canonical?.signer ? this.store.getState().main.signers[canonical.signer] : undefined
+    const compatibility = signer ? signerCompatibility(candidate, signer) : undefined
+    return {
+      transaction: candidate as PreparedAccountTransaction['transaction'],
+      warnings: [
+        ...metadata.approvals.map(({ data }) =>
+          data && typeof data === 'object' && 'message' in data && typeof data.message === 'string'
+            ? data.message
+            : 'Executor transaction needs additional review.'
+        ),
+        ...(compatibility && !compatibility.compatible
+          ? [`${compatibility.signer} does not support ${compatibility.tx} transactions.`]
+          : [])
+      ]
+    }
+  }
+
+  /** Sign and broadcast a reviewed transaction with a named EOA, without changing selection. */
+  async executeAccountTransaction(
+    accountId: string,
+    reviewed: TransactionData,
+    adjustments: TransactionApprovalAdjustments | undefined,
+    context: SigningUiContext,
+    requestId: string
+  ): Promise<string> {
+    const normalizedId = accountId.toLowerCase()
+    const account = this.accounts.getFrameAccount(normalizedId)
+    if (
+      !account ||
+      account.id !== normalizedId ||
+      this.accounts.get(normalizedId)?.safe ||
+      reviewed.from?.toLowerCase() !== normalizedId
+    ) {
+      throw new Error('Executor account is unavailable or does not match the reviewed transaction.')
+    }
+    const candidate = adjustments ? applyTransactionAdjustments(reviewed, adjustments) : reviewed
+    const currentNonce = await new Promise<string>((resolve, reject) => {
+      this.getNonce(candidate, (response) => {
+        if (response.error || typeof response.result !== 'string') {
+          reject(new Error(response.error?.message ?? 'Could not revalidate executor nonce.'))
+        } else {
+          resolve(response.result)
+        }
+      })
+    })
+    if (BigInt(currentNonce) !== BigInt(candidate.nonce ?? '0x0')) {
+      throw new Error('Executor nonce changed. Prepare and review the transaction again.')
+    }
+    const maxTotalFee = maxFee(candidate)
+    if (feeTotalOverMax(candidate, maxTotalFee)) {
+      throw new Error('Max fee is over hard limit')
+    }
+    const signed = await new Promise<string>((resolve, reject) => {
+      account.signTransaction(
+        structuredClone(candidate),
+        (error, value) => {
+          if (error || !value) {
+            reject(error ?? new Error('Executor returned no signed transaction.'))
+          } else {
+            resolve(value)
+          }
+        },
+        {
+          requestId,
+          chainId: parseInt(candidate.chainId, 16),
+          signal: undefined,
+          isActive: () => context.isOwnerActive(),
+          ui: context
+        }
+      )
+    })
+    return new Promise<string>((resolve, reject) => {
+      this.sendRawTransaction(
+        signed,
+        candidate.chainId,
+        { id: crypto.randomUUID(), jsonrpc: '2.0' },
+        (response) => {
+          if (response.error || typeof response.result !== 'string') {
+            reject(
+              Object.assign(new Error(response.error?.message ?? 'Executor broadcast failed.'), {
+                code: response.error?.code
+              })
+            )
+          } else {
+            resolve(response.result)
+          }
+        }
+      )
+    })
   }
 
   private requireActiveAgentSession(
@@ -995,22 +1153,13 @@ export class Provider extends EventEmitter {
           return resError(signingError ?? 'Agent transaction signing failed', request.payload, res)
         }
 
-        this.connection.send(
-          {
-            id: request.payload.id,
-            jsonrpc: request.payload.jsonrpc,
-            method: 'eth_sendRawTransaction',
-            params: [signedTransaction]
-          },
-          (response) => {
-            if (!response.error && typeof response.result === 'string') {
-              const trackedRequest = { ...request, data }
-              this.accounts.trackAutonomousTransaction(account.id, trackedRequest, response.result)
-            }
-            res(response)
-          },
-          { type: 'ethereum', id: parseInt(data.chainId, 16) }
-        )
+        this.sendRawTransaction(signedTransaction, data.chainId, request.payload, (response) => {
+          if (!response.error && typeof response.result === 'string') {
+            const trackedRequest = { ...request, data }
+            this.accounts.trackAutonomousTransaction(account.id, trackedRequest, response.result)
+          }
+          res(response)
+        })
       })
     }
 
@@ -1026,7 +1175,7 @@ export class Provider extends EventEmitter {
     })
   }
 
-  sendTransaction(
+  async sendTransaction(
     payload: RPC.SendTransaction.Request,
     res: RPCRequestCallback,
     targetChain: Chain,
@@ -1057,11 +1206,108 @@ export class Provider extends EventEmitter {
             if (err) {
               return resError(err, payload, res)
             }
-            this.sendTransaction(payload, res, targetChain, principal, context)
+            void this.sendTransaction(payload, res, targetChain, principal, context)
           })
         }
 
         return resError('Transaction is not from currently selected account', payload, res)
+      }
+
+      const safeDeployments = this.accounts.get(currentAccount.id)?.safe
+      if (safeDeployments) {
+        const deploymentKey = String(targetChain.id)
+        const safeDeployment = Object.hasOwn(safeDeployments, deploymentKey)
+          ? safeDeployments[deploymentKey]
+          : undefined
+        if (!safeDeployment) {
+          return resError(`Safe is not configured on chain ${targetChain.id}`, payload, res)
+        }
+        if (!this.safeTransactions) {
+          return resError('Safe transaction capability is unavailable', payload, res)
+        }
+        const raw = txParams as RPC.SendTransaction.TxParams & Record<string, unknown>
+        if (!raw.to) {
+          return resError('Safe contract creation is not supported', payload, res)
+        }
+        const unsupported = [
+          'nonce',
+          'operation',
+          'delegatecall',
+          'safeTxGas',
+          'baseGas',
+          'gasToken',
+          'refundReceiver'
+        ].find((field) => raw[field] !== undefined)
+        if (unsupported) {
+          return resError(`Safe transaction field ${unsupported} is not supported`, payload, res)
+        }
+
+        const inner = getRawTx({
+          from: currentAccount.id,
+          to: raw.to,
+          value: raw.value,
+          data: raw.data,
+          chainId: addHexPrefix(targetChain.id.toString(16))
+        })
+        let localDecoded
+        if (inner.data && isNonZeroHex(inner.data)) {
+          try {
+            const decoded = await this.reveal.decode(inner.to!, targetChain.id, inner.data)
+            if (decoded) {
+              const parsed = safeDecodedSchema.extend({ source: safeDecodedSchema.shape.method }).safeParse({
+                method: decoded.method,
+                parameters: decoded.args,
+                source: decoded.source
+              })
+              if (parsed.success) {
+                localDecoded = parsed.data
+              }
+            }
+          } catch (error) {
+            log.warn('Unable to decode Safe transaction calldata locally', error)
+          }
+        }
+        const draft = this.safeTransactions.prepareDraft({
+          accountId: currentAccount.id,
+          chainId: targetChain.id,
+          to: inner.to!,
+          value: BigInt(inner.value ?? '0x0').toString(),
+          data: inner.data,
+          operation: 0,
+          origin: payload._origin,
+          ...(localDecoded ? { localDecoded } : {})
+        })
+        const handlerId = this.requests.create(res)
+        const unclassifiedReq = {
+          handlerId,
+          type: 'transaction',
+          data: inner,
+          safeTxHash: draft.proposal.safeTxHash,
+          payload,
+          account: currentAccount.id,
+          origin: payload._origin,
+          approvals: [],
+          feesUpdatedByUser: false,
+          recipientType: '',
+          ...(context?.tokenData ? { tokenData: context.tokenData } : {}),
+          recognizedActions: []
+        } as Omit<TransactionRequest, 'classification'>
+        const req: TransactionRequest = {
+          ...unclassifiedReq,
+          classification: classifyTransaction(unclassifiedReq)
+        }
+        if (!this.accounts.routeRequest(principal, req)) {
+          return
+        }
+        try {
+          this.safeTransactions.attach(draft, handlerId)
+        } catch (error) {
+          currentAccount.rejectRequest(req, {
+            code: -1,
+            message: error instanceof Error ? error.message : 'Safe proposal could not be attached'
+          })
+        }
+        return
       }
 
       // fillTransaction reports preparation failures through its callback.

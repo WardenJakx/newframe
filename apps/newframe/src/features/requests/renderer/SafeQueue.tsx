@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
 import type { AirGapRequestReference } from '../../../platform/signing/domain/airgap'
@@ -6,11 +6,16 @@ import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppS
 import { AddressIdentity, shortAddress } from '../../../shared/renderer/ui/AddressIdentity'
 import { ChainIcon } from '../../../shared/renderer/ui/ChainIcon'
 import { accountDisplayType } from '../../../shared/renderer/ui/signerPresentation'
-import type { SafeOwnerAccount, SafeProposalSimulation } from '../../accounts/domain/safe'
+import type { SafeOwnerAccount } from '../../accounts/domain/safe'
 import { persistedImageSource } from '../../asset-data/domain/image'
+import { NATIVE_CURRENCY } from '../../tokens/domain/constants'
+import { useAssetRate, useOrigins, useTokens } from './Account/Requests/state'
 import type { RequestRendererCapabilities } from './requestCapabilities'
-import type { SafePreview } from './SafeProposalDetailsView'
-import { useSafeConfirmation } from './useSafeConfirmation'
+import {
+  useSafeConfirmation,
+  useSafeProposalSimulation,
+  useSafeTransactionActions
+} from './useSafeConfirmation'
 
 export function useSafeQueue({
   accountId,
@@ -73,13 +78,16 @@ export function useSafeQueue({
     setSelection(null)
   }
   const chainId = deployment?.chainId
-  const safeTxHash = proposal?.safeTxHash
   const owners = (deployment ? (account?.safeOwners?.[String(deployment.chainId)] ?? []) : []).filter(
     (owner) => {
       const ownerAccount = accounts[owner.accountId]
       return ownerAccount?.profileId === currentProfile && ownerAccount.created === owner.created
     }
   )
+  const executors = (account?.safeExecutors ?? []).filter((executor) => {
+    const executorAccount = accounts[executor.accountId]
+    return executorAccount?.profileId === currentProfile && executorAccount.created === executor.created
+  })
   const ownerScope =
     deployment && proposal
       ? JSON.stringify([
@@ -116,62 +124,14 @@ export function useSafeQueue({
   } else if (ownerSelection.account && !selectedOwner) {
     setOwnerSelection({ scope: ownerScope, account: null })
   }
-  // Projections may recreate objects without changing the transaction being reviewed.
-  // A simulation's configuration observation must not trigger another simulation.
-  const scope =
-    deployment && proposal
-      ? JSON.stringify([
-          accountId,
-          currentProfile,
-          accounts[accountId]?.created,
-          selection?.lifetime,
-          chainId,
-          deployment.address,
-          safeTxHash,
-          proposal.safe,
-          proposal.nonce,
-          proposal.to,
-          proposal.value,
-          proposal.operation,
-          proposal.data,
-          proposal.safeTxGas,
-          proposal.baseGas,
-          proposal.gasPrice,
-          proposal.gasToken,
-          proposal.refundReceiver
-        ])
-      : ''
-  const [preview, setPreview] = useState<{ scope: string; generation: number; result: SafePreview }>({
-    scope: '',
-    generation: 0,
-    result: { status: 'loading' }
+  const network = deployment ? networks[deployment.chainId] : undefined
+  const { scope, preview } = useSafeProposalSimulation({
+    accountId,
+    scope: ownerScope,
+    deployment,
+    proposal,
+    capability: capabilities.safe
   })
-  if (preview.scope !== scope) {
-    setPreview({ scope, generation: preview.generation + 1, result: { status: 'loading' } })
-  }
-  const generation = preview.generation
-  useEffect(() => {
-    if (!scope || chainId === undefined || !safeTxHash) {
-      return
-    }
-    let active = true
-    const receive = (result: SafeProposalSimulation) => {
-      if (active) {
-        setPreview((current) =>
-          current.scope === scope && current.generation === generation ? { ...current, result } : current
-        )
-      }
-    }
-    void capabilities.safe.simulate({ accountId, chainId, safeTxHash }).then(receive, (error: unknown) => {
-      receive({
-        status: 'unavailable',
-        error: error instanceof Error ? error.message : 'Could not load Safe preview.'
-      })
-    })
-    return () => {
-      active = false
-    }
-  }, [accountId, capabilities.safe, chainId, generation, safeTxHash, scope])
   const renderAddress = (address: string) => {
     const identity = Object.values(accounts).find(
       (account) => account?.address.toLowerCase() === address.toLowerCase()
@@ -197,9 +157,16 @@ export function useSafeQueue({
       />
     ])
   )
-  const network = deployment ? networks[deployment.chainId] : undefined
   const currency = deployment ? metadata[deployment.chainId]?.nativeCurrency : undefined
   const networkIcon = deployment ? persistedImageSource(metadata[deployment.chainId]?.image) : undefined
+  const origins = useOrigins()
+  const tokens = useTokens()
+  const origin = proposal?.local?.origin
+  const nativeCurrencyRate = useAssetRate({
+    chainId: chainId ?? 1,
+    address: NATIVE_CURRENCY,
+    nativeTicker: currency?.symbol ?? network?.symbol ?? '?'
+  })
   const confirmation = useSafeConfirmation({
     identity:
       deployment && proposal && selectedOwner
@@ -226,7 +193,121 @@ export function useSafeQueue({
     capability: capabilities.safe,
     onAirGapSigning
   })
-  const selectedSigner = selectedOwner ? accounts[selectedOwner.accountId]?.signer : undefined
+  const actionChainId = deployment && proposal ? deployment.chainId : undefined
+  const actionSafeTxHash = deployment && proposal ? proposal.safeTxHash : undefined
+  const confirmOwner = useCallback(
+    async (_ownerId: string, operationId: string) => confirmation.onSign(operationId),
+    [confirmation]
+  )
+  const prepareExecutor = async (executorId: string) =>
+    actionChainId && actionSafeTxHash
+      ? capabilities.safe.prepareExecution({
+          accountId,
+          chainId: actionChainId,
+          safeTxHash: actionSafeTxHash,
+          executorId
+        })
+      : { ok: false as const, error: 'Safe proposal unavailable.' }
+  const executeWith = async (
+    executorId: string,
+    adjustments: Parameters<RequestRendererCapabilities['safe']['execute']>[0]['adjustments'],
+    operationId: string
+  ) =>
+    actionChainId && actionSafeTxHash
+      ? capabilities.safe.execute({
+          accountId,
+          chainId: actionChainId,
+          safeTxHash: actionSafeTxHash,
+          executorId,
+          operationId,
+          action: 'execute-safe',
+          ...(adjustments ? { adjustments } : {})
+        })
+      : { ok: false as const, error: 'operation_failed' as const, message: 'Safe proposal unavailable.' }
+  const actionConfirmations = proposal
+    ? [
+        ...new Set([
+          ...proposal.confirmations,
+          ...(proposal.local?.confirmations.map(({ owner }) => owner) ?? [])
+        ])
+      ]
+    : []
+  const actionStatus = (() => {
+    const executionStatus = proposal?.local?.execution.status
+    if (executionStatus === 'submitted') {
+      return 'submitted' as const
+    }
+    if (executionStatus === 'executing') {
+      return 'executing' as const
+    }
+    if (executionStatus === 'preparing') {
+      return 'preparing' as const
+    }
+    if (executionStatus === 'ready') {
+      return 'ready' as const
+    }
+    if (executionStatus === 'failed' || executionStatus === 'cancelled') {
+      return 'failed' as const
+    }
+    if (confirmation.status === 'submitted') {
+      return 'submitted' as const
+    }
+    if (confirmation.status === 'executing') {
+      return 'executing' as const
+    }
+    if (confirmation.status === 'preparing') {
+      return 'preparing' as const
+    }
+    if (confirmation.status === 'ready') {
+      return 'ready' as const
+    }
+    if (confirmation.status === 'failed') {
+      return 'failed' as const
+    }
+    return 'collecting' as const
+  })()
+  const actions = useSafeTransactionActions({
+    scope,
+    status: actionStatus,
+    confirmations: actionConfirmations,
+    threshold: deployment?.configuration.threshold ?? 1,
+    publication: proposal?.local?.publication.status ?? 'published',
+    owners: owners.map((owner) => ({
+      ...owner,
+      accountType: accountDisplayType(accounts[owner.accountId])
+    })),
+    executors: executors.map((executor) => ({
+      ...executor,
+      accountType: accountDisplayType(accounts[executor.accountId])
+    })),
+    execution: proposal?.local?.execution,
+    confirmation,
+    canAct: proposal?.integrity?.status === 'matched',
+    canExecute:
+      proposal?.integrity?.status === 'matched' && proposal.nonce === deployment?.configuration.nonce,
+    onConfirm: confirmOwner,
+    onPrepare: prepareExecutor,
+    onExecute: executeWith,
+    controlledOwnerId: selectedOwner?.accountId,
+    controlledOwnerSelection: true,
+    onSelectControlledOwner: (accountId) => {
+      const owner = owners.find((candidate) => candidate.accountId === accountId)
+      if (owner) {
+        setOwnerSelection({
+          scope: ownerScope,
+          account: { accountId: owner.accountId, created: owner.created }
+        })
+      }
+    },
+    onRecoverSigner: onRecoverSigner
+      ? (ownerId) => {
+          const signer = accounts[ownerId]?.signer
+          if (signer) {
+            onRecoverSigner(signer)
+          }
+        }
+      : undefined
+  })
   return {
     hasSafe,
     review:
@@ -235,31 +316,19 @@ export function useSafeQueue({
             renderAddress,
             deployment,
             proposal,
-            owners: owners.map((owner) => ({
-              ...owner,
-              accountType: accountDisplayType(accounts[owner.accountId])
-            })),
-            selectedOwnerId: selectedOwner?.accountId,
-            confirmation,
-            onRecoverSigner:
-              selectedSigner && onRecoverSigner ? () => onRecoverSigner(selectedSigner) : undefined,
-            onSelectOwner: (accountId: string) => {
-              const owner = owners.find(
-                (owner) => owner.accountId === accountId && owner.status !== 'watch-only'
-              )
-              if (owner) {
-                setOwnerSelection({
-                  scope: ownerScope,
-                  account: { accountId: owner.accountId, created: owner.created }
-                })
-              }
-            },
-            simulation: preview.scope === scope ? preview.result : { status: 'loading' as const },
+            actions,
+            simulation: preview,
             capabilities,
             networkName: network?.name ?? `Chain ${deployment.chainId}`,
             networkIcon,
             symbol: currency?.symbol ?? network?.symbol ?? 'native',
-            decimals: currency?.decimals ?? 18
+            decimals: currency?.decimals ?? 18,
+            originName: origin ? origins[origin]?.name || origin : 'Safe proposal',
+            favicon: origin ? persistedImageSource(origins[origin]?.image) : undefined,
+            accountName: account?.name ?? account?.ensName,
+            isTestnet: Boolean(network?.isTestnet),
+            nativeCurrencyRate,
+            tokens
           }
         : undefined,
     back: () => setSelection(null),

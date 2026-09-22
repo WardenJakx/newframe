@@ -117,6 +117,17 @@ export function safeOwnerCandidates(
   )
 }
 
+export function safeExecutorCandidates(
+  safeAccount: Account,
+  accounts: Account[],
+  signers: Record<string, SignerSummary | undefined>,
+  appLock: { locked: boolean }
+): SigningCandidate[] {
+  return accounts
+    .filter((account) => account.profileId === safeAccount.profileId && account.safe === undefined)
+    .map((account) => deriveSigningCandidate(account, signers, appLock))
+}
+
 export function deriveSigningCapability(
   request: SignatureRequest,
   accounts: Account[],

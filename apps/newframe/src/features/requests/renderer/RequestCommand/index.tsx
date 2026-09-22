@@ -47,6 +47,7 @@ export type RequestCommandRequest = {
   mode?: string
   signingCapability?: SigningCapability
   safeMessageProgress?: SafeMessageProgress
+  safeTxHash?: string
 }
 
 export interface RequestCommandProps {
@@ -372,6 +373,9 @@ export function RequestCommand(props: RequestCommandProps) {
   }
 
   function transactionCommand(req: TransactionRequest) {
+    if (req.safeTxHash) {
+      return null
+    }
     const requiredApproval =
       !req.status && req.mode !== 'monitor' ? req.approvals.find((approval) => !approval.approved) : undefined
     if (requiredApproval) {

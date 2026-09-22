@@ -40,7 +40,7 @@ type FeeInputProps = Omit<FeeOverlayInputProps, 'labelText' | 'decimals'>
 
 type TxFeeOverlayProps = {
   onUpdateFee: (field: TransactionFeeField, value: bigint) => void
-  req: AdjustFeeRequestView
+  req: Pick<AdjustFeeRequestView, 'data'>
 }
 
 const FeeOverlayInput = ({
