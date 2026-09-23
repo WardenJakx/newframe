@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
+import { Wallet } from 'ethers'
+
 import { createTestStore } from '../../../test/support/createTestStore'
 import { DEFAULT_PROFILE_ID, DEFAULT_PROFILE_NAME } from '../../app/contracts/state/main'
 import { builtInChainIconUrl } from '../../features/networks/domain/chain'
@@ -718,14 +720,53 @@ it('retains Safe metadata through persistence and projects only the current prof
   const { projectRendererState } = await import('../state-sync/main/projections')
   const { projectionStateSchemas } = await import('../state-sync/contract/projections')
   const store = createTestStore()
-  const address = '0x1111111111111111111111111111111111111111'
+  const owner = new Wallet(`0x${'11'.repeat(32)}`)
+  const address = owner.address
+  const safeTxHash = `0x${'00'.repeat(32)}`
+  const signature = owner.signingKey.sign(safeTxHash).serialized
+  const transactionHash = `0x${'22'.repeat(32)}`
   const safe = {
     '1': {
       chainId: 1,
       address,
       configuration: { owners: [address], threshold: 1, nonce: '9007199254740993' },
       configurationBlockNumber: '12345678',
-      pending: [],
+      pending: [
+        {
+          safeTxHash,
+          safe: address,
+          nonce: '9007199254740993',
+          to: address,
+          value: '0',
+          operation: 0 as const,
+          data: '0x',
+          confirmations: [address],
+          local: {
+            createdAt: 42,
+            origin: 'NewFrame',
+            confirmations: [{ owner: address, signature }],
+            publication: { status: 'published' as const },
+            execution: {
+              status: 'submitted' as const,
+              executorId: address,
+              transaction: {
+                chainId: '0x1',
+                type: '0x2',
+                gasFeesSource: 'Frame' as const,
+                from: address,
+                to: address,
+                value: '0x0',
+                data: '0x12',
+                nonce: '0x1',
+                gasLimit: '0x5208',
+                maxFeePerGas: '0x2',
+                maxPriorityFeePerGas: '0x1'
+              },
+              transactionHash
+            }
+          }
+        }
+      ],
       refreshedAt: 42
     }
   }
@@ -744,6 +785,16 @@ it('retains Safe metadata through persistence and projects only the current prof
   const persisted = PersistedCanonicalStateSchema.parse(
     JSON.parse(JSON.stringify(selectPersistedState(store.getState()))),
     { reportInput: true }
+  )
+  const mismatched = structuredClone(persisted)
+  const mismatchedConfirmation =
+    mismatched.main.accounts?.[address]?.safe?.['1']?.pending?.[0]?.local?.confirmations[0]
+  if (!mismatchedConfirmation) {
+    throw new Error('Persisted Safe confirmation missing')
+  }
+  mismatchedConfirmation.signature = new Wallet(`0x${'33'.repeat(32)}`).signingKey.sign(safeTxHash).serialized
+  expect(() => PersistedCanonicalStateSchema.parse(mismatched)).toThrow(
+    'Local Safe confirmation does not match its owner'
   )
   const merged = mergePersistedState(persisted, canonicalState())
   expect(merged.main.accounts[address].safe).toEqual(safe)

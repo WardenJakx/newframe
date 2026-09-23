@@ -55,7 +55,7 @@ function createProviderFixture(chainId?: number, start = false, proxy = new Even
     proxy: proxy as never,
     state: createProviderStatePort(store),
     store,
-    reveal: { resolveEntityType: async () => 'unknown' },
+    reveal: { decode: async () => undefined, resolveEntityType: async () => 'unknown' },
     requests
   })
   if (start) {

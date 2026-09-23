@@ -5,6 +5,8 @@ import type {
   Identity,
   RequestMode,
   RequestStatus,
+  SafeExecutionMetadata,
+  SafeTransactionProgress,
   TxClassification
 } from '../../../contract/requests'
 
@@ -124,6 +126,9 @@ export type TransactionDataView = {
 }
 
 export type TransactionRequestView = RequestViewBase<'transaction'> & {
+  safeTxHash?: string
+  safeTransactionProgress?: SafeTransactionProgress
+  safeExecution?: SafeExecutionMetadata
   locked?: boolean
   payload: RequestRpcPayload & {
     method: 'eth_sendTransaction'

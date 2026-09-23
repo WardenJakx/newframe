@@ -3,7 +3,8 @@ import type {
   CommandResult,
   QueryMap,
   QueryResultMap,
-  SafeApprovalCommand
+  SafeApprovalCommand,
+  SafeExecutionCommand
 } from '../../../app/contracts/operations'
 import type { NewframeHost } from '../../../platform/ipc/contract/ipc'
 import type { ClipboardCapability, TokenImageCapability } from '../../../shared/renderer/capabilities'
@@ -31,7 +32,7 @@ export interface RequestReviewCapability {
   updateTokenApproval(input: CommandInput<'request.token-approval-update'>): Promise<CommandResult>
 }
 
-export interface TransactionReviewCapability {
+interface TransactionReviewCapability {
   setFeePreference(input: {
     chainId: number
     level: Extract<CommandInput<'settings.update'>, { setting: 'gas-fee-level' }>['value']
@@ -48,6 +49,10 @@ interface SafeQueueCapability {
   refresh(input: CommandInput<'account.refresh'>): Promise<CommandResult>
   simulate(input: Omit<QueryMap['safe.simulate'], 'type'>): Promise<QueryResultMap['safe.simulate']>
   confirm(input: WithoutType<SafeApprovalCommand>): Promise<CommandResult>
+  prepareExecution(
+    input: Omit<QueryMap['safe.execution-prepare'], 'type'>
+  ): Promise<QueryResultMap['safe.execution-prepare']>
+  execute(input: WithoutType<SafeExecutionCommand>): Promise<CommandResult>
   confirmationStatus(
     input: Omit<QueryMap['safe.confirmation-status'], 'type'>
   ): Promise<QueryResultMap['safe.confirmation-status']>
@@ -101,6 +106,11 @@ export function createRequestRendererCapabilities(host: RequestHost): RequestRen
     safe: {
       refresh: (input) => host.executeCommand({ type: 'account.refresh', ...input }),
       confirm: (input) => host.executeCommand({ type: 'request.approve', ...input }),
+      prepareExecution: async (input) => {
+        const result = await host.executeQuery({ type: 'safe.execution-prepare', ...input })
+        return result
+      },
+      execute: (input) => host.executeCommand({ type: 'request.approve', ...input }),
       confirmationStatus: async (input) => {
         const result = await host.executeQuery({ type: 'safe.confirmation-status', ...input })
         if ('status' in result) {

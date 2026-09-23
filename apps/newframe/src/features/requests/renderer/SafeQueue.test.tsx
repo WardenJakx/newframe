@@ -1,6 +1,6 @@
 import { expect, it, mock } from 'bun:test'
 
-import { act, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, waitFor, within } from '@testing-library/react'
 
 import { render, screen } from '../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
@@ -500,9 +500,24 @@ it('defaults a sole disconnected signing account and retains it when the signer 
   expect(screen.getByLabelText('Transaction details')).toBeTruthy()
 })
 
-it('keeps confirmed owners selectable as the proposal advances to execution', async () => {
-  const first = ownerAccount('Ledger owner', { signerType: 'ledger' })
-  const second = ownerAccount('Other owner', { address: `0x${'3'.repeat(40)}` })
+it('moves a threshold-complete proposal to a separately reviewed executor action', async () => {
+  const firstAddress = `0x${'2'.repeat(40)}`
+  const secondAddress = `0x${'3'.repeat(40)}`
+  const first = ownerAccount(firstAddress, { name: 'Ledger owner', signerType: 'ledger' })
+  const second = ownerAccount(secondAddress, { name: 'Other owner', address: secondAddress })
+  const reviewedTransaction = (executorId: string) => ({
+    chainId: '0x1',
+    type: '0x2',
+    gasFeesSource: 'Frame' as const,
+    from: executorId,
+    to: address,
+    value: '0x0',
+    data: '0x1234',
+    nonce: executorId === first.accountId ? '0x1' : '0x2',
+    gasLimit: '0x5208',
+    maxFeePerGas: '0x77359400',
+    maxPriorityFeePerGas: '0x3b9aca00'
+  })
   const next = structuredClone(stateWithOwners([first, second]))
   const safe = next.accounts[address].safe!['1']
   safe.configuration = {
@@ -511,9 +526,17 @@ it('keeps confirmed owners selectable as the proposal advances to execution', as
     threshold: 2,
     nonce: '3'
   }
+  safe.pending![0].integrity = { status: 'matched', reason: 'Hash matches.' }
   safe.pending![0].confirmations = [first.address, first.address, address]
+  next.accounts[address].safeExecutors = [first, second]
   fixture.state.reset(next)
-  const { user } = render(<RequestsOverlay capabilities={createCapabilityFake()} onBack={() => {}} />)
+  const capabilities = createCapabilityFake()
+  capabilities.safe.prepareExecution.mockImplementation(async ({ executorId }) => ({
+    ok: true,
+    transaction: reviewedTransaction(executorId),
+    warnings: []
+  }))
+  const { user } = render(<RequestsOverlay capabilities={capabilities} onBack={() => {}} />)
   await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
   expect(screen.getByText('Signer')).toBeTruthy()
   expectSafeSubmissionDisabled()
@@ -522,42 +545,132 @@ it('keeps confirmed owners selectable as the proposal advances to execution', as
 
   const confirmed = structuredClone(next)
   confirmed.accounts[address].safe!['1'].pending![0].confirmations = [first.address, second.address]
-  await act(async () => fixture.state.reset(confirmed))
-  expect(screen.getByText('Awaiting execution')).toBeTruthy()
-  expect(screen.getByText('Signer')).toBeTruthy()
-  const chooser = screen.getByRole('button', { name: 'Signer' })
-  expect(chooser.hasAttribute('disabled')).toBe(false)
-  expect(within(chooser).getByText('Ledger owner')).toBeTruthy()
-  expect(screen.getByRole('button', { name: 'Sign' }).hasAttribute('disabled')).toBe(true)
-  expect(screen.getByRole('button', { name: 'Decline' }).hasAttribute('disabled')).toBe(true)
-  await user.click(screen.getByRole('button', { name: 'Sign' }))
-  expect(screen.getByText('Awaiting execution')).toBeTruthy()
-
-  const disconnected = structuredClone(confirmed)
-  disconnected.accounts[address].safeOwners!['1'][0] = {
-    ...first,
-    signerAttached: false,
-    signerStatus: 'Signer unavailable',
-    status: 'unavailable'
+  confirmed.accounts[address].safe!['1'].pending![0].local = {
+    createdAt: 1,
+    confirmations: [],
+    publication: { status: 'published' },
+    execution: {
+      status: 'ready',
+      executorId: first.accountId,
+      transaction: reviewedTransaction(first.accountId)
+    }
   }
-  await act(async () => fixture.state.reset(disconnected))
-  expect(screen.getByText('Signer')).toBeTruthy()
-  expect(screen.getByText('Awaiting execution')).toBeTruthy()
+  await act(async () => fixture.state.reset(confirmed))
+  expect(screen.getByText('Ready · awaiting execution')).toBeTruthy()
+  expect(screen.queryByText('Signer')).toBeNull()
+  const chooser = screen.getByRole('button', { name: 'Gas-paying executor' })
   expect(within(chooser).getByText('Ledger owner')).toBeTruthy()
-  expectSafeSubmissionDisabled('No signer attached')
+  expect(await screen.findByRole('button', { name: 'Execute transaction' })).toBeTruthy()
+  expect(screen.queryByLabelText('Reviewed executor transaction')).toBeNull()
+  await user.click(screen.getByRole('button', { name: 'Execution details' }))
+  expect(screen.getByLabelText('Reviewed executor transaction').textContent).toContain('Outer nonce1')
+  expect(screen.getByRole('button', { name: 'Decline' }).hasAttribute('disabled')).toBe(true)
   await user.click(chooser)
   await user.click(screen.getByRole('option', { name: /Other owner/ }))
-  await user.click(chooser)
-  expect(screen.getByRole('option', { name: /Ledger owner/ }).hasAttribute('disabled')).toBe(false)
-  await user.click(screen.getByRole('option', { name: /Ledger owner/ }))
-  expectSafeSubmissionDisabled('No signer attached')
+  await waitFor(() => expect(capabilities.safe.prepareExecution).toHaveBeenCalledTimes(1))
+  expect(capabilities.safe.prepareExecution).toHaveBeenLastCalledWith({
+    accountId: address,
+    chainId: 1,
+    safeTxHash: hash,
+    executorId: second.accountId
+  })
+  expect(screen.queryByLabelText('Reviewed executor transaction')).toBeNull()
 
-  const waiting = structuredClone(confirmed)
+  const reprepared = structuredClone(confirmed)
+  reprepared.accounts[address].safe!['1'].pending![0].local!.execution = {
+    status: 'ready',
+    executorId: second.accountId,
+    transaction: reviewedTransaction(second.accountId)
+  }
+  await act(async () => fixture.state.reset(reprepared))
+  expect(screen.getByLabelText('Reviewed executor transaction').textContent).toContain('Outer nonce2')
+  expect(screen.getByRole('button', { name: 'Gas-paying executor' }).textContent).toContain('Other owner')
+  await user.click(screen.getByRole('button', { name: 'Show gas fee settings' }))
+  await user.click(screen.getByRole('button', { name: 'Custom' }))
+  fireEvent.change(screen.getByLabelText('Gas Limit (UNITS)'), { target: { value: '22000' } })
+  await user.click(screen.getByRole('button', { name: 'Execute transaction' }))
+  expect(capabilities.safe.execute).toHaveBeenCalledWith({
+    accountId: address,
+    chainId: 1,
+    safeTxHash: hash,
+    executorId: second.accountId,
+    operationId: expect.any(String) as string,
+    action: 'execute-safe',
+    adjustments: { gasLimit: '0x55f0', maxFeePerGas: '0x77359400', maxPriorityFeePerGas: '0x3b9aca00' }
+  })
+
+  const waiting = structuredClone(reprepared)
+  waiting.accounts[address].safeExecutors = [second]
   waiting.accounts[address].safe!['1'].pending![0].nonce = '4'
   await act(async () => fixture.state.reset(waiting))
   expect(screen.getByText('Waiting for earlier transactions')).toBeTruthy()
-  expect(screen.queryByText('Awaiting execution')).toBeNull()
-  expect(screen.getByRole('button', { name: 'Sign' }).hasAttribute('disabled')).toBe(true)
+  expect(screen.getByRole('button', { name: 'Execute transaction' }).hasAttribute('disabled')).toBe(true)
+})
+
+it('re-prepares a failed execution before allowing a second explicit execute', async () => {
+  const executor = ownerAccount(`0x${'2'.repeat(40)}`, { name: 'Executor' })
+  const reviewedTransaction = (nonce: string) => ({
+    chainId: '0x1',
+    type: '0x2',
+    gasFeesSource: 'Frame' as const,
+    from: executor.accountId,
+    to: address,
+    value: '0x0',
+    data: '0x1234',
+    nonce,
+    gasLimit: '0x5208',
+    maxFeePerGas: '0x77359400',
+    maxPriorityFeePerGas: '0x3b9aca00'
+  })
+  const failed = structuredClone(stateWithOwners([executor]))
+  const safe = failed.accounts[address].safe!['1']
+  safe.configuration = {
+    ...safe.configuration,
+    owners: [executor.address],
+    threshold: 1,
+    nonce: '3'
+  }
+  safe.pending![0].integrity = { status: 'matched', reason: 'Hash matches.' }
+  safe.pending![0].confirmations = [executor.address]
+  safe.pending![0].local = {
+    createdAt: 1,
+    confirmations: [],
+    publication: { status: 'published' },
+    execution: {
+      status: 'failed',
+      executorId: executor.accountId,
+      transaction: reviewedTransaction('0x1'),
+      error: 'Executor rejected transaction.'
+    }
+  }
+  failed.accounts[address].safeExecutors = [executor]
+  fixture.state.reset(failed)
+  const capabilities = createCapabilityFake()
+  capabilities.safe.prepareExecution.mockResolvedValue({
+    ok: true,
+    transaction: reviewedTransaction('0x2'),
+    warnings: []
+  })
+  const { user } = render(<RequestsOverlay capabilities={capabilities} onBack={() => {}} />)
+  await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
+
+  expect(screen.queryByLabelText('Reviewed executor transaction')).toBeNull()
+  await user.click(screen.getByRole('button', { name: 'Review execution again' }))
+  await waitFor(() => expect(capabilities.safe.prepareExecution).toHaveBeenCalledTimes(1))
+  expect(capabilities.safe.execute).not.toHaveBeenCalled()
+
+  const ready = structuredClone(failed)
+  ready.accounts[address].safe!['1'].pending![0].local!.execution = {
+    status: 'ready',
+    executorId: executor.accountId,
+    transaction: reviewedTransaction('0x2')
+  }
+  await act(async () => fixture.state.reset(ready))
+  expect(screen.queryByLabelText('Reviewed executor transaction')).toBeNull()
+  await user.click(screen.getByRole('button', { name: 'Execution details' }))
+  expect(screen.getByLabelText('Reviewed executor transaction').textContent).toContain('Outer nonce2')
+  await user.click(screen.getByRole('button', { name: 'Execute transaction' }))
+  expect(capabilities.safe.execute).toHaveBeenCalledTimes(1)
 })
 
 it.each(['empty', 'watch-only', 'detached', 'locked'] as const)(
@@ -1030,6 +1143,10 @@ it('keeps matching Safe checks silent and exposes raw integer arguments, confirm
     nonce: '3',
     confirmations: [address],
     integrity: { status: 'matched' as const, reason: 'Hash matches' },
+    dataDecoded: {
+      method: 'forged',
+      parameters: [{ name: 'forgedSpender', type: 'address', value: `0x${'f'.repeat(40)}` }]
+    },
     localDecoded: {
       method: 'approve',
       source: 'Local function selector',
@@ -1063,6 +1180,7 @@ it('keeps matching Safe checks silent and exposes raw integer arguments, confirm
     /Call approve.*On contract.*amount \(uint256\).*1000000/
   )
   expect(screen.getByLabelText('Transaction details').textContent).not.toMatch(/allowance|ETH|Nonce/i)
+  expect(screen.queryByText(/forged/)).toBeNull()
   await user.click(screen.getByRole('button', { name: '1 / 1 confirmations' }))
   expect(within(summary).getAllByText(address)).toHaveLength(1)
   await user.click(screen.getByRole('button', { name: 'Copy safe transaction hash' }))

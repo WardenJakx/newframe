@@ -1,13 +1,55 @@
 import { describe, expect, it, mock } from 'bun:test'
 
 import { createRendererPrincipal } from '../../../../access-control/main/authority'
-import { createProviderRequestAdapter, createRequestApprovalAdapter } from './production'
+import { GasFeesSource } from '../../../../transactions/domain'
+import {
+  createNamedAccountTransactionAdapter,
+  createProviderRequestAdapter,
+  createRequestApprovalAdapter
+} from './production'
 
 const principal = createRendererPrincipal({
   clientType: 'sidetray',
   entrypoint: 'sidetray',
   webContentsId: 1,
   windowInstanceId: 'provider-adapter-test'
+})
+
+it('forwards named-account prepare and execute without introducing account selection', async () => {
+  const executor = '0x1111111111111111111111111111111111111111'
+  const prepared = {
+    transaction: {
+      chainId: '0x1',
+      type: '0x2',
+      gasFeesSource: GasFeesSource.Frame,
+      from: executor,
+      to: '0x2222222222222222222222222222222222222222',
+      value: '0x0',
+      data: '0x',
+      nonce: '0x1',
+      gasLimit: '0x5208'
+    },
+    warnings: []
+  }
+  const prepareAccountTransaction = mock(async () => prepared)
+  const executeAccountTransaction = mock(async () => 'outer-hash')
+  const adapter = createNamedAccountTransactionAdapter({
+    prepareAccountTransaction,
+    executeAccountTransaction
+  })
+  expect(
+    await adapter.prepare(executor, { chainId: '0x1', to: prepared.transaction.to, data: '0x', value: '0x0' })
+  ).toBe(prepared)
+  const context = {
+    owner: { clientType: 'wallet-ui' as const, windowInstanceId: 'window' },
+    isOwnerActive: () => true,
+    subscribeOwnerDisposed: () => () => undefined
+  }
+  expect(await adapter.execute(executor, prepared.transaction, undefined, context, 'execute')).toBe(
+    'outer-hash'
+  )
+  expect(prepareAccountTransaction).toHaveBeenCalledTimes(1)
+  expect(executeAccountTransaction).toHaveBeenCalledTimes(1)
 })
 
 describe('provider request infrastructure adapter', () => {

@@ -1,11 +1,19 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 
-import { getBytes, Interface, Wallet } from 'ethers'
+import { getBytes, Interface, Wallet, ZeroAddress } from 'ethers'
 
 import { createSafeHandler } from '../../../scripts/local-safe/handler.js'
+import type { SafeProposal } from '../../features/accounts/domain/safe.js'
 import { abi as multicallAbi, multicallAddress } from '../chain-rpc/multicall/constants.js'
+import { getEip712Digests } from '../signing/signatures/digests.js'
 import { createSafeClient, safeServiceNetworks } from './client.js'
-import { EIP1271_MAGIC_VALUE, EIP1271_SIGNATURE, getSafeMessageHash, verifySafeHash } from './integrity.js'
+import {
+  EIP1271_MAGIC_VALUE,
+  EIP1271_SIGNATURE,
+  getSafeMessageHash,
+  getSafeTypedMessage,
+  verifySafeHash
+} from './integrity.js'
 
 const safe = '0x1111111111111111111111111111111111111111'
 const owners = ['0x2222222222222222222222222222222222222222', '0x3333333333333333333333333333333333333333']
@@ -49,6 +57,35 @@ function setup(transform?: (request: Request, response: Response) => Promise<Res
   })
   return { client, handler }
 }
+
+function localProposal(signer: Wallet): SafeProposal {
+  const unsigned: SafeProposal = {
+    safeTxHash: `0x${'00'.repeat(32)}`,
+    safe,
+    nonce: '7',
+    to: signer.address,
+    value: '1',
+    operation: 0,
+    data: '0x',
+    safeTxGas: '0',
+    baseGas: '0',
+    gasPrice: '0',
+    gasToken: ZeroAddress,
+    refundReceiver: ZeroAddress,
+    confirmations: [],
+    local: {
+      createdAt: 1,
+      origin: 'NewFrame',
+      confirmations: [],
+      publication: { status: 'local' },
+      execution: { status: 'idle' }
+    }
+  }
+  return {
+    ...unsigned,
+    safeTxHash: getEip712Digests(getSafeTypedMessage(unsigned, 31337, safe, '1.4.1'))!.eip712Digest
+  }
+}
 describe('Safe service client over HTTP', () => {
   test('loads every page preserving precise nonces, alternatives and confirmation counts', async () => {
     const { client } = setup()
@@ -56,7 +93,8 @@ describe('Safe service client over HTTP', () => {
     expect(configuration.nonce).toBe('9007199254740993')
     const pending = await client.pending(31337, safe, configuration)
     expect(pending).toHaveLength(4)
-    expect(pending.map((proposal) => proposal.confirmations.length)).toEqual([0, 2, 1, 1])
+    // The fixture's summary-only owner entries have no verifiable signature or contract-owner type.
+    expect(pending.map((proposal) => proposal.confirmations.length)).toEqual([0, 0, 0, 0])
     expect(pending[0].nonce).toBe(pending[1].nonce)
     expect(pending[3].nonce).toBe('9007199254740995')
   })
@@ -205,6 +243,281 @@ describe('Safe service client over HTTP', () => {
     expect(networks[8453]).toBe('http://localhost:1234/api')
     expect(networks[1]).toBe('https://api.safe.global/tx-service/eth/api')
   })
+})
+
+test('creates, reconciles, and reads an anonymous proposal with its exact retained signature', async () => {
+  const signer = new Wallet(`0x${'78'.repeat(32)}`)
+  const proposal = localProposal(signer)
+  const configuration = {
+    owners: [signer.address],
+    threshold: 1,
+    nonce: '0',
+    version: '1.4.1'
+  }
+  const handler = createSafeHandler({
+    chainId: 31337,
+    safe,
+    owners: configuration.owners,
+    threshold: 1,
+    proposals: []
+  })
+  const headers: Headers[] = []
+  const client = createSafeClient({
+    networks: { 31337: 'http://safe.example/api' },
+    request: async (url, init) => {
+      headers.push(new Headers(init.headers))
+      return handler.fetch(new Request(url, init))
+    }
+  })
+  const signature = signer.signingKey.sign(proposal.safeTxHash).serialized
+  const confirmation = { owner: signer.address, signature }
+  expect(client.propose(31337, proposal, confirmation, 'x'.repeat(201))).rejects.toThrow()
+  expect(await client.propose(31337, proposal, confirmation, 'NewFrame')).toMatchObject({
+    safeTxHash: proposal.safeTxHash,
+    confirmations: [signer.address]
+  })
+  expect(await client.propose(31337, proposal, confirmation, 'NewFrame')).toMatchObject({
+    safeTxHash: proposal.safeTxHash
+  })
+  expect(await client.transaction(31337, safe, proposal.safeTxHash, configuration)).toMatchObject({
+    safeTxHash: proposal.safeTxHash,
+    integrity: { status: 'matched' }
+  })
+  expect(headers.every((item) => !item.has('authorization'))).toBeTrue()
+  expect(handler.requests.filter((path) => path.endsWith('/multisig-transactions/'))).toHaveLength(2)
+  expect(
+    handler.requests.filter((path) => path.includes(`/multisig-transactions/${proposal.safeTxHash}/`))
+  ).toHaveLength(3)
+})
+
+test('rejects proposal signature, reconciliation, Safe identity, and service confirmation mismatches', async () => {
+  const signer = new Wallet(`0x${'78'.repeat(32)}`)
+  const stranger = new Wallet(`0x${'9a'.repeat(32)}`)
+  const proposal = localProposal(signer)
+  const configuration = {
+    owners: [signer.address],
+    threshold: 1,
+    nonce: '0',
+    version: '1.4.1'
+  }
+  const handler = createSafeHandler({
+    chainId: 31337,
+    safe,
+    owners: configuration.owners,
+    threshold: 1,
+    proposals: []
+  })
+  const client = createSafeClient({
+    networks: { 31337: 'http://safe.example/api' },
+    request: (url, init) => handler.fetch(new Request(url, init))
+  })
+  expect(
+    client.propose(31337, proposal, {
+      owner: signer.address,
+      signature: stranger.signingKey.sign(proposal.safeTxHash).serialized
+    })
+  ).rejects.toThrow('mismatch')
+  expect(
+    client.propose(31337, proposal, {
+      signature: stranger.signingKey.sign(proposal.safeTxHash).serialized
+    })
+  ).rejects.toThrow('HTTP 400')
+
+  const signature = signer.signingKey.sign(proposal.safeTxHash).serialized
+  await client.propose(31337, proposal, { signature })
+  expect(client.transaction(31337, owners[0], proposal.safeTxHash, configuration)).rejects.toThrow('identity')
+
+  for (const mutate of [
+    (body: Record<string, unknown>) => ({ ...body, value: '2' }),
+    (body: Record<string, unknown>) => ({
+      ...body,
+      dataDecoded: {
+        method: 'transfer',
+        parameters: [
+          { name: 'to', type: 'address', value: signer.address },
+          { name: 'value', type: 'uint256', value: '1' }
+        ]
+      }
+    }),
+    (body: Record<string, unknown>) => ({
+      ...body,
+      confirmations: [{ owner: signer.address, signature: '0x12', signatureType: 'EOA' }]
+    }),
+    (body: Record<string, unknown>) => ({
+      ...body,
+      confirmations: [
+        { owner: signer.address, signature, signatureType: 'EOA' },
+        { owner: signer.address, signature, signatureType: 'EOA' }
+      ]
+    })
+  ]) {
+    const mismatched = createSafeClient({
+      networks: { 31337: 'http://safe.example/api' },
+      request: async (url, init) => {
+        const response = await handler.fetch(new Request(url, init))
+        if (init.method !== 'GET' || !url.includes(`/multisig-transactions/${proposal.safeTxHash}/`)) {
+          return response
+        }
+        return Response.json(mutate((await response.json()) as Record<string, unknown>))
+      }
+    })
+    expect(mismatched.transaction(31337, safe, proposal.safeTxHash, configuration)).rejects.toThrow()
+  }
+
+  const unsupportedDescription = createSafeClient({
+    networks: { 31337: 'http://safe.example/api' },
+    request: async (url, init) => {
+      const response = await handler.fetch(new Request(url, init))
+      if (init.method !== 'GET' || !url.includes(`/multisig-transactions/${proposal.safeTxHash}/`)) {
+        return response
+      }
+      return Response.json({
+        ...((await response.json()) as Record<string, unknown>),
+        dataDecoded: {
+          method: 'batch',
+          parameters: [{ name: 'recipients', type: 'address[]', value: `["${signer.address}"]` }]
+        }
+      })
+    }
+  })
+  expect(
+    (await unsupportedDescription.transaction(31337, safe, proposal.safeTxHash, configuration)).dataDecoded
+  ).toBeUndefined()
+})
+
+test('keeps contract-owner confirmations visible without exposing them as executable signatures', async () => {
+  const signer = new Wallet(`0x${'78'.repeat(32)}`)
+  const contractOwner = owners[1]
+  const proposal = localProposal(signer)
+  const configuration = {
+    owners: [signer.address, contractOwner],
+    threshold: 2,
+    nonce: '0',
+    version: '1.4.1'
+  }
+  const signature = signer.signingKey.sign(proposal.safeTxHash).serialized
+  const contractSignature = `0x${'00'.repeat(64)}1b`
+  const confirmations = [
+    { owner: signer.address, signature, signatureType: 'EOA' },
+    { owner: contractOwner, signature: contractSignature, signatureType: 'CONTRACT_SIGNATURE' }
+  ]
+  const client = createSafeClient({
+    networks: { 31337: 'http://safe.example/api' },
+    request: async (url) =>
+      Response.json(
+        url.endsWith('/confirmations/')
+          ? { next: null, results: confirmations }
+          : {
+              ...proposal,
+              confirmations,
+              isExecuted: false,
+              transactionHash: null
+            }
+      )
+  })
+
+  expect(await client.transaction(31337, safe, proposal.safeTxHash, configuration)).toMatchObject({
+    confirmations: [signer.address, contractOwner]
+  })
+  expect(await client.confirmations(31337, proposal.safeTxHash)).toEqual([
+    { owner: signer.address, signature }
+  ])
+})
+
+test('rejects a foreign confirmation owner during queue refresh', async () => {
+  const signer = new Wallet(`0x${'78'.repeat(32)}`)
+  const foreign = new Wallet(`0x${'79'.repeat(32)}`)
+  const proposal = localProposal(signer)
+  const client = createSafeClient({
+    networks: { 31337: 'http://safe.example/api' },
+    request: async () =>
+      Response.json({
+        next: null,
+        results: [
+          {
+            ...proposal,
+            confirmations: [
+              {
+                owner: foreign.address,
+                signature: foreign.signingKey.sign(proposal.safeTxHash).serialized,
+                signatureType: 'EOA'
+              }
+            ],
+            isExecuted: false
+          }
+        ]
+      })
+  })
+
+  expect(
+    client.pending(31337, safe, {
+      owners: [signer.address],
+      threshold: 1,
+      nonce: '0',
+      version: '1.4.1'
+    })
+  ).rejects.toThrow('owner mismatch')
+})
+
+test('rejects a malformed EOA confirmation during queue refresh', async () => {
+  const signer = new Wallet(`0x${'78'.repeat(32)}`)
+  const proposal = localProposal(signer)
+  const client = createSafeClient({
+    networks: { 31337: 'http://safe.example/api' },
+    request: async () =>
+      Response.json({
+        next: null,
+        results: [
+          {
+            ...proposal,
+            confirmations: [{ owner: signer.address, signature: '0x12', signatureType: 'EOA' }],
+            isExecuted: false
+          }
+        ]
+      })
+  })
+
+  expect(
+    client.pending(31337, safe, {
+      owners: [signer.address],
+      threshold: 1,
+      nonce: '0',
+      version: '1.4.1'
+    })
+  ).rejects.toThrow('Invalid Safe transaction owner signature')
+})
+
+test('keeps a current contract-owner confirmation display-only during queue refresh', async () => {
+  const signer = new Wallet(`0x${'78'.repeat(32)}`)
+  const contractOwner = owners[1]
+  const proposal = localProposal(signer)
+  const signature = signer.signingKey.sign(proposal.safeTxHash).serialized
+  const client = createSafeClient({
+    networks: { 31337: 'http://safe.example/api' },
+    request: async () =>
+      Response.json({
+        next: null,
+        results: [
+          {
+            ...proposal,
+            confirmations: [
+              { owner: signer.address, signature, signatureType: 'EOA' },
+              { owner: contractOwner, signature: '0x12', signatureType: 'CONTRACT_SIGNATURE' }
+            ],
+            isExecuted: false
+          }
+        ]
+      })
+  })
+
+  const [pending] = await client.pending(31337, safe, {
+    owners: [signer.address, contractOwner],
+    threshold: 2,
+    nonce: '0',
+    version: '1.4.1'
+  })
+  expect(pending.confirmations).toEqual([signer.address, contractOwner])
+  expect(pending.local).toBeUndefined()
 })
 
 test('computes hashes and decodes calldata locally over the real service endpoint', async () => {
@@ -378,22 +691,24 @@ test('publishes real owner signatures over HTTP and retrieves the retained bytes
       new Wallet(`0x${'56'.repeat(32)}`).signingKey.sign(proposal.safeTxHash).serialized
     )
   ).rejects.toThrow('HTTP 400')
-  expect((await client.pending(31337, safe, configuration))[0].confirmations).toHaveLength(2)
+  // The queue fixture omits signature bytes from its v2 summary, so the client does not trust the count.
+  expect((await client.pending(31337, safe, configuration))[0].confirmations).toHaveLength(0)
 })
 
 test('confirmation pagination isolates malformed entries and rejects unsafe or repeating links', async () => {
+  const signer = new Wallet(`0x${'12'.repeat(32)}`)
   const hash = `0x${'11'.repeat(32)}`
-  const signature = `0x${'11'.repeat(64)}1b`
+  const signature = signer.signingKey.sign(hash).serialized
   let next: string | null = null
   const client = createSafeClient({
     networks: { 1: 'https://safe.example/api' },
     request: async () =>
       Response.json({
         next,
-        results: [{ owner: owners[0], signature }, { owner: owners[1], signature: null }, null]
+        results: [{ owner: signer.address, signature }, { owner: owners[1], signature: null }, null]
       })
   })
-  expect(await client.confirmations(1, hash)).toEqual([{ owner: owners[0], signature }])
+  expect(await client.confirmations(1, hash)).toEqual([{ owner: signer.address, signature }])
   for (const unsafe of [
     'https://elsewhere.example/',
     '/api/v1/another/',

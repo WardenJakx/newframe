@@ -193,6 +193,27 @@ export type SafeMessageProgress = {
   message?: string
 }
 
+export type SafeTransactionProgress = {
+  status: 'collecting' | 'ready' | 'preparing' | 'executing' | 'submitted' | 'failed'
+  chainId: number
+  threshold: number
+  confirmations: string[]
+  publication: 'local' | 'publishing' | 'published' | 'failed'
+  ownerCandidates: SigningCandidate[]
+  executorCandidates: SigningCandidate[]
+}
+
+export type SafeExecutionMetadata = {
+  executorId?: string
+  reviewedTransaction?: Omit<TransactionData, 'gasFeesSource'> & {
+    gasFeesSource: 'Dapp' | 'Frame'
+  }
+  submitted?: {
+    outerTxHash: string
+    executorId: string
+  }
+}
+
 export type Identity = {
   address: Address
   ens: string
@@ -252,6 +273,12 @@ export enum TxClassification {
 export interface TransactionRequest extends AccountRequest<'transaction'> {
   payload: RPC.SendTransaction.Request
   data: TransactionData
+  /** Durable reference to the canonical Safe proposal; never an RPC completion value. */
+  safeTxHash?: string
+  /** Renderer-only authority and progress derived from canonical Safe state. */
+  safeTransactionProgress?: SafeTransactionProgress
+  /** Reviewed/submitted outer executor transaction, projected from canonical Safe state. */
+  safeExecution?: SafeExecutionMetadata
   decodedData?: DecodedCallData
   tokenData?: TokenData
   chainData?: {

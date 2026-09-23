@@ -630,20 +630,51 @@ const SafeConfirmationIdentity = {
   ownerId: AddressSchema
 }
 
+const SafeExecutionIdentity = {
+  accountId: AddressSchema,
+  chainId: ChainIdSchema.max(Number.MAX_SAFE_INTEGER),
+  safeTxHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/),
+  executorId: AddressSchema
+}
+
 const RequestApproveCommandSchema = z.union([
   z.strictObject({
     type: z.literal('request.approve'),
     requestId: OperationIdSchema,
-    ownerId: AddressSchema.optional(),
+    adjustments: TransactionApprovalAdjustmentsSchema.optional()
+  }),
+  z.strictObject({
+    type: z.literal('request.approve'),
+    requestId: OperationIdSchema,
+    ownerId: AddressSchema
+  }),
+  z.strictObject({
+    type: z.literal('request.approve'),
+    requestId: OperationIdSchema,
+    executorId: AddressSchema,
     adjustments: TransactionApprovalAdjustmentsSchema.optional()
   }),
   z.strictObject({
     type: z.literal('request.approve'),
     operationId: OperationIdSchema,
     ...SafeConfirmationIdentity
+  }),
+  z.strictObject({
+    type: z.literal('request.approve'),
+    operationId: OperationIdSchema,
+    action: z.literal('execute-safe'),
+    ...SafeExecutionIdentity,
+    adjustments: TransactionApprovalAdjustmentsSchema.optional()
   })
 ])
-export type SafeApprovalCommand = Extract<z.infer<typeof RequestApproveCommandSchema>, { safeTxHash: string }>
+export type SafeApprovalCommand = Extract<
+  z.infer<typeof RequestApproveCommandSchema>,
+  { safeTxHash: string; ownerId: string }
+>
+export type SafeExecutionCommand = Extract<
+  z.infer<typeof RequestApproveCommandSchema>,
+  { action: 'execute-safe' }
+>
 const SafeConfirmationStatusQuerySchema = z.strictObject({
   type: z.literal('safe.confirmation-status'),
   ...SafeConfirmationIdentity
@@ -652,9 +683,16 @@ export type SafeConfirmationStatusQuery = z.infer<typeof SafeConfirmationStatusQ
 const SafeConfirmationStatusSchema = z.strictObject({
   status: z.enum([
     'idle',
+    'local',
     'signing',
+    'reconciling',
     'publishing',
     'published',
+    'ready',
+    'preparing',
+    'executing',
+    'submitted',
+    'failed',
     'publication_failed',
     'cancelled',
     'signing_failed',
@@ -664,6 +702,43 @@ const SafeConfirmationStatusSchema = z.strictObject({
   message: z.string().max(256).optional()
 })
 export type SafeConfirmationStatus = z.infer<typeof SafeConfirmationStatusSchema>
+
+const SafeOuterTransactionSchema = z.strictObject({
+  chainId: z.string().regex(/^0x[0-9a-fA-F]+$/),
+  type: z.string().regex(/^0x[0-9a-fA-F]+$/),
+  gasFeesSource: z.enum(['Dapp', 'Frame']),
+  from: AddressSchema,
+  to: AddressSchema,
+  value: z.string().regex(/^0x[0-9a-fA-F]+$/),
+  data: z.string().regex(/^0x(?:[0-9a-fA-F]{2})*$/),
+  nonce: z.string().regex(/^0x[0-9a-fA-F]+$/),
+  gasLimit: z.string().regex(/^0x[0-9a-fA-F]+$/),
+  gasPrice: z
+    .string()
+    .regex(/^0x[0-9a-fA-F]+$/)
+    .optional(),
+  maxFeePerGas: z
+    .string()
+    .regex(/^0x[0-9a-fA-F]+$/)
+    .optional(),
+  maxPriorityFeePerGas: z
+    .string()
+    .regex(/^0x[0-9a-fA-F]+$/)
+    .optional(),
+  warning: z.string().max(2000).optional()
+})
+const SafeExecutionPrepareQuerySchema = z.strictObject({
+  type: z.literal('safe.execution-prepare'),
+  ...SafeExecutionIdentity
+})
+const SafeExecutionPrepareResultSchema = z.discriminatedUnion('ok', [
+  z.strictObject({
+    ok: z.literal(true),
+    transaction: SafeOuterTransactionSchema,
+    warnings: z.array(z.string().max(2000)).max(20)
+  }),
+  z.strictObject({ ok: z.literal(false), error: z.string().max(500) })
+])
 
 const KeystoreLocateQuerySchema = z.strictObject({ type: z.literal('keystore.locate') })
 export type KeystoreLocateQuery = z.infer<typeof KeystoreLocateQuerySchema>
@@ -1146,6 +1221,10 @@ export const queryContracts = defineOperationContracts({
   'safe.confirmation-status': {
     input: SafeConfirmationStatusQuerySchema,
     result: SafeConfirmationStatusSchema
+  },
+  'safe.execution-prepare': {
+    input: SafeExecutionPrepareQuerySchema,
+    result: SafeExecutionPrepareResultSchema
   },
   'token.lookup': { input: TokenLookupQuerySchema, result: TokenLookupResultSchema }
 })

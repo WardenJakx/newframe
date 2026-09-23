@@ -1,7 +1,8 @@
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
-import { getAddress, getBytes, hashMessage, Interface, recoverAddress } from 'ethers'
+import { Interface } from 'ethers'
 
 import {
+  recoverSafeConfirmationOwner,
   safeAddressSchema,
   safeProposalSchema,
   type SafeProposal
@@ -12,6 +13,8 @@ import {
   getOriginalMessageDigest,
   type OriginalMessage
 } from '../signing/signatures/digests.js'
+
+export { recoverSafeConfirmationOwner } from '../../features/accounts/domain/safe.js'
 
 export const EIP1271_MAGIC_VALUE = '0x1626ba7e'
 export const EIP1271_SIGNATURE =
@@ -145,27 +148,9 @@ export function verifySafeHash(
       }
 }
 
-// Safe stores eth_sign recovery values as 31/32, EIP712 as 27/28.
 export function verifySafeConfirmation(hash: string, owner: string, signature: string): boolean {
   const recovered = recoverSafeConfirmationOwner(hash, signature)
   return recovered !== undefined && recovered.toLowerCase() === owner.toLowerCase()
-}
-
-export function recoverSafeConfirmationOwner(hash: string, signature: string): string | undefined {
-  if (!/^0x[0-9a-f]{64}$/i.test(hash) || !/^0x[0-9a-f]{130}$/i.test(signature)) {
-    return undefined
-  }
-  const v = Number.parseInt(signature.slice(-2), 16)
-  if (![27, 28, 31, 32].includes(v)) {
-    return undefined
-  }
-  try {
-    const digest = v > 30 ? hashMessage(getBytes(hash)) : hash
-    const normalized = `${signature.slice(0, -2)}${(v > 30 ? v - 4 : v).toString(16).padStart(2, '0')}`
-    return getAddress(recoverAddress(digest, normalized))
-  } catch {
-    return undefined
-  }
 }
 
 export interface SafeMessageConfirmationInput {
@@ -195,6 +180,14 @@ export function verifySafeMessageConfirmation(
 }
 
 export function packSafeMessageSignatures(
+  hash: string,
+  currentOwners: readonly string[],
+  confirmations: readonly SafeMessageConfirmationInput[]
+): string {
+  return packSafeSignatures(hash, currentOwners, confirmations)
+}
+
+export function packSafeSignatures(
   hash: string,
   currentOwners: readonly string[],
   confirmations: readonly SafeMessageConfirmationInput[]

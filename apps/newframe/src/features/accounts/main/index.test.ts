@@ -397,6 +397,65 @@ describe('#routeRequest', () => {
   })
 })
 
+it('records queue-initiated Safe execution under the Safe without executor fee or nonce attribution', () => {
+  const safeTxHash = `0x${'a'.repeat(64)}`
+  const outerTxHash = `0x${'b'.repeat(64)}`
+  const executorId = account2.address
+  store.setState((state) => {
+    state.main.accounts[accountAddress].safe = {
+      '1': {
+        chainId: 1,
+        address: accountAddress,
+        configuration: { owners: [executorId], threshold: 1, nonce: '0' },
+        pending: [
+          {
+            safeTxHash,
+            safe: accountAddress,
+            nonce: '0',
+            to: executorId,
+            value: '1',
+            operation: 0,
+            data: '0x',
+            confirmations: [executorId],
+            local: {
+              createdAt: 1,
+              confirmations: [],
+              publication: { status: 'local' },
+              execution: {
+                status: 'submitted',
+                executorId,
+                transactionHash: outerTxHash
+              }
+            }
+          }
+        ]
+      }
+    }
+  })
+
+  expect(Accounts.trackSafeExecution(safeTxHash, outerTxHash)).toBeTrue()
+  expect(storeState().main.activity[outerTxHash]).toMatchObject({
+    hash: outerTxHash,
+    account: accountAddress,
+    address: accountAddress,
+    nonce: undefined,
+    data: { from: accountAddress, to: executorId, value: '0x1', data: '0x' },
+    metadata: {
+      safe: {
+        safeTxHash,
+        outer: {
+          executorId,
+          submitted: { outerTxHash, executorId }
+        }
+      }
+    }
+  })
+  store.setState((state) => {
+    state.main.activity = {}
+    delete state.main.accounts[accountAddress].safe
+  })
+})
+
 it('selects the first remaining account when removing the current account', () => {
   store.setState((state) => {
     state.main.accountOrder = [account2.address, account.address]

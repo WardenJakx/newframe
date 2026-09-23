@@ -16,6 +16,7 @@ import { toBigInt } from '../../../shared/domain/units.js'
 import type { TrustedPrincipal } from '../../access-control/main/authority.js'
 import type { Accounts } from '../../accounts/main/index.js'
 import type { SafeMessageApprovalResult } from '../../accounts/main/safeMessage.js'
+import type { SafeTransactionPort } from '../../accounts/main/safeTransactionPort.js'
 import { deriveSigningCapability } from '../../accounts/main/signingCapability.js'
 import { resolveAssetRate } from '../../asset-data/domain/asset/index.js'
 import { NATIVE_CURRENCY } from '../../tokens/domain/constants.js'
@@ -46,7 +47,7 @@ const editable = (request: AccountRequest) =>
 
 type Continuation = {
   respond: RPCRequestCallback
-  request?: Pick<AccountRequest, 'account' | 'handlerId' | 'payload'>
+  request?: Pick<AccountRequest, 'account' | 'handlerId' | 'payload'> & { safeTxHash?: string }
 }
 
 export interface PromptedRequestContinuationPort {
@@ -73,7 +74,9 @@ export interface RequestServicePorts {
     | 'setRequestPending'
     | 'setRequestSuccess'
     | 'setTxSent'
-  >
+  > & {
+    trackSafeExecution?(safeTxHash: string, outerTxHash: string): boolean
+  }
   agent: {
     resolveAccess(requestId: string, approved: boolean): boolean
   }
@@ -95,6 +98,7 @@ export interface RequestServicePorts {
       context: SigningUiContext
     ): Promise<SafeMessageApprovalResult>
   }
+  safeTransactions?: SafeTransactionPort
   store: CanonicalStoreReader
   transactionPolicy: Pick<AccountTransactionPolicyPort, 'signerCompatibility'>
   vault: { exists(): boolean; isUnlocked(): boolean }
@@ -133,6 +137,8 @@ function normalizedError(error: unknown): EVMError {
 
 export function createRequestService(ports: RequestServicePorts) {
   const continuations = new Map<string, Continuation>()
+  const safeContinuations = new Map<string, string>()
+  const submittedSafeTransactions = new Set<string>()
   const approvalsInFlight = new Set<string>()
   const approvalKey = (requestId: string, ownerId?: string) =>
     ownerId ? `${requestId}:${ownerId.toLowerCase()}` : requestId
@@ -141,6 +147,24 @@ export function createRequestService(ports: RequestServicePorts) {
       if (key === requestId || key.startsWith(`${requestId}:`)) {
         approvalsInFlight.delete(key)
       }
+    }
+  }
+
+  const removeUnsignedSafeDraft = (request: AccountRequest) => {
+    if (!isTransactionRequest(request) || !request.safeTxHash || !ports.safeTransactions) {
+      return
+    }
+    try {
+      ports.safeTransactions.removeUnsigned({
+        type: 'safe.confirmation-status',
+        accountId: request.account,
+        chainId: Number.parseInt(request.data.chainId, 16),
+        safeTxHash: request.safeTxHash,
+        ownerId: request.account
+      })
+    } catch {
+      // The proposal may already have been removed or replaced. Rejection is
+      // still authoritative for the RPC continuation.
     }
   }
 
@@ -172,6 +196,12 @@ export function createRequestService(ports: RequestServicePorts) {
       return false
     }
     continuations.delete(requestId)
+    if (continuation.request && 'safeTxHash' in continuation.request) {
+      const safeTxHash = (continuation.request as Pick<TransactionRequest, 'safeTxHash'>).safeTxHash
+      if (safeTxHash && safeContinuations.get(safeTxHash.toLowerCase()) === requestId) {
+        safeContinuations.delete(safeTxHash.toLowerCase())
+      }
+    }
     continuation.respond(response)
     return true
   }
@@ -211,6 +241,11 @@ export function createRequestService(ports: RequestServicePorts) {
     request: AccountRequest,
     confirmed: ReadonlySet<RequestApprovalGate['type']>
   ): RequestApprovalGate | undefined => {
+    if (isTransactionRequest(request) && request.safeTxHash) {
+      // Safe owner/executor authority is selected explicitly and validated by
+      // the Safe coordinator, never inferred from the Safe account signer.
+      return
+    }
     if (isSignatureRequest(request)) {
       const main = ports.store.getState().main
       const capability = deriveSigningCapability(
@@ -278,6 +313,10 @@ export function createRequestService(ports: RequestServicePorts) {
     request: TransactionRequest,
     confirmed: ReadonlySet<RequestApprovalGate['type']>
   ): RequestApprovalGate | undefined => {
+    if (request.safeTxHash) {
+      // The reviewed outer executor transaction owns gas and fee policy.
+      return
+    }
     const state = ports.store.getState().main
     if (state.mute.gasFeeWarning || confirmed.has('gas-fee')) {
       return
@@ -320,12 +359,59 @@ export function createRequestService(ports: RequestServicePorts) {
     account: RequestAccount,
     request: AccountRequest,
     context?: SigningUiContext,
-    ownerId?: string
+    ownerId?: string,
+    executorId?: string,
+    adjustments?: TransactionApprovalAdjustments
   ) => {
-    const key = approvalKey(request.handlerId, ownerId)
+    const selectedId = ownerId ?? executorId
+    const key = approvalKey(request.handlerId, selectedId)
     if (approvalsInFlight.has(key)) {
       return true
     }
+
+    if (isTransactionRequest(request) && request.safeTxHash) {
+      if (!context || !ports.safeTransactions || (!ownerId && !executorId) || (ownerId && executorId)) {
+        return false
+      }
+      const identity = {
+        accountId: request.account,
+        chainId: Number.parseInt(request.data.chainId, 16),
+        safeTxHash: request.safeTxHash
+      }
+      if (ownerId) {
+        const accepted = ports.safeTransactions.approve(
+          {
+            type: 'request.approve',
+            operationId: `${request.handlerId}:${ownerId}:${randomUUID()}`,
+            ...identity,
+            ownerId
+          },
+          context
+        )
+        if (accepted) {
+          setGate(account, request.handlerId)
+          ports.accounts.setRequestPending(request)
+        }
+        return accepted
+      }
+      setGate(account, request.handlerId)
+      ports.accounts.setRequestPending(request)
+      approvalsInFlight.add(key)
+      void ports.safeTransactions
+        .execute(
+          identity,
+          executorId!,
+          adjustments,
+          context,
+          `${request.handlerId}:${executorId}:execute:${randomUUID()}`
+        )
+        .then(
+          () => approvalsInFlight.delete(key),
+          () => approvalsInFlight.delete(key)
+        )
+      return true
+    }
+
     approvalsInFlight.add(key)
     setGate(account, request.handlerId)
     ports.accounts.setRequestPending(request)
@@ -433,7 +519,9 @@ export function createRequestService(ports: RequestServicePorts) {
     request: AccountRequest,
     confirmed: ReadonlySet<RequestApprovalGate['type']>,
     context?: SigningUiContext,
-    ownerId?: string
+    ownerId?: string,
+    executorId?: string,
+    adjustments?: TransactionApprovalAdjustments
   ) => {
     const nextSignerGate = signerGate(account, request, confirmed)
     if (nextSignerGate) {
@@ -447,7 +535,7 @@ export function createRequestService(ports: RequestServicePorts) {
         return true
       }
     }
-    return executeApproval(account, request, context, ownerId)
+    return executeApproval(account, request, context, ownerId, executorId, adjustments)
   }
 
   const service = {
@@ -455,6 +543,9 @@ export function createRequestService(ports: RequestServicePorts) {
       const continuation = continuations.get(request.handlerId)
       if (continuation) {
         continuation.request = request
+        if (isTransactionRequest(request) && request.safeTxHash) {
+          safeContinuations.set(request.safeTxHash.toLowerCase(), request.handlerId)
+        }
       }
     },
 
@@ -484,6 +575,7 @@ export function createRequestService(ports: RequestServicePorts) {
 
     reject(request: AccountRequest, error: EVMError) {
       clearApprovalKeys(request.handlerId)
+      removeUnsignedSafeDraft(request)
       return settle(request.handlerId, rpcError(request, error))
     },
 
@@ -491,7 +583,8 @@ export function createRequestService(ports: RequestServicePorts) {
       requestId: string,
       context?: SigningUiContext,
       adjustments?: TransactionApprovalAdjustments,
-      ownerId?: string
+      ownerId?: string,
+      executorId?: string
     ) {
       const located = locate(requestId)
       if (!located || (!isTransactionRequest(located.request) && !isSignatureRequest(located.request))) {
@@ -500,17 +593,22 @@ export function createRequestService(ports: RequestServicePorts) {
       if (located.request.authorization?.decision !== 'prompt') {
         return false
       }
+      const safeTransaction = isTransactionRequest(located.request) && Boolean(located.request.safeTxHash)
+      if (ownerId && executorId) {
+        return false
+      }
       if (
         adjustments !== undefined &&
         (!isTransactionRequest(located.request) ||
-          !editable(located.request) ||
+          (!safeTransaction && !editable(located.request)) ||
+          (safeTransaction && !executorId) ||
           approvalsInFlight.has(requestId) ||
           !continuations.has(requestId) ||
           (ports.vault.exists() && !ports.vault.isUnlocked()))
       ) {
         return false
       }
-      if (approvalsInFlight.has(approvalKey(requestId, ownerId))) {
+      if (approvalsInFlight.has(approvalKey(requestId, ownerId ?? executorId))) {
         return true
       }
       // Canonical success/error UI can outlive the external requester briefly.
@@ -520,7 +618,7 @@ export function createRequestService(ports: RequestServicePorts) {
         return true
       }
 
-      if (adjustments !== undefined && isTransactionRequest(located.request)) {
+      if (adjustments !== undefined && isTransactionRequest(located.request) && !safeTransaction) {
         const canonical = located.request.data
         const candidate = applyTransactionAdjustments(canonical, adjustments)
         const changed = Object.keys(adjustments).some((key) => {
@@ -563,11 +661,21 @@ export function createRequestService(ports: RequestServicePorts) {
         return true
       }
       const safePending =
-        isSignatureRequest(located.request) && located.request.status === 'pending' && Boolean(ownerId)
+        ((isSignatureRequest(located.request) && Boolean(ownerId)) ||
+          (safeTransaction && Boolean(ownerId ?? executorId))) &&
+        located.request.status === 'pending'
       if (!editable(located.request) && !safePending) {
         return false
       }
-      return advanceApproval(located.account, located.request, new Set(), context, ownerId)
+      return advanceApproval(
+        located.account,
+        located.request,
+        new Set(),
+        context,
+        ownerId,
+        executorId,
+        adjustments
+      )
     },
 
     confirmWarning(requestId: string, gate: RequestApprovalGate['type'], context?: SigningUiContext) {
@@ -608,6 +716,38 @@ export function createRequestService(ports: RequestServicePorts) {
         message: 'User rejected the request'
       })
       return true
+    },
+
+    notifySafeTransactionSubmitted(result: { safeTxHash: string; outerTxHash: string }) {
+      const safeTxHash = result.safeTxHash.toLowerCase()
+      if (submittedSafeTransactions.has(safeTxHash)) {
+        return true
+      }
+      submittedSafeTransactions.add(safeTxHash)
+      const requestId = safeContinuations.get(safeTxHash)
+      const located = requestId ? locate<TransactionRequest>(requestId) : undefined
+      if (located?.request.safeTxHash?.toLowerCase() === safeTxHash) {
+        const main = ports.store.getState().main
+        const account = main.accounts[located.request.account]
+        const chainId = Number.parseInt(located.request.data.chainId, 16)
+        const proposal = account.safe?.[String(chainId)]?.pending?.find(
+          (candidate) => candidate.safeTxHash.toLowerCase() === safeTxHash
+        )
+        const executorId = proposal?.local?.execution.executorId
+        located.account.patchRequest<TransactionRequest>(requestId!, (request) => {
+          request.safeExecution = {
+            ...(executorId ? { executorId } : {}),
+            ...(proposal?.local?.execution.transaction
+              ? { reviewedTransaction: proposal.local.execution.transaction }
+              : {}),
+            ...(executorId ? { submitted: { outerTxHash: result.outerTxHash, executorId } } : {})
+          }
+        })
+        completeApproval(located.request, result.outerTxHash)
+        return true
+      }
+      safeContinuations.delete(safeTxHash)
+      return ports.accounts.trackSafeExecution?.(result.safeTxHash, result.outerTxHash) ?? false
     },
 
     resolveAccess(requestId: string, approved: boolean) {
@@ -786,6 +926,8 @@ export function createRequestService(ports: RequestServicePorts) {
         }
       }
       approvalsInFlight.clear()
+      safeContinuations.clear()
+      submittedSafeTransactions.clear()
     },
 
     get pendingCount() {

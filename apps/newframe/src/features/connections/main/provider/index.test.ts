@@ -19,8 +19,9 @@ import log from 'electron-log'
 import { parseUnits, toBeHex } from 'ethers'
 import { validate as validateUUID } from 'uuid'
 
+import type { DecodedCallData } from '../../../../platform/chain-rpc/contracts'
 import { Type as SignerType } from '../../../../platform/signing/domain'
-import type { SigningUiContext } from '../../../../platform/signing/signers/Signer'
+import type { SigningApprovalContext, SigningUiContext } from '../../../../platform/signing/signers/Signer'
 import type { Chain as StoredChain, Gas, Permission } from '../../../../platform/state-store/state'
 import { gweiToHex } from '../../../../shared/domain/hex'
 import {
@@ -30,6 +31,7 @@ import {
   type TrustedPrincipal
 } from '../../../access-control/main/authority'
 import { AccountSchema } from '../../../accounts/domain/state/account'
+import type { SafeTransactionPort } from '../../../accounts/main/safeTransactionPort'
 import type { Origin } from '../../../connections/domain/state/origin'
 import type { Chains } from '../../../networks/main'
 import chainConfig from '../../../networks/main/config'
@@ -67,6 +69,7 @@ interface TestCurrentAccount {
 interface TestAccount extends TestCurrentAccount {
   address: string
   lastSignerType: string
+  safe?: Record<string, unknown>
 }
 
 const frameAccountFixture = (overrides: Partial<TestCurrentAccount> = {}): TestCurrentAccount => ({
@@ -78,15 +81,19 @@ const frameAccountFixture = (overrides: Partial<TestCurrentAccount> = {}): TestC
 const createCurrentMock = () => mock((): TestCurrentAccount | null => null)
 const createGetMock = () => mock((_address: string): TestAccount | undefined => undefined)
 const createSignTransactionMock = () =>
-  mock((_tx: TransactionData, _cb: Callback<string>, _context?: SigningUiContext) => {})
+  mock((_tx: TransactionData, _cb: Callback<string>, _context?: SigningApprovalContext) => {})
 const createSetTxSignedMock = () => mock((_handlerId: string, _cb: Callback<void>) => {})
 const createSetSignerMock = () => mock((_id: string, _cb: Callback<TestAccount>) => {})
+const createGetFrameAccountMock = () => mock((_id: string): TestAgentAccount | undefined => undefined)
+const createTrackAutonomousTransactionMock = () =>
+  mock((_accountId: string, _request: TransactionRequest, _hash: string) => {})
 
 interface TestAccounts {
   clearRequestsByOrigin: ReturnType<typeof mock>
   current: ReturnType<typeof createCurrentMock>
   get: ReturnType<typeof createGetMock>
   getAccounts(): string[]
+  getFrameAccount: ReturnType<typeof createGetFrameAccountMock>
   lockRequest: ReturnType<typeof mock>
   routeRequest(
     principal: TrustedPrincipal,
@@ -96,6 +103,7 @@ interface TestAccounts {
   setSigner: ReturnType<typeof createSetSignerMock>
   setTxSigned: ReturnType<typeof createSetTxSignedMock>
   signTransaction: ReturnType<typeof createSignTransactionMock>
+  trackAutonomousTransaction: ReturnType<typeof createTrackAutonomousTransactionMock>
 }
 
 const createChainSendMock = () =>
@@ -139,11 +147,13 @@ const accounts: TestAccounts = {
   current: createCurrentMock(),
   get: createGetMock(),
   getAccounts: () => [],
+  getFrameAccount: createGetFrameAccountMock(),
   lockRequest: mock(),
   routeRequest: () => false,
   setSigner: createSetSignerMock(),
   setTxSigned: createSetTxSignedMock(),
-  signTransaction: createSignTransactionMock()
+  signTransaction: createSignTransactionMock(),
+  trackAutonomousTransaction: createTrackAutonomousTransactionMock()
 }
 let connection: TestChains
 let store: typeof import('../../../../platform/state-store').default
@@ -151,6 +161,22 @@ let accountRequestHook:
   | ((request: AccountRequest, respond?: (response: RPCResponsePayload) => void) => void)
   | undefined
 const lookupChainIcon = mock(async (_chainId: number) => '')
+const safeTxHash = `0x${'a'.repeat(64)}`
+const prepareSafeDraft = mock(
+  (_input: Parameters<SafeTransactionPort['prepareDraft']>[0]) =>
+    ({
+      accountId: address,
+      chainId: 1,
+      proposal: { safeTxHash }
+    }) as ReturnType<SafeTransactionPort['prepareDraft']>
+)
+const attachSafeDraft = mock(
+  (_draft: Parameters<SafeTransactionPort['attach']>[0], _requestId: string) => safeTxHash
+)
+const decodeTransactionCalldata = mock(
+  async (_contract: string, _chainId: number, _calldata: string): Promise<DecodedCallData | undefined> =>
+    undefined
+)
 const rpcResult = <T>(response: RPCResponsePayload) => response.result as T
 const rpcError = (response: RPCResponsePayload) => response.error as { code: number; message: string }
 const responseError = (response: RPCResponsePayload) => {
@@ -363,8 +389,15 @@ beforeAll(async () => {
     proxy: new EventEmitter() as ProviderProxyConnection,
     state: createProviderStatePort(store),
     store,
-    reveal: { resolveEntityType: mock(async () => 'unknown' as const) },
-    requests: requestContinuations
+    reveal: {
+      decode: decodeTransactionCalldata,
+      resolveEntityType: mock(async () => 'unknown' as const)
+    },
+    requests: requestContinuations,
+    safeTransactions: {
+      prepareDraft: prepareSafeDraft,
+      attach: attachSafeDraft
+    }
   }) as unknown as TestProvider
   provider.start()
 })
@@ -401,6 +434,10 @@ beforeEach(() => {
   accountRequestHook = undefined
   lookupChainIcon.mockReset()
   lookupChainIcon.mockImplementation(async () => '')
+  prepareSafeDraft.mockClear()
+  attachSafeDraft.mockClear()
+  decodeTransactionCalldata.mockReset()
+  decodeTransactionCalldata.mockImplementation(async () => undefined)
 
   connection.send = createChainSendMock()
   connection.refreshGasFees = mock().mockResolvedValue(undefined)
@@ -417,6 +454,8 @@ beforeEach(() => {
   )
   accounts.signTransaction = createSignTransactionMock()
   accounts.setTxSigned = createSetTxSignedMock()
+  accounts.getFrameAccount = createGetFrameAccountMock()
+  accounts.trackAutonomousTransaction = createTrackAutonomousTransactionMock()
 })
 
 afterEach(() => {
@@ -1051,6 +1090,141 @@ describe('#send', () => {
       expect((accountRequests[0] as TransactionRequest).tokenData).toEqual(tokenData)
     })
 
+    it('rejects a Safe transaction when the target chain has no deployment', async () => {
+      accounts.get = mock((addr: string): TestAccount | undefined =>
+        addr === address ? { id: address, address, lastSignerType: 'safe', safe: { '137': {} } } : undefined
+      )
+
+      const response = await sendTransactionResult()
+
+      expect(responseError(response).message).toBe('Safe is not configured on chain 1')
+      expect(prepareSafeDraft).not.toHaveBeenCalled()
+      expect(connection.refreshGasFees).not.toHaveBeenCalled()
+      expect(accountRequests).toHaveLength(0)
+    })
+
+    it('normalizes and locally decodes a Safe proposal before attaching it after routing', async () => {
+      const recipient = '0x1111111111111111111111111111111111111111'
+      const transferTo = '0x3333333333333333333333333333333333333333'
+      const calldata = `0xa9059cbb${transferTo.slice(2).padStart(64, '0')}${'2a'.padStart(64, '0')}`
+      const sequence: string[] = []
+      delete tx.nonce
+      delete tx.gasLimit
+      tx.to = recipient
+      tx.value = '0x2a'
+      tx.data = calldata
+      accounts.get = mock((addr: string): TestAccount | undefined =>
+        addr === address ? { id: address, address, lastSignerType: 'safe', safe: { '1': {} } } : undefined
+      )
+      decodeTransactionCalldata.mockImplementationOnce(async () => {
+        sequence.push('decode')
+        return {
+          contractAddress: recipient,
+          contractName: 'Token',
+          source: 'Local ABI',
+          selector: '0xa9059cbb',
+          signature: 'transfer(address,uint256)',
+          method: 'transfer',
+          args: [
+            { name: 'to', type: 'address', value: transferTo },
+            { name: 'amount', type: 'uint256', value: '42' }
+          ]
+        }
+      })
+      prepareSafeDraft.mockImplementationOnce(() => {
+        sequence.push('prepare')
+        return { accountId: address, chainId: 1, proposal: { safeTxHash } } as never
+      })
+      attachSafeDraft.mockImplementationOnce((draft, requestId) => {
+        sequence.push('attach')
+        expect(accountRequests).toHaveLength(1)
+        expect(accountRequests[0].handlerId).toBe(requestId)
+        expect(draft).toMatchObject({ accountId: address, chainId: 1 })
+        return safeTxHash
+      })
+
+      await sendTransactionResult()
+
+      expect(connection.refreshGasFees).not.toHaveBeenCalled()
+      expect(decodeTransactionCalldata).toHaveBeenCalledWith(recipient, 1, calldata)
+      expect(sequence).toEqual(['decode', 'prepare', 'attach'])
+      expect(prepareSafeDraft).toHaveBeenCalledWith({
+        accountId: address,
+        chainId: 1,
+        to: recipient,
+        value: '42',
+        data: calldata,
+        operation: 0,
+        origin: '8073729a-5e59-53b7-9e69-5d9bcff94087',
+        localDecoded: {
+          method: 'transfer',
+          parameters: [
+            { name: 'to', type: 'address', value: transferTo },
+            { name: 'amount', type: 'uint256', value: '42' }
+          ],
+          source: 'Local ABI'
+        }
+      })
+      expect(attachSafeDraft).toHaveBeenCalledTimes(1)
+      expect(accountRequests[0]).toMatchObject({
+        account: address,
+        safeTxHash,
+        data: { to: recipient, value: '0x2a', data: calldata, chainId: '0x1' }
+      })
+      expect((accountRequests[0] as TransactionRequest).data.from?.toLowerCase()).toBe(address)
+    })
+
+    it('falls back to raw Safe calldata when decoding is unknown, malformed, or exceeds persisted bounds', async () => {
+      const recipient = '0x1111111111111111111111111111111111111111'
+      delete tx.nonce
+      delete tx.gasLimit
+      tx.to = recipient
+      tx.data = '0x12345678'
+      accounts.get = mock((addr: string): TestAccount | undefined =>
+        addr === address ? { id: address, address, lastSignerType: 'safe', safe: { '1': {} } } : undefined
+      )
+      decodeTransactionCalldata
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(new Error('malformed calldata'))
+        .mockResolvedValueOnce({
+          contractAddress: recipient,
+          contractName: 'Unknown Contract',
+          source: 'x'.repeat(201),
+          selector: '0x12345678',
+          signature: 'unknown()',
+          method: 'unknown',
+          args: []
+        })
+
+      await sendTransactionResult()
+      tx = { ...tx, data: '0xa9059cbb00' }
+      await sendTransactionResult()
+      tx = { ...tx, data: '0x12345678' }
+      await sendTransactionResult()
+
+      expect(prepareSafeDraft).toHaveBeenCalledTimes(3)
+      expect(prepareSafeDraft.mock.calls[0][0]).not.toHaveProperty('localDecoded')
+      expect(prepareSafeDraft.mock.calls[1][0]).not.toHaveProperty('localDecoded')
+      expect(prepareSafeDraft.mock.calls[2][0]).not.toHaveProperty('localDecoded')
+      expect(attachSafeDraft).toHaveBeenCalledTimes(3)
+    })
+
+    it('does not attach a Safe proposal when authorization rejects routing', async () => {
+      delete tx.nonce
+      accounts.get = mock((addr: string): TestAccount | undefined =>
+        addr === address ? { id: address, address, lastSignerType: 'safe', safe: { '1': {} } } : undefined
+      )
+      const route = accounts.routeRequest.bind(accounts)
+      accounts.routeRequest = () => false
+      try {
+        sendTransaction(mock())
+        expect(prepareSafeDraft).toHaveBeenCalledTimes(1)
+        expect(attachSafeDraft).not.toHaveBeenCalled()
+      } finally {
+        accounts.routeRequest = route
+      }
+    })
+
     it('switches to a known account matching the transaction from address', async () => {
       const nextAddress = '0x35f9179059a691d8beecf82fe112f7277e018588'
       let currentAddress = address
@@ -1368,55 +1542,139 @@ describe('#send', () => {
 })
 
 describe('#executeAgentTransaction', () => {
-  it('does not broadcast a transaction when its agent session is revoked during signing', () => {
-    let active = true
-    const agentPrincipal = createAgentPrincipal({
-      sessionId: 'agent-session',
-      accountId: address,
-      expiresAt: Date.now() + 60_000,
-      isActive: () => active
-    })
-    const signTransaction = createSignTransactionMock()
-    const account = { id: address, signTransaction }
-    const request: TransactionRequest = {
-      handlerId: 'agent-request',
-      type: 'transaction',
-      origin: 'agent',
-      account: address,
-      payload: {
-        id: 1,
-        jsonrpc: '2.0',
-        method: 'eth_sendTransaction',
-        params: [],
-        _origin: 'agent'
-      },
-      data: {
-        chainId: '0x1',
-        type: '0x0',
-        gasPrice: '0x1',
-        gasLimit: '0x5208',
-        nonce: '0x0',
-        gasFeesSource: GasFeesSource.Dapp
-      },
-      approvals: [],
-      feesUpdatedByUser: false,
-      recipientType: 'unknown',
-      recognizedActions: [],
-      classification: TxClassification.NATIVE_TRANSFER
+  it.each([false, true])(
+    'broadcasts and records activity only for an active session, revoked: %s',
+    (revoked) => {
+      let active = true
+      const agentPrincipal = createAgentPrincipal({
+        sessionId: 'agent-session',
+        accountId: address,
+        expiresAt: Date.now() + 60_000,
+        isActive: () => active
+      })
+      const signTransaction = createSignTransactionMock()
+      const account = { id: address, signTransaction }
+      const request: TransactionRequest = {
+        handlerId: 'agent-request',
+        type: 'transaction',
+        origin: 'agent',
+        account: address,
+        payload: {
+          id: 'agent-rpc-request',
+          jsonrpc: '2.0',
+          method: 'eth_sendTransaction',
+          params: [],
+          _origin: 'agent'
+        },
+        data: {
+          chainId: '0xa',
+          type: '0x0',
+          gasPrice: '0x1',
+          gasLimit: '0x5208',
+          nonce: '0x0',
+          gasFeesSource: GasFeesSource.Dapp
+        },
+        approvals: [],
+        feesUpdatedByUser: false,
+        recipientType: 'unknown',
+        recognizedActions: [],
+        classification: TxClassification.NATIVE_TRANSFER
+      }
+      const respond = mock((_response: RPCResponsePayload) => {})
+
+      provider.executeAgentTransaction(account, request, agentPrincipal, respond)
+      expect(signTransaction).toHaveBeenCalledTimes(1)
+
+      active = !revoked
+      signTransaction.mock.calls[0][1](null, '0xsigned')
+
+      if (revoked) {
+        expect(connection.send).not.toHaveBeenCalled()
+        expect(accounts.trackAutonomousTransaction).not.toHaveBeenCalled()
+        expect(respond).toHaveBeenCalledTimes(1)
+        expect(respond.mock.calls[0]?.[0]).toMatchObject({
+          error: { message: 'Agent session is revoked or unavailable' }
+        })
+      } else {
+        expect(connection.send).toHaveBeenCalledTimes(1)
+        const [payload, reply, chain] = connection.send.mock.calls[0]
+        expect<JSONRPCRequestPayload>(payload).toEqual({
+          id: request.payload.id,
+          jsonrpc: request.payload.jsonrpc,
+          method: 'eth_sendRawTransaction',
+          params: ['0xsigned']
+        })
+        expect(chain).toEqual({ type: 'ethereum', id: 10 })
+        expect(accounts.trackAutonomousTransaction).not.toHaveBeenCalled()
+
+        const response = { id: payload.id, jsonrpc: payload.jsonrpc, result: '0xhash' }
+        reply(response)
+
+        expect(accounts.trackAutonomousTransaction).toHaveBeenCalledWith(address, request, '0xhash')
+        expect(respond.mock.calls).toEqual([[response]])
+      }
     }
-    const respond = mock((_response: RPCResponsePayload) => {})
+  )
+})
 
-    provider.executeAgentTransaction(account, request, agentPrincipal, respond)
-    expect(signTransaction).toHaveBeenCalledTimes(1)
+describe('#executeAccountTransaction', () => {
+  it('broadcasts a reviewed named-account transaction with its signing UI and a fresh RPC id', async () => {
+    const reviewed: TransactionData = {
+      from: address,
+      to: '0x1111111111111111111111111111111111111111',
+      chainId: '0xa',
+      type: '0x0',
+      gasPrice: '0x1',
+      gasLimit: '0x5208',
+      nonce: '0x2',
+      gasFeesSource: GasFeesSource.Dapp
+    }
+    let ownerActive = true
+    const ui: SigningUiContext = {
+      owner: { clientType: 'wallet-ui', windowInstanceId: 'executor-review' },
+      isOwnerActive: () => ownerActive,
+      subscribeOwnerDisposed: () => () => {}
+    }
+    const signTransaction = createSignTransactionMock()
+    signTransaction.mockImplementation((_transaction, reply) => reply(null, '0xsigned'))
+    accounts.getFrameAccount.mockReturnValue({ id: address, signTransaction })
+    const getNonce = spyOn(provider, 'getNonce').mockImplementation((_transaction, reply) =>
+      reply({ id: 1, jsonrpc: '2.0', result: '0x02' })
+    )
+    connection.send.mockImplementation((payload, reply) =>
+      reply({ id: payload.id, jsonrpc: payload.jsonrpc, result: '0xhash' })
+    )
 
-    active = false
-    signTransaction.mock.calls[0][1](null, '0xsigned')
+    try {
+      const result = await provider.executeAccountTransaction(
+        address,
+        reviewed,
+        { gasPrice: '0x2' },
+        ui,
+        'review-request'
+      )
+      expect(result).toBe('0xhash')
 
-    expect(connection.send).not.toHaveBeenCalled()
-    expect(respond).toHaveBeenCalled()
-    expect(respond.mock.calls[0]?.[0]).toMatchObject({
-      error: { message: 'Agent session is revoked or unavailable' }
-    })
+      const [signedTransaction, , approval] = signTransaction.mock.calls[0]
+      expect(signedTransaction).toEqual({ ...reviewed, gasPrice: '0x2' })
+      expect(approval).toMatchObject({ requestId: 'review-request', chainId: 10, ui })
+      expect(approval?.isActive()).toBe(true)
+      ownerActive = false
+      expect(approval?.isActive()).toBe(false)
+      expect(connection.send).toHaveBeenCalledTimes(1)
+      const [payload, , chain] = connection.send.mock.calls[0]
+      expect<JSONRPCRequestPayload>(payload).toEqual({
+        id: payload.id,
+        jsonrpc: '2.0',
+        method: 'eth_sendRawTransaction',
+        params: ['0xsigned']
+      })
+      expect(validateUUID(String(payload.id))).toBe(true)
+      expect(chain).toEqual({ type: 'ethereum', id: 10 })
+      expect(accounts.setTxSigned).not.toHaveBeenCalled()
+    } finally {
+      getNonce.mockRestore()
+    }
   })
 })
 
@@ -1530,6 +1788,35 @@ describe('#signAndSend', () => {
         expect(reqId).toBe(request.handlerId)
         cb(null)
       })
+    })
+
+    it('waits for signed state, retries, and settles only the first broadcast response', () => {
+      tx.chainId = '0xa'
+      accounts.setTxSigned.mockImplementation(() => {})
+      const completed = mock((_error?: Error | null, _value?: string) => {})
+
+      signAndSend(completed)
+
+      expect(connection.send).not.toHaveBeenCalled()
+      accounts.setTxSigned.mock.calls[0][1](null)
+      expect(connection.send).toHaveBeenCalledTimes(1)
+      timers.advanceTimersByTime(1000)
+      expect(connection.send).toHaveBeenCalledTimes(2)
+      const [payload, reply, chain] = connection.send.mock.calls[0]
+      expect<JSONRPCRequestPayload>(payload).toEqual({
+        id: request.payload.id,
+        jsonrpc: request.payload.jsonrpc,
+        method: 'eth_sendRawTransaction',
+        params: [signedTx]
+      })
+      expect(chain).toEqual({ type: 'ethereum', id: 10 })
+
+      connection.send.mock.calls[1][1]({ id: payload.id, jsonrpc: payload.jsonrpc, result: txHash })
+      reply({ id: payload.id, jsonrpc: payload.jsonrpc, error: { code: -1, message: 'late response' } })
+      timers.advanceTimersByTime(1000)
+
+      expect(connection.send).toHaveBeenCalledTimes(2)
+      expect(completed.mock.calls).toEqual([[null, txHash]])
     })
 
     describe('success', () => {

@@ -122,6 +122,7 @@ const isTransactionRequest = (
 
   return (
     isTransactionData(request.data) &&
+    (request.safeTxHash === undefined || /^0x[0-9a-f]{64}$/i.test(request.safeTxHash)) &&
     (request.recognizedActions === undefined ||
       (Array.isArray(request.recognizedActions) &&
         request.recognizedActions.every((action) => isRecord(action) && typeof action.id === 'string'))) &&

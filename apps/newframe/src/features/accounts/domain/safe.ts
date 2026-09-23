@@ -1,7 +1,25 @@
-import { getAddress, isAddress } from 'ethers'
+import { getAddress, getBytes, hashMessage, isAddress, recoverAddress } from 'ethers'
 import { z } from 'zod'
 
 export const safeAddressSchema = z.string().refine(isAddress, 'Invalid address').transform(getAddress)
+
+// Safe stores eth_sign recovery values as 31/32, EIP712 as 27/28.
+export function recoverSafeConfirmationOwner(hash: string, signature: string): string | undefined {
+  if (!/^0x[0-9a-f]{64}$/i.test(hash) || !/^0x[0-9a-f]{130}$/i.test(signature)) {
+    return undefined
+  }
+  const v = Number.parseInt(signature.slice(-2), 16)
+  if (![27, 28, 31, 32].includes(v)) {
+    return undefined
+  }
+  try {
+    const digest = v > 30 ? hashMessage(getBytes(hash)) : hash
+    const normalized = `${signature.slice(0, -2)}${(v > 30 ? v - 4 : v).toString(16).padStart(2, '0')}`
+    return getAddress(recoverAddress(digest, normalized))
+  } catch {
+    return undefined
+  }
+}
 const safeDecimalSchema = z
   .string()
   .regex(/^(0|[1-9][0-9]*)$/)
@@ -27,39 +45,109 @@ export const safeDecodedSchema = z.strictObject({
     )
     .max(50)
 })
-export const safeProposalSchema = z.strictObject({
-  safeTxHash: z
-    .string()
-    .regex(/^0x[0-9a-fA-F]{64}$/)
-    .transform((hash) => hash.toLowerCase()),
-  safe: safeAddressSchema,
-  nonce: safeDecimalSchema,
-  to: safeAddressSchema,
-  value: safeDecimalSchema,
-  operation: z.union([z.literal(0), z.literal(1)]),
-  data: z
-    .string()
-    .regex(/^0x(?:[0-9a-fA-F]{2})*$/)
-    .max(262146),
-  confirmations: z.array(safeAddressSchema).max(1000),
-  safeTxGas: safeDecimalSchema.optional(),
-  baseGas: safeDecimalSchema.optional(),
-  gasPrice: safeDecimalSchema.optional(),
-  gasToken: safeAddressSchema.optional(),
-  refundReceiver: safeAddressSchema.optional(),
-  dataDecoded: safeDecodedSchema.optional(),
-  localDecoded: safeDecodedSchema.extend({ source: z.string().max(200) }).optional(),
-  integrity: z
-    .strictObject({
-      status: z.enum(['matched', 'mismatch', 'unavailable']),
-      computedHash: z
-        .string()
-        .regex(/^0x[0-9a-f]{64}$/)
-        .optional(),
-      reason: z.string().max(500)
-    })
-    .optional()
+const safeHashSchema = z
+  .string()
+  .regex(/^0x[0-9a-fA-F]{64}$/)
+  .transform((hash) => hash.toLowerCase())
+const safeSignatureSchema = z.string().regex(/^0x[0-9a-fA-F]{130}$/)
+const safeProposalLocalSchema = z.strictObject({
+  createdAt: z.number().finite().nonnegative(),
+  origin: z.string().max(200).optional(),
+  requestId: z.string().max(256).optional(),
+  confirmations: z
+    .array(
+      z.strictObject({
+        owner: safeAddressSchema,
+        signature: safeSignatureSchema
+      })
+    )
+    .max(1000)
+    .refine(
+      (confirmations) =>
+        new Set(confirmations.map(({ owner }) => owner.toLowerCase())).size === confirmations.length,
+      'Duplicate local Safe confirmation'
+    ),
+  publication: z.strictObject({
+    status: z.enum(['local', 'publishing', 'published', 'failed']),
+    error: z.string().max(2000).optional()
+  }),
+  execution: z.strictObject({
+    status: z.enum(['idle', 'preparing', 'ready', 'executing', 'submitted', 'failed', 'cancelled']),
+    executorId: safeAddressSchema.optional(),
+    transaction: z
+      .strictObject({
+        chainId: z.string().regex(/^0x[0-9a-fA-F]+$/),
+        type: z.string().regex(/^0x[0-9a-fA-F]+$/),
+        gasFeesSource: z.enum(['Dapp', 'Frame']),
+        from: safeAddressSchema,
+        to: safeAddressSchema,
+        value: z.string().regex(/^0x[0-9a-fA-F]+$/),
+        data: z.string().regex(/^0x(?:[0-9a-fA-F]{2})*$/),
+        nonce: z.string().regex(/^0x[0-9a-fA-F]+$/),
+        gasLimit: z.string().regex(/^0x[0-9a-fA-F]+$/),
+        gasPrice: z
+          .string()
+          .regex(/^0x[0-9a-fA-F]+$/)
+          .optional(),
+        maxFeePerGas: z
+          .string()
+          .regex(/^0x[0-9a-fA-F]+$/)
+          .optional(),
+        maxPriorityFeePerGas: z
+          .string()
+          .regex(/^0x[0-9a-fA-F]+$/)
+          .optional(),
+        warning: z.string().max(2000).optional()
+      })
+      .optional(),
+    warnings: z.array(z.string().max(2000)).max(20).optional(),
+    transactionHash: safeHashSchema.optional(),
+    error: z.string().max(2000).optional()
+  })
 })
+export const safeProposalSchema = z
+  .strictObject({
+    safeTxHash: safeHashSchema,
+    safe: safeAddressSchema,
+    nonce: safeDecimalSchema,
+    to: safeAddressSchema,
+    value: safeDecimalSchema,
+    operation: z.union([z.literal(0), z.literal(1)]),
+    data: z
+      .string()
+      .regex(/^0x(?:[0-9a-fA-F]{2})*$/)
+      .max(262146),
+    confirmations: z.array(safeAddressSchema).max(1000),
+    safeTxGas: safeDecimalSchema.optional(),
+    baseGas: safeDecimalSchema.optional(),
+    gasPrice: safeDecimalSchema.optional(),
+    gasToken: safeAddressSchema.optional(),
+    refundReceiver: safeAddressSchema.optional(),
+    dataDecoded: safeDecodedSchema.optional(),
+    localDecoded: safeDecodedSchema.extend({ source: z.string().max(200) }).optional(),
+    local: safeProposalLocalSchema.optional(),
+    integrity: z
+      .strictObject({
+        status: z.enum(['matched', 'mismatch', 'unavailable']),
+        computedHash: z
+          .string()
+          .regex(/^0x[0-9a-f]{64}$/)
+          .optional(),
+        reason: z.string().max(500)
+      })
+      .optional()
+  })
+  .superRefine((proposal, context) => {
+    proposal.local?.confirmations.forEach((confirmation, index) => {
+      if (recoverSafeConfirmationOwner(proposal.safeTxHash, confirmation.signature) !== confirmation.owner) {
+        context.addIssue({
+          code: 'custom',
+          message: 'Local Safe confirmation does not match its owner',
+          path: ['local', 'confirmations', index, 'signature']
+        })
+      }
+    })
+  })
 const safeDeploymentSchema = z.strictObject({
   chainId: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
   address: safeAddressSchema,

@@ -26,6 +26,7 @@ import { createSafeService, type SafeService } from '../../../features/accounts/
 import { createSafeMessageService } from '../../../features/accounts/main/safeMessage.js'
 import { createDeferredSafeMessageApprovalPort } from '../../../features/accounts/main/safeMessagePort.js'
 import { simulateSafeProposal } from '../../../features/accounts/main/safeSimulation.js'
+import type { SafeTransactionPort } from '../../../features/accounts/main/safeTransactionPort.js'
 import { createAccountService, type AccountService } from '../../../features/accounts/main/service.js'
 import { createAgentService, type AgentService } from '../../../features/agent-access/main/index.js'
 import { createAssetRateService } from '../../../features/asset-data/main/assetRates/service.js'
@@ -38,7 +39,8 @@ import {
 import { Provider } from '../../../features/connections/main/provider/index.js'
 import {
   createProviderRequestAdapter,
-  createRequestApprovalAdapter
+  createRequestApprovalAdapter,
+  createNamedAccountTransactionAdapter
 } from '../../../features/connections/main/provider/infrastructure/production.js'
 import {
   createProviderProxyConnection,
@@ -177,7 +179,8 @@ function createProductionProvider(
   lookupChainIcon: (chainId: number) => Promise<string>,
   proxy: ProviderProxyConnection,
   reveal: RevealService,
-  requests: RequestService
+  requests: RequestService,
+  safeTransactions: SafeTransactionPort
 ) {
   return new Provider({
     accounts,
@@ -187,7 +190,8 @@ function createProductionProvider(
     state: createProviderStatePort(store),
     store,
     reveal,
-    requests
+    requests,
+    safeTransactions
   })
 }
 
@@ -204,6 +208,17 @@ export function createProductionCapabilities(
     simulation: createDeferredTransactionSimulationPort()
   }
   const safeMessages = createDeferredSafeMessageApprovalPort()
+  const safeTransactions: SafeTransactionPort = {
+    prepareDraft: (input) => safeService.prepareDraft(input),
+    attach: (draft, requestId) => safeService.attach(draft, requestId),
+    approve: (command, context) => safeService.approve(command, context),
+    removeUnsigned: (identity) => safeService.removeUnsigned(identity),
+    cleanupUnsigned: (liveRequestIds) => safeService.cleanupUnsigned(liveRequestIds),
+    prepareExecution: (identity, executorId) => safeService.prepareExecution(identity, executorId),
+    execute: (identity, executorId, adjustments, context, operationId) =>
+      safeService.execute(identity, executorId, adjustments, context, operationId),
+    status: (query, owner) => safeService.status(query, owner)
+  }
   const requestService = createRequestService({
     accounts: {
       clearRequestsByOrigin: (accountId, originId) => accounts.clearRequestsByOrigin(accountId, originId),
@@ -213,7 +228,8 @@ export function createProductionCapabilities(
       setRequestError: (requestId, error) => accounts.setRequestError(requestId, error),
       setRequestPending: (request) => accounts.setRequestPending(request),
       setRequestSuccess: (requestId) => accounts.setRequestSuccess(requestId),
-      setTxSent: (requestId, hash) => accounts.setTxSent(requestId, hash)
+      setTxSent: (requestId, hash) => accounts.setTxSent(requestId, hash),
+      trackSafeExecution: (safeTxHash, outerTxHash) => accounts.trackSafeExecution(safeTxHash, outerTxHash)
     },
     agent: {
       resolveAccess: (requestId, approved) => agentService.resolveAgentAccessRequest(requestId, approved)
@@ -227,6 +243,7 @@ export function createProductionCapabilities(
         requestApprovals.approveTransactionRequest(request, context)
     },
     safeMessages: safeMessages.port,
+    safeTransactions,
     store,
     transactionPolicy: accountCapabilities.transactionPolicy.port,
     vault: adapters.security.vault
@@ -249,7 +266,8 @@ export function createProductionCapabilities(
     (chainId) => adapters.network.lookupChainIcon(chainId),
     proxy,
     reveal,
-    requestService
+    requestService,
+    safeTransactions
   )
   const requestApprovals = createRequestApprovalAdapter(provider)
   const resolveName = (name: string) => nameResolution.resolveAddress(name)
@@ -321,9 +339,10 @@ export function createProductionCapabilities(
     store,
     operations: operationService,
     client: safeClient,
-    confirmations: {
-      client: safeClient,
-      accounts
+    transactions: {
+      accounts,
+      provider: createNamedAccountTransactionAdapter(provider),
+      submitted: (result) => requestService.notifySafeTransactionSubmitted(result)
     },
     simulate: (input, signal, observeConfiguration) =>
       simulateSafeProposal(
@@ -591,7 +610,10 @@ export function createProductionMainApp({
       try {
         // Startup awaits the same idempotent promise when Electron becomes ready.
         // Attach a handler now so an early storage failure is not reported as unhandled.
-        void persistence.start().catch(() => undefined)
+        void persistence
+          .start()
+          .then(() => safeService.cleanupUnsignedDrafts(new Set()))
+          .catch(() => undefined)
         chains.start()
         disconnectCapabilities.push(accountCapabilities.chainRpc.connect(accountChainRpc))
         disconnectCapabilities.push(

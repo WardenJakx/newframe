@@ -1,11 +1,16 @@
 import { getProfileAccountIds } from '../../../app/contracts/state/main.js'
 import { accountDisplayType } from '../../../features/accounts/domain/accountDisplayType.js'
-import { deriveSafeOwners } from '../../../features/accounts/main/safeOwners.js'
-import { deriveSigningCapability } from '../../../features/accounts/main/signingCapability.js'
+import { deriveSafeExecutors, deriveSafeOwners } from '../../../features/accounts/main/safeOwners.js'
+import {
+  deriveSigningCapability,
+  safeExecutorCandidates,
+  safeOwnerCandidates
+} from '../../../features/accounts/main/signingCapability.js'
 import { createBalanceSummarySelector } from '../../../features/asset-data/domain/balance/index.js'
-import type { SignatureRequest } from '../../../features/requests/contract/requests.js'
-import { isSignatureRequest } from '../../../features/requests/domain/index.js'
+import type { SignatureRequest, TransactionRequest } from '../../../features/requests/contract/requests.js'
+import { isSignatureRequest, isTransactionRequest } from '../../../features/requests/domain/index.js'
 import { OperationRecordSchema, type OperationCollection } from '../../operations/operation.js'
+import { verifySafeConfirmation } from '../../safe/integrity.js'
 import type { CanonicalState } from '../../state-store/state/index.js'
 import {
   WalletHomeCommandSchema,
@@ -390,22 +395,103 @@ function projectWalletAccounts(main: CanonicalMain) {
     profileAccounts.map((account) => {
       let requests = account.requests
       for (const [requestId, value] of Object.entries(account.requests)) {
-        const request = value as SignatureRequest
-        if (!isSignatureRequest(request) || !Number.isSafeInteger(request.chainId)) {
+        const request = value as SignatureRequest | TransactionRequest
+        if (isSignatureRequest(request) && Number.isSafeInteger(request.chainId)) {
+          if (requests === account.requests) {
+            requests = { ...account.requests }
+          }
+          requests[requestId] = {
+            ...request,
+            signingCapability: deriveSigningCapability(
+              request,
+              profileAccounts,
+              main.signers,
+              main.appLock,
+              main.currentProfile
+            )
+          }
           continue
         }
+        if (!isTransactionRequest(request) || !request.safeTxHash) {
+          continue
+        }
+        const chainId = Number.parseInt(request.data.chainId, 16)
+        const deployment = account.safe?.[String(chainId)]
+        const proposal = deployment?.pending?.find(
+          ({ safeTxHash }) => safeTxHash.toLowerCase() === request.safeTxHash!.toLowerCase()
+        )
+        if (!deployment || !proposal) {
+          continue
+        }
+        const confirmations = [
+          ...new Set([
+            ...proposal.confirmations,
+            ...(proposal.local?.confirmations.map(({ owner }) => owner) ?? [])
+          ])
+        ]
+        const execution = proposal.local?.execution
+        const configuredOwners = new Set(deployment.configuration.owners.map((owner) => owner.toLowerCase()))
+        const executableConfirmations =
+          proposal.local?.confirmations.filter(
+            ({ owner, signature }) =>
+              configuredOwners.has(owner.toLowerCase()) &&
+              verifySafeConfirmation(proposal.safeTxHash, owner, signature)
+          ).length ?? 0
+        const progressStatus = (() => {
+          if (execution?.status === 'submitted') {
+            return 'submitted' as const
+          }
+          if (execution?.status === 'failed' || execution?.status === 'cancelled') {
+            return 'failed' as const
+          }
+          if (execution?.status === 'preparing') {
+            return 'preparing' as const
+          }
+          if (execution?.status === 'executing') {
+            return 'executing' as const
+          }
+          if (
+            execution?.status === 'ready' ||
+            executableConfirmations >= deployment.configuration.threshold
+          ) {
+            return 'ready' as const
+          }
+          return 'collecting' as const
+        })()
         if (requests === account.requests) {
           requests = { ...account.requests }
         }
         requests[requestId] = {
           ...request,
-          signingCapability: deriveSigningCapability(
-            request,
-            profileAccounts,
-            main.signers,
-            main.appLock,
-            main.currentProfile
-          )
+          safeTransactionProgress: {
+            status: progressStatus,
+            chainId,
+            threshold: deployment.configuration.threshold,
+            confirmations,
+            publication: proposal.local?.publication.status ?? 'published',
+            ownerCandidates: safeOwnerCandidates(
+              account,
+              chainId,
+              profileAccounts,
+              main.signers,
+              main.appLock
+            ),
+            executorCandidates: safeExecutorCandidates(account, profileAccounts, main.signers, main.appLock)
+          },
+          safeExecution: execution
+            ? {
+                ...(execution.executorId ? { executorId: execution.executorId } : {}),
+                ...(execution.transaction ? { reviewedTransaction: execution.transaction } : {}),
+                ...(execution.transactionHash && execution.executorId
+                  ? {
+                      submitted: {
+                        outerTxHash: execution.transactionHash,
+                        executorId: execution.executorId
+                      }
+                    }
+                  : {})
+              }
+            : undefined
         }
       }
       if (account.safe === undefined && requests === account.requests) {
@@ -418,7 +504,10 @@ function projectWalletAccounts(main: CanonicalMain) {
           requests,
           ...(account.safe === undefined
             ? {}
-            : { safeOwners: deriveSafeOwners(account, profileAccounts, main.signers, main.appLock) })
+            : {
+                safeOwners: deriveSafeOwners(account, profileAccounts, main.signers, main.appLock),
+                safeExecutors: deriveSafeExecutors(account, profileAccounts, main.signers, main.appLock)
+              })
         }
       ]
     })

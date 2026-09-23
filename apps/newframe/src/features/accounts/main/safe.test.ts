@@ -169,18 +169,18 @@ it('invalidates delayed work after remove/re-add, profile switch, and disposal',
       id: address,
       safe: { '1': { chainId: 1, address, configuration: config } }
     })
-    let release!: (value: Pick<SafeConfiguration, 'nonce'>) => void
+    let release!: (value: SafeConfiguration) => void
     const service = createSafeService({
       accounts,
       store,
       operations,
       client: {
         discover: async () => ({ version: '1.4.1', owners: [ownerAddress] }),
-        configuration: async () => config,
-        queueState: () =>
+        configuration: () =>
           new Promise((resolve) => {
             release = resolve
           }),
+        queueState: async () => config,
         pending: async () => []
       }
     })
@@ -337,15 +337,18 @@ const simulated: SafeProposalSimulation = {
   blockNumber: '123'
 }
 
-it('fetches owners at import and reuses them across queue refreshes and account selection', async () => {
+it('refreshes the full onchain Safe configuration before every service queue import', async () => {
   const context = simulationSetup()
   let now = Date.now() + 60_000
-  const configuration = mock(context.client.configuration)
-  const queueState = mock(async () => ({ nonce: '1' }))
+  const freshConfiguration = {
+    ...context.store.getState().main.accounts[address].safe!['1'].configuration,
+    nonce: '1'
+  }
+  const configuration = mock(async () => freshConfiguration)
   const pending = mock<SafeServicePorts['client']['pending']>(context.client.pending)
   const service = createSafeService({
     ...context,
-    client: { ...context.client, configuration, queueState, pending },
+    client: { ...context.client, configuration, pending },
     now: () => now
   })
   cleanup.push(() => service.dispose())
@@ -356,13 +359,13 @@ it('fetches owners at import and reuses them across queue refreshes and account 
   await until(() => operationStatus(context.store.getState(), 'import') === 'succeeded')
   const cached = context.store.getState().main.accounts[address].safe!['1'].configuration
   await service.refresh({ type: 'account.refresh', accountId: address, force: true })
-  expect(pending.mock.calls.at(-1)?.[2]).toEqual({ ...cached, nonce: '1' })
+  expect(pending.mock.calls.at(-1)?.[2]).toEqual(cached)
   expect(context.store.getState().main.accounts[address].safe!['1'].pending).toEqual([])
   now += 60_000
   context.store.getState().setAccount({ id: address })
-  await until(() => queueState.mock.calls.length === 2)
+  await until(() => configuration.mock.calls.length === 3)
   await service.refresh({ type: 'account.refresh', accountId: address })
-  expect(configuration).toHaveBeenCalledTimes(1)
+  expect(configuration).toHaveBeenCalledTimes(3)
   expect(context.store.getState().main.accounts[address].safe!['1'].configuration.owners).toEqual(
     cached.owners
   )
@@ -387,6 +390,39 @@ it('retains configuration observed during simulation even when the preview is un
     configuration: observed,
     configurationBlockNumber: '124',
     pending: [context.proposal]
+  })
+})
+
+it('merges refreshed service proposals without discarding local lifecycle metadata', async () => {
+  const context = simulationSetup()
+  const deployment = context.store.getState().main.accounts[address].safe!['1']
+  const local = {
+    createdAt: 42,
+    requestId: 'request-1',
+    confirmations: [],
+    publication: { status: 'failed' as const, error: 'retry' },
+    execution: { status: 'idle' as const }
+  }
+  context.store.getState().patchAccount(address, {
+    safe: {
+      '1': {
+        ...deployment,
+        pending: [{ ...context.proposal, local }]
+      }
+    }
+  })
+  const service = createSafeService({
+    ...context,
+    client: {
+      ...context.client,
+      pending: async () => [{ ...context.proposal, confirmations: [ownerAddress] }]
+    }
+  })
+  cleanup.push(() => service.dispose())
+  await service.refresh({ type: 'account.refresh', accountId: address, chainId: 1, force: true })
+  expect(context.store.getState().main.accounts[address].safe!['1'].pending![0]).toMatchObject({
+    confirmations: [ownerAddress],
+    local
   })
 })
 

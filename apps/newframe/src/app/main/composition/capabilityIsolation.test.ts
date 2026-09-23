@@ -179,6 +179,16 @@ it('releases registered handlers, account listeners, and Flash polling on dispos
     app.dispose()
     app.dispose()
 
+    expect(() =>
+      capabilities.safeService.status({
+        type: 'safe.confirmation-status',
+        accountId: '0x1111111111111111111111111111111111111111',
+        chainId: 1,
+        safeTxHash: `0x${'11'.repeat(32)}`,
+        ownerId: '0x1111111111111111111111111111111111111111'
+      })
+    ).toThrow('Safe transaction capability is unavailable.')
+
     expect({
       started: app.started,
       registeredTwice: ipc.handle.mock.calls.length !== registered.length,

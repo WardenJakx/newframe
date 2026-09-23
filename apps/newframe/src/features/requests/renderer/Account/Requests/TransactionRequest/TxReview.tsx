@@ -5,7 +5,7 @@ import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 import { formatUnits } from 'ethers'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 
 import { getAddress } from '../../../../../../shared/domain/address'
 import { toBigInt } from '../../../../../../shared/domain/units'
@@ -22,10 +22,10 @@ import {
 } from '../../../../../transactions/domain'
 import type { TransactionFeeLevel } from '../../../../../transactions/domain/fees'
 import { displayValueData } from '../../../format/displayValue'
-import type { RequestRendererCapabilities, TransactionReviewCapability } from '../../../requestCapabilities'
+import type { RequestRendererCapabilities } from '../../../requestCapabilities'
 import { useRequestView } from '../../../requestView'
 import { DisplayCoinBalance } from '../../../ui/DisplayValue'
-import type { TransactionRequestView } from '../requestViewTypes'
+import type { TransactionDataView, TransactionRequestView } from '../requestViewTypes'
 import {
   useAddressIdentities,
   useAssetRate,
@@ -36,7 +36,7 @@ import {
   useTokens
 } from '../state'
 import TransactionInformation from './TransactionInformation'
-import type { TransactionInformationDetailRow } from './TransactionInformation'
+import type { TransactionInformationDetailRow, TransactionInformationProps } from './TransactionInformation'
 
 type NativeCurrency = {
   symbol: string
@@ -45,34 +45,73 @@ type NativeCurrency = {
 }
 
 type TxFeeSummaryProps = {
-  feeLevel?: TransactionFeeLevel | 'custom'
-  selectFeeLevel: (level: TransactionFeeLevel) => void
-  capability: Pick<TransactionReviewCapability, 'setFeePreference'>
-  req: TransactionRequestView
+  data: Pick<TransactionDataView, 'type' | 'gasLimit' | 'gasPrice' | 'maxFeePerGas'>
+  paidFee?: ReturnType<typeof getPaidTransactionFee>
+  l1Fees?: string
+  editable?: boolean
+  selectedRate?: TransactionFeeLevel | 'custom'
+  onSelectRate?: (level: TransactionFeeLevel) => void
   chain: { type: 'ethereum'; id: number }
   nativeCurrency: NativeCurrency
   isTestnet: boolean
-  gasPrice?: NonNullable<ReturnType<typeof useNetworkMetadata>['gas']>['price']
   nativeCurrencyRate: ReturnType<typeof useAssetRate>
-  openAdjustFee: () => void
+  openAdjustFee?: () => void
 }
 
-type TxReviewProps = {
-  feeLevel?: TransactionFeeLevel | 'custom'
-  selectFeeLevel: (level: TransactionFeeLevel) => void
-  capabilities: Pick<RequestRendererCapabilities, 'external' | 'transaction'>
-  identities: ReturnType<typeof useAddressIdentities>
+export type TxReviewData = Pick<
+  TransactionRequestView,
+  | 'origin'
+  | 'status'
+  | 'notice'
+  | 'recognizedActions'
+  | 'classification'
+  | 'recipient'
+  | 'tokenData'
+  | 'simulation'
+  | 'tx'
+> & {
+  data: Pick<TransactionDataView, 'chainId' | 'from' | 'to' | 'data' | 'value' | 'calldataDigest'>
+  decodedData?: Omit<NonNullable<TransactionRequestView['decodedData']>, 'signature'> & { signature?: string }
+}
+
+export type TxReviewProps = {
+  capabilities: Pick<RequestRendererCapabilities, 'external'>
+  identities?: ReturnType<typeof useAddressIdentities>
   nativeCurrencyRate: ReturnType<typeof useAssetRate>
-  req: TransactionRequestView
-  network: ReturnType<typeof useNetwork>
-  networkMetadata: ReturnType<typeof useNetworkMetadata>
+  req: TxReviewData
+  network: Pick<ReturnType<typeof useNetwork>, 'name' | 'isTestnet'>
+  networkMetadata: Pick<ReturnType<typeof useNetworkMetadata>, 'image'> & {
+    nativeCurrency?: Pick<
+      NonNullable<ReturnType<typeof useNetworkMetadata>['nativeCurrency']>,
+      'symbol' | 'decimals' | 'image'
+    >
+  }
+  networkIcon?: string
   originName: string
   favicon?: string
-  tokens: ReturnType<typeof useTokens>
-  openAdjustFee: () => void
+  tokens?: ReturnType<typeof useTokens>
+  renderAddress?: (address: string) => ReactNode
+  fee?: Omit<TxFeeSummaryProps, 'chain' | 'nativeCurrency' | 'isTestnet' | 'nativeCurrencyRate'>
+  extensions?: Partial<
+    Pick<
+      TransactionInformationProps,
+      | 'statusLabel'
+      | 'statusDetails'
+      | 'beforeDetails'
+      | 'effects'
+      | 'effectsEmptyText'
+      | 'effectsNotice'
+      | 'verification'
+      | 'rawTransaction'
+    >
+  >
+  footer?: ReactNode
 }
 
-type TxReviewWithStateProps = Pick<TxReviewProps, 'capabilities' | 'req'>
+type TxReviewWithStateProps = {
+  capabilities: Pick<RequestRendererCapabilities, 'external' | 'transaction'>
+  req: TransactionRequestView
+}
 
 const FEE_WARNING_THRESHOLD_USD = 50
 const FEE_RATE_OPTIONS = [
@@ -83,7 +122,7 @@ const FEE_RATE_OPTIONS = [
   { id: 'custom', label: 'Custom' }
 ] as const
 
-const displayStatus = (req: TransactionRequestView) => {
+const displayStatus = (req: TxReviewData) => {
   const notice = (req.notice ?? '').toLowerCase()
   const status = (req.status ?? 'ready to sign').toLowerCase()
 
@@ -110,7 +149,7 @@ type ActionData = {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
-const actionData = (req: TransactionRequestView, id: string): ActionData => {
+const actionData = (req: TxReviewData, id: string): ActionData => {
   const value = req.recognizedActions?.find((action) => action.id === id)?.data
   if (!isRecord(value)) {
     return {}
@@ -143,7 +182,7 @@ const actionData = (req: TransactionRequestView, id: string): ActionData => {
   }
 }
 
-const transferRecipient = (req: TransactionRequestView): ActionIdentity | undefined => {
+const transferRecipient = (req: TxReviewData): ActionIdentity | undefined => {
   const recognized = actionData(req, 'erc20:transfer').recipient
   if (recognized?.address) {
     return recognized
@@ -170,28 +209,22 @@ function TxFeeSummary(props: TxFeeSummaryProps) {
 
   const applyFeeRate = (option: (typeof FEE_RATE_OPTIONS)[number]) => {
     if (option.id === 'custom') {
-      props.openAdjustFee()
+      props.openAdjustFee?.()
       return
     }
 
-    props.selectFeeLevel(option.id)
-    void props.capability.setFeePreference({
-      chainId: props.chain.id,
-      level: option.id
-    })
+    props.onSelectRate?.(option.id)
     setExpanded(false)
   }
 
-  const { req, chain, nativeCurrency, isTestnet } = props
-  const paidFee = getPaidTransactionFee(req)
+  const { data, chain, nativeCurrency, isTestnet, paidFee } = props
   const nativeCurrencyRate = !isTestnet ? props.nativeCurrencyRate : undefined
 
-  const maxGas = toBigInt(req.data.gasLimit) ?? 0n
-  const maxFeePerGas =
-    toBigInt(req.data[typeSupportsBaseFee(req.data.type) ? 'maxFeePerGas' : 'gasPrice']) ?? 0n
+  const maxGas = toBigInt(data.gasLimit) ?? 0n
+  const maxFeePerGas = toBigInt(data[typeSupportsBaseFee(data.type) ? 'maxFeePerGas' : 'gasPrice']) ?? 0n
   const executionFee = maxFeePerGas * maxGas
   const maxFeeSourceValue = chainUsesOptimismFees(chain.id)
-    ? getOptimismFee(maxFeePerGas, maxGas, req.chainData?.optimism)
+    ? getOptimismFee(maxFeePerGas, maxGas, { l1Fees: props.l1Fees })
     : executionFee
   const displayedFee = paidFee ?? maxFeeSourceValue ?? executionFee
   const fee = displayValueData(displayedFee, {
@@ -201,11 +234,12 @@ function TxFeeSummary(props: TxFeeSummaryProps) {
   const feeUSD = fee.fiat()
   const gasDisplay = displayValueData(maxFeePerGas).gwei()
   const shouldWarn = feeUSD.value > FEE_WARNING_THRESHOLD_USD
-  const selectedRate =
-    (!req.status && !req.locked ? props.feeLevel : undefined) ??
-    (req.feesUpdatedByUser ? 'custom' : (props.gasPrice?.selected ?? 'fast'))
+  const selectedRate = props.selectedRate ?? 'custom'
   const selectedRateLabel = FEE_RATE_OPTIONS.find((option) => option.id === selectedRate)?.label ?? 'Fast'
-  const canAdjustFee = !paidFee && !req.status && !req.locked
+  const canAdjustFee = props.editable && Boolean(props.onSelectRate ?? props.openAdjustFee)
+  const feeRateOptions = FEE_RATE_OPTIONS.filter((option) =>
+    option.id === 'custom' ? props.openAdjustFee : props.onSelectRate
+  )
 
   return (
     <section aria-label='Network fee'>
@@ -253,7 +287,7 @@ function TxFeeSummary(props: TxFeeSummaryProps) {
                 </Inline>
                 {canAdjustFee ? (
                   <Stack direction='row' equal gap='xsmall' label='Fee rate'>
-                    {FEE_RATE_OPTIONS.map((option) => (
+                    {feeRateOptions.map((option) => (
                       <Button
                         appearance='segment'
                         key={option.id}
@@ -277,7 +311,7 @@ function TxFeeSummary(props: TxFeeSummaryProps) {
   )
 }
 
-function TxReviewView(props: TxReviewProps) {
+export function TxReviewView(props: TxReviewProps) {
   const { req } = props
   const chainId = parseInt(req.data.chainId, 16)
   const chain = { type: 'ethereum' as const, id: chainId }
@@ -295,23 +329,25 @@ function TxReviewView(props: TxReviewProps) {
   const ambiguousApproval =
     req.decodedData?.signature === 'approve(address,uint256)' && !hasRecognizedTokenAction
   const effectsRequest = ambiguousApproval ? { ...req, decodedData: undefined } : req
-  const effects = getTransactionEffects(effectsRequest, symbol).map((original) => {
-    const effect =
-      original.kind !== 'native' && !Number.isInteger(original.decimals)
-        ? { ...original, decimals: 0, symbol: 'raw units' }
-        : original
-    if (effect.kind !== 'erc20' || !effect.assetAddress) {
-      return effect
-    }
+  const effects = (props.extensions?.effects ?? getTransactionEffects(effectsRequest, symbol)).map(
+    (original) => {
+      const effect =
+        original.kind !== 'native' && !Number.isInteger(original.decimals)
+          ? { ...original, decimals: 0, symbol: 'raw units' }
+          : original
+      if (effect.kind !== 'erc20' || !effect.assetAddress) {
+        return effect
+      }
 
-    const tokenId = `${chainId}:${effect.assetAddress.toLowerCase()}`
-    const canonicalImage = tokenImageSource(tokenForId(props.tokens, tokenId))
-    return {
-      ...effect,
-      tokenId,
-      ...(canonicalImage ? { logoURI: canonicalImage } : {})
+      const tokenId = `${chainId}:${effect.assetAddress.toLowerCase()}`
+      const canonicalImage = props.tokens ? tokenImageSource(tokenForId(props.tokens, tokenId)) : undefined
+      return {
+        ...effect,
+        tokenId,
+        ...(canonicalImage ? { logoURI: canonicalImage } : {})
+      }
     }
-  })
+  )
   const simulationStatus = req.simulation?.status
   let effectsEmptyText: string | undefined = 'No direct asset changes detected'
   if (simulationStatus === 'loading') {
@@ -347,15 +383,16 @@ function TxReviewView(props: TxReviewProps) {
       ? `${formatUnits(tokenAmount, tokenDecimals)} ${tokenSymbol ?? 'tokens'}`
       : `${tokenAmount.toString()} raw units`
   }
-  const addressValue = (address: string, nickname?: string) => (
-    <AddressIdentity
-      address={address}
-      clipboard={props.capabilities.external}
-      accountType={props.identities[address.toLowerCase()]?.accountType}
-      nickname={nickname ?? props.identities[address.toLowerCase()]?.nickname ?? shortAddress(address)}
-      showFullAddress
-    />
-  )
+  const addressValue = (address: string, nickname?: string) =>
+    props.renderAddress?.(address) ?? (
+      <AddressIdentity
+        address={address}
+        clipboard={props.capabilities.external}
+        accountType={props.identities?.[address.toLowerCase()]?.accountType}
+        nickname={nickname ?? props.identities?.[address.toLowerCase()]?.nickname ?? shortAddress(address)}
+        showFullAddress
+      />
+    )
   const contractName = token?.name ?? tokenSymbol ?? req.decodedData?.contractName ?? req.recipient
   const spender = token?.spender ?? (isApproval ? { address: req.decodedData?.args[0]?.value } : undefined)
   let details: TransactionInformationDetailRow[]
@@ -419,10 +456,9 @@ function TxReviewView(props: TxReviewProps) {
       originName={originName}
       favicon={props.favicon}
       networkName={chainName}
-      networkIcon={persistedImageSource(meta.image)}
+      networkIcon={props.networkIcon ?? persistedImageSource(meta.image)}
       statusLabel={displayStatus(req)}
       notice={notice}
-      effects={effects}
       effectsEmptyText={effectsEmptyText}
       effectsNotice={
         simulationStatus === 'error' || simulationStatus === 'unavailable' ? (
@@ -438,20 +474,20 @@ function TxReviewView(props: TxReviewProps) {
         calldata && calldata !== '0x' ? { data: calldata, digest: req.data.calldataDigest } : undefined
       }
       nativeCurrency={nativeCurrency}
+      {...props.extensions}
+      effects={effects}
     >
       <Stack gap='xsmall'>
-        <TxFeeSummary
-          feeLevel={props.feeLevel}
-          selectFeeLevel={props.selectFeeLevel}
-          capability={props.capabilities.transaction}
-          chain={chain}
-          gasPrice={meta.gas?.price}
-          isTestnet={Boolean(network.isTestnet)}
-          nativeCurrencyRate={props.nativeCurrencyRate}
-          nativeCurrency={nativeCurrency}
-          openAdjustFee={() => props.openAdjustFee()}
-          req={req}
-        />
+        {props.fee ? (
+          <TxFeeSummary
+            {...props.fee}
+            chain={chain}
+            isTestnet={Boolean(network.isTestnet)}
+            nativeCurrencyRate={props.nativeCurrencyRate}
+            nativeCurrency={nativeCurrency}
+          />
+        ) : null}
+        {props.footer}
       </Stack>
     </TransactionInformation>
   )
@@ -471,11 +507,24 @@ export default function TxReviewWithState(props: TxReviewWithStateProps) {
     nativeTicker: networkMetadata.nativeCurrency?.symbol ?? '?'
   })
   const { open, feeLevel, selectFeeLevel } = useRequestView()
+  const paidFee = getPaidTransactionFee(props.req)
   return (
     <TxReviewView
       {...props}
-      feeLevel={feeLevel}
-      selectFeeLevel={(level) => selectFeeLevel(props.req, level, networkMetadata.gas?.price)}
+      fee={{
+        data: props.req.data,
+        paidFee,
+        l1Fees: props.req.chainData?.optimism?.l1Fees,
+        editable: !paidFee && !props.req.status && !props.req.locked,
+        selectedRate:
+          (!props.req.status && !props.req.locked ? feeLevel : undefined) ??
+          (props.req.feesUpdatedByUser ? 'custom' : (networkMetadata.gas?.price.selected ?? 'fast')),
+        onSelectRate: (level) => {
+          selectFeeLevel(props.req, level, networkMetadata.gas?.price)
+          void props.capabilities.transaction.setFeePreference({ chainId, level })
+        },
+        openAdjustFee: () => open({ step: 'adjustFee' })
+      }}
       identities={identities}
       nativeCurrencyRate={nativeCurrencyRate}
       network={network}
@@ -483,7 +532,6 @@ export default function TxReviewWithState(props: TxReviewWithStateProps) {
       originName={originName}
       favicon={persistedImageSource(origins[props.req.origin]?.image)}
       tokens={tokens}
-      openAdjustFee={() => open({ step: 'adjustFee' })}
     />
   )
 }

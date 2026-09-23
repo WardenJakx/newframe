@@ -9,6 +9,15 @@ import type {
 import type { SideTrayTransactionPorts } from '../../../../transactions/main/sideTrayService.js'
 import type { Provider } from '../index.js'
 
+export function createNamedAccountTransactionAdapter(
+  provider: Pick<Provider, 'prepareAccountTransaction' | 'executeAccountTransaction'>
+) {
+  return {
+    prepare: provider.prepareAccountTransaction.bind(provider),
+    execute: provider.executeAccountTransaction.bind(provider)
+  }
+}
+
 export function createProviderRequestAdapter(
   provider: Pick<Provider, 'send'>
 ): SideTrayTransactionPorts['provider'] & { dispose(): void } {

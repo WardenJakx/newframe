@@ -590,15 +590,30 @@ export function createOperationRegistry(services: OperationServices) {
     ),
     'request.approve': defineAcknowledgedCommand(
       'request.approve',
-      (command, event, context) =>
-        'safeTxHash' in command
-          ? safes.confirm(command, signingUiContext(event, context))
-          : requests.approve(
-              command.requestId,
-              signingUiContext(event, context),
-              command.adjustments,
-              command.ownerId
-            ),
+      (command, event, context) => {
+        if ('safeTxHash' in command) {
+          if ('action' in command) {
+            void safes
+              .execute(
+                command,
+                command.executorId,
+                command.adjustments,
+                signingUiContext(event, context),
+                command.operationId
+              )
+              .catch(() => undefined)
+            return
+          }
+          return safes.confirm(command, signingUiContext(event, context))
+        }
+        return requests.approve(
+          command.requestId,
+          signingUiContext(event, context),
+          'adjustments' in command ? command.adjustments : undefined,
+          'ownerId' in command ? command.ownerId : undefined,
+          'executorId' in command ? command.executorId : undefined
+        )
+      },
       (command) => ('safeTxHash' in command ? 'not_found' : 'request_not_found'),
       ['tray']
     ),
@@ -697,6 +712,21 @@ export function createOperationRegistry(services: OperationServices) {
       entrypoints: ['tray'],
       handle: (query, _event, context) => safes.confirmationStatus(query, operationOwner(context)),
       failure: { status: 'validation_failed', message: 'Safe confirmation status is unavailable.' }
+    }),
+    'safe.execution-prepare': defineQuery('safe.execution-prepare', {
+      roles: ['wallet-ui'],
+      entrypoints: ['tray'],
+      async handle(query) {
+        try {
+          return { ok: true, ...(await safes.prepareExecution(query, query.executorId)) } as const
+        } catch (error) {
+          return {
+            ok: false,
+            error: error instanceof Error ? error.message.slice(0, 500) : 'Safe execution preparation failed.'
+          } as const
+        }
+      },
+      failure: { ok: false, error: 'Safe execution preparation failed.' }
     }),
     'token.lookup': defineQuery('token.lookup', {
       roles: ['wallet-ui'],

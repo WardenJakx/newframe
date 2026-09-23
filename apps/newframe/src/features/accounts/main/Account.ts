@@ -594,7 +594,7 @@ class FrameAccount {
       await this.recognizeActions(req)
 
       const enrichedRequest = this.getRequest<TransactionRequest>(req.handlerId)
-      if (enrichedRequest) {
+      if (enrichedRequest && !enrichedRequest.safeTxHash) {
         await this.simulateTransaction(enrichedRequest)
       }
       return

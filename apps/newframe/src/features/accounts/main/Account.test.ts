@@ -342,6 +342,26 @@ describe('#addRequest', () => {
         ]
       })
     })
+
+    it('does not run the EOA simulation pipeline for a Safe-referenced transaction', async () => {
+      const request = {
+        handlerId: 'safe-request',
+        type: 'transaction',
+        safeTxHash: `0x${'a'.repeat(64)}`,
+        data: {
+          chainId: '0x1',
+          to: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+          data: '0x'
+        }
+      }
+
+      account.addRequest(request)
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+
+      expect(simulateTransactionEffectsMock).not.toHaveBeenCalled()
+    })
   })
 })
 

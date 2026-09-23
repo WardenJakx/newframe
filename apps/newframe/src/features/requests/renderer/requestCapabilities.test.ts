@@ -37,6 +37,14 @@ it('maps each request surface to its exact host command and preserves failures',
     operationId: 'safe-1'
   }
   await capabilities.safe.confirm(safe)
+  await capabilities.safe.execute({
+    action: 'execute-safe',
+    operationId: 'safe-execute',
+    accountId: safe.accountId,
+    executorId: safe.ownerId,
+    chainId: safe.chainId,
+    safeTxHash: safe.safeTxHash
+  })
   await capabilities.review.confirmApproval({
     requestId: 'request-1',
     approvalType: 'approveGasLimit'
@@ -73,6 +81,15 @@ it('maps each request surface to its exact host command and preserves failures',
     { type: 'request.approve', requestId: 'request-1' },
     { type: 'account.refresh', accountId: '0xabc' },
     { type: 'request.approve', ...safe },
+    {
+      type: 'request.approve',
+      action: 'execute-safe',
+      operationId: 'safe-execute',
+      accountId: safe.accountId,
+      executorId: safe.ownerId,
+      chainId: safe.chainId,
+      safeTxHash: safe.safeTxHash
+    },
     {
       type: 'request.approval-confirm',
       requestId: 'request-1',
@@ -128,4 +145,21 @@ it('queries the selected Safe proposal and converts query boundary failures into
     status: 'unavailable',
     error: 'Could not load Safe preview.'
   })
+})
+
+it('maps Safe execution preparation to the typed query boundary', async () => {
+  const failure: QueryResultMap['safe.execution-prepare'] = { ok: false, error: 'Not executable' }
+  const executeQuery = mock(async () => failure)
+  const capabilities = createRequestPorts({
+    executeCommand: async () => ({ ok: true }),
+    executeQuery: executeQuery as NewframeHost['executeQuery']
+  })
+  const input = {
+    accountId: `0x${'1'.repeat(40)}`,
+    executorId: `0x${'2'.repeat(40)}`,
+    chainId: 1,
+    safeTxHash: `0x${'a'.repeat(64)}`
+  }
+  expect(await capabilities.safe.prepareExecution(input)).toEqual(failure)
+  expect(executeQuery).toHaveBeenCalledWith({ type: 'safe.execution-prepare', ...input })
 })

@@ -31,7 +31,7 @@ export async function seedSafe(
   harnessOwner: string
 ): Promise<SafeSeedManifest> {
   const owners = [getAddress(harnessOwner), getAddress('0x70997970C51812dc3A010C7d01b50e0d17dc79C8')]
-  const threshold = 2
+  const threshold = 1
   async function deploy(
     artifact: typeof safeArtifact | typeof factoryArtifact | typeof fallbackHandlerArtifact
   ) {
@@ -93,7 +93,7 @@ export async function seedSafe(
   if (
     codes.some((code) => code === '0x') ||
     actualOwners.map(getAddress).join() !== owners.join() ||
-    actualThreshold !== 2n ||
+    actualThreshold !== BigInt(threshold) ||
     nonce !== 0n ||
     version !== '1.5.0'
   ) {
