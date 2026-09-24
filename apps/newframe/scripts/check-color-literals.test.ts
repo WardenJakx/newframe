@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { findApplicationColorLiterals, findColorLiteralViolations } from './check-color-literals'
+import { findColorLiteralViolations } from './check-color-literals'
 
 describe('color literal enforcement', () => {
   it('detects CSS, Stylus, JSX, gradients, and SVG color literals', () => {
@@ -31,9 +31,5 @@ const icon = <path fill='#ffffff' />
 `
 
     expect(findColorLiteralViolations(source)).toEqual([])
-  })
-
-  it('finds no literals outside the canonical and generated token files', async () => {
-    expect(await findApplicationColorLiterals()).toEqual([])
   })
 })

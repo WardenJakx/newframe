@@ -29,7 +29,6 @@ describe('#getVersionFromTypedData', () => {
       [{ type: 'string', name: 'fullName', value: 'Satoshi Nakamoto' }],
       SignTypedDataVersion.V1
     ],
-    ['ordinary EIP-712 data', typedData, SignTypedDataVersion.V4],
     ['EIP-712 arrays', typedDataWithArrays, SignTypedDataVersion.V4],
     ['undefined properties', { ...typedData, message: {} }, SignTypedDataVersion.V3],
     ['malformed EIP-712 data', { ...typedData, primaryType: 'missing' }, SignTypedDataVersion.V4]

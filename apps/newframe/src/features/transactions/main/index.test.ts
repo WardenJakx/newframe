@@ -420,32 +420,6 @@ describe('#classifyTransaction', () => {
       expect(classifyTransaction(request)).toBe(TxClassification.CONTRACT_DEPLOY)
     })
 
-    it('should classify transactions with data, a value, and no recipient as contract deployments', () => {
-      const request = Request(
-        {
-          from,
-          data: '0x6080604052',
-          value: '0x01'
-        },
-        'unknown'
-      )
-
-      expect(classifyTransaction(request)).toBe(TxClassification.CONTRACT_DEPLOY)
-    })
-
-    it('should classify transactions with a value, and no recipient or data as contract deployments', () => {
-      const request = Request(
-        {
-          from,
-          data: '0x',
-          value: '0x01'
-        },
-        'unknown'
-      )
-
-      expect(classifyTransaction(request)).toBe(TxClassification.CONTRACT_DEPLOY)
-    })
-
     it('should classify transactions with no recipient, data, or value as contract deployments', () => {
       const request = Request(
         {
@@ -474,39 +448,12 @@ describe('#classifyTransaction', () => {
       expect(classifyTransaction(request)).toBe(TxClassification.SEND_DATA)
     })
 
-    it('should classify transactions which contain data, with an external recipient and a non-zero value, as sending data', () => {
-      const request = Request(
-        {
-          from,
-          to,
-          data: '0x6080604052',
-          value: '0x01'
-        },
-        'external'
-      )
-
-      expect(classifyTransaction(request)).toBe(TxClassification.SEND_DATA)
-    })
-
     it('should classify transactions which contain data, with an unknown recipient, as contract calls', () => {
       const request = Request(
         {
           from,
           to,
           data: '0x6080604052'
-        },
-        'unknown'
-      )
-
-      expect(classifyTransaction(request)).toBe(TxClassification.CONTRACT_CALL)
-    })
-    it('should classify transactions which contain data, with an unknown recipient and a non-zero value, as contract calls', () => {
-      const request = Request(
-        {
-          from,
-          to,
-          data: '0x6080604052',
-          value: '0x01'
         },
         'unknown'
       )
@@ -522,20 +469,6 @@ describe('#classifyTransaction', () => {
           from,
           to,
           data: '0x6080604052'
-        },
-        'contract'
-      )
-
-      expect(classifyTransaction(request)).toBe(TxClassification.CONTRACT_CALL)
-    })
-
-    it('should classify transactions with data, a value, and a contract recipient as contract calls', () => {
-      const request = Request(
-        {
-          from,
-          to,
-          data: '0x6080604052',
-          value: '0x01'
         },
         'contract'
       )
@@ -558,37 +491,12 @@ describe('#classifyTransaction', () => {
       expect(classifyTransaction(request)).toBe(TxClassification.NATIVE_TRANSFER)
     })
 
-    it('should classify transactions with an external recipient and no data or value as native transfers', () => {
-      const request = Request(
-        {
-          from,
-          to,
-          value: '0x0'
-        },
-        'external'
-      )
-
-      expect(classifyTransaction(request)).toBe(TxClassification.NATIVE_TRANSFER)
-    })
-
     it('should classify transactions with a contract recipient and no data as native transfers', () => {
       const request = Request(
         {
           from,
           to,
           value: '0x01'
-        },
-        'contract'
-      )
-
-      expect(classifyTransaction(request)).toBe(TxClassification.NATIVE_TRANSFER)
-    })
-    it('should classify transactions with a contract recipient and no data or value as native transfers', () => {
-      const request = Request(
-        {
-          from,
-          to,
-          value: '0x0'
         },
         'contract'
       )

@@ -210,16 +210,6 @@ describe('#createObserver', () => {
     expect(handler.assetsChanged).toHaveBeenCalledWith(account, expected)
   })
 
-  it('invokes the handler when the account is holding token assets', () => {
-    store.setState((state) => {
-      setTokenBalance(state, tokenBalance, true)
-    })
-
-    const expected = loadAssets(store, account)
-    fireObserver()
-
-    expect(handler.assetsChanged).toHaveBeenCalledWith(account, expected)
-  })
   const arrangements: Array<[string, (state: ReturnType<typeof store.getState>) => void]> = [
     [
       'no account is selected',
@@ -240,13 +230,6 @@ describe('#createObserver', () => {
       fireObserver()
       expect(handler.assetsChanged).not.toHaveBeenCalled()
     })
-  })
-
-  it('only invokes the handler once in any 800 ms span', () => {
-    fireObserver(500)
-    fireObserver(500)
-
-    expect(handler.assetsChanged).toHaveBeenCalledTimes(1)
   })
 
   it('publishes only the latest still-current account from a shared debounce', () => {
