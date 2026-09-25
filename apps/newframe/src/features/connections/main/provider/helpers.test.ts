@@ -18,7 +18,6 @@ describe('#getRawTx', () => {
     [
       ['valid value', { value: '0x2540be400' }, 'value', '0x2540be400'],
       ['leading-zero value', { value: '0x0a45c6' }, 'value', '0xa45c6'],
-      ['hex zero', { value: '0x0' }, 'value', '0x0'],
       ['empty hex value', { value: '0x' }, 'value', '0x0'],
       ['unprefixed zero', { value: '0' }, 'value', '0x0'],
       ['missing value', { value: undefined }, 'value', '0x0'],

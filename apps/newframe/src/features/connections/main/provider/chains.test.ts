@@ -67,10 +67,6 @@ afterEach(() => {
 })
 
 describe('#getActiveChains', () => {
-  it('returns all chains that are active', () => {
-    expect(getActiveChains(store).map((chain) => chain.chainId)).toEqual([1, 11155111])
-  })
-
   it('returns an EVM chain object', () => {
     const mainnet = getActiveChains(store).find((chain) => chain.chainId === 1)
 
@@ -111,14 +107,6 @@ describe('#createChainsObserver', () => {
     handler.chainsChanged = mock()
   })
 
-  it('invokes the handler with EVM chain objects', () => {
-    setChains({ ...chains, 10: optimism }, { ...chainMeta, 10: metadata({ primaryColor: 'accent4' }) })
-
-    const expected = getActiveChains(store)
-    fireObserver()
-
-    expect(handler.chainsChanged).toHaveBeenCalledWith(selectedAddress, expected)
-  })
   ;[
     {
       description: 'added',

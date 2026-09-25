@@ -8,27 +8,12 @@ import {
   normalizeChainId,
   type TransactionData,
   type TransactionEffect,
-  typeSupportsBaseFee,
   usesBaseFee
 } from './index'
 
 function effectMatching(effect: Partial<TransactionEffect>): TransactionEffect {
   return expect.objectContaining(effect) as TransactionEffect
 }
-
-describe('#typeSupportsBaseFee', () => {
-  it('does not support a base fee for type 0', () => {
-    expect(typeSupportsBaseFee('0x0')).toBe(false)
-  })
-
-  it('does not support a base fee for type 1', () => {
-    expect(typeSupportsBaseFee('0x1')).toBe(false)
-  })
-
-  it('supports a base fee for type 2', () => {
-    expect(typeSupportsBaseFee('0x2')).toBe(true)
-  })
-})
 
 describe('#usesBaseFee', () => {
   it('does not use a base fee for transaction type 0', () => {

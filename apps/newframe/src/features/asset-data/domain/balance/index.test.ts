@@ -11,7 +11,7 @@ import {
 } from './index'
 
 describe('#createBalance', () => {
-  it('creates a balance with an unknown price when no quote is available', () => {
+  it('creates an unpriced balance when no quote is available', () => {
     const quote = undefined
     const balance = createBalance(
       {
@@ -27,59 +27,8 @@ describe('#createBalance', () => {
     )
 
     expect(balance.price).toBe('?')
-  })
-
-  it('creates a balance with no price change data when no quote is available', () => {
-    const quote = undefined
-    const balance = createBalance(
-      {
-        address: '0x0000000000000000000000000000000000000001',
-        balance: '0x2ed3afa800',
-        chainId: 1,
-        decimals: 18,
-        displayBalance: '',
-        name: 'Token',
-        symbol: 'TKN'
-      },
-      quote
-    )
-
     expect(balance.priceChange).toBeFalsy()
-  })
-
-  it('creates a balance with zero total value when no quote is available', () => {
-    const quote = undefined
-    const balance = createBalance(
-      {
-        address: '0x0000000000000000000000000000000000000001',
-        balance: '0x2ed3afa800',
-        chainId: 1,
-        decimals: 18,
-        displayBalance: '',
-        name: 'Token',
-        symbol: 'TKN'
-      },
-      quote
-    )
-
     expect(balance.totalValue).toBe(0)
-  })
-
-  it('creates a balance with an unknown display value when no quote is available', () => {
-    const quote = undefined
-    const balance = createBalance(
-      {
-        address: '0x0000000000000000000000000000000000000001',
-        balance: '0x2ed3afa800',
-        chainId: 1,
-        decimals: 18,
-        displayBalance: '',
-        name: 'Token',
-        symbol: 'TKN'
-      },
-      quote
-    )
-
     expect(balance.displayValue).toBe('?')
   })
 })
@@ -101,25 +50,21 @@ describe('#sortByTotalValue', () => {
       b as unknown as Parameters<typeof byTotalValue>[1]
     )
 
-  it('should sort balances in descending order by total value', () => {
+  it('sorts by total value, then balance', () => {
     const values = [10, 100, 60]
-    const unsorted = values.map((value) => mockBalance(value))
+    expect(
+      values
+        .map((value) => mockBalance(value))
+        .sort(compareMockBalances)
+        .map((b) => b.totalValue)
+    ).toStrictEqual([100, 60, 10])
+    expect(
+      values
+        .map((value) => mockBalance(10, value))
+        .sort(compareMockBalances)
+        .map((b) => b.balance)
+    ).toStrictEqual([100, 60, 10])
 
-    const sortedValues = unsorted.sort(compareMockBalances).map((b) => b.totalValue)
-
-    expect(sortedValues).toStrictEqual([100, 60, 10])
-  })
-
-  it('should sort balances in descending order by balance', () => {
-    const values = [10, 100, 60]
-    const unsorted = values.map((value) => mockBalance(10, value))
-
-    const sortedValues = unsorted.sort(compareMockBalances).map((b) => b.balance)
-
-    expect(sortedValues).toStrictEqual([100, 60, 10])
-  })
-
-  it('should sort balances in descending order by totalValue and balance', () => {
     const bal1 = mockBalance(10, 20)
     const bal2 = mockBalance(100, 990)
     const bal3 = mockBalance(0, 1000)
@@ -133,25 +78,16 @@ describe('#sortByTotalValue', () => {
 })
 
 describe('#isLowValueTokenBalance', () => {
-  it('does not treat balances with unknown prices as low value', () => {
+  it('only treats priced zero-value balances as low value', () => {
     expect(isLowValueTokenBalance({ totalValue: 0, hasPrice: false })).toBe(false)
-  })
-
-  it('treats priced zero-value balances as low value', () => {
     expect(isLowValueTokenBalance({ totalValue: 0, hasPrice: true })).toBe(true)
   })
 })
 
 describe('#formatBalanceNotionalValue', () => {
-  it('displays an unknown value for balances without a price', () => {
+  it('formats unknown, dust, and priced balances', () => {
     expect(formatBalanceNotionalValue({ totalValue: 0, hasPrice: false })).toBe('—')
-  })
-
-  it('keeps the low-value display for priced dust balances', () => {
     expect(formatBalanceNotionalValue({ totalValue: 0, hasPrice: true })).toBe('<$0.01')
-  })
-
-  it('formats priced balances with cents', () => {
     expect(formatBalanceNotionalValue({ totalValue: 12.345, hasPrice: true })).toBe('$12.34')
   })
 })
