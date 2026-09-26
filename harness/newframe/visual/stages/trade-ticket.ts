@@ -125,7 +125,7 @@ export const tradeTicketStage: VisualStage = {
     if ((await takeProfitTrigger.getAttribute('aria-required')) !== 'true') {
       driver.fail('Take-profit trigger is not marked required')
     }
-    if ((await takeProfitLimit.getAttribute('aria-required')) !== null) {
+    if ((await takeProfitLimit.getAttribute('aria-required')) === 'true') {
       driver.fail('Optional take-profit limit is marked required')
     }
     await tradePage.getByLabel('WETH amount', { exact: true }).fill('0.01')

@@ -1,12 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, jest as timers, spyOn, type Mock } from 'bun:test'
 
-import { JsonRpcProvider, Wallet } from 'ethers'
+import { Interface, JsonRpcProvider, Wallet } from 'ethers'
 
 import {
   FLASH_ANVIL_CHAIN_ID,
   FLASH_BASE_CHAIN_ID,
   FLASH_BASE_USDC_ADDRESS,
   FLASH_BASE_WETH_ADDRESS,
+  FLASH_NATIVE_ETH_TOKEN_ADDRESS,
   FLASH_USDC_ADDRESS,
   FLASH_WETH_ADDRESS
 } from '../../src/features/transactions/trade/domain/constants'
@@ -560,6 +561,29 @@ describe('local trade service handler', () => {
     expect(sendTransaction.mock.calls).toHaveLength(1)
     expect(lookup).toMatchObject({ normalizedStatus: 'filled', open: false, cancellable: false })
     expect(lookup.fillTransactionHash).toBe(`0x${'1'.repeat(64)}`)
+  })
+
+  it('uses the settlement contract native token address for ETH output', async () => {
+    const request = quoteRequest({ contraAsset: FLASH_NATIVE_ETH_TOKEN_ADDRESS })
+    const quoted = await requestQuote({ contraAsset: FLASH_NATIVE_ETH_TOKEN_ADDRESS })
+    const submittedResponse = await post('/v1/order', {
+      ...request,
+      targetAsset: quoted.body.targetAsset,
+      contraAsset: quoted.body.contraAsset,
+      quoteId: quoted.body.quoteId,
+      userSignature: '0xorder-signature',
+      evmOrderTypedData: quoted.body.evm.orderTypedData
+    })
+    expect(submittedResponse.status).toBe(200)
+
+    timers.advanceTimersByTime(3_000)
+    await Promise.resolve()
+    const transaction = sendTransaction.mock.calls[0]?.[0]
+    const settlement = new Interface([
+      'function swapExactInput(address payer, address recipient, address inputToken, address outputToken, uint256 inputAmount, uint256 outputAmount)'
+    ])
+    const call = settlement.parseTransaction({ data: String(transaction.data) })
+    expect(call?.args.outputToken).toBe('0x0000000000000000000000000000000000000000')
   })
 
   it('returns clear errors for unknown quote submits and unsupported quote assets', async () => {

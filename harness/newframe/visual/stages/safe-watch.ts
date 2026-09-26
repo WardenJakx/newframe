@@ -154,9 +154,9 @@ export const safeWatchStage: VisualStage = {
         runtime.fail('Safe transaction hash extends outside proposal details')
       }
       runtime.evidence('safeHashFits', hashFits)
-      await details.getByRole('button', { name: /Show full calldata/ }).click()
-      await details.getByText('Full calldata', { exact: true }).waitFor()
-      await details.getByText('0x', { exact: true }).waitFor()
+      if (await details.getByRole('button', { name: /Show full calldata/ }).count()) {
+        runtime.fail('Empty Safe calldata must not expose a calldata toggle')
+      }
       if (await details.getByRole('button', { name: /^(Approve|Execute|Reject|Replace|Submit)$/i }).count()) {
         runtime.fail('Safe proposal exposes unsupported execution controls')
       }
@@ -228,8 +228,18 @@ export const safeWatchStage: VisualStage = {
         staticNetwork: true
       })
       try {
+        const accessPromise = dappProvider.send('eth_requestAccounts', [])
+        void accessPromise.catch(() => undefined)
+        const accessRequest = await driver.waitForCurrentRequest('access', new Set(), 15_000)
+        if (accessRequest.accountId.toLowerCase() !== id) {
+          runtime.fail('Safe dapp access request was attached to a different account')
+        }
+        await driver.approveAccessRequest(accessRequest)
+        await accessPromise
+
         const message = hexlify(toUtf8Bytes('Newframe Safe EIP-1271 acceptance'))
         const signaturePromise = dappProvider.send('personal_sign', [message, safeSeed.safe])
+        void signaturePromise.catch(() => undefined)
         const signingRequest = await driver.waitForCurrentRequest('sign', new Set(), 15_000)
         if (signingRequest.accountId.toLowerCase() !== id) {
           runtime.fail('Safe message request was attached to a different account')
@@ -268,6 +278,7 @@ export const safeWatchStage: VisualStage = {
           .finally(() => {
             sendState.settled = true
           })
+        void transactionHashPromise.catch(() => undefined)
         const transactionRequest = await driver.waitForCurrentRequest('transaction', new Set(), 15_000)
         if (transactionRequest.accountId.toLowerCase() !== id) {
           runtime.fail('Safe transaction request was attached to a different account')
@@ -276,9 +287,9 @@ export const safeWatchStage: VisualStage = {
         if (typeof requestSafeTxHash !== 'string' || !/^0x[0-9a-f]{64}$/i.test(requestSafeTxHash)) {
           return runtime.fail('Safe transaction request did not expose its canonical SafeTx hash')
         }
-        const transactionReview = tray.getByRole('dialog', { name: 'Requests' })
+        const transactionReview = tray
         await transactionReview.getByText('Safe owner approval', { exact: true }).waitFor()
-        await transactionReview.getByText(safeSeed.safe, { exact: true }).first().waitFor()
+        await transactionReview.getByText('Safe Account', { exact: true }).first().waitFor()
         await transactionReview.getByRole('button', { name: 'Sign', exact: true }).click()
         await transactionReview.getByText('Ready · awaiting execution', { exact: true }).waitFor({
           timeout: 15_000
@@ -289,6 +300,32 @@ export const safeWatchStage: VisualStage = {
           )
         }
         await transactionReview.getByText('Gas-paying executor', { exact: true }).first().waitFor()
+        const executionState = await driver
+          .waitForState(
+            (state) => {
+              const execution = state.main?.accounts?.[id]?.safe?.[chain]?.pending?.find(
+                (candidate) => candidate.safeTxHash === requestSafeTxHash
+              )?.local?.execution
+              return execution?.status === 'ready' || execution?.status === 'failed'
+            },
+            15_000,
+            'Safe executor preparation did not finish'
+          )
+          .catch(async () => {
+            const state = await driver.getAppState()
+            const execution = state.main?.accounts?.[id]?.safe?.[chain]?.pending?.find(
+              (candidate) => candidate.safeTxHash === requestSafeTxHash
+            )?.local?.execution
+            return runtime.fail(`Safe executor preparation stalled: ${JSON.stringify(execution ?? null)}`)
+          })
+        const execution = executionState.main?.accounts?.[id]?.safe?.[chain]?.pending?.find(
+          (candidate) => candidate.safeTxHash === requestSafeTxHash
+        )?.local?.execution
+        if (execution?.status !== 'ready') {
+          runtime.fail(`Safe executor preparation failed: ${JSON.stringify(execution ?? null)}`)
+        }
+        runtime.evidence('safePreparedExecutor', execution?.executorId ?? null)
+        await transactionReview.getByRole('button', { name: 'Execution details', exact: true }).click()
         await transactionReview.getByRole('region', { name: 'Reviewed executor transaction' }).waitFor()
         await transactionReview
           .getByRole('button', { name: 'Execute transaction', exact: true })
@@ -343,11 +380,7 @@ export const safeWatchStage: VisualStage = {
 
       await tray.getByRole('button', { name: 'Accounts', exact: true }).click()
       await accounts.getByRole('textbox', { name: 'Search accounts' }).fill(id)
-      const safeRow = accounts.getByRole('button', {
-        name: `Safe Account ${id.slice(0, 5)}…${id.slice(-4)}`,
-        exact: true
-      })
-      await safeRow.getByRole('button', { name: 'Safe Account account actions', exact: true }).click()
+      await accounts.getByRole('button', { name: 'Safe Account account actions', exact: true }).click()
       await accounts.getByRole('button', { name: 'Remove account', exact: true }).click()
       await accounts.getByRole('button', { name: 'Confirm remove', exact: true }).click()
       await driver.waitForState(

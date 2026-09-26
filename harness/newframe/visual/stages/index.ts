@@ -3,6 +3,7 @@ import { activityStage } from './activity.ts'
 import { agentSessionStage } from './agent-session.ts'
 import { anvilPositionsStage } from './anvil-positions.ts'
 import { harnessAccountStage } from './harness-account.ts'
+import { harnessSignerStage } from './harness-signer.ts'
 import { lockScreenStage } from './lock-screen.ts'
 import { networkOnboardingStage } from './network-onboarding.ts'
 import { resetStateStage } from './reset-state.ts'
@@ -25,6 +26,7 @@ export const visualStages: VisualStage[] = [
   unlockStage,
   trayReadinessStage,
   resetStateStage,
+  harnessSignerStage,
   unlockedHomeStage,
   trayOverlaysStage,
   vitalikPositionsStage,

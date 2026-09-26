@@ -38,6 +38,10 @@ export const sendStage: VisualStage = {
     const vitalikBalanceBefore = await anvil.balance(vitalik.address)
     const beforeSubmit = await driver.getAppState()
     const senderAccountId = beforeSubmit.main?.currentAccount
+    const senderName = senderAccountId ? beforeSubmit.main?.accounts?.[senderAccountId]?.name : undefined
+    if (!senderName) {
+      runtime.fail('Send account is missing its display name')
+    }
     const priorOperationIds = new Set(Object.keys(beforeSubmit.operations ?? {}))
     await sendPage.getByText('Proceed', { exact: true }).click()
 
@@ -144,7 +148,7 @@ export const sendStage: VisualStage = {
       runtime.fail('The redundant From row must not appear in transaction details')
     }
 
-    const signerCopy = tray.getByRole('button', { name: 'Copy address for testname', exact: true })
+    const signerCopy = tray.getByRole('button', { name: `Copy address for ${senderName}`, exact: true })
     await signerCopy.waitFor({ state: 'visible' })
     if ((await signerCopy.locator('..').textContent())?.includes('hot signer')) {
       runtime.fail('Signing with must use the account name instead of the signer type')
