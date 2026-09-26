@@ -6,14 +6,13 @@ import type {
   CommandResult,
   ResultForQuery
 } from '../../../apps/newframe/src/app/contracts/operations.ts'
-import { anvilChainId } from '../core/config.ts'
+import { anvilChainId, harnessAccountAddress } from '../core/config.ts'
 import { sleep, withTimeout } from '../core/utils.ts'
 import type { AnvilClient } from './anvil-client.ts'
 import type { VisualHarnessRuntime } from './runtime.ts'
 import type { AccountInfo, AppState, CurrentRequest, FlashOrder, HarnessAccounts } from './types.ts'
 
 export const harnessOrigin = 'newframe-contracts.local'
-export const harnessAccountAddress = '0x35f9179059a691d8beecf82fe112f7277e018588'
 export const nativeCurrencyAddress = '0x0000000000000000000000000000000000000000'
 export const wethAddress = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
 export const oneEthWei = 1_000_000_000_000_000_000n
@@ -378,17 +377,20 @@ export class NewframeDriver {
     await dialog.waitFor({ state: 'visible' })
     await dialog.getByRole('textbox', { name: 'Search accounts' }).fill(searchValue)
 
-    const displayName = account.ensName ?? account.name ?? ''
-    const shortAddress = `${account.address.slice(0, 5)}…${account.address.slice(-4)}`
-    const escapedName = (displayName || shortAddress).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const row = dialog.getByRole('button', { name: new RegExp(escapedName, 'i') }).first()
+    const shortAddress = `${account.address.slice(0, 8)}...${account.address.slice(-6)}`
+    const row = dialog.getByRole('button', { name: new RegExp(shortAddress.replaceAll('.', '\\.'), 'i') })
     await row.waitFor({ state: 'visible', timeout: 10_000 })
 
     if (screenshotName) {
       await this.screenshot(this.tray, screenshotName)
     }
 
-    await row.click()
+    const currentAccount = (await this.getAppState()).main?.currentAccount
+    if (currentAccount?.toLowerCase() === account.id.toLowerCase()) {
+      await dialog.getByRole('button', { name: 'Close accounts' }).click()
+    } else {
+      await row.click({ position: { x: 65, y: 30 } })
+    }
 
     await dialog.waitFor({ state: 'hidden', timeout: 10_000 })
     await this.waitForSelectedAccount(account)

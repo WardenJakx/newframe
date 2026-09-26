@@ -363,7 +363,7 @@ export function useSafeTransactionActions({
     status === 'failed' || execution?.status === 'failed' || execution?.status === 'cancelled'
   const canonicalReviewed =
     execution &&
-    execution.executorId === selectedExecutorId &&
+    execution.executorId?.toLowerCase() === selectedExecutorId?.toLowerCase() &&
     ['ready', 'executing', 'submitted'].includes(execution.status)
       ? execution.transaction
       : undefined

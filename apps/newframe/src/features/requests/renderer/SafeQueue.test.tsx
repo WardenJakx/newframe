@@ -501,7 +501,7 @@ it('defaults a sole disconnected signing account and retains it when the signer 
 })
 
 it('moves a threshold-complete proposal to a separately reviewed executor action', async () => {
-  const firstAddress = `0x${'2'.repeat(40)}`
+  const firstAddress = `0x${'abcdef1234'.repeat(4)}`
   const secondAddress = `0x${'3'.repeat(40)}`
   const first = ownerAccount(firstAddress, { name: 'Ledger owner', signerType: 'ledger' })
   const second = ownerAccount(secondAddress, { name: 'Other owner', address: secondAddress })
@@ -551,7 +551,7 @@ it('moves a threshold-complete proposal to a separately reviewed executor action
     publication: { status: 'published' },
     execution: {
       status: 'ready',
-      executorId: first.accountId,
+      executorId: `0x${first.accountId.slice(2).toUpperCase()}`,
       transaction: reviewedTransaction(first.accountId)
     }
   }

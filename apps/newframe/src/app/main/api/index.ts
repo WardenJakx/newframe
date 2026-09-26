@@ -50,6 +50,9 @@ export function createProductionApiServer(
   return createApiServer({
     http: httpTransport,
     ws: wsTransport,
-    createServer: (handler) => http.createServer(handler)
+    createServer: (handler) => http.createServer(handler),
+    ...(process.env.NEWFRAME_VISUAL_HARNESS === 'true'
+      ? { port: Number(process.env.NEWFRAME_HARNESS_RPC_PORT ?? 1249) }
+      : {})
   })
 }

@@ -4,7 +4,8 @@ Small Foundry harness project for local Newframe signing and transaction-flow re
 
 It gives us a deterministic Anvil chain with:
 
-- harness account: `0x35f9179059a691d8beecf82fe112f7277e018588`
+- regular harness account: `0x35f9179059a691d8beecf82fe112f7277e018588`
+- visual harness signer: Anvil's third default account (`0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc`)
 - MockUSDC etched at canonical mainnet USDC: `0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48`
 - TestContract etched at: `0x0000000000000000000000000000000000001337`
 
@@ -23,7 +24,7 @@ bun run dev
 Or start the visual harness from the repository root:
 
 ```sh
-bun run visual:harness:newframe
+bun --env-file=apps/newframe/.env run visual:harness:newframe
 ```
 
 Both start Anvil on `127.0.0.1:8545` with `--block-time 1`, fund the harness account with 100 ETH,

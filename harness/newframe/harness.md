@@ -151,6 +151,11 @@ with no generic channel or RPC fallback. State assertions run in Electron's main
 canonical snapshot; that getter exists only when the visual harness launches the dev profile with
 `NEWFRAME_VISUAL_HARNESS=true` and is never exposed to renderers.
 
+The visual harness imports Anvil's third default account as its signer when needed. Set
+`NEWFRAME_HARNESS_PRIVATE_KEY` to use another local test key. It funds that account on the local chain and
+serves the visual app RPC on port `1249` by default (`NEWFRAME_HARNESS_RPC_PORT` overrides it), separate
+from the regular development RPC on port `1248`.
+
 The visual harness writes `summary.json` under
 `${NEWFRAME_HARNESS_OUTPUT_DIR:-/tmp/newframe-visual-harness}`. The summary records overall duration,
 per-stage duration, screenshots, contract evidence such as transaction/order/request identifiers, and

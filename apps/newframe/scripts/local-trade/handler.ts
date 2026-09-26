@@ -17,7 +17,6 @@ import {
   FLASH_BRACKET_ORDER_TYPE,
   FLASH_LIMIT_ORDER_TYPE,
   FLASH_MARKET_ORDER_TYPE,
-  FLASH_NATIVE_ETH_TOKEN_ADDRESS,
   FLASH_STOP_LOSS_ORDER_TYPE,
   FLASH_STOP_ORDER_TYPE,
   FLASH_TAKE_PROFIT_ORDER_TYPE,
@@ -472,7 +471,7 @@ function settlementInputToken(spentAsset: FlashAsset) {
 
 function settlementOutputToken(receiveAsset: FlashAsset) {
   if (receiveAsset.isNative) {
-    return FLASH_NATIVE_ETH_TOKEN_ADDRESS
+    return '0x0000000000000000000000000000000000000000'
   }
   if (!receiveAsset.address) {
     throw new Error(`Cannot settle unsupported output asset ${receiveAsset.symbol}`)

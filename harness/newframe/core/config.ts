@@ -2,6 +2,8 @@ import { createRequire } from 'node:module'
 import path from 'node:path'
 import process from 'node:process'
 
+import { computeAddress, HDNodeWallet } from 'ethers'
+
 export const rootDir = path.resolve(import.meta.dirname, '../../..')
 export const appDir = path.join(rootDir, 'apps/newframe')
 export const contractsDir = path.join(rootDir, 'newframe-contracts')
@@ -24,7 +26,8 @@ export const ports = {
   cdp: Number(process.env.NEWFRAME_HARNESS_CDP_PORT ?? 9333),
   localTrade: Number(process.env.FLASH_LOCAL_TRADE_PORT ?? 8422),
   localSafe: positiveInteger(process.env.NEWFRAME_LOCAL_SAFE_PORT, 8423, 'local Safe port'),
-  newframeRpc: 1248
+  newframeRpc: 1248,
+  visualRpc: positiveInteger(process.env.NEWFRAME_HARNESS_RPC_PORT, 1249, 'visual RPC port')
 } as const
 
 export const anvilHost = process.env.NEWFRAME_HARNESS_ANVIL_HOST ?? process.env.ANVIL_HOST ?? '127.0.0.1'
@@ -42,11 +45,19 @@ export const anvilRpcUrl =
   process.env.NEWFRAME_HARNESS_ANVIL_RPC_URL ??
   process.env.ANVIL_RPC_URL ??
   `http://${anvilHost}:${ports.anvil}`
-export const newframeRpcUrl = `http://127.0.0.1:${ports.newframeRpc}`
+export const newframeRpcUrl = `http://127.0.0.1:${ports.visualRpc}`
 export const localTradeServiceUrl = `http://127.0.0.1:${ports.localTrade}`
 export const localTradeServiceHealthUrl = `${localTradeServiceUrl}/health`
 export const localSafeServiceUrl = `http://127.0.0.1:${ports.localSafe}`
 export const passwordEnvKeys = ['NEWFRAME_HARNESS_PASSWORD', 'FRAME_HARNESS_PASSWORD'] as const
+export const harnessAccountPrivateKey =
+  process.env.NEWFRAME_HARNESS_PRIVATE_KEY ??
+  HDNodeWallet.fromPhrase(
+    'test test test test test test test test test test test junk',
+    undefined,
+    "m/44'/60'/0'/0/2"
+  ).privateKey
+export const harnessAccountAddress = computeAddress(harnessAccountPrivateKey).toLowerCase()
 
 export function readHarnessPassword() {
   for (const key of passwordEnvKeys) {
@@ -82,6 +93,7 @@ export function newframeEnv(overrides: NodeJS.ProcessEnv = {}): Record<string, s
   })
 
   delete env.ELECTRON_RUN_AS_NODE
+  delete env.NEWFRAME_HARNESS_PRIVATE_KEY
   for (const key of passwordEnvKeys) {
     delete env[key]
   }

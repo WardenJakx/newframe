@@ -31,7 +31,6 @@ const artifacts = {
   weth: 'WETH9.sol/WETH9.json'
 } as const
 
-const harnessAccountAddress = process.env.HARNESS_ACCOUNT ?? '0x35f9179059a691d8beecf82fe112f7277e018588'
 const usdcAddress = process.env.USDC_ADDRESS ?? '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
 const wethAddress = process.env.WETH_ADDRESS ?? '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
 const mockFlashSettlementAddress =
@@ -165,7 +164,12 @@ async function deployMulticall3(provider: JsonRpcProvider, signer: NonceManager)
   }
 }
 
-async function assertSeeded(provider: JsonRpcProvider, usdc: Contract, weth: Contract) {
+async function assertSeeded(
+  provider: JsonRpcProvider,
+  usdc: Contract,
+  weth: Contract,
+  harnessAccountAddress: string
+) {
   const balances = await Promise.all([
     provider.getBalance(harnessAccountAddress),
     usdc.balanceOf(harnessAccountAddress) as Promise<bigint>,
@@ -201,7 +205,7 @@ async function assertSeeded(provider: JsonRpcProvider, usdc: Contract, weth: Con
   })
 }
 
-async function seedAnvil(signal: AbortSignal) {
+async function seedAnvil(signal: AbortSignal, harnessAccountAddress: string) {
   await runProcess('contracts build', 'forge', ['build'], signal)
   await waitForAnvil()
   throwIfAborted(signal, 'Anvil seed')
@@ -254,13 +258,15 @@ async function seedAnvil(signal: AbortSignal) {
       weth.getFunction('transfer').send(mockFlashSettlementAddress, settlementWethLiquidity),
       'settlement WETH transfer'
     )
-    await assertSeeded(provider, usdc, weth)
+    await assertSeeded(provider, usdc, weth, harnessAccountAddress)
     return await seedSafe(provider, signer, anvilChainId, harnessAccountAddress)
   } finally {
     managed.close()
   }
 }
 
-export function createSeedAnvilService() {
-  return new TaskService('anvil seed', seedAnvil)
+export function createSeedAnvilService(
+  harnessAccountAddress = process.env.HARNESS_ACCOUNT ?? '0x35f9179059a691d8beecf82fe112f7277e018588'
+) {
+  return new TaskService('anvil seed', (signal) => seedAnvil(signal, harnessAccountAddress))
 }

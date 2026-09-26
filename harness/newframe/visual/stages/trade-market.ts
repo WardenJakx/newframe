@@ -76,18 +76,27 @@ export const tradeMarketStage: VisualStage = {
     await driver.screenshot(tray, '21e-trade-market-sign-review.png')
     await driver.signCurrentSignature(signRequest, '21f-trade-market-sign-submitted.png')
 
-    const order = await driver.waitForFlashOrder(
+    const submittedOrder = await driver.waitForFlashOrder(
       (order) =>
-        order.orderType === 'market' &&
-        order.status === 'filled' &&
-        Boolean(order.orderId) &&
-        !existingOrderIds.has(order.orderId ?? ''),
+        order.orderType === 'market' && Boolean(order.orderId) && !existingOrderIds.has(order.orderId ?? ''),
       30_000,
-      'A newly submitted market Flash order did not fill'
+      'A newly submitted market Flash order did not appear'
     )
-    const orderId = order.orderId
+    const orderId = submittedOrder.orderId
     if (!orderId) {
       return driver.fail('The new market Flash order has no order id')
+    }
+    const order = await driver.waitForFlashOrder(
+      (candidate) =>
+        candidate.orderId === orderId &&
+        ['filled', 'rejected', 'cancelled', 'terminated', 'expired'].includes(candidate.status ?? ''),
+      30_000,
+      'A newly submitted market Flash order did not reach a terminal state'
+    )
+    if (order.status !== 'filled') {
+      return driver.fail(
+        `Market Flash order ${orderId} ended ${order.status}: ${JSON.stringify(order.rawStatusPayload ?? order.rawPayload)}`
+      )
     }
     const terminalState = await driver.waitForState(
       (state) => {

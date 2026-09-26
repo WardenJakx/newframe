@@ -105,6 +105,7 @@ export type CurrentRequest = AppRequest & {
 }
 
 export type AppAccount = AccountInfo & {
+  signer?: string
   safe?: Record<string, SafeDeployment>
   agentEnabled?: boolean
   requests?: Record<string, AppRequest>

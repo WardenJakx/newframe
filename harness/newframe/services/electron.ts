@@ -19,7 +19,11 @@ export function electronLaunchSettings(options: ElectronLaunchSettings = {}) {
   return {
     args,
     cwd: appDir,
-    env: newframeEnv(options.visualHarness ? { NEWFRAME_VISUAL_HARNESS: 'true' } : {}),
+    env: newframeEnv(
+      options.visualHarness
+        ? { NEWFRAME_VISUAL_HARNESS: 'true', NEWFRAME_HARNESS_RPC_PORT: String(ports.visualRpc) }
+        : {}
+    ),
     executablePath: electronExecutable()
   }
 }
@@ -65,7 +69,7 @@ export class ElectronApplicationService implements HarnessService<ElectronApplic
       return this.app
     }
 
-    await assertPortFree(ports.newframeRpc, 'Newframe RPC')
+    await assertPortFree(ports.visualRpc, 'Newframe visual RPC')
 
     const settings = electronLaunchSettings({ visualHarness: true })
     const app = await this.launcher.launch({

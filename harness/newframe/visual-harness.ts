@@ -3,7 +3,7 @@ import process from 'node:process'
 
 import { _electron as electron, type ElectronApplication } from 'playwright-core'
 
-import { appDir, electronExecutable, readHarnessPassword } from './core/config.ts'
+import { appDir, electronExecutable, harnessAccountAddress, readHarnessPassword } from './core/config.ts'
 import { expectSuccessfulExit, ProcessService } from './core/process-service.ts'
 import { ensureCommand, runCommand } from './core/process.ts'
 import { HarnessRuntime, installSignalHandlers } from './core/service.ts'
@@ -52,7 +52,7 @@ async function bootstrap(services: HarnessRuntime, visual: VisualHarnessRuntime)
   await services.start(createAnvilService())
 
   const [seed, compile] = await Promise.all([
-    services.start(createSeedAnvilService()),
+    services.start(createSeedAnvilService(harnessAccountAddress)),
     services.start(buildCommand('newframe compile', ['bun', 'run', 'compile'], appDir))
   ])
   await services.watch(Promise.all([seed.completed, expectSuccessfulExit(compile, 'newframe compile')]))
