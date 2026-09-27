@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "Preserve",
+    "moduleResolution": "Bundler",
+    "lib": ["ESNext"],
+    "types": ["bun"],
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts", "../newframe/src/types/**/*.d.ts"]
+}

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, jest as timers, spyOn, type Mock } from 'bun:test'
 
+import { SignTypedDataVersion, signTypedData } from '@metamask/eth-sig-util'
 import { Interface, JsonRpcProvider, Wallet } from 'ethers'
 
 import {
@@ -13,7 +14,8 @@ import {
 } from '../../src/features/transactions/trade/domain/constants'
 import { handleLocalTradeRequest, resetLocalTradeState, subscribeLocalTradeOrders } from './handler'
 
-const FUNDER_ADDRESS = '0x0000000000000000000000000000000000000001'
+const funderWallet = new Wallet('0x59c6995e998f97a5a0044976f094538a2f7d1c9f4e35b7b4a39e621ce6b38a13')
+const FUNDER_ADDRESS = funderWallet.address
 const ZERO_ALLOWANCE = `0x${'0'.repeat(64)}`
 
 interface OrderView {
@@ -77,6 +79,32 @@ function parseOrderTypedData(value: string): OrderTypedDataJson {
   return { domain: { chainId }, message: { quoteId, settlementAsset } }
 }
 
+async function signOrder(typedDataJson: string) {
+  const typedData = JSON.parse(typedDataJson) as {
+    domain: Record<string, unknown>
+    types: Record<string, Array<{ name: string; type: string }>>
+    message: Record<string, unknown>
+  }
+  const { EIP712Domain: _domain, ...types } = typedData.types
+  return funderWallet.signTypedData(typedData.domain, types, typedData.message)
+}
+
+function signOrderAsNewframe(typedDataJson: string) {
+  const data = JSON.parse(typedDataJson) as Extract<
+    Parameters<typeof signTypedData>[0]['data'],
+    { primaryType: string }
+  >
+  return signTypedData({
+    privateKey: Buffer.from(funderWallet.privateKey.slice(2), 'hex'),
+    data,
+    version: SignTypedDataVersion.V4
+  })
+}
+
+function signCancel(orderId: string) {
+  return funderWallet.signMessage(`Definitive Flash v1 — Cancel Order\nOrder: ${orderId}`)
+}
+
 function quoteRequest(overrides: Record<string, unknown> = {}) {
   return {
     contraAsset: FLASH_USDC_ADDRESS,
@@ -100,9 +128,9 @@ async function requestQuote(overrides: Record<string, unknown> = {}) {
 }
 
 const get = (path: string) => handleLocalTradeRequest(new Request(`http://127.0.0.1:8422${path}`))
-const post = (path: string, body: unknown) =>
+const post = (path: string, body: unknown, headers?: HeadersInit) =>
   handleLocalTradeRequest(
-    new Request(`http://127.0.0.1:8422${path}`, { method: 'POST', body: JSON.stringify(body) })
+    new Request(`http://127.0.0.1:8422${path}`, { method: 'POST', headers, body: JSON.stringify(body) })
   )
 
 async function json(response: Response) {
@@ -248,7 +276,7 @@ describe('local trade service handler', () => {
       targetAsset: quoted.body.targetAsset,
       contraAsset: quoted.body.contraAsset,
       quoteId: quoted.body.quoteId,
-      userSignature: '0xorder-signature',
+      userSignature: await signOrder(quoted.body.evm.orderTypedData),
       evmOrderTypedData: quoted.body.evm.orderTypedData
     }
     const accepted = await post('/v1/order', submitBody)
@@ -344,7 +372,7 @@ describe('local trade service handler', () => {
       targetAsset: quoted.body.targetAsset,
       contraAsset: quoted.body.contraAsset,
       quoteId: quoted.body.quoteId,
-      userSignature: '0xorder-signature',
+      userSignature: await signOrder(quoted.body.evm.orderTypedData),
       evmOrderTypedData: quoted.body.evm.orderTypedData
     }
     const accepted = await post('/v1/order', submitBody)
@@ -374,6 +402,85 @@ describe('local trade service handler', () => {
     expect((await json(malformedQuoteReference)).message).toBe('Unknown local Flash quote: ')
   })
 
+  it('rejects wrong signers and expired quotes, and deduplicates a submit key', async () => {
+    const quoted = await requestQuote({ limitNotionalPrice: '2500', orderType: 'limit' })
+    const submitBody = {
+      ...quoteRequest({ limitNotionalPrice: '2500', orderType: 'limit' }),
+      targetAsset: quoted.body.targetAsset,
+      contraAsset: quoted.body.contraAsset,
+      quoteId: quoted.body.quoteId,
+      evmOrderTypedData: quoted.body.evm.orderTypedData,
+      userSignature: await signOrder(quoted.body.evm.orderTypedData)
+    }
+    const typedData = JSON.parse(quoted.body.evm.orderTypedData) as {
+      domain: Record<string, unknown>
+      types: Record<string, Array<{ name: string; type: string }>>
+      message: Record<string, unknown>
+    }
+    const { EIP712Domain: _domain, ...orderTypes } = typedData.types
+    const wrongSigner = await post('/v1/order', {
+      ...submitBody,
+      userSignature: await Wallet.createRandom().signTypedData(
+        typedData.domain,
+        orderTypes,
+        typedData.message
+      )
+    })
+    expect(wrongSigner.status).toBe(400)
+
+    const first = await post('/v1/order', submitBody, { 'Idempotency-Key': 'test-submit' })
+    const second = await post('/v1/order', submitBody, { 'Idempotency-Key': 'test-submit' })
+    expect(first.status).toBe(200)
+    const firstOrderId = (await json(first)).orderId
+    expect(firstOrderId).toBe((await json(second)).orderId)
+
+    const anotherQuote = await requestQuote({ limitNotionalPrice: '2500', orderType: 'limit' })
+    const reused = await post(
+      '/v1/order',
+      {
+        ...submitBody,
+        quoteId: anotherQuote.body.quoteId,
+        evmOrderTypedData: anotherQuote.body.evm.orderTypedData,
+        userSignature: await signOrder(anotherQuote.body.evm.orderTypedData)
+      },
+      { 'Idempotency-Key': 'test-submit' }
+    )
+    expect(reused.status).toBe(409)
+
+    timers.setSystemTime(Date.parse(quoted.body.expiresAt) + 1)
+    const replay = await post('/v1/order', submitBody, { 'Idempotency-Key': 'test-submit' })
+    expect(replay.status).toBe(200)
+    expect((await json(replay)).orderId).toBe(firstOrderId)
+    const changedReplay = await post(
+      '/v1/order',
+      { ...submitBody, userSignature: '0xwrong' },
+      { 'Idempotency-Key': 'test-submit' }
+    )
+    expect(changedReplay.status).toBe(409)
+    const expired = await post('/v1/order', submitBody)
+    expect(expired.status).toBe(400)
+    expect((await json(expired)).message).toContain('expired')
+  })
+
+  it('accepts a quote signed by Newframe hot signer V4', async () => {
+    const quoted = await requestQuote({ limitNotionalPrice: '2500', orderType: 'limit' })
+    const typedData = JSON.parse(quoted.body.evm.orderTypedData) as { types: Record<string, unknown> }
+    expect(typedData.types.EIP712Domain).toEqual([
+      { name: 'name', type: 'string' },
+      { name: 'version', type: 'string' },
+      { name: 'chainId', type: 'uint256' }
+    ])
+    const accepted = await post('/v1/order', {
+      ...quoteRequest({ limitNotionalPrice: '2500', orderType: 'limit' }),
+      targetAsset: quoted.body.targetAsset,
+      contraAsset: quoted.body.contraAsset,
+      quoteId: quoted.body.quoteId,
+      evmOrderTypedData: quoted.body.evm.orderTypedData,
+      userSignature: signOrderAsNewframe(quoted.body.evm.orderTypedData)
+    })
+    expect(accepted.status).toBe(200)
+  })
+
   it('mirrors official funder lookup and canonical cancellation requirements', async () => {
     const quoted = await requestQuote({ limitNotionalPrice: '2500', orderType: 'limit' })
     const submit = await post('/v1/order', {
@@ -381,7 +488,7 @@ describe('local trade service handler', () => {
       targetAsset: quoted.body.targetAsset,
       contraAsset: quoted.body.contraAsset,
       quoteId: quoted.body.quoteId,
-      userSignature: '0xorder-signature',
+      userSignature: await signOrder(quoted.body.evm.orderTypedData),
       evmOrderTypedData: quoted.body.evm.orderTypedData
     })
     const submitted = await json(submit)
@@ -393,13 +500,21 @@ describe('local trade service handler', () => {
       userSignature: '0xcancel'
     })
     const cancelMessage = `Definitive Flash v1 — Cancel Order\nOrder: ${orderId}`
-    const cancel = await post(`/v1/orders/${orderId}/cancel`, { cancelMessage, userSignature: '0xcancel' })
+    const cancel = await post(`/v1/orders/${orderId}/cancel`, {
+      cancelMessage,
+      userSignature: await signCancel(orderId)
+    })
+    const wrongSignerCancel = await post(`/v1/orders/${orderId}/cancel`, {
+      cancelMessage,
+      userSignature: await Wallet.createRandom().signMessage(cancelMessage)
+    })
 
     expect(submit.status).toBe(200)
     expect(missingFunder.status).toBe(400)
     expect(lookup.status).toBe(200)
     expect(wrongCancel.status).toBe(400)
     expect(cancel.status).toBe(200)
+    expect(wrongSignerCancel.status).toBe(400)
   })
 
   for (const direction of [
@@ -456,7 +571,7 @@ describe('local trade service handler', () => {
         targetAsset: quote.targetAsset,
         contraAsset: quote.contraAsset,
         bridgeQuoteId: quote.bridgeQuoteId,
-        userSignature: '0xorder-signature',
+        userSignature: await signOrder(quote.evm.orderTypedData),
         evmOrderTypedData: quote.evm.orderTypedData
       })
       const submitted = await json(submittedResponse)
@@ -489,7 +604,7 @@ describe('local trade service handler', () => {
       const cancelMessage = `Definitive Flash v1 — Cancel Order\nOrder: ${orderId}`
       const cancelResponse = await post(`/v1/orders/${orderId}/cancel`, {
         cancelMessage,
-        userSignature: '0xcancel'
+        userSignature: await signCancel(orderId)
       })
       const cancelled = await json(cancelResponse)
       expect(cancelResponse.status).toBe(200)
@@ -531,7 +646,7 @@ describe('local trade service handler', () => {
       targetAsset: first.body.targetAsset,
       contraAsset: first.body.contraAsset,
       bridgeQuoteId: first.body.bridgeQuoteId,
-      userSignature: '0xorder-signature',
+      userSignature: await signOrder(first.body.evm.orderTypedData),
       evmOrderTypedData: first.body.evm.orderTypedData
     })
 
@@ -545,7 +660,7 @@ describe('local trade service handler', () => {
       targetAsset: quoted.body.targetAsset,
       contraAsset: quoted.body.contraAsset,
       quoteId: quoted.body.quoteId,
-      userSignature: '0xorder-signature',
+      userSignature: await signOrder(quoted.body.evm.orderTypedData),
       evmOrderTypedData: quoted.body.evm.orderTypedData
     })
     const submitted = await json(submittedResponse)
@@ -571,7 +686,7 @@ describe('local trade service handler', () => {
       targetAsset: quoted.body.targetAsset,
       contraAsset: quoted.body.contraAsset,
       quoteId: quoted.body.quoteId,
-      userSignature: '0xorder-signature',
+      userSignature: await signOrder(quoted.body.evm.orderTypedData),
       evmOrderTypedData: quoted.body.evm.orderTypedData
     })
     expect(submittedResponse.status).toBe(200)

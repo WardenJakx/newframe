@@ -10,6 +10,7 @@
   "scripts": {
     "prepare": "husky",
     "newframe": "bun --cwd apps/newframe",
+    "cli": "bun apps/newframe-cli/src/index.ts",
     "extension": "bun --cwd apps/newframe-extension",
     "harness": "bun --cwd harness",
     "ui": "bun --cwd packages/ui",

@@ -1,10 +1,15 @@
+import { spawn } from 'node:child_process'
+import { chmod, copyFile, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
+
 import { verifyMessage, verifyTypedData } from 'ethers'
 
 import {
   FLASH_USDC_ADDRESS,
   FLASH_WETH_ADDRESS
 } from '../../../../apps/newframe/src/features/transactions/trade/domain/constants.ts'
-import { anvilChainId, localTradeServiceUrl, newframeRpcUrl } from '../../core/config.ts'
+import { anvilChainId, localTradeServiceUrl, newframeRpcUrl, rootDir } from '../../core/config.ts'
 import type { VisualStage } from '../types.ts'
 import { requireAccounts } from './helpers.ts'
 
@@ -12,149 +17,132 @@ const recipient = '0x000000000000000000000000000000000000a11c'
 
 type AgentCredentials = {
   sessionId: string
-  sessionToken: string
   account: string
   expiresAt: number
 }
 
-async function connectAgent() {
-  const response = await fetch(`${newframeRpcUrl}/agent/session`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      descriptor: {
-        name: 'Visual Harness Agent',
-        description: 'Exercises Newframe autonomous signing on the local Anvil network.'
-      },
-      durationSeconds: 600
+const cliPath = path.join(rootDir, 'apps/newframe-cli/src/index.ts')
+
+type CliContext = { stateDir: string }
+
+async function runCli(context: CliContext, args: string[]) {
+  const result = await runCliResult(context, args)
+  if (result.code !== 0) {
+    throw new Error(`Newframe CLI ${args.join(' ')} failed: ${result.stderr || result.stdout}`)
+  }
+  try {
+    return JSON.parse(result.stdout) as Record<string, unknown>
+  } catch {
+    throw new Error(`Newframe CLI returned non-JSON output: ${result.stdout}`)
+  }
+}
+
+async function runCliResult(context: CliContext, args: string[]) {
+  return new Promise<{ code: number; stdout: string; stderr: string }>((resolve, reject) => {
+    const child = spawn('bun', [cliPath, ...args], {
+      cwd: rootDir,
+      env: {
+        ...process.env,
+        NEWFRAME_RPC_URL: newframeRpcUrl,
+        NEWFRAME_FLASH_URL: `${localTradeServiceUrl}/v1`,
+        NEWFRAME_CLI_STATE_DIR: context.stateDir
+      }
     })
+    let stdout = ''
+    let stderr = ''
+    child.stdout.setEncoding('utf8').on('data', (chunk: string) => {
+      stdout += chunk
+    })
+    child.stderr.setEncoding('utf8').on('data', (chunk: string) => {
+      stderr += chunk
+    })
+    child.on('error', reject)
+    child.on('close', (code) => resolve({ code: code ?? 1, stdout: stdout.trim(), stderr: stderr.trim() }))
   })
-  const body = (await response.json()) as AgentCredentials & { error?: string }
-  if (!response.ok) {
-    throw new Error(body.error ?? `Agent connection failed with ${response.status}`)
-  }
-  return body
 }
 
-async function agentRpc(credentials: AgentCredentials, payload: Record<string, unknown>) {
-  const response = await fetch(`${newframeRpcUrl}/agent/rpc`, {
-    method: 'POST',
-    headers: {
-      authorization: `Bearer ${credentials.sessionToken}`,
-      'content-type': 'application/json',
-      'x-newframe-agent-session': credentials.sessionId
-    },
-    body: JSON.stringify(payload)
-  })
-  const body = (await response.json()) as {
-    result?: string
-    error?: { message?: string }
-  }
-  if (!response.ok || body.error || !body.result) {
-    throw new Error(body.error?.message ?? `Agent request failed with ${response.status}`)
-  }
-  return body.result
+async function connectAgent(context: CliContext) {
+  return runCli(context, [
+    'session',
+    'start',
+    '--name',
+    'Visual Harness Agent',
+    '--duration',
+    '600'
+  ]) as Promise<AgentCredentials>
 }
 
-async function autonomousSend(credentials: AgentCredentials) {
-  return agentRpc(credentials, {
-    id: 'visual-agent-send',
-    jsonrpc: '2.0',
-    method: 'eth_sendTransaction',
-    chainId: `0x${anvilChainId.toString(16)}`,
-    params: [
+async function agentRpc(context: CliContext, method: string, params: unknown, chainId?: number) {
+  const response = await runCli(context, [
+    'rpc',
+    method,
+    '--params',
+    JSON.stringify(params),
+    ...(chainId ? ['--chain-id', String(chainId)] : [])
+  ])
+  if (typeof response.result !== 'string') {
+    throw new Error(`CLI ${method} omitted its result`)
+  }
+  return response.result
+}
+
+async function autonomousSend(context: CliContext) {
+  return agentRpc(
+    context,
+    'eth_sendTransaction',
+    [
       {
         chainId: `0x${anvilChainId.toString(16)}`,
         to: recipient,
         value: '0x1'
       }
-    ]
-  })
+    ],
+    anvilChainId
+  )
 }
 
-async function autonomousPersonalSign(credentials: AgentCredentials, message: string) {
-  return agentRpc(credentials, {
-    id: 'visual-agent-personal-sign',
-    jsonrpc: '2.0',
-    method: 'personal_sign',
-    params: [message, credentials.account]
-  })
+async function autonomousPersonalSign(context: CliContext, account: string, message: string) {
+  return agentRpc(context, 'personal_sign', [message, account])
 }
 
-async function revokeSession(credentials: AgentCredentials) {
-  const response = await fetch(`${newframeRpcUrl}/agent/session/${credentials.sessionId}`, {
-    method: 'DELETE',
-    headers: {
-      authorization: `Bearer ${credentials.sessionToken}`,
-      'x-newframe-agent-session': credentials.sessionId
-    }
-  })
-  if (response.status !== 204) {
-    throw new Error(`Agent session revocation failed with ${response.status}`)
-  }
+async function revokeSession(context: CliContext) {
+  await runCli(context, ['session', 'revoke'])
 }
 
-async function flashRequest(path: string, init: RequestInit) {
-  const headers = new Headers(init.headers)
-  if (!headers.has('content-type')) {
-    headers.set('content-type', 'application/json')
-  }
-  const response = await fetch(`${localTradeServiceUrl}${path}`, {
-    ...init,
-    headers
-  })
-  const body = (await response.json()) as Record<string, unknown>
-  if (!response.ok) {
-    throw new Error(
-      typeof body.message === 'string' ? body.message : `Local Flash request failed with ${response.status}`
-    )
-  }
-  return body
-}
-
-async function submitExternalFlashOrder(credentials: AgentCredentials) {
+async function submitExternalFlashOrder(context: CliContext) {
+  const wethAddress = FLASH_WETH_ADDRESS.toLowerCase()
+  const usdcAddress = FLASH_USDC_ADDRESS.toLowerCase()
   const quoteRequest = {
-    contraAsset: FLASH_USDC_ADDRESS,
-    contraChain: 'anvil',
-    funderAddress: credentials.account,
+    contraAsset: {
+      id: `${anvilChainId}:${usdcAddress}`,
+      address: usdcAddress,
+      chainId: anvilChainId,
+      decimals: 6,
+      isNative: false,
+      name: 'USD Coin',
+      symbol: 'USDC'
+    },
     limitNotionalPrice: '2500',
     maxPriceImpact: '0.05',
-    maxSlippage: '0.005',
+    slippage: '0.005',
     orderType: 'limit',
     qty: '0.01',
     side: 'sell',
-    targetAsset: FLASH_WETH_ADDRESS,
-    targetChain: 'anvil'
+    targetAsset: {
+      id: `${anvilChainId}:${wethAddress}`,
+      address: wethAddress,
+      chainId: anvilChainId,
+      decimals: 18,
+      isNative: false,
+      name: 'Wrapped Ether',
+      symbol: 'WETH'
+    }
   }
-  const quote = await flashRequest('/v1/quote', {
-    method: 'POST',
-    body: JSON.stringify(quoteRequest)
-  })
-  const evm = quote.evm
-  const evmOrderTypedData = String(
-    evm && typeof evm === 'object' && 'orderTypedData' in evm ? evm.orderTypedData : ''
-  )
-  if (!evmOrderTypedData) {
-    throw new Error('Local Flash quote omitted its order typed data')
-  }
-
-  const userSignature = await agentRpc(credentials, {
-    id: 'visual-agent-flash-order-sign',
-    jsonrpc: '2.0',
-    method: 'eth_signTypedData_v4',
-    params: [credentials.account, JSON.parse(evmOrderTypedData)]
-  })
-  const submitted = await flashRequest('/v1/order', {
-    method: 'POST',
-    body: JSON.stringify({
-      ...quoteRequest,
-      contraAsset: quote.contraAsset,
-      targetAsset: quote.targetAsset,
-      quoteId: quote.quoteId,
-      userSignature,
-      evmOrderTypedData
-    })
-  })
+  const requestPath = path.join(context.stateDir, 'flash-request.json')
+  const quotePath = path.join(context.stateDir, 'flash-quote.json')
+  await writeFile(requestPath, JSON.stringify(quoteRequest))
+  await runCli(context, ['flash', 'quote', '--request', requestPath, '--out', quotePath])
+  const submitted = await runCli(context, ['flash', 'submit', '--quote', quotePath])
   const orderId = typeof submitted.orderId === 'string' ? submitted.orderId : ''
   if (!orderId) {
     throw new Error('Local Flash submit omitted its order id')
@@ -162,13 +150,8 @@ async function submitExternalFlashOrder(credentials: AgentCredentials) {
   return orderId
 }
 
-async function cancelExternalFlashOrder(credentials: AgentCredentials, orderId: string) {
-  const cancelMessage = `Definitive Flash v1 — Cancel Order\nOrder: ${orderId}`
-  const userSignature = await autonomousPersonalSign(credentials, cancelMessage)
-  await flashRequest(`/v1/orders/${encodeURIComponent(orderId)}/cancel`, {
-    method: 'POST',
-    body: JSON.stringify({ cancelMessage, userSignature })
-  })
+async function cancelExternalFlashOrder(context: CliContext, orderId: string) {
+  await runCli(context, ['flash', 'cancel', orderId])
 }
 
 export const agentSessionStage: VisualStage = {
@@ -176,6 +159,10 @@ export const agentSessionStage: VisualStage = {
   async run(context) {
     const { anvil, driver, runtime, tray } = context
     const { harness } = await requireAccounts(context)
+    const backToActivity = tray.getByRole('button', { name: 'Back to activity' })
+    if (await backToActivity.isVisible()) {
+      await backToActivity.click()
+    }
     await driver.clearPanelAndOverlays()
     await driver.setSelectedAccount(harness)
     await driver.setAgentAccess(harness, true)
@@ -190,46 +177,51 @@ export const agentSessionStage: VisualStage = {
     await runtime.screenshot(tray, '08b-ai-wallet-tag.png')
     await accountsDialog.getByRole('button', { name: 'Close accounts' }).click()
 
-    const connection = connectAgent()
-    const request = await driver.waitForCurrentRequest('agentAccess', new Set(), 15_000)
-    await tray.getByText('Visual Harness Agent', { exact: true }).waitFor({ state: 'visible' })
-    await runtime.screenshot(tray, '08c-agent-session-request.png')
-    await driver.executeCommand(tray, {
-      type: 'request.agent-access-resolve',
-      requestId: request.handlerId,
-      approved: true
-    })
-    const credentials = await connection
+    const cliContext: CliContext = { stateDir: await mkdtemp(path.join(tmpdir(), 'newframe-visual-cli-')) }
+    let revokedContext: CliContext | undefined
+    try {
+      const connection = connectAgent(cliContext)
+      const request = await driver.waitForCurrentRequest('agentAccess', new Set(), 15_000)
+      await tray.getByText('Visual Harness Agent', { exact: true }).waitFor({ state: 'visible' })
+      await runtime.screenshot(tray, '08c-agent-session-request.png')
+      await driver.executeCommand(tray, {
+        type: 'request.agent-access-resolve',
+        requestId: request.handlerId,
+        approved: true
+      })
+      const credentials = await connection
 
-    if (credentials.account.toLowerCase() !== harness.address.toLowerCase()) {
-      runtime.fail('Agent session was not scoped to the approved harness wallet')
-    }
+      if (credentials.account.toLowerCase() !== harness.address.toLowerCase()) {
+        runtime.fail('Agent session was not scoped to the approved harness wallet')
+      }
+      const stateBeforeActions = await driver.getAppState()
+      const existingRequestIds = new Set(
+        Object.entries(stateBeforeActions.main?.accounts ?? {}).flatMap(([accountId, account]) =>
+          Object.keys(account.requests ?? {}).map((requestId) => `${accountId}:${requestId}`)
+        )
+      )
 
-    const personalMessage = 'Newframe visual harness autonomous agent'
-    const personalSignature = await autonomousPersonalSign(credentials, personalMessage)
-    const recoveredPersonalAddress = verifyMessage(personalMessage, personalSignature).toLowerCase()
-    if (recoveredPersonalAddress !== credentials.account.toLowerCase()) {
-      runtime.fail('Agent personal_sign signature did not recover to its authorized wallet')
-    }
+      const personalMessage = 'Newframe visual harness autonomous agent'
+      const personalSignature = await autonomousPersonalSign(cliContext, credentials.account, personalMessage)
+      const recoveredPersonalAddress = verifyMessage(personalMessage, personalSignature).toLowerCase()
+      if (recoveredPersonalAddress !== credentials.account.toLowerCase()) {
+        runtime.fail('Agent personal_sign signature did not recover to its authorized wallet')
+      }
 
-    const domain = {
-      name: 'Newframe Visual Harness',
-      version: '1',
-      chainId: anvilChainId
-    }
-    const actionTypes = [
-      { name: 'action', type: 'string' },
-      { name: 'sessionId', type: 'string' }
-    ]
-    const typedMessage = {
-      action: 'autonomous-signature-test',
-      sessionId: credentials.sessionId
-    }
-    const typedSignature = await agentRpc(credentials, {
-      id: 'visual-agent-typed-sign',
-      jsonrpc: '2.0',
-      method: 'eth_signTypedData_v4',
-      params: [
+      const domain = {
+        name: 'Newframe Visual Harness',
+        version: '1',
+        chainId: anvilChainId
+      }
+      const actionTypes = [
+        { name: 'action', type: 'string' },
+        { name: 'sessionId', type: 'string' }
+      ]
+      const typedMessage = {
+        action: 'autonomous-signature-test',
+        sessionId: credentials.sessionId
+      }
+      const typedSignature = await agentRpc(cliContext, 'eth_signTypedData_v4', [
         credentials.account,
         {
           domain,
@@ -244,82 +236,110 @@ export const agentSessionStage: VisualStage = {
           },
           message: typedMessage
         }
-      ]
-    })
-    const recoveredTypedAddress = verifyTypedData(
-      domain,
-      { AgentAction: actionTypes },
-      typedMessage,
-      typedSignature
-    ).toLowerCase()
-    if (recoveredTypedAddress !== credentials.account.toLowerCase()) {
-      runtime.fail('Agent typed-data signature did not recover to its authorized wallet')
-    }
+      ])
+      const recoveredTypedAddress = verifyTypedData(
+        domain,
+        { AgentAction: actionTypes },
+        typedMessage,
+        typedSignature
+      ).toLowerCase()
+      if (recoveredTypedAddress !== credentials.account.toLowerCase()) {
+        runtime.fail('Agent typed-data signature did not recover to its authorized wallet')
+      }
 
-    const balanceBefore = await anvil.balance(recipient)
-    const selectedBefore = String((await driver.getAppState()).main?.currentAccount ?? '').toLowerCase()
-    const transactionHash = await autonomousSend(credentials)
-    await anvil.waitForBalance(recipient, balanceBefore + 1n)
-    const stateAfter = await driver.getAppState()
-    const selectedAfter = String(stateAfter.main?.currentAccount ?? '').toLowerCase()
+      const balanceBefore = await anvil.balance(recipient)
+      const selectedBefore = String((await driver.getAppState()).main?.currentAccount ?? '').toLowerCase()
+      const transactionHash = await autonomousSend(cliContext)
+      await anvil.waitForBalance(recipient, balanceBefore + 1n)
+      const stateAfter = await driver.getAppState()
+      const selectedAfter = String(stateAfter.main?.currentAccount ?? '').toLowerCase()
 
-    if (!/^0x[0-9a-fA-F]{64}$/.test(transactionHash)) {
-      runtime.fail(`Agent send returned an invalid transaction hash: ${transactionHash}`)
-    }
-    runtime.evidence('agentSessionId', credentials.sessionId)
-    runtime.evidence('agentTransactionHash', transactionHash)
-    if (selectedAfter !== selectedBefore) {
-      runtime.fail('Autonomous agent send changed the wallet selected in the UI')
-    }
-    const promptedAutonomousAction = Object.values(stateAfter.main?.accounts ?? {}).some((account) =>
-      Object.values(account.requests ?? {}).some(
-        (candidate) =>
-          candidate.type === 'sign' || candidate.type === 'signTypedData' || candidate.type === 'transaction'
+      if (!/^0x[0-9a-fA-F]{64}$/.test(transactionHash)) {
+        runtime.fail(`Agent send returned an invalid transaction hash: ${transactionHash}`)
+      }
+      runtime.evidence('agentSessionId', credentials.sessionId)
+      runtime.evidence('agentTransactionHash', transactionHash)
+      if (selectedAfter !== selectedBefore) {
+        runtime.fail('Autonomous agent send changed the wallet selected in the UI')
+      }
+      const promptedAutonomousAction = Object.entries(stateAfter.main?.accounts ?? {}).some(
+        ([accountId, account]) =>
+          Object.entries(account.requests ?? {}).some(
+            ([requestId, candidate]) =>
+              !existingRequestIds.has(`${accountId}:${requestId}`) &&
+              (candidate.type === 'sign' ||
+                candidate.type === 'signTypedData' ||
+                candidate.type === 'transaction')
+          )
       )
-    )
-    if (promptedAutonomousAction) {
-      runtime.fail('Autonomous agent action created a signing prompt')
+      if (promptedAutonomousAction) {
+        runtime.fail('Autonomous agent action created a signing prompt')
+      }
+
+      const externalOrderId = await submitExternalFlashOrder(cliContext)
+      const orderList = await runCli(cliContext, ['flash', 'orders'])
+      const listedOrders: unknown[] = Array.isArray(orderList.orders) ? orderList.orders : []
+      if (
+        !listedOrders.some(
+          (order) =>
+            order && typeof order === 'object' && 'orderId' in order && order.orderId === externalOrderId
+        )
+      ) {
+        runtime.fail('CLI Flash order list did not include the submitted order')
+      }
+      const orderLookup = await runCli(cliContext, ['flash', 'order', externalOrderId])
+      const lookedUpOrder =
+        orderLookup.order && typeof orderLookup.order === 'object' ? orderLookup.order : orderLookup
+      if (!('orderId' in lookedUpOrder) || lookedUpOrder.orderId !== externalOrderId) {
+        runtime.fail('CLI Flash order lookup returned the wrong order')
+      }
+      await driver.waitForFlashOrder(
+        (order) => order.orderId === externalOrderId && order.status === 'accepted' && order.open === true,
+        15_000,
+        'The agent-created Flash order was not discovered through the WebSocket'
+      )
+      await cancelExternalFlashOrder(cliContext, externalOrderId)
+      await driver.waitForFlashOrder(
+        (order) => order.orderId === externalOrderId && order.status === 'cancelled' && order.open === false,
+        15_000,
+        'The external Flash cancellation was not applied through the WebSocket'
+      )
+      const watchedOrder = await runCli(cliContext, ['flash', 'watch', externalOrderId])
+      if (watchedOrder.orderId !== externalOrderId || watchedOrder.normalizedStatus !== 'cancelled') {
+        runtime.fail('CLI Flash watch did not return the cancelled order')
+      }
+      await driver.assertFlashOrderVisible(externalOrderId)
+      runtime.evidence('agentFlashOrderId', externalOrderId)
+      await runtime.screenshot(tray, '08d-agent-external-flash-order.png')
+
+      revokedContext = { stateDir: await mkdtemp(path.join(tmpdir(), 'newframe-visual-revoked-')) }
+      await copyFile(
+        path.join(cliContext.stateDir, 'session.json'),
+        path.join(revokedContext.stateDir, 'session.json')
+      )
+      await chmod(path.join(revokedContext.stateDir, 'session.json'), 0o600)
+      await revokeSession(cliContext)
+      const rejectedAfterRevocation = await runCliResult(revokedContext, [
+        'rpc',
+        'eth_sendTransaction',
+        '--params',
+        JSON.stringify([{ to: recipient, value: '0x1' }]),
+        '--chain-id',
+        String(anvilChainId)
+      ])
+      if (rejectedAfterRevocation.code === 0 || !rejectedAfterRevocation.stderr.includes('401:')) {
+        runtime.fail('Revoked agent credentials were not rejected with HTTP 401')
+      }
+      runtime.evidence('revokedSessionCliExitCode', rejectedAfterRevocation.code)
+
+      await driver.clearPanelAndOverlays()
+      await tray.getByRole('tab', { name: 'Activity' }).click()
+      await runtime.screenshot(tray, '08e-agent-autonomous-actions.png')
+    } finally {
+      await rm(cliContext.stateDir, { recursive: true, force: true })
+      if (revokedContext) {
+        await rm(revokedContext.stateDir, { recursive: true, force: true })
+      }
     }
-
-    const externalOrderId = await submitExternalFlashOrder(credentials)
-    await driver.waitForFlashOrder(
-      (order) => order.orderId === externalOrderId && order.status === 'accepted' && order.open === true,
-      15_000,
-      'The agent-created Flash order was not discovered through the WebSocket'
-    )
-    await cancelExternalFlashOrder(credentials, externalOrderId)
-    await driver.waitForFlashOrder(
-      (order) => order.orderId === externalOrderId && order.status === 'cancelled' && order.open === false,
-      15_000,
-      'The external Flash cancellation was not applied through the WebSocket'
-    )
-    await driver.assertFlashOrderVisible(externalOrderId)
-    runtime.evidence('agentFlashOrderId', externalOrderId)
-    await runtime.screenshot(tray, '08d-agent-external-flash-order.png')
-
-    await revokeSession(credentials)
-    const rejectedAfterRevocation = await fetch(`${newframeRpcUrl}/agent/rpc`, {
-      method: 'POST',
-      headers: {
-        authorization: `Bearer ${credentials.sessionToken}`,
-        'content-type': 'application/json',
-        'x-newframe-agent-session': credentials.sessionId
-      },
-      body: JSON.stringify({
-        id: 'revoked-agent-send',
-        jsonrpc: '2.0',
-        method: 'eth_sendTransaction',
-        chainId: `0x${anvilChainId.toString(16)}`,
-        params: [{ to: recipient, value: '0x1' }]
-      })
-    })
-    if (rejectedAfterRevocation.status !== 401) {
-      runtime.fail('Revoked agent session remained authorized')
-    }
-    runtime.evidence('revokedSessionHttpStatus', rejectedAfterRevocation.status)
-
-    await driver.clearPanelAndOverlays()
-    await tray.getByRole('tab', { name: 'Activity' }).click()
-    await runtime.screenshot(tray, '08e-agent-autonomous-actions.png')
   }
 }
