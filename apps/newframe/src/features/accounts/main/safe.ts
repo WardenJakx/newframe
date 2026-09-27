@@ -286,7 +286,7 @@ export function createSafeService({
     simulations.clear()
   }
   const discoveries = new Set<AbortController>()
-  const discoverNetworks = async (address: string) => {
+  const discoverNetworks = async (address: string, chainId?: number) => {
     if (lifecycle.disposed) {
       return []
     }
@@ -295,10 +295,12 @@ export function createSafeService({
     const capturedProfile = store.getState().main.currentProfile
     try {
       const results = await Promise.allSettled(
-        Object.values(store.getState().main.networks.ethereum).map(async (network) => {
-          await client.discover(network.id, address, controller.signal)
-          return { chainId: network.id, name: network.name, supported: true }
-        })
+        Object.values(store.getState().main.networks.ethereum)
+          .filter((network) => chainId === undefined || network.id === chainId)
+          .map(async (network) => {
+            await client.discover(network.id, address, controller.signal)
+            return { chainId: network.id, name: network.name, supported: true }
+          })
       )
       if (
         isDisposed() ||

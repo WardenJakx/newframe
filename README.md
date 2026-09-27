@@ -104,6 +104,7 @@ Oxfmt handles formatting with `bun run format`;
 
 - [`apps/newframe`](apps/newframe/README.md) - Electron desktop wallet and system-wide provider app.
 - [`apps/newframe-extension`](apps/newframe-extension/README.md) - browser companion extension that injects a Newframe-connected provider.
+- [`skills/newframe`](skills/README.md) - installable Newframe CLI skill for Codex and Claude Code.
 - `packages` - shared libraries used by the app surfaces.
 
 The Newframe harness also deploys Safe 1.5.0 contracts on Anvil and starts a local

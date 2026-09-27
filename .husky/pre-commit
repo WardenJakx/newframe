@@ -1,4 +1,7 @@
+set -e
 bun run format:staged
+bun run build:skill:newframe
+git add -- skills/newframe/scripts/newframe.js
 bun run typecheck
 bun run lint
 bun run knip

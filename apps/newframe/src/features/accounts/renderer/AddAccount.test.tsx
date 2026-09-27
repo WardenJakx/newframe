@@ -6,6 +6,7 @@ import type { QueryResultMap } from '../../../app/contracts/operations'
 import { createQrCameraFake } from '../../../platform/desktop/renderer/camera.test-support'
 import type { OperationRecord } from '../../../platform/operations/operation'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
+import { createBuiltInNetworks } from '../../networks/domain/chain/catalog'
 import { createAccountsCapabilityFake, type AccountsCapabilityFake } from './accountsCapability.test-support'
 import { AddAccount } from './AddAccount'
 
@@ -371,11 +372,9 @@ function deferred<T>() {
 
 it('imports Safe networks independently, retains partial failure, and selects success once', async () => {
   const capability = createAccountsCapabilityFake()
-  capability.discoverSafeNetworks.mockResolvedValue([
-    { chainId: 1, name: 'Ethereum', supported: true },
-    { chainId: 10, name: 'Optimism', supported: true },
-    { chainId: 100, name: 'Unavailable', supported: false }
-  ])
+  capability.discoverSafeNetworks.mockImplementation(async (_, chainId) =>
+    chainId === 100 ? [] : [{ chainId, name: chainId === 1 ? 'Ethereum' : 'Optimism', supported: true }]
+  )
   let closed = false
   const onClose = () => {
     closed = true
@@ -385,7 +384,8 @@ it('imports Safe networks independently, retains partial failure, and selects su
     selected = accountId
     return { ok: true }
   })
-  let state = walletState({})
+  const builtIn = createBuiltInNetworks()
+  let state = walletState({ networks: { ethereum: { 1: builtIn[1], 10: builtIn[10], 100: builtIn[100] } } })
   fixture.state.reset(state)
   const { user } = render(
     <AddAccount camera={createQrCameraFake().camera} capability={capability} onClose={onClose} />
@@ -429,7 +429,7 @@ it('discovers only complete addresses and ignores results from the previous addr
       ? first.promise
       : Promise.resolve([{ chainId: 8453, name: 'Base', supported: true }])
   )
-  fixture.state.reset(walletState({}))
+  fixture.state.reset(walletState({ networks: { ethereum: { 8453: createBuiltInNetworks()[8453] } } }))
   const { user } = render(
     <AddAccount camera={createQrCameraFake().camera} capability={capability} onClose={() => {}} />
   )
@@ -437,13 +437,54 @@ it('discovers only complete addresses and ignores results from the previous addr
   expect(capability.discoverSafeNetworks).not.toHaveBeenCalled()
   const input = screen.getByLabelText('Safe address')
   await user.type(input, address('8'))
-  await waitFor(() => expect(capability.discoverSafeNetworks).toHaveBeenCalledWith(address('8')))
+  await waitFor(() => expect(capability.discoverSafeNetworks).toHaveBeenCalledWith(address('8'), 8453))
   await user.clear(input)
   await user.type(input, address('9'))
   await screen.findByRole('button', { name: 'Base' })
   await act(async () => first.resolve([{ chainId: 1, name: 'Old chain', supported: true }]))
   expect(screen.queryByRole('button', { name: 'Old chain' })).toBeNull()
   expect(screen.getByRole('button', { name: 'Base' })).toBeTruthy()
+})
+
+it('shows a Safe on a fast chain and closes after its import succeeds', async () => {
+  const capability = createAccountsCapabilityFake()
+  const slow = deferred<QueryResultMap['safe.discover']>()
+  capability.discoverSafeNetworks.mockImplementation(async (_, chainId) =>
+    chainId === 1 ? [{ chainId, name: 'Ethereum', supported: true }] : slow.promise
+  )
+  const builtIn = createBuiltInNetworks()
+  let state = walletState({ networks: { ethereum: { 1: builtIn[1], 10: builtIn[10] } } })
+  fixture.state.reset(state)
+  const onClose = mock()
+  const { user } = render(
+    <AddAccount camera={createQrCameraFake().camera} capability={capability} onClose={onClose} />
+  )
+  await user.click(screen.getByRole('button', { name: 'Safe' }))
+  await user.type(screen.getByLabelText('Safe address'), address('9'))
+  await screen.findByRole('button', { name: 'Ethereum' })
+  expect(screen.getByText('Checking configured networks…')).toBeTruthy()
+  await user.click(screen.getByRole('button', { name: 'Import 1 Safe network' }))
+  const input = capability.createAccount.mock.calls.at(-1)![0]
+  if (input.source !== 'safe') {
+    throw new Error('Expected Safe import')
+  }
+  state = {
+    ...state,
+    operations: {
+      [input.operationId]: {
+        id: input.operationId,
+        type: 'account.safe-import',
+        startedAt: 1,
+        updatedAt: 2,
+        status: 'succeeded',
+        entityRefs: [{ type: 'account', id: address('9') }]
+      }
+    }
+  }
+  act(() => fixture.state.reset(state))
+  await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
+  expect(capability.selectAccount).toHaveBeenCalledWith({ accountId: address('9') })
+  await act(async () => slow.resolve([]))
 })
 
 it('pairs AirGap public QR through its owned operation, then adds an address normally', async () => {

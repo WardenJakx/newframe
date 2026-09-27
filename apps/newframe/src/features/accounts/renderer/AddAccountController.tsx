@@ -142,6 +142,7 @@ export function AddAccountController({
     dispatch({ type: 'flow.reset' })
   }, [shared.currentProfile])
   const safeScope = [shared.currentProfile, state.addAccountCategory, state.addAccountInput].join(':')
+  const safeChainIds = Object.keys(shared.networks).join(',')
   safeDraft.current = safeScope
   const safeImportScope = useRef('')
   const visibleSafeImports = safeImportScope.current === safeScope ? safeImports : {}
@@ -167,31 +168,34 @@ export function AddAccountController({
     }
     setSafeDiscovering(true)
     const timer = setTimeout(() => {
-      void capability
-        .discoverSafeNetworks(address)
-        .then((networks) => {
+      const chainIds = safeChainIds ? safeChainIds.split(',').map(Number) : []
+      void Promise.allSettled(
+        chainIds.map(async (chainId) => {
+          const networks = await capability.discoverSafeNetworks(address, chainId)
           if (!active) {
             return
           }
-          setSafeNetworks(networks)
-          setSafeSelected(networks.filter((network) => network.supported).map((network) => network.chainId))
+          setSafeNetworks((current) => [...current, ...networks])
+          setSafeSelected((current) => [
+            ...current,
+            ...networks.filter((network) => network.supported).map((network) => network.chainId)
+          ])
         })
-        .catch(() => {
-          if (active) {
-            dispatch({ type: 'feedback.changed', error: 'Could not discover Safe networks', status: '' })
-          }
-        })
-        .finally(() => {
-          if (active) {
-            setSafeDiscovering(false)
-          }
-        })
+      ).then((results) => {
+        if (!active) {
+          return
+        }
+        if (results.length && results.every((result) => result.status === 'rejected')) {
+          dispatch({ type: 'feedback.changed', error: 'Could not discover Safe networks', status: '' })
+        }
+        setSafeDiscovering(false)
+      })
     }, 300)
     return () => {
       active = false
       clearTimeout(timer)
     }
-  }, [capability, state.addAccountCategory, state.addAccountInput, shared.currentProfile])
+  }, [capability, state.addAccountCategory, state.addAccountInput, shared.currentProfile, safeChainIds])
   useEffect(() => {
     if (safeBusy || !safeOutcomes.length || safeSelectedAccount.current) {
       return
@@ -204,11 +208,17 @@ export function AddAccountController({
     }
     safeSelectedAccount.current = true
     const scope = safeScope
+    const allSucceeded = safeOutcomes.every((item) => item.operation?.status === 'succeeded')
     void capability
       .selectAccount({ accountId })
       .then((result) => {
-        if (safeDraft.current === scope && safeImportScope.current === scope && !result.ok) {
+        if (safeDraft.current !== scope || safeImportScope.current !== scope) {
+          return
+        }
+        if (!result.ok) {
           setFeedback(operationError(result, 'Could not select Safe'), '')
+        } else if (allSucceeded) {
+          onClose()
         }
       })
       .catch(() => {

@@ -275,6 +275,11 @@ it('probes all configured chains, retains successes and discards stale discovery
     { chainId: found.id, name: found.name, supported: true }
   ])
   expect(checked.sort((a, b) => a - b)).toEqual(networks.map((network) => network.id).sort((a, b) => a - b))
+  checked.length = 0
+  expect(await service.discoverNetworks(address, found.id)).toEqual([
+    { chainId: found.id, name: found.name, supported: true }
+  ])
+  expect(checked).toEqual([found.id])
   service.import(
     { type: 'account.create', source: 'safe', operationId: 'rpc-only', address, chainId: found.id },
     owner
