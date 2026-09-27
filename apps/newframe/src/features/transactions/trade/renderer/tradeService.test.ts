@@ -1,8 +1,9 @@
 import { expect, it } from 'bun:test'
 
+import { FLASH_USDC_ASSET, FLASH_WETH_ASSET } from '@newframe/flash/assets'
+import { FLASH_MARKET_ORDER_TYPE } from '@newframe/flash/constants'
+
 import { createRendererClient as createTypedClient } from '../../../../../test/support/rendererClient'
-import { FLASH_USDC_ASSET, FLASH_WETH_ASSET } from '../domain/assets'
-import { FLASH_MARKET_ORDER_TYPE } from '../domain/constants'
 import { createTradeCapability } from './tradeService'
 
 it('maps semantic trade actions to their exact catalog operations', async () => {

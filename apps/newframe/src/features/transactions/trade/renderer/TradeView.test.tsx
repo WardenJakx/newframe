@@ -1,13 +1,14 @@
 import { expect, it } from 'bun:test'
 
-import { fireEvent, render, screen } from '../../../../../test/support/componentSetup'
 import {
   FLASH_LIMIT_ORDER_TYPE,
   FLASH_MARKET_ORDER_TYPE,
   FLASH_STOP_ORDER_TYPE,
   FLASH_TAKE_PROFIT_ORDER_TYPE,
   FLASH_TWAP_ORDER_TYPE
-} from '../domain/constants'
+} from '@newframe/flash/constants'
+
+import { fireEvent, render, screen } from '../../../../../test/support/componentSetup'
 import { createTradeCapabilityFake } from './tradeService.test-support'
 import { TradeView } from './TradeView'
 import type { TradeAssetViewModel, TradeViewEvents, TradeViewModel } from './tradeViewModel'

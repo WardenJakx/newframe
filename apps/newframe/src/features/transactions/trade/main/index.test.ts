@@ -1,32 +1,30 @@
 import { afterEach, beforeEach, describe, expect, it, jest as timers, mock } from 'bun:test'
 import { EventEmitter } from 'node:events'
 
-import WebSocket from 'ws'
-
-import store from '../../../../platform/state-store'
-import createCanonicalStore from '../../../../platform/state-store/createCanonicalStore'
-import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
+import { flashBaseUrl, flashHeaders, flashWebSocketUrl } from '@newframe/flash/api'
 import {
   FLASH_NATIVE_ETH_ASSET,
   FLASH_USDC_ASSET,
   FLASH_WETH_ASSET,
   getFlashAssetsForChain
-} from '../domain/assets'
+} from '@newframe/flash/assets'
 import {
   FLASH_BASE_USDC_ADDRESS,
   FLASH_BASE_WETH_ADDRESS,
   FLASH_MARKET_ORDER_TYPE
-} from '../domain/constants'
-import type { FlashQuoteRequest } from './contracts'
+} from '@newframe/flash/constants'
+import type { FlashBoundQuoteRequest } from '@newframe/flash/contracts'
 import {
   buildFlashQuoteBody,
   buildFlashSubmitBody,
-  createFlashService,
-  flashBaseUrl,
-  flashHeaders,
-  flashWebSocketUrl,
   normalizeFlashQuoteResponse
-} from './index'
+} from '@newframe/flash/protocol'
+import WebSocket from 'ws'
+
+import store from '../../../../platform/state-store'
+import createCanonicalStore from '../../../../platform/state-store/createCanonicalStore'
+import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
+import { createFlashService } from './index'
 
 interface TestQuoteRaw {
   evm: {
@@ -128,7 +126,7 @@ const quoteRequest = () =>
     side: 'sell' as const,
     slippage: '0.50',
     targetAsset: FLASH_WETH_ASSET
-  }) satisfies FlashQuoteRequest
+  }) satisfies FlashBoundQuoteRequest
 const quoteResponse = (overrides: Record<string, unknown> = {}) => ({
   quoteId: 'quote-1',
   from: { asset: 'target', amount: '1', notional: '2400' },
@@ -142,14 +140,14 @@ const rateResponse = (targetAmount: string, targetNotional: string, contraNotion
 })
 const normalizedQuote = (
   response: Record<string, unknown> = {},
-  request: FlashQuoteRequest = quoteRequest()
+  request: FlashBoundQuoteRequest = quoteRequest()
 ) => normalizeFlashQuoteResponse(quoteResponse(response), request)
 function submitFixture(
-  requestOverrides: Partial<FlashQuoteRequest>,
+  requestOverrides: Partial<FlashBoundQuoteRequest>,
   responseOverrides: Record<string, unknown>,
   submitOverrides: Record<string, unknown> = {}
 ) {
-  const request = { ...quoteRequest(), ...requestOverrides } as FlashQuoteRequest
+  const request = { ...quoteRequest(), ...requestOverrides } as FlashBoundQuoteRequest
   const quote = normalizedQuote(responseOverrides, request)
   return {
     body: buildFlashSubmitBody({ ...request, orderSignature: '0xsignature', quote, ...submitOverrides }),
@@ -319,7 +317,7 @@ describe('main Flash facade helpers', () => {
   it('accepts mainnet when the packaged runtime has no explicit environment', () => {
     delete (process.env as Partial<NodeJS.ProcessEnv>).NODE_ENV
     delete (process.env as Partial<NodeJS.ProcessEnv>).FRAME_PROFILE
-    const request: FlashQuoteRequest = quoteRequest()
+    const request: FlashBoundQuoteRequest = quoteRequest()
     request.chainId = 1
     request.targetAsset = { ...FLASH_WETH_ASSET, chainId: 1, id: `1:${FLASH_WETH_ASSET.address}` }
     request.contraAsset = { ...FLASH_USDC_ASSET, chainId: 1, id: `1:${FLASH_USDC_ASSET.address}` }
@@ -360,7 +358,7 @@ describe('main Flash facade helpers', () => {
         qty: '100',
         side: 'buy' as const,
         targetAsset
-      } satisfies FlashQuoteRequest
+      } satisfies FlashBoundQuoteRequest
       const raw = quoteResponse({
         quoteId: '',
         bridgeQuoteId,

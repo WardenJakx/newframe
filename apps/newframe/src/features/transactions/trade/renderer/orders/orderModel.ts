@@ -1,6 +1,7 @@
+import { getDirectionLabel } from '@newframe/flash/pair'
+import type { FlashTradeSide } from '@newframe/flash/schemas'
+
 import { timestamp } from '../../../../../shared/domain/timestamp'
-import { getDirectionLabel } from '../../domain/pair'
-import type { FlashTradeSide } from '../../domain/schemas'
 import type { OrderAsset, OrderModel, OrderNetworkMap, OrderRow } from './orderTypes'
 
 export function normalizeOrderSide(side = ''): FlashTradeSide | '' {

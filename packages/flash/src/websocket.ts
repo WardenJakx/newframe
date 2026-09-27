@@ -1,5 +1,7 @@
 import WebSocket from 'ws'
 
+import { FlashWebSocketFrameSchema } from './wire.js'
+
 export type FlashOrderFrameType = 'snapshot' | 'update'
 export type FlashWebSocketFactory = (url: string) => WebSocket
 
@@ -25,10 +27,6 @@ const retryableErrorCodes = new Set([
   'STREAM_ERROR',
   'INTERNAL_ERROR'
 ])
-
-function objectPayload(value: unknown): Record<string, unknown> {
-  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
-}
 
 export class FlashOrderStream {
   private attempts = 0
@@ -146,54 +144,47 @@ export class FlashOrderStream {
   }
 
   private handleFrame(value: unknown) {
-    const frame = objectPayload(value)
+    const parsed = FlashWebSocketFrameSchema.safeParse(value)
+    if (!parsed.success) {
+      return
+    }
+    const frame = parsed.data
 
-    if (frame.channel === 'subscriptions' && frame.type === 'ack') {
-      const subscriptions = Array.isArray(frame.subscriptions) ? frame.subscriptions : []
-      this.setAvailable(subscriptions.includes('orders'))
+    if (frame.type === 'error') {
+      const error = new Error(`Flash WebSocket ${frame.code}: ${frame.message}`)
+      this.options.onError?.(error)
+
+      if (frame.code === 'UNAUTHORIZED') {
+        this.terminal = true
+        this.setAvailable(false)
+        this.options.onTerminalError?.('UNAUTHORIZED')
+        this.socket?.close()
+        return
+      }
+
+      if (retryableErrorCodes.has(frame.code)) {
+        this.setAvailable(false)
+        this.socket?.close()
+      }
       return
     }
 
-    if (
-      frame.channel === 'orders' &&
-      (frame.type === 'snapshot' || frame.type === 'update') &&
-      Array.isArray(frame.orders)
-    ) {
-      const frameType = frame.type
-      const orders = frame.orders
-      this.orderQueue = this.orderQueue
-        .then(() => {
-          if (this.stopped) {
-            return
-          }
-          return this.options.onOrders(frameType, orders)
-        })
-        .then(() => undefined)
-        .catch((error: unknown) => this.options.onError?.(error))
+    if (frame.type === 'ack') {
+      this.setAvailable(frame.subscriptions.includes('orders'))
       return
     }
 
-    if (frame.type !== 'error') {
-      return
-    }
-
-    const code = typeof frame.code === 'string' ? frame.code : 'ERROR'
-    const message = typeof frame.message === 'string' ? frame.message : ''
-    const error = new Error(`Flash WebSocket ${code}: ${message}`)
-    this.options.onError?.(error)
-
-    if (frame.code === 'UNAUTHORIZED') {
-      this.terminal = true
-      this.setAvailable(false)
-      this.options.onTerminalError?.('UNAUTHORIZED')
-      this.socket?.close()
-      return
-    }
-
-    if (retryableErrorCodes.has(code)) {
-      this.setAvailable(false)
-      this.socket?.close()
-    }
+    const frameType = frame.type
+    const orders = frame.orders
+    this.orderQueue = this.orderQueue
+      .then(() => {
+        if (this.stopped) {
+          return
+        }
+        return this.options.onOrders(frameType, orders)
+      })
+      .then(() => undefined)
+      .catch((error: unknown) => this.options.onError?.(error))
   }
 
   private setAvailable(available: boolean) {

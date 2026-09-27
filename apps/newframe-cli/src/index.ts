@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
 import { readFile, writeFile } from 'node:fs/promises'
 
-import { FlashQuoteRequestSchema } from '../../newframe/src/features/transactions/trade/main/contracts.js'
+import { FlashQuoteRequestSchema } from '@newframe/flash/contracts'
+
 import { NewframeClient } from './client.js'
 
 const usage = `newframe session start --name NAME [--description TEXT] [--duration SECONDS]

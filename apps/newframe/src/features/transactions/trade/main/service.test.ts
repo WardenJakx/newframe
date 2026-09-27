@@ -1,13 +1,14 @@
 import { expect, it, mock } from 'bun:test'
 
+import { FLASH_USDC_ASSET, FLASH_WETH_ASSET, getFlashAssetsForChain } from '@newframe/flash/assets'
+import { FLASH_MARKET_ORDER_TYPE } from '@newframe/flash/constants'
+import type { FlashSubmitOrderRequest } from '@newframe/flash/contracts'
+import type { FlashQuote } from '@newframe/flash/schemas'
+
 import { createTestStore } from '../../../../../test/support/createTestStore'
 import type { FlashQuoteRequest, TypedDataV4 } from '../../../../app/contracts/operations'
 import type { RequestSource } from '../../../../app/main/gateway/requestSource'
 import { createOperationService } from '../../../../platform/operations/service'
-import { FLASH_USDC_ASSET, FLASH_WETH_ASSET, getFlashAssetsForChain } from '../domain/assets'
-import { FLASH_MARKET_ORDER_TYPE } from '../domain/constants'
-import type { FlashQuote } from '../domain/schemas'
-import type { FlashSubmitOrderRequest } from './contracts'
 import { createTradeService } from './service'
 
 const account = {

@@ -1,4 +1,4 @@
-import type { FlashRuntime } from '../../features/transactions/trade/domain/schemas.js'
+import type { FlashRuntime } from '@newframe/flash/schemas'
 
 type RuntimeProcess = {
   env: {

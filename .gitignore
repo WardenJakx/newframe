@@ -3,6 +3,7 @@ node_modules
 
 # Newframe app outputs
 packages/ui/dist
+packages/flash/dist
 packages/ui/src/styled-system
 apps/newframe/generated/styled-system
 apps/newframe-extension/src/styled-system

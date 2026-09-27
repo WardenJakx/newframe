@@ -1,11 +1,8 @@
+import { FLASH_WETH_ASSET, getFlashAssetsForChain, getFlashDefaultTargetAsset } from '@newframe/flash/assets'
+import type { FlashAsset } from '@newframe/flash/schemas'
+
 import { hasPositiveBalance } from '../../../features/asset-data/domain/balance/index.js'
 import { NATIVE_CURRENCY } from '../../../features/tokens/domain/constants.js'
-import {
-  FLASH_WETH_ASSET,
-  getFlashAssetsForChain,
-  getFlashDefaultTargetAsset
-} from '../../../features/transactions/trade/domain/assets.js'
-import type { FlashAsset } from '../../../features/transactions/trade/domain/schemas.js'
 
 export const SIDE_TRAY_FRAME_ID = 'sideTray'
 const SIDE_TRAY_NATIVE_ASSET_ADDRESS = NATIVE_CURRENCY

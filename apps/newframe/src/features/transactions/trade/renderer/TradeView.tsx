@@ -1,3 +1,12 @@
+import {
+  FLASH_LIMIT_ORDER_TYPE,
+  FLASH_MARKET_ORDER_TYPE,
+  FLASH_STOP_LOSS_ORDER_TYPE,
+  FLASH_STOP_ORDER_TYPE,
+  FLASH_TAKE_PROFIT_ORDER_TYPE,
+  FLASH_TWAP_ORDER_TYPE
+} from '@newframe/flash/constants'
+import type { FlashOrderType } from '@newframe/flash/schemas'
 import { Button } from '@newframe/ui/button'
 import { Disclosure } from '@newframe/ui/disclosure'
 import { Field } from '@newframe/ui/field'
@@ -16,15 +25,6 @@ import { ToggleButton } from '@newframe/ui/toggle-button'
 import { SidePanel } from '../../../../shared/renderer/ui/SidePanel/SidePanel'
 import TokenSelector from '../../../../shared/renderer/ui/TokenSelector'
 import { TOKEN_SELECTOR_ROWS_INCREMENT } from '../../../../shared/renderer/ui/tokenSelectorModel'
-import {
-  FLASH_LIMIT_ORDER_TYPE,
-  FLASH_MARKET_ORDER_TYPE,
-  FLASH_STOP_LOSS_ORDER_TYPE,
-  FLASH_STOP_ORDER_TYPE,
-  FLASH_TAKE_PROFIT_ORDER_TYPE,
-  FLASH_TWAP_ORDER_TYPE
-} from '../domain/constants'
-import type { FlashOrderType } from '../domain/schemas'
 import type { TradeCapability } from './tradeService'
 import type { TradeOrderFields } from './tradeTransaction'
 import type { TradeAssetViewModel, TradeViewEvents, TradeViewModel } from './tradeViewModel'

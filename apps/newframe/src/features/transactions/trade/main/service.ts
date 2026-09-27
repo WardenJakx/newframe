@@ -1,5 +1,22 @@
 import { randomUUID } from 'node:crypto'
 
+import { flashCancelMessage } from '@newframe/flash/api'
+import { FLASH_MARKET_ORDER_TYPE } from '@newframe/flash/constants'
+import type {
+  FlashCancelOrderRequest,
+  FlashBoundQuoteRequest,
+  FlashSubmitOrderRequest
+} from '@newframe/flash/contracts'
+import {
+  buildFlashActionTransaction,
+  buildFlashSubmitRequest,
+  findFlashTypedData,
+  flashObject,
+  flashTypedDataChainId,
+  parseFlashTypedData
+} from '@newframe/flash/execution'
+import { getFlashAssetPairChains } from '@newframe/flash/pair'
+import type { FlashQuote, FlashQuoteAction } from '@newframe/flash/schemas'
 import { isAddress } from 'ethers'
 
 import {
@@ -18,18 +35,6 @@ import type { RequestSource } from '../../../../app/main/gateway/requestSource.j
 import type { OperationEntityRef } from '../../../../platform/operations/operation.js'
 import type { OperationService } from '../../../../platform/operations/service.js'
 import type { OperationOwner, OperationReference } from '../../../../platform/operations/types.js'
-import { FLASH_MARKET_ORDER_TYPE } from '../domain/constants.js'
-import {
-  buildFlashActionTransaction,
-  buildFlashSubmitRequest,
-  findFlashTypedData,
-  flashObject,
-  flashTypedDataChainId,
-  parseFlashTypedData
-} from '../domain/execution.js'
-import { getFlashAssetPairChains } from '../domain/pair.js'
-import type { FlashQuote, FlashQuoteAction } from '../domain/schemas.js'
-import type { FlashCancelOrderRequest, FlashQuoteRequest, FlashSubmitOrderRequest } from './contracts.js'
 
 type TradeAccount = { id: string; address: string }
 type TradeOrder = {
@@ -54,7 +59,7 @@ export interface TradeServicePorts {
   canonical: { snapshot(): TradeCanonicalSnapshot }
   clock: { now(): number }
   flash: {
-    quote(request: FlashQuoteRequest): Promise<{ quote: FlashQuote; flash: unknown }>
+    quote(request: FlashBoundQuoteRequest): Promise<{ quote: FlashQuote; flash: unknown }>
     submitOrder(request: FlashSubmitOrderRequest): Promise<{ orderId: string }>
     cancelOrder(request: FlashCancelOrderRequest): Promise<unknown>
   }
@@ -565,7 +570,7 @@ export function createTradeService(ports: TradeServicePorts) {
       const signature = await ports.signatures.signMessage(
         {
           chainId: initial.chainId,
-          message: `Definitive Flash v1 — Cancel Order\nOrder: ${command.orderId}`
+          message: flashCancelMessage(command.orderId)
         },
         principal
       )

@@ -1,8 +1,9 @@
-import type { FlashQuoteRequest } from '../../../../app/contracts/operations'
-import { type BalanceSummary } from '../../../asset-data/domain/balance'
-import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
-import { balanceSummaryToFlashAsset, getFlashAssetsForChain, toFlashApiAssetAddress } from '../domain/assets'
-import { isFlashChainSupported } from '../domain/chains'
+import {
+  balanceSummaryToFlashAsset,
+  getFlashAssetsForChain,
+  toFlashApiAssetAddress
+} from '@newframe/flash/assets'
+import { isFlashChainSupported } from '@newframe/flash/chains'
 import {
   FLASH_LIMIT_ORDER_TYPE,
   FLASH_MARKET_ORDER_TYPE,
@@ -10,8 +11,21 @@ import {
   FLASH_STOP_ORDER_TYPE,
   FLASH_TAKE_PROFIT_ORDER_TYPE,
   FLASH_TWAP_ORDER_TYPE
-} from '../domain/constants'
-import { getFlashAssetPairChains } from '../domain/pair'
+} from '@newframe/flash/constants'
+import { getFlashAssetPairChains } from '@newframe/flash/pair'
+import {
+  type FlashAsset,
+  type FlashOrderType,
+  type FlashPriceTrigger,
+  type FlashQuote,
+  type FlashRuntime,
+  type FlashStep,
+  type FlashTradeSide
+} from '@newframe/flash/schemas'
+
+import type { FlashQuoteRequest } from '../../../../app/contracts/operations'
+import { type BalanceSummary } from '../../../asset-data/domain/balance'
+import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
 import {
   FLASH_MAX_TWAP_BUCKET_COUNT,
   FLASH_MAX_TWAP_DURATION_SECONDS,
@@ -23,15 +37,6 @@ import {
   nonNegativeFlashInteger,
   positiveFlashNumber
 } from '../domain/policy'
-import {
-  type FlashAsset,
-  type FlashOrderType,
-  type FlashPriceTrigger,
-  type FlashQuote,
-  type FlashRuntime,
-  type FlashStep,
-  type FlashTradeSide
-} from '../domain/schemas'
 
 export const TRADE_DEFAULT_SLIPPAGE = ''
 export const TRADE_DEFAULT_MAX_PRICE_IMPACT = ''

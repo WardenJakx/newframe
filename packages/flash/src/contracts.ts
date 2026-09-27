@@ -1,11 +1,6 @@
 import { z } from 'zod'
 
-import {
-  FlashAssetSchema,
-  FlashOrderTypeSchema,
-  FlashQuoteSchema,
-  FlashTradeSideSchema
-} from '../domain/schemas.js'
+import { FlashAssetSchema, FlashOrderTypeSchema, FlashQuoteSchema, FlashTradeSideSchema } from './schemas.js'
 
 const NumberOrStringSchema = z.union([z.number(), z.string()])
 const FlashPriceTriggerInputSchema = z.object({
@@ -24,9 +19,9 @@ export const FlashQuoteRequestSchema = z.object({
   targetChain: FlashChainInputSchema.optional(),
   contraChain: FlashChainInputSchema.optional(),
   chainId: NumberOrStringSchema.optional(),
-  targetAsset: FlashAssetSchema.optional(),
-  contraAsset: FlashAssetSchema.optional(),
-  side: FlashTradeSideSchema.optional(),
+  targetAsset: FlashAssetSchema,
+  contraAsset: FlashAssetSchema,
+  side: FlashTradeSideSchema,
   qty: z.string().optional(),
   inputAmount: z.string().optional(),
   orderType: FlashOrderTypeSchema.optional(),
@@ -44,12 +39,16 @@ export const FlashQuoteRequestSchema = z.object({
   twapBucketCount: NumberOrStringSchema.optional()
 })
 
-export const FlashSubmitOrderRequestSchema = FlashQuoteRequestSchema.extend({
+export const FlashBoundQuoteRequestSchema = FlashQuoteRequestSchema.extend({
+  accountAddress: z.string().min(1)
+})
+
+export const FlashSubmitOrderRequestSchema = FlashBoundQuoteRequestSchema.extend({
   bridgeQuoteId: z.string().optional(),
   evmOrderTypedData: z.unknown().optional(),
   evmPermitSignature: z.string().optional(),
   evmPermitTypedData: z.unknown().optional(),
-  quote: FlashQuoteSchema.optional(),
+  quote: FlashQuoteSchema,
   quoteId: z.string().optional(),
   signature: z.string().optional(),
   orderSignature: z.string().optional(),
@@ -70,7 +69,7 @@ export const FlashGetOrderRequestSchema = z.object({
 })
 
 export const FlashCancelOrderRequestSchema = z.object({
-  cancelMessage: z.unknown().optional(),
+  cancelMessage: z.string().optional(),
   orderId: z.string().min(1),
   signature: z.string().optional(),
   userSignature: z.string().optional()
@@ -78,6 +77,7 @@ export const FlashCancelOrderRequestSchema = z.object({
 
 export type FlashPriceTriggerInput = z.infer<typeof FlashPriceTriggerInputSchema>
 export type FlashQuoteRequest = z.infer<typeof FlashQuoteRequestSchema>
+export type FlashBoundQuoteRequest = z.infer<typeof FlashBoundQuoteRequestSchema>
 export type FlashSubmitOrderRequest = z.infer<typeof FlashSubmitOrderRequestSchema>
 export type FlashListOrdersRequest = z.infer<typeof FlashListOrdersRequestSchema>
 export type FlashGetOrderRequest = z.infer<typeof FlashGetOrderRequestSchema>

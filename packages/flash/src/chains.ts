@@ -1,11 +1,17 @@
-import { BUILT_IN_CHAINS } from '../../../networks/domain/chain/catalog.js'
-import { FLASH_ANVIL_CHAIN_ID, FLASH_USDC_ADDRESS, FLASH_WETH_ADDRESS } from './constants.js'
+import {
+  FLASH_ANVIL_CHAIN_ID,
+  FLASH_BASE_USDC_ADDRESS,
+  FLASH_BASE_WETH_ADDRESS,
+  FLASH_USDC_ADDRESS,
+  FLASH_WETH_ADDRESS
+} from './constants.js'
 import type { FlashRuntime } from './schemas.js'
 
 type FlashProfile = 'dev' | 'prod'
 
-interface FlashChainConfig {
+export interface FlashChainConfig {
   chainId: number
+  order: number
   slug: string
   profiles: readonly FlashProfile[]
   weth?: string | undefined
@@ -13,17 +19,34 @@ interface FlashChainConfig {
 }
 
 const FLASH_CHAIN_REGISTRY: readonly FlashChainConfig[] = [
-  ...BUILT_IN_CHAINS.filter(({ flash }) => flash)
-    .sort((left, right) => left.flash!.order - right.flash!.order)
-    .map(({ id, flash }) => ({
-      chainId: id,
-      slug: flash!.slug,
-      profiles: ['dev', 'prod'] as const,
-      weth: flash!.weth,
-      usdc: flash!.usdc
-    })),
+  {
+    chainId: 1,
+    order: 0,
+    slug: 'ethereum',
+    profiles: ['dev', 'prod'],
+    weth: FLASH_WETH_ADDRESS,
+    usdc: FLASH_USDC_ADDRESS
+  },
+  { chainId: 10, order: 1, slug: 'optimism', profiles: ['dev', 'prod'] },
+  { chainId: 56, order: 2, slug: 'bsc', profiles: ['dev', 'prod'] },
+  { chainId: 137, order: 3, slug: 'polygon', profiles: ['dev', 'prod'] },
+  { chainId: 999, order: 4, slug: 'hyperevm', profiles: ['dev', 'prod'] },
+  {
+    chainId: 8453,
+    order: 5,
+    slug: 'base',
+    profiles: ['dev', 'prod'],
+    weth: FLASH_BASE_WETH_ADDRESS,
+    usdc: FLASH_BASE_USDC_ADDRESS
+  },
+  { chainId: 9745, order: 6, slug: 'plasma', profiles: ['dev', 'prod'] },
+  { chainId: 81457, order: 7, slug: 'blast', profiles: ['dev', 'prod'] },
+  { chainId: 42161, order: 8, slug: 'arbitrum', profiles: ['dev', 'prod'] },
+  { chainId: 43114, order: 9, slug: 'avalanche', profiles: ['dev', 'prod'] },
+  { chainId: 143, order: 10, slug: 'monad', profiles: ['dev', 'prod'] },
   {
     chainId: FLASH_ANVIL_CHAIN_ID,
+    order: 11,
     slug: 'anvil',
     profiles: ['dev'],
     weth: FLASH_WETH_ADDRESS,
@@ -71,8 +94,8 @@ export function getFlashDefaultChainId(runtime: FlashRuntime = {}, availableChai
   }
 
   return (
-    available[0] ??
-    (flashProfile(runtime) === 'dev' ? FLASH_ANVIL_CHAIN_ID : supported[0]) ??
+    available.at(0) ??
+    (flashProfile(runtime) === 'dev' ? FLASH_ANVIL_CHAIN_ID : supported.at(0)) ??
     FLASH_ANVIL_CHAIN_ID
   )
 }

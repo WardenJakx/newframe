@@ -1,3 +1,10 @@
+import {
+  FLASH_STOP_LOSS_ORDER_TYPE,
+  FLASH_STOP_ORDER_TYPE,
+  FLASH_TAKE_PROFIT_ORDER_TYPE
+} from '@newframe/flash/constants'
+import { getContraPreposition, getDirectionLabel, isSameFlashAsset } from '@newframe/flash/pair'
+import type { FlashAsset } from '@newframe/flash/schemas'
 import React from 'react'
 
 import { createSideTrayWalletSelector } from '../../../../platform/state-sync/renderer/selectors/sideTrayWallet'
@@ -10,13 +17,6 @@ import {
 } from '../../../../shared/renderer/ui/tokenSelectorModel'
 import { createBalanceTokenSelectorItem, createDisplayBalance } from '../../../asset-data/domain/balance'
 import { persistedImageSource } from '../../../asset-data/domain/image'
-import {
-  FLASH_STOP_LOSS_ORDER_TYPE,
-  FLASH_STOP_ORDER_TYPE,
-  FLASH_TAKE_PROFIT_ORDER_TYPE
-} from '../domain/constants'
-import { getContraPreposition, getDirectionLabel, isSameFlashAsset } from '../domain/pair'
-import type { FlashAsset } from '../domain/schemas'
 import {
   createInitialTradeState,
   getTradeInputAmount,

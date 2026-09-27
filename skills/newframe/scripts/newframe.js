@@ -1,19 +1,5 @@
 #!/usr/bin/env bun
 // @bun
-var __defProp = Object.defineProperty;
-var __returnValue = (v) => v;
-function __exportSetter(name, newValue) {
-  this[name] = __returnValue.bind(null, newValue);
-}
-var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, {
-      get: all[name],
-      enumerable: true,
-      configurable: true,
-      set: __exportSetter.bind(all, name)
-    });
-};
 
 // apps/newframe-cli/src/index.ts
 import { readFile as readFile3, writeFile } from "fs/promises";
@@ -98,9 +84,6 @@ function getEnumValues(entries) {
   const numericValues = Object.values(entries).filter((v) => typeof v === "number");
   const values = Object.entries(entries).filter(([k, _]) => numericValues.indexOf(+k) === -1).map(([_, v]) => v);
   return values;
-}
-function joinValues(array, separator = "|") {
-  return array.map((val) => stringifyPrimitive(val)).join(separator);
 }
 function jsonStringifyReplacer(_, value) {
   if (typeof value === "bigint")
@@ -251,13 +234,6 @@ function normalizeParams(_params) {
   if (typeof params.error === "string")
     return { ...params, error: () => params.error };
   return params;
-}
-function stringifyPrimitive(value) {
-  if (typeof value === "bigint")
-    return value.toString() + "n";
-  if (typeof value === "string")
-    return `"${value}"`;
-  return `${value}`;
 }
 function optionalKeys(shape) {
   return Object.keys(shape).filter((k) => {
@@ -491,27 +467,6 @@ function getLengthableOrigin(input) {
     return "string";
   return "unknown";
 }
-function parsedType(data) {
-  const t = typeof data;
-  switch (t) {
-    case "number": {
-      return Number.isNaN(data) ? "nan" : "number";
-    }
-    case "object": {
-      if (data === null) {
-        return "null";
-      }
-      if (Array.isArray(data)) {
-        return "array";
-      }
-      const obj = data;
-      if (obj && Object.getPrototypeOf(obj) !== Object.prototype && "constructor" in obj && obj.constructor) {
-        return obj.constructor.name;
-      }
-    }
-  }
-  return t;
-}
 function issue(...args) {
   const [iss, input, inst] = args;
   if (typeof iss === "string") {
@@ -608,6 +563,7 @@ var _parse = (_Err) => (schema, value, _ctx, _params) => {
   }
   return result.value;
 };
+var parse = /* @__PURE__ */ _parse($ZodRealError);
 var _parseAsync = (_Err) => async (schema, value, _ctx, params) => {
   const ctx = _ctx ? { ..._ctx, async: true } : { async: true };
   let result = schema._zod.run({ value, issues: [] }, ctx);
@@ -620,6 +576,7 @@ var _parseAsync = (_Err) => async (schema, value, _ctx, params) => {
   }
   return result.value;
 };
+var parseAsync = /* @__PURE__ */ _parseAsync($ZodRealError);
 var _safeParse = (_Err) => (schema, value, _ctx) => {
   const ctx = _ctx ? { ..._ctx, async: false } : { async: false };
   const result = schema._zod.run({ value, issues: [] }, ctx);
@@ -722,7 +679,6 @@ var string = (params) => {
   const regex = params ? `[\\s\\S]{${params?.minimum ?? 0},${params?.maximum ?? ""}}` : `[\\s\\S]*`;
   return new RegExp(`^${regex}$`);
 };
-var bigint = /^-?\d+n?$/;
 var integer = /^-?\d+$/;
 var number = /^-?\d+(?:\.\d+)?$/;
 var boolean = /^(?:true|false)$/i;
@@ -1628,25 +1584,6 @@ var $ZodBoolean = /* @__PURE__ */ $constructor("$ZodBoolean", (inst, def) => {
     return payload;
   };
 });
-var $ZodBigInt = /* @__PURE__ */ $constructor("$ZodBigInt", (inst, def) => {
-  $ZodType.init(inst, def);
-  inst._zod.pattern = bigint;
-  inst._zod.parse = (payload, _ctx) => {
-    if (def.coerce)
-      try {
-        payload.value = BigInt(payload.value);
-      } catch (_) {}
-    if (typeof payload.value === "bigint")
-      return payload;
-    payload.issues.push({
-      expected: "bigint",
-      code: "invalid_type",
-      input: payload.value,
-      inst
-    });
-    return payload;
-  };
-});
 var $ZodNull = /* @__PURE__ */ $constructor("$ZodNull", (inst, def) => {
   $ZodType.init(inst, def);
   inst._zod.pattern = _null;
@@ -1675,29 +1612,6 @@ var $ZodNever = /* @__PURE__ */ $constructor("$ZodNever", (inst, def) => {
       expected: "never",
       code: "invalid_type",
       input: payload.value,
-      inst
-    });
-    return payload;
-  };
-});
-var $ZodDate = /* @__PURE__ */ $constructor("$ZodDate", (inst, def) => {
-  $ZodType.init(inst, def);
-  inst._zod.parse = (payload, _ctx) => {
-    if (def.coerce) {
-      try {
-        payload.value = new Date(payload.value);
-      } catch (_err) {}
-    }
-    const input = payload.value;
-    const isDate = input instanceof Date;
-    const isValidDate = isDate && !Number.isNaN(input.getTime());
-    if (isValidDate)
-      return payload;
-    payload.issues.push({
-      expected: "date",
-      code: "invalid_type",
-      input,
-      ...isDate ? { received: "Invalid Date" } : {},
       inst
     });
     return payload;
@@ -2176,132 +2090,112 @@ function handleIntersectionResults(result, left, right) {
   result.value = merged.data;
   return result;
 }
-var $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
+var $ZodTuple = /* @__PURE__ */ $constructor("$ZodTuple", (inst, def) => {
   $ZodType.init(inst, def);
+  const items = def.items;
   inst._zod.parse = (payload, ctx) => {
     const input = payload.value;
-    if (!isPlainObject(input)) {
+    if (!Array.isArray(input)) {
       payload.issues.push({
-        expected: "record",
-        code: "invalid_type",
         input,
-        inst
+        inst,
+        expected: "tuple",
+        code: "invalid_type"
       });
       return payload;
     }
+    payload.value = [];
     const proms = [];
-    const values = def.keyType._zod.values;
-    if (values) {
-      payload.value = {};
-      const recordKeys = new Set;
-      for (const key of values) {
-        if (typeof key === "string" || typeof key === "number" || typeof key === "symbol") {
-          recordKeys.add(typeof key === "number" ? key.toString() : key);
-          const keyResult = def.keyType._zod.run({ value: key, issues: [] }, ctx);
-          if (keyResult instanceof Promise) {
-            throw new Error("Async schemas not supported in object keys currently");
-          }
-          if (keyResult.issues.length) {
-            payload.issues.push({
-              code: "invalid_key",
-              origin: "record",
-              issues: keyResult.issues.map((iss) => finalizeIssue(iss, ctx, config())),
-              input: key,
-              path: [key],
-              inst
-            });
-            continue;
-          }
-          const outKey = keyResult.value;
-          const result = def.valueType._zod.run({ value: input[key], issues: [] }, ctx);
-          if (result instanceof Promise) {
-            proms.push(result.then((result) => {
-              if (result.issues.length) {
-                payload.issues.push(...prefixIssues(key, result.issues));
-              }
-              payload.value[outKey] = result.value;
-            }));
-          } else {
-            if (result.issues.length) {
-              payload.issues.push(...prefixIssues(key, result.issues));
-            }
-            payload.value[outKey] = result.value;
-          }
-        }
-      }
-      let unrecognized;
-      for (const key in input) {
-        if (!recordKeys.has(key)) {
-          unrecognized = unrecognized ?? [];
-          unrecognized.push(key);
-        }
-      }
-      if (unrecognized && unrecognized.length > 0) {
+    const optinStart = getTupleOptStart(items, "optin");
+    const optoutStart = getTupleOptStart(items, "optout");
+    if (!def.rest) {
+      if (input.length < optinStart) {
         payload.issues.push({
-          code: "unrecognized_keys",
+          code: "too_small",
+          minimum: optinStart,
+          inclusive: true,
           input,
           inst,
-          keys: unrecognized
+          origin: "array"
+        });
+        return payload;
+      }
+      if (input.length > items.length) {
+        payload.issues.push({
+          code: "too_big",
+          maximum: items.length,
+          inclusive: true,
+          input,
+          inst,
+          origin: "array"
         });
       }
-    } else {
-      payload.value = {};
-      for (const key of Reflect.ownKeys(input)) {
-        if (key === "__proto__")
-          continue;
-        if (!Object.prototype.propertyIsEnumerable.call(input, key))
-          continue;
-        let keyResult = def.keyType._zod.run({ value: key, issues: [] }, ctx);
-        if (keyResult instanceof Promise) {
-          throw new Error("Async schemas not supported in object keys currently");
-        }
-        const checkNumericKey = typeof key === "string" && number.test(key) && keyResult.issues.length;
-        if (checkNumericKey) {
-          const retryResult = def.keyType._zod.run({ value: Number(key), issues: [] }, ctx);
-          if (retryResult instanceof Promise) {
-            throw new Error("Async schemas not supported in object keys currently");
-          }
-          if (retryResult.issues.length === 0) {
-            keyResult = retryResult;
-          }
-        }
-        if (keyResult.issues.length) {
-          if (def.mode === "loose") {
-            payload.value[key] = input[key];
-          } else {
-            payload.issues.push({
-              code: "invalid_key",
-              origin: "record",
-              issues: keyResult.issues.map((iss) => finalizeIssue(iss, ctx, config())),
-              input: key,
-              path: [key],
-              inst
-            });
-          }
-          continue;
-        }
-        const result = def.valueType._zod.run({ value: input[key], issues: [] }, ctx);
+    }
+    const itemResults = new Array(items.length);
+    for (let i = 0;i < items.length; i++) {
+      const r = items[i]._zod.run({ value: input[i], issues: [] }, ctx);
+      if (r instanceof Promise) {
+        proms.push(r.then((rr) => {
+          itemResults[i] = rr;
+        }));
+      } else {
+        itemResults[i] = r;
+      }
+    }
+    if (def.rest) {
+      let i = items.length - 1;
+      const rest = input.slice(items.length);
+      for (const el of rest) {
+        i++;
+        const result = def.rest._zod.run({ value: el, issues: [] }, ctx);
         if (result instanceof Promise) {
-          proms.push(result.then((result) => {
-            if (result.issues.length) {
-              payload.issues.push(...prefixIssues(key, result.issues));
-            }
-            payload.value[keyResult.value] = result.value;
-          }));
+          proms.push(result.then((r) => handleTupleResult(r, payload, i)));
         } else {
-          if (result.issues.length) {
-            payload.issues.push(...prefixIssues(key, result.issues));
-          }
-          payload.value[keyResult.value] = result.value;
+          handleTupleResult(result, payload, i);
         }
       }
     }
     if (proms.length) {
-      return Promise.all(proms).then(() => payload);
+      return Promise.all(proms).then(() => handleTupleResults(itemResults, payload, items, input, optoutStart));
     }
-    return payload;
+    return handleTupleResults(itemResults, payload, items, input, optoutStart);
   };
 });
+function getTupleOptStart(items, key) {
+  for (let i = items.length - 1;i >= 0; i--) {
+    if (items[i]._zod[key] !== "optional")
+      return i + 1;
+  }
+  return 0;
+}
+function handleTupleResult(result, final, index) {
+  if (result.issues.length) {
+    final.issues.push(...prefixIssues(index, result.issues));
+  }
+  final.value[index] = result.value;
+}
+function handleTupleResults(itemResults, final, items, input, optoutStart) {
+  for (let i = 0;i < items.length; i++) {
+    const r = itemResults[i];
+    const isPresent = i < input.length;
+    if (r.issues.length) {
+      if (!isPresent && i >= optoutStart) {
+        final.value.length = i;
+        break;
+      }
+      final.issues.push(...prefixIssues(i, r.issues));
+    }
+    final.value[i] = r.value;
+  }
+  for (let i = final.value.length - 1;i >= input.length; i--) {
+    if (items[i]._zod.optout === "optional" && final.value[i] === undefined) {
+      final.value.length = i;
+    } else {
+      break;
+    }
+  }
+  return final;
+}
 var $ZodEnum = /* @__PURE__ */ $constructor("$ZodEnum", (inst, def) => {
   $ZodType.init(inst, def);
   const values = getEnumValues(def.entries);
@@ -2579,6 +2473,83 @@ function handleReadonlyResult(payload) {
   payload.value = Object.freeze(payload.value);
   return payload;
 }
+var $ZodFunction = /* @__PURE__ */ $constructor("$ZodFunction", (inst, def) => {
+  $ZodType.init(inst, def);
+  inst._def = def;
+  inst._zod.def = def;
+  inst.implement = (func) => {
+    if (typeof func !== "function") {
+      throw new Error("implement() must be called with a function");
+    }
+    return function(...args) {
+      const parsedArgs = inst._def.input ? parse(inst._def.input, args) : args;
+      const result = Reflect.apply(func, this, parsedArgs);
+      if (inst._def.output) {
+        return parse(inst._def.output, result);
+      }
+      return result;
+    };
+  };
+  inst.implementAsync = (func) => {
+    if (typeof func !== "function") {
+      throw new Error("implementAsync() must be called with a function");
+    }
+    return async function(...args) {
+      const parsedArgs = inst._def.input ? await parseAsync(inst._def.input, args) : args;
+      const result = await Reflect.apply(func, this, parsedArgs);
+      if (inst._def.output) {
+        return await parseAsync(inst._def.output, result);
+      }
+      return result;
+    };
+  };
+  inst._zod.parse = (payload, _ctx) => {
+    if (typeof payload.value !== "function") {
+      payload.issues.push({
+        code: "invalid_type",
+        expected: "function",
+        input: payload.value,
+        inst
+      });
+      return payload;
+    }
+    const hasPromiseOutput = inst._def.output && inst._def.output._zod.def.type === "promise";
+    if (hasPromiseOutput) {
+      payload.value = inst.implementAsync(payload.value);
+    } else {
+      payload.value = inst.implement(payload.value);
+    }
+    return payload;
+  };
+  inst.input = (...args) => {
+    const F = inst.constructor;
+    if (Array.isArray(args[0])) {
+      return new F({
+        type: "function",
+        input: new $ZodTuple({
+          type: "tuple",
+          items: args[0],
+          rest: args[1]
+        }),
+        output: inst._def.output
+      });
+    }
+    return new F({
+      type: "function",
+      input: args[0],
+      output: inst._def.output
+    });
+  };
+  inst.output = (output) => {
+    const F = inst.constructor;
+    return new F({
+      type: "function",
+      input: inst._def.input,
+      output
+    });
+  };
+  return inst;
+});
 var $ZodCustom = /* @__PURE__ */ $constructor("$ZodCustom", (inst, def) => {
   $ZodCheck.init(inst, def);
   $ZodType.init(inst, def);
@@ -2608,116 +2579,6 @@ function handleRefineResult(result, payload, input, inst) {
       _iss.params = inst._zod.def.params;
     payload.issues.push(issue(_iss));
   }
-}
-// node_modules/.bun/zod@4.4.3/node_modules/zod/v4/locales/en.js
-var error = () => {
-  const Sizable = {
-    string: { unit: "characters", verb: "to have" },
-    file: { unit: "bytes", verb: "to have" },
-    array: { unit: "items", verb: "to have" },
-    set: { unit: "items", verb: "to have" },
-    map: { unit: "entries", verb: "to have" }
-  };
-  function getSizing(origin) {
-    return Sizable[origin] ?? null;
-  }
-  const FormatDictionary = {
-    regex: "input",
-    email: "email address",
-    url: "URL",
-    emoji: "emoji",
-    uuid: "UUID",
-    uuidv4: "UUIDv4",
-    uuidv6: "UUIDv6",
-    nanoid: "nanoid",
-    guid: "GUID",
-    cuid: "cuid",
-    cuid2: "cuid2",
-    ulid: "ULID",
-    xid: "XID",
-    ksuid: "KSUID",
-    datetime: "ISO datetime",
-    date: "ISO date",
-    time: "ISO time",
-    duration: "ISO duration",
-    ipv4: "IPv4 address",
-    ipv6: "IPv6 address",
-    mac: "MAC address",
-    cidrv4: "IPv4 range",
-    cidrv6: "IPv6 range",
-    base64: "base64-encoded string",
-    base64url: "base64url-encoded string",
-    json_string: "JSON string",
-    e164: "E.164 number",
-    jwt: "JWT",
-    template_literal: "input"
-  };
-  const TypeDictionary = {
-    nan: "NaN"
-  };
-  return (issue) => {
-    switch (issue.code) {
-      case "invalid_type": {
-        const expected = TypeDictionary[issue.expected] ?? issue.expected;
-        const receivedType = parsedType(issue.input);
-        const received = TypeDictionary[receivedType] ?? receivedType;
-        return `Invalid input: expected ${expected}, received ${received}`;
-      }
-      case "invalid_value":
-        if (issue.values.length === 1)
-          return `Invalid input: expected ${stringifyPrimitive(issue.values[0])}`;
-        return `Invalid option: expected one of ${joinValues(issue.values, "|")}`;
-      case "too_big": {
-        const adj = issue.inclusive ? "<=" : "<";
-        const sizing = getSizing(issue.origin);
-        if (sizing)
-          return `Too big: expected ${issue.origin ?? "value"} to have ${adj}${issue.maximum.toString()} ${sizing.unit ?? "elements"}`;
-        return `Too big: expected ${issue.origin ?? "value"} to be ${adj}${issue.maximum.toString()}`;
-      }
-      case "too_small": {
-        const adj = issue.inclusive ? ">=" : ">";
-        const sizing = getSizing(issue.origin);
-        if (sizing) {
-          return `Too small: expected ${issue.origin} to have ${adj}${issue.minimum.toString()} ${sizing.unit}`;
-        }
-        return `Too small: expected ${issue.origin} to be ${adj}${issue.minimum.toString()}`;
-      }
-      case "invalid_format": {
-        const _issue = issue;
-        if (_issue.format === "starts_with") {
-          return `Invalid string: must start with "${_issue.prefix}"`;
-        }
-        if (_issue.format === "ends_with")
-          return `Invalid string: must end with "${_issue.suffix}"`;
-        if (_issue.format === "includes")
-          return `Invalid string: must include "${_issue.includes}"`;
-        if (_issue.format === "regex")
-          return `Invalid string: must match pattern ${_issue.pattern}`;
-        return `Invalid ${FormatDictionary[_issue.format] ?? issue.format}`;
-      }
-      case "not_multiple_of":
-        return `Invalid number: must be a multiple of ${issue.divisor}`;
-      case "unrecognized_keys":
-        return `Unrecognized key${issue.keys.length > 1 ? "s" : ""}: ${joinValues(issue.keys, ", ")}`;
-      case "invalid_key":
-        return `Invalid key in ${issue.origin}`;
-      case "invalid_union":
-        if (issue.options && Array.isArray(issue.options) && issue.options.length > 0) {
-          const opts = issue.options.map((o) => `'${o}'`).join(" | ");
-          return `Invalid discriminator value. Expected ${opts}`;
-        }
-        return "Invalid input";
-      case "invalid_element":
-        return `Invalid value in ${issue.origin}`;
-      default:
-        return `Invalid input`;
-    }
-  };
-};
-function en_default() {
-  return {
-    localeError: error()
-  };
 }
 // node_modules/.bun/zod@4.4.3/node_modules/zod/v4/core/registries.js
 var _a2;
@@ -2773,13 +2634,6 @@ var globalRegistry = globalThis.__zod_globalRegistry;
 function _string(Class, params) {
   return new Class({
     type: "string",
-    ...normalizeParams(params)
-  });
-}
-function _coercedString(Class, params) {
-  return new Class({
-    type: "string",
-    coerce: true,
     ...normalizeParams(params)
   });
 }
@@ -3027,14 +2881,6 @@ function _number(Class, params) {
     ...normalizeParams(params)
   });
 }
-function _coercedNumber(Class, params) {
-  return new Class({
-    type: "number",
-    coerce: true,
-    checks: [],
-    ...normalizeParams(params)
-  });
-}
 function _int(Class, params) {
   return new Class({
     type: "number",
@@ -3047,20 +2893,6 @@ function _int(Class, params) {
 function _boolean(Class, params) {
   return new Class({
     type: "boolean",
-    ...normalizeParams(params)
-  });
-}
-function _coercedBoolean(Class, params) {
-  return new Class({
-    type: "boolean",
-    coerce: true,
-    ...normalizeParams(params)
-  });
-}
-function _coercedBigint(Class, params) {
-  return new Class({
-    type: "bigint",
-    coerce: true,
     ...normalizeParams(params)
   });
 }
@@ -3078,13 +2910,6 @@ function _unknown(Class) {
 function _never(Class, params) {
   return new Class({
     type: "never",
-    ...normalizeParams(params)
-  });
-}
-function _coercedDate(Class, params) {
-  return new Class({
-    type: "date",
-    coerce: true,
     ...normalizeParams(params)
   });
 }
@@ -3688,11 +3513,6 @@ var numberProcessor = (schema, ctx, _json, _params) => {
 var booleanProcessor = (_schema, _ctx, json, _params) => {
   json.type = "boolean";
 };
-var bigintProcessor = (_schema, ctx, _json, _params) => {
-  if (ctx.unrepresentable === "throw") {
-    throw new Error("BigInt cannot be represented in JSON Schema");
-  }
-};
 var nullProcessor = (_schema, ctx, json, _params) => {
   if (ctx.target === "openapi-3.0") {
     json.type = "string";
@@ -3706,11 +3526,6 @@ var neverProcessor = (_schema, _ctx, json, _params) => {
   json.not = {};
 };
 var unknownProcessor = (_schema, _ctx, _json, _params) => {};
-var dateProcessor = (_schema, ctx, _json, _params) => {
-  if (ctx.unrepresentable === "throw") {
-    throw new Error("Date cannot be represented in JSON Schema");
-  }
-};
 var enumProcessor = (schema, _ctx, json, _params) => {
   const def = schema._zod.def;
   const values = getEnumValues(def.entries);
@@ -3761,6 +3576,11 @@ var literalProcessor = (schema, ctx, json, _params) => {
 var customProcessor = (_schema, ctx, _json, _params) => {
   if (ctx.unrepresentable === "throw") {
     throw new Error("Custom types cannot be represented in JSON Schema");
+  }
+};
+var functionProcessor = (_schema, ctx, _json, _params) => {
+  if (ctx.unrepresentable === "throw") {
+    throw new Error("Function types cannot be represented in JSON Schema");
   }
 };
 var transformProcessor = (_schema, ctx, _json, _params) => {
@@ -3848,41 +3668,47 @@ var intersectionProcessor = (schema, ctx, json, params) => {
   ];
   json.allOf = allOf;
 };
-var recordProcessor = (schema, ctx, _json, params) => {
+var tupleProcessor = (schema, ctx, _json, params) => {
   const json = _json;
   const def = schema._zod.def;
-  json.type = "object";
-  const keyType = def.keyType;
-  const keyBag = keyType._zod.bag;
-  const patterns = keyBag?.patterns;
-  if (def.mode === "loose" && patterns && patterns.size > 0) {
-    const valueSchema = process2(def.valueType, ctx, {
-      ...params,
-      path: [...params.path, "patternProperties", "*"]
-    });
-    json.patternProperties = {};
-    for (const pattern of patterns) {
-      json.patternProperties[pattern.source] = valueSchema;
+  json.type = "array";
+  const prefixPath = ctx.target === "draft-2020-12" ? "prefixItems" : "items";
+  const restPath = ctx.target === "draft-2020-12" ? "items" : ctx.target === "openapi-3.0" ? "items" : "additionalItems";
+  const prefixItems = def.items.map((x, i) => process2(x, ctx, {
+    ...params,
+    path: [...params.path, prefixPath, i]
+  }));
+  const rest = def.rest ? process2(def.rest, ctx, {
+    ...params,
+    path: [...params.path, restPath, ...ctx.target === "openapi-3.0" ? [def.items.length] : []]
+  }) : null;
+  if (ctx.target === "draft-2020-12") {
+    json.prefixItems = prefixItems;
+    if (rest) {
+      json.items = rest;
+    }
+  } else if (ctx.target === "openapi-3.0") {
+    json.items = {
+      anyOf: prefixItems
+    };
+    if (rest) {
+      json.items.anyOf.push(rest);
+    }
+    json.minItems = prefixItems.length;
+    if (!rest) {
+      json.maxItems = prefixItems.length;
     }
   } else {
-    if (ctx.target === "draft-07" || ctx.target === "draft-2020-12") {
-      json.propertyNames = process2(def.keyType, ctx, {
-        ...params,
-        path: [...params.path, "propertyNames"]
-      });
-    }
-    json.additionalProperties = process2(def.valueType, ctx, {
-      ...params,
-      path: [...params.path, "additionalProperties"]
-    });
-  }
-  const keyValues = keyType._zod.values;
-  if (keyValues) {
-    const validKeyValues = [...keyValues].filter((v) => typeof v === "string" || typeof v === "number");
-    if (validKeyValues.length > 0) {
-      json.required = validKeyValues;
+    json.items = prefixItems;
+    if (rest) {
+      json.additionalItems = rest;
     }
   }
+  const { minimum, maximum } = schema._zod.bag;
+  if (typeof minimum === "number")
+    json.minItems = minimum;
+  if (typeof maximum === "number")
+    json.maxItems = maximum;
 };
 var nullableProcessor = (schema, ctx, json, params) => {
   const def = schema._zod.def;
@@ -4441,28 +4267,6 @@ var ZodBoolean = /* @__PURE__ */ $constructor("ZodBoolean", (inst, def) => {
 function boolean2(params) {
   return _boolean(ZodBoolean, params);
 }
-var ZodBigInt = /* @__PURE__ */ $constructor("ZodBigInt", (inst, def) => {
-  $ZodBigInt.init(inst, def);
-  ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json, params) => bigintProcessor(inst, ctx, json, params);
-  inst.gte = (value, params) => inst.check(_gte(value, params));
-  inst.min = (value, params) => inst.check(_gte(value, params));
-  inst.gt = (value, params) => inst.check(_gt(value, params));
-  inst.gte = (value, params) => inst.check(_gte(value, params));
-  inst.min = (value, params) => inst.check(_gte(value, params));
-  inst.lt = (value, params) => inst.check(_lt(value, params));
-  inst.lte = (value, params) => inst.check(_lte(value, params));
-  inst.max = (value, params) => inst.check(_lte(value, params));
-  inst.positive = (params) => inst.check(_gt(BigInt(0), params));
-  inst.negative = (params) => inst.check(_lt(BigInt(0), params));
-  inst.nonpositive = (params) => inst.check(_lte(BigInt(0), params));
-  inst.nonnegative = (params) => inst.check(_gte(BigInt(0), params));
-  inst.multipleOf = (value, params) => inst.check(_multipleOf(value, params));
-  const bag = inst._zod.bag;
-  inst.minValue = bag.minimum ?? null;
-  inst.maxValue = bag.maximum ?? null;
-  inst.format = bag.format ?? null;
-});
 var ZodNull = /* @__PURE__ */ $constructor("ZodNull", (inst, def) => {
   $ZodNull.init(inst, def);
   ZodType.init(inst, def);
@@ -4487,16 +4291,6 @@ var ZodNever = /* @__PURE__ */ $constructor("ZodNever", (inst, def) => {
 function never(params) {
   return _never(ZodNever, params);
 }
-var ZodDate = /* @__PURE__ */ $constructor("ZodDate", (inst, def) => {
-  $ZodDate.init(inst, def);
-  ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json, params) => dateProcessor(inst, ctx, json, params);
-  inst.min = (value, params) => inst.check(_gte(value, params));
-  inst.max = (value, params) => inst.check(_lte(value, params));
-  const c = inst._zod.bag;
-  inst.minDate = c.minimum ? new Date(c.minimum) : null;
-  inst.maxDate = c.maximum ? new Date(c.maximum) : null;
-});
 var ZodArray = /* @__PURE__ */ $constructor("ZodArray", (inst, def) => {
   $ZodArray.init(inst, def);
   ZodType.init(inst, def);
@@ -4588,6 +4382,14 @@ function strictObject(shape, params) {
     ...normalizeParams(params)
   });
 }
+function looseObject(shape, params) {
+  return new ZodObject({
+    type: "object",
+    shape,
+    catchall: unknown(),
+    ...normalizeParams(params)
+  });
+}
 var ZodUnion = /* @__PURE__ */ $constructor("ZodUnion", (inst, def) => {
   $ZodUnion.init(inst, def);
   ZodType.init(inst, def);
@@ -4613,26 +4415,23 @@ function intersection(left, right) {
     right
   });
 }
-var ZodRecord = /* @__PURE__ */ $constructor("ZodRecord", (inst, def) => {
-  $ZodRecord.init(inst, def);
+var ZodTuple = /* @__PURE__ */ $constructor("ZodTuple", (inst, def) => {
+  $ZodTuple.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json, params) => recordProcessor(inst, ctx, json, params);
-  inst.keyType = def.keyType;
-  inst.valueType = def.valueType;
+  inst._zod.processJSONSchema = (ctx, json, params) => tupleProcessor(inst, ctx, json, params);
+  inst.rest = (rest) => inst.clone({
+    ...inst._zod.def,
+    rest
+  });
 });
-function record(keyType, valueType, params) {
-  if (!valueType || !valueType._zod) {
-    return new ZodRecord({
-      type: "record",
-      keyType: string2(),
-      valueType: keyType,
-      ...normalizeParams(valueType)
-    });
-  }
-  return new ZodRecord({
-    type: "record",
-    keyType,
-    valueType,
+function tuple(items, _paramsOrRest, _params) {
+  const hasRest = _paramsOrRest instanceof $ZodType;
+  const params = hasRest ? _params : _paramsOrRest;
+  const rest = hasRest ? _paramsOrRest : null;
+  return new ZodTuple({
+    type: "tuple",
+    items,
+    rest,
     ...normalizeParams(params)
   });
 }
@@ -4863,6 +4662,18 @@ function readonly(innerType) {
     innerType
   });
 }
+var ZodFunction = /* @__PURE__ */ $constructor("ZodFunction", (inst, def) => {
+  $ZodFunction.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json, params) => functionProcessor(inst, ctx, json, params);
+});
+function _function(params) {
+  return new ZodFunction({
+    type: "function",
+    input: Array.isArray(params?.input) ? tuple(params?.input) : params?.input ?? array(unknown()),
+    output: params?.output ?? unknown()
+  });
+}
 var ZodCustom = /* @__PURE__ */ $constructor("ZodCustom", (inst, def) => {
   $ZodCustom.init(inst, def);
   ZodType.init(inst, def);
@@ -4874,34 +4685,7 @@ function refine(fn, _params = {}) {
 function superRefine(fn, params) {
   return _superRefine(fn, params);
 }
-// node_modules/.bun/zod@4.4.3/node_modules/zod/v4/classic/coerce.js
-var exports_coerce = {};
-__export(exports_coerce, {
-  bigint: () => bigint2,
-  boolean: () => boolean3,
-  date: () => date3,
-  number: () => number3,
-  string: () => string3
-});
-function string3(params) {
-  return _coercedString(ZodString, params);
-}
-function number3(params) {
-  return _coercedNumber(ZodNumber, params);
-}
-function boolean3(params) {
-  return _coercedBoolean(ZodBoolean, params);
-}
-function bigint2(params) {
-  return _coercedBigint(ZodBigInt, params);
-}
-function date3(params) {
-  return _coercedDate(ZodDate, params);
-}
-
-// node_modules/.bun/zod@4.4.3/node_modules/zod/v4/classic/external.js
-config(en_default());
-// apps/newframe/src/features/transactions/trade/domain/constants.ts
+// packages/flash/dist/constants.js
 var FLASH_ANVIL_CHAIN_ID = 31337;
 var FLASH_NATIVE_ETH_TOKEN_ADDRESS = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 var FLASH_WETH_ADDRESS = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
@@ -4929,7 +4713,7 @@ var FLASH_ORDER_TYPES = [
 ];
 var FLASH_TRADE_SIDES = ["buy", "sell"];
 
-// apps/newframe/src/features/transactions/trade/domain/schemas.ts
+// packages/flash/dist/schemas.js
 var FlashAddressSchema = string2().regex(/^0x[0-9a-fA-F]{40}$/);
 var FlashChainIdSchema = number2().int().positive();
 var FlashTradeSideSchema = _enum(FLASH_TRADE_SIDES);
@@ -5009,8 +4793,13 @@ var FlashQuoteSchema = object({
   expiresAt: string2().optional(),
   raw: unknown().optional()
 });
+var FlashRuntimeSchema = object({
+  environment: string2().nullish(),
+  isDev: boolean2().nullish(),
+  profile: string2().nullish()
+});
 
-// apps/newframe/src/features/transactions/trade/main/contracts.ts
+// packages/flash/dist/contracts.js
 var NumberOrStringSchema = union([number2(), string2()]);
 var FlashPriceTriggerInputSchema = object({
   notionalPrice: NumberOrStringSchema.optional(),
@@ -5027,9 +4816,9 @@ var FlashQuoteRequestSchema = object({
   targetChain: FlashChainInputSchema.optional(),
   contraChain: FlashChainInputSchema.optional(),
   chainId: NumberOrStringSchema.optional(),
-  targetAsset: FlashAssetSchema.optional(),
-  contraAsset: FlashAssetSchema.optional(),
-  side: FlashTradeSideSchema.optional(),
+  targetAsset: FlashAssetSchema,
+  contraAsset: FlashAssetSchema,
+  side: FlashTradeSideSchema,
   qty: string2().optional(),
   inputAmount: string2().optional(),
   orderType: FlashOrderTypeSchema.optional(),
@@ -5046,12 +4835,15 @@ var FlashQuoteRequestSchema = object({
   triggers: array(FlashPriceTriggerInputSchema).optional(),
   twapBucketCount: NumberOrStringSchema.optional()
 });
-var FlashSubmitOrderRequestSchema = FlashQuoteRequestSchema.extend({
+var FlashBoundQuoteRequestSchema = FlashQuoteRequestSchema.extend({
+  accountAddress: string2().min(1)
+});
+var FlashSubmitOrderRequestSchema = FlashBoundQuoteRequestSchema.extend({
   bridgeQuoteId: string2().optional(),
   evmOrderTypedData: unknown().optional(),
   evmPermitSignature: string2().optional(),
   evmPermitTypedData: unknown().optional(),
-  quote: FlashQuoteSchema.optional(),
+  quote: FlashQuoteSchema,
   quoteId: string2().optional(),
   signature: string2().optional(),
   orderSignature: string2().optional(),
@@ -5069,7 +4861,7 @@ var FlashGetOrderRequestSchema = object({
   orderId: string2().min(1)
 });
 var FlashCancelOrderRequestSchema = object({
-  cancelMessage: unknown().optional(),
+  cancelMessage: string2().optional(),
   orderId: string2().min(1),
   signature: string2().optional(),
   userSignature: string2().optional()
@@ -5078,419 +4870,36 @@ var FlashCancelOrderRequestSchema = object({
 // apps/newframe-cli/src/client.ts
 import { createHash } from "crypto";
 
-// apps/newframe/src/features/transactions/domain/constants.ts
-var MAX_HEX = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
-
-// apps/newframe/src/shared/domain/units.ts
-var max = BigInt(MAX_HEX);
-
-// apps/newframe/src/features/tokens/domain/constants.ts
-var NATIVE_CURRENCY = "0x0000000000000000000000000000000000000000";
-
-// apps/newframe/src/features/asset-data/domain/image/index.ts
-var MAX_EMBEDDED_IMAGE_BYTES = 1024 * 1024;
-var supportedImageMimeTypes = new Set([
-  "image/png",
-  "image/jpeg",
-  "image/webp",
-  "image/gif",
-  "image/svg+xml",
-  "image/x-icon",
-  "image/vnd.microsoft.icon"
-]);
-var maxEmbeddedImageSourceLength = Math.ceil(MAX_EMBEDDED_IMAGE_BYTES * 4 / 3) + 64;
-
-// apps/newframe/src/features/tokens/domain/state/token.ts
-var TokenIdSchema = object({
-  address: string2(),
-  chainId: exports_coerce.number()
-});
-var TokenImageSchema = strictObject({
-  base64: string2(),
-  contentHash: string2(),
-  mimeType: string2(),
-  sourceUrl: string2().optional()
-});
-var TokenSourceSchema = _enum(["bundled", "custom", "onchain", "portfolio", "transaction"]);
-var TokenSchema = TokenIdSchema.extend({
-  name: string2(),
-  symbol: string2(),
-  decimals: number2().int().min(0).max(255),
-  logoURI: string2().optional(),
-  image: TokenImageSchema.optional(),
-  custom: boolean2().default(false),
-  curated: boolean2().default(false),
-  sources: array(TokenSourceSchema).default([]),
-  updatedAt: number2().default(0)
-});
-var TokenCatalogSchema = strictObject({
-  byId: record(string2(), TokenSchema),
-  accountTokenIds: record(string2(), array(string2()))
-});
-
-// apps/newframe/src/features/asset-data/domain/asset/registry.ts
-var CuratedTokenSchema = TokenSchema.pick({
-  address: true,
-  chainId: true,
-  decimals: true,
-  name: true,
-  symbol: true
-});
-function token(input) {
-  const normalizedAddress = input.address.toLowerCase();
-  const normalizedToken = CuratedTokenSchema.parse({ ...input, address: normalizedAddress });
-  return Object.freeze({
-    ...input,
-    ...normalizedToken,
-    address: normalizedToken.address,
-    assetId: `${normalizedToken.chainId}:${normalizedToken.address}`
-  });
-}
-var WETH = [
-  token({
-    address: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-    assetLabel: "token",
-    chainId: 1,
-    commonAsset: "ETH",
-    decimals: 18,
-    name: "Wrapped Ether",
-    symbol: "WETH"
-  }),
-  token({
-    address: "0x4200000000000000000000000000000000000006",
-    assetLabel: "token",
-    chainId: 10,
-    commonAsset: "ETH",
-    decimals: 18,
-    name: "Wrapped Ether",
-    symbol: "WETH"
-  }),
-  token({
-    address: "0x4200000000000000000000000000000000000006",
-    assetLabel: "token",
-    chainId: 8453,
-    commonAsset: "ETH",
-    decimals: 18,
-    name: "Wrapped Ether",
-    symbol: "WETH"
-  }),
-  token({
-    address: "0x4300000000000000000000000000000000000004",
-    assetLabel: "token",
-    chainId: 81457,
-    commonAsset: "ETH",
-    decimals: 18,
-    name: "Wrapped Ether",
-    symbol: "WETH"
-  }),
-  token({
-    address: "0x82af49447d8a07e3bd95bd0d56f35241523fbab1",
-    assetLabel: "token",
-    chainId: 42161,
-    commonAsset: "ETH",
-    decimals: 18,
-    name: "Wrapped Ether",
-    symbol: "WETH"
-  })
-];
-var USDC = [
-  [1, "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"],
-  [10, "0x0b2c639c533813f4aa9d7837caf62653d097ff85"],
-  [137, "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359"],
-  [999, "0xb88339cb7199b77e23db6e890353e22632ba630f"],
-  [8453, "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"],
-  [42161, "0xaf88d065e77c8cc2239327c5edb3a432268e5831"],
-  [43114, "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e"],
-  [143, "0x754704bc059f8c67012fed69bc8a327a5aafb603"]
-].map(([chainId, address]) => token({
-  address,
-  assetLabel: "stablecoin",
-  chainId,
-  commonAsset: "USDC",
-  decimals: 6,
-  fixedUsdRate: 1,
-  name: "USD Coin",
-  symbol: "USDC"
-}));
-var USDT = [
-  [1, "0xdac17f958d2ee523a2206206994597c13d831ec7"],
-  [43114, "0x9702230a8ea53601f5cd2dc00fdbc13d4df4a8c7"]
-].map(([chainId, address]) => token({
-  address,
-  assetLabel: "stablecoin",
-  chainId,
-  commonAsset: "USDT",
-  decimals: 6,
-  fixedUsdRate: 1,
-  name: "Tether USD",
-  symbol: "USDT"
-}));
-var USDT0 = [
-  [10, "0x01bff41798a0bcf287b996046ca68b395dbc1071"],
-  [999, "0xb8ce59fc3717ada4c02eadf9682a9e934f625ebb"],
-  [9745, "0xb8ce59fc3717ada4c02eadf9682a9e934f625ebb"],
-  [143, "0xe7cd86e13ac4309349f30b3435a9d337750fc82d"]
-].map(([chainId, address]) => token({
-  address,
-  assetLabel: "stablecoin",
-  chainId,
-  commonAsset: "USDT0",
-  decimals: 6,
-  fixedUsdRate: 1,
-  name: "USD\u20AE0",
-  symbol: "USDT0"
-}));
-var WBTC = [
-  [1, "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599"],
-  [56, "0x39665e85a68a4d7328b8799135e2ff301a0ca86f"],
-  [8453, "0x1cea84203673764244e05693e42e6ace62be9ba5"]
-].map(([chainId, address]) => token({
-  address,
-  assetLabel: "token",
-  chainId,
-  commonAsset: "WBTC",
-  decimals: 8,
-  name: "Wrapped Bitcoin",
-  symbol: "WBTC"
-}));
-var CBBTC = [1, 8453, 42161].map((chainId) => token({
-  address: "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
-  assetLabel: "token",
-  chainId,
-  commonAsset: "cbBTC",
-  decimals: 8,
-  name: "Coinbase Wrapped BTC",
-  symbol: "cbBTC"
-}));
-var entries = [...WETH, ...USDC, ...USDT, ...USDT0, ...WBTC, ...CBBTC];
-if (process.env.NODE_ENV !== "production") {
-  const assetIds = new Set;
-  entries.forEach(({ assetId }) => {
-    if (assetIds.has(assetId)) {
-      throw new Error(`Duplicate curated assetId: ${assetId}`);
-    }
-    assetIds.add(assetId);
-  });
-}
-var CURATED_ASSETS = Object.freeze(entries);
-
-// apps/newframe/src/features/asset-data/domain/asset/index.ts
-var assetsById = new Map(CURATED_ASSETS.map((asset) => [asset.assetId, asset]));
-var CURATED_TOKEN_ASSETS = Object.freeze(CURATED_ASSETS.filter((asset) => Boolean(asset.address) && asset.address !== NATIVE_CURRENCY));
-
-// apps/newframe/src/features/asset-data/domain/balance/index.ts
-var MAINNET_ETH_ICON = "https://assets.coingecko.com/coins/images/279/large/ethereum.png?1595348880";
-
-// apps/newframe/src/features/networks/domain/chain/catalog.ts
-var definitions = [
-  [
-    1,
-    "Mainnet",
-    "mainnet",
-    "https://etherscan.io",
-    true,
-    ["chainlist", "https://ethereum-rpc.publicnode.com"],
-    "https://chain-icons.s3.amazonaws.com/ethereum.png",
-    "accent1",
-    ["ETH", "Ether", "eth"],
-    [0, "ethereum", FLASH_WETH_ADDRESS, FLASH_USDC_ADDRESS]
-  ],
-  [
-    10,
-    "Optimism",
-    "rollup",
-    "https://optimistic.etherscan.io",
-    true,
-    ["chainlist", "https://mainnet.optimism.io"],
-    "https://frame.nyc3.cdn.digitaloceanspaces.com/icons/optimism.svg",
-    "accent4",
-    ["ETH", "Ether", "eth"],
-    [1, "optimism"]
-  ],
-  [
-    56,
-    "BNB Smart Chain",
-    "sidechain",
-    "https://bscscan.com",
-    true,
-    ["custom", "https://bsc-dataseed.bnbchain.org"],
-    "https://chain-icons.s3.amazonaws.com/bsc.png",
-    "accent8",
-    ["BNB", "BNB", "chain"],
-    [2, "bsc"]
-  ],
-  [
-    100,
-    "Gnosis",
-    "sidechain",
-    "https://blockscout.com/xdai/mainnet",
-    false,
-    ["custom", "https://rpc.gnosischain.com"],
-    "https://frame.nyc3.cdn.digitaloceanspaces.com/icons/gnosis.svg",
-    "accent5",
-    ["xDAI", "xDAI", "chain"]
-  ],
-  [
-    137,
-    "Polygon",
-    "sidechain",
-    "https://polygonscan.com",
-    true,
-    ["chainlist", "https://polygon-bor-rpc.publicnode.com"],
-    "https://frame.nyc3.cdn.digitaloceanspaces.com/icons/polygon.svg",
-    "accent6",
-    ["MATIC", "Matic", "chain"],
-    [3, "polygon"]
-  ],
-  [
-    143,
-    "Monad",
-    "mainnet",
-    "https://monadvision.com",
-    true,
-    ["custom", "https://rpc.monad.xyz"],
-    "https://chain-icons.s3.us-east-1.amazonaws.com/monad.png",
-    "accent6",
-    ["MON", "Monad", "chain"],
-    [10, "monad"]
-  ],
-  [
-    999,
-    "HyperEVM",
-    "mainnet",
-    "https://hyperevmscan.io",
-    true,
-    ["custom", "https://rpc.hyperliquid.xyz/evm"],
-    "https://chain-icons.s3.amazonaws.com/chainlist/999",
-    "accent3",
-    ["HYPE", "HYPE", "chain"],
-    [4, "hyperevm"]
-  ],
-  [
-    8453,
-    "Base",
-    "rollup",
-    "https://basescan.org",
-    true,
-    ["chainlist", "https://mainnet.base.org"],
-    "https://frame.nyc3.cdn.digitaloceanspaces.com/baseiconcolor.png",
-    "accent8",
-    ["ETH", "Ether", "eth"],
-    [5, "base", FLASH_BASE_WETH_ADDRESS, FLASH_BASE_USDC_ADDRESS]
-  ],
-  [
-    9745,
-    "Plasma",
-    "mainnet",
-    "https://plasmascan.to",
-    true,
-    ["custom", "https://rpc.plasma.to"],
-    "https://chain-icons.s3.amazonaws.com/plasma.png",
-    "accent5",
-    ["XPL", "Plasma", "chain"],
-    [6, "plasma"]
-  ],
-  [
-    42161,
-    "Arbitrum",
-    "rollup",
-    "https://arbiscan.io",
-    true,
-    ["chainlist", "https://arb1.arbitrum.io/rpc"],
-    "https://frame.nyc3.cdn.digitaloceanspaces.com/icons/arbitrum.svg",
-    "accent7",
-    ["ETH", "Ether", "eth"],
-    [8, "arbitrum"]
-  ],
-  [
-    43114,
-    "Avalanche",
-    "sidechain",
-    "https://snowtrace.io",
-    true,
-    ["custom", "https://api.avax.network/ext/bc/C/rpc"],
-    "https://chain-icons.s3.amazonaws.com/avalanche.png",
-    "accent8",
-    ["AVAX", "Avalanche", "chain"],
-    [9, "avalanche"]
-  ],
-  [
-    81457,
-    "Blast",
-    "rollup",
-    "https://blastscan.io",
-    true,
-    ["custom", "https://rpc.blast.io"],
-    "https://chain-icons.s3.amazonaws.com/chainlist/81457",
-    "accent4",
-    ["ETH", "Ether", "eth"],
-    [7, "blast"]
-  ],
-  [
-    84532,
-    "Base Sepolia",
-    "testnet",
-    "https://sepolia.basescan.org/",
-    false,
-    ["chainlist", "https://sepolia.base.org"],
-    "https://frame.nyc3.cdn.digitaloceanspaces.com/baseiconcolor.png",
-    "accent2",
-    ["sepETH", "Base Sepolia Ether", "eth"]
-  ],
-  [
-    11155111,
-    "Sepolia",
-    "testnet",
-    "https://sepolia.etherscan.io",
-    false,
-    ["chainlist", "https://ethereum-sepolia-rpc.publicnode.com"],
-    "https://chain-icons.s3.amazonaws.com/ethereum.png",
-    "accent2",
-    ["sepETH", "Sepolia Ether", "eth"]
-  ],
-  [
-    11155420,
-    "Optimism Sepolia",
-    "testnet",
-    "https://sepolia-optimism.etherscan.io/",
-    false,
-    ["chainlist", "https://sepolia.optimism.io"],
-    "https://frame.nyc3.cdn.digitaloceanspaces.com/icons/optimism.svg",
-    "accent2",
-    ["sepETH", "Optimism Sepolia Ether", "eth"]
-  ]
-];
-var BUILT_IN_CHAINS = Object.freeze(definitions.map(([id, name, layer, explorer, defaultEnabled, [preset, url], icon, primaryColor, native, flash]) => ({
-  id,
-  name,
-  layer,
-  isTestnet: layer === "testnet",
-  explorer,
-  defaultEnabled,
-  rpc: { preset, url },
-  icon,
-  primaryColor,
-  nativeCurrency: {
-    symbol: native[0],
-    name: native[1],
-    icon: native[2] === "eth" ? MAINNET_ETH_ICON : icon,
-    decimals: 18
-  },
-  ...flash ? { flash: { order: flash[0], slug: flash[1], weth: flash[2], usdc: flash[3] } } : {}
-})));
-var BUILT_IN_CHAIN_ICON_URLS = Object.freeze(Object.fromEntries(BUILT_IN_CHAINS.map(({ id, icon }) => [id, icon])));
-
-// apps/newframe/src/features/transactions/trade/domain/chains.ts
+// packages/flash/dist/chains.js
 var FLASH_CHAIN_REGISTRY = [
-  ...BUILT_IN_CHAINS.filter(({ flash }) => flash).sort((left, right) => left.flash.order - right.flash.order).map(({ id, flash }) => ({
-    chainId: id,
-    slug: flash.slug,
+  {
+    chainId: 1,
+    order: 0,
+    slug: "ethereum",
     profiles: ["dev", "prod"],
-    weth: flash.weth,
-    usdc: flash.usdc
-  })),
+    weth: FLASH_WETH_ADDRESS,
+    usdc: FLASH_USDC_ADDRESS
+  },
+  { chainId: 10, order: 1, slug: "optimism", profiles: ["dev", "prod"] },
+  { chainId: 56, order: 2, slug: "bsc", profiles: ["dev", "prod"] },
+  { chainId: 137, order: 3, slug: "polygon", profiles: ["dev", "prod"] },
+  { chainId: 999, order: 4, slug: "hyperevm", profiles: ["dev", "prod"] },
+  {
+    chainId: 8453,
+    order: 5,
+    slug: "base",
+    profiles: ["dev", "prod"],
+    weth: FLASH_BASE_WETH_ADDRESS,
+    usdc: FLASH_BASE_USDC_ADDRESS
+  },
+  { chainId: 9745, order: 6, slug: "plasma", profiles: ["dev", "prod"] },
+  { chainId: 81457, order: 7, slug: "blast", profiles: ["dev", "prod"] },
+  { chainId: 42161, order: 8, slug: "arbitrum", profiles: ["dev", "prod"] },
+  { chainId: 43114, order: 9, slug: "avalanche", profiles: ["dev", "prod"] },
+  { chainId: 143, order: 10, slug: "monad", profiles: ["dev", "prod"] },
   {
     chainId: FLASH_ANVIL_CHAIN_ID,
+    order: 11,
     slug: "anvil",
     profiles: ["dev"],
     weth: FLASH_WETH_ADDRESS,
@@ -5517,7 +4926,8 @@ function getFlashChainIdFromSlug(slug) {
   return FLASH_CHAIN_REGISTRY.find((config) => config.slug === slug.trim().toLowerCase())?.chainId;
 }
 
-// apps/newframe/src/features/transactions/trade/domain/assets.ts
+// packages/flash/dist/assets.js
+var NATIVE_CURRENCY = "0x0000000000000000000000000000000000000000";
 function normalizeFlashAddress(address) {
   const value = typeof address === "string" ? address.trim().toLowerCase() : "";
   if (value === NATIVE_CURRENCY) {
@@ -5528,14 +4938,7 @@ function normalizeFlashAddress(address) {
 function flashAssetId(chainId, address) {
   return `${chainId}:${normalizeFlashAddress(address)}`;
 }
-function createFlashAsset({
-  address,
-  chainId,
-  decimals,
-  isNative,
-  name,
-  symbol
-}) {
+function createFlashAsset({ address, chainId, decimals, isNative, name, symbol }) {
   const normalizedAddress = normalizeFlashAddress(address);
   return FlashAssetSchema.parse({
     id: flashAssetId(chainId, normalizedAddress),
@@ -5617,7 +5020,7 @@ function getFlashAssetsForChain(chainId) {
   ];
 }
 
-// apps/newframe/src/features/transactions/trade/domain/pair.ts
+// packages/flash/dist/pair.js
 function getSpentAsset({ side, targetAsset, contraAsset }) {
   return side === "buy" ? contraAsset : targetAsset;
 }
@@ -5638,206 +5041,85 @@ function getFlashAssetPairChains(pair) {
   };
 }
 
-// apps/newframe/src/features/transactions/trade/domain/execution.ts
-function flashObject(value) {
-  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
-}
-function nestedValue(value, path) {
-  return path.reduce((current, key) => flashObject(current)[key], value);
-}
-function findFlashTypedData(quote, flashPayload, field) {
-  const quoteRaw = flashObject(quote.raw);
-  return nestedValue(flashPayload, ["actions", "evm", field]) ?? nestedValue(flashPayload, ["evm", field]) ?? nestedValue(flashPayload, [field]) ?? nestedValue(quoteRaw, ["actions", "evm", field]) ?? nestedValue(quoteRaw, ["evm", field]) ?? nestedValue(quoteRaw, [field]);
-}
-function parseFlashTypedData(value) {
-  if (typeof value !== "string") {
-    return value;
-  }
-  try {
-    return JSON.parse(value);
-  } catch {
-    return null;
-  }
-}
-function serializeFlashTypedData(value) {
-  if (typeof value === "string") {
-    return value;
-  }
-  return value ? JSON.stringify(value) : "";
-}
-function flashTypedDataChainId(typedData, fallback) {
-  const value = flashObject(flashObject(typedData).domain).chainId;
-  if (value === undefined || value === null || value === "") {
-    return fallback;
-  }
-  const parsed = typeof value === "string" && value.toLowerCase().startsWith("0x") ? Number.parseInt(value, 16) : Number(value);
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    throw new Error("Invalid Flash chain id");
-  }
-  return parsed;
-}
-function buildFlashActionTransaction(action, expectedChainId) {
-  const rawChainId = action.tx.chainId;
-  const chainId = Number(rawChainId ?? expectedChainId);
-  if (!Number.isInteger(chainId) || chainId <= 0 || chainId !== expectedChainId) {
-    throw new Error("Invalid Flash action chain id");
-  }
-  return {
-    chainId,
-    transaction: {
-      to: action.tx.to,
-      data: action.tx.data,
-      value: action.tx.value ?? "0x0"
-    }
-  };
-}
-function buildFlashSubmitRequest({
-  accountAddress,
-  bridgeQuoteId,
-  flashPayload,
-  idempotencyKey,
-  orderSignature,
-  permitSignature,
-  quote,
-  quoteId,
-  quoteRequest
-}) {
-  const chains = getFlashAssetPairChains(quote);
-  const orderTypedData = findFlashTypedData(quote, flashPayload, "orderTypedData");
-  const orderTypedDataRaw = findFlashTypedData(quote, flashPayload, "orderTypedDataRaw") ?? orderTypedData;
-  const permitTypedData = findFlashTypedData(quote, flashPayload, "permitTypedData");
-  const permitTypedDataRaw = findFlashTypedData(quote, flashPayload, "permitTypedDataRaw") ?? permitTypedData;
-  if (permitTypedData && !permitSignature) {
-    throw new Error("Flash quote requires a permit signature.");
-  }
-  return {
-    ...quoteRequest,
-    accountAddress,
-    funderAddress: accountAddress,
-    recipientAddress: accountAddress,
-    contraChain: getFlashChainSlug(chains.contraChainId),
-    targetChain: getFlashChainSlug(chains.targetChainId),
-    quote,
-    ...quoteId ? { quoteId } : {},
-    ...bridgeQuoteId ? { bridgeQuoteId } : {},
-    rawPayload: flashPayload ?? quote.raw ?? null,
-    evmOrderTypedData: serializeFlashTypedData(orderTypedDataRaw),
-    ...permitTypedDataRaw ? {
-      evmPermitSignature: permitSignature,
-      evmPermitTypedData: serializeFlashTypedData(permitTypedDataRaw)
-    } : {},
-    signature: orderSignature,
-    orderSignature,
-    idempotencyKey
-  };
+// packages/flash/dist/runtime.js
+function flashRuntimeFromEnv() {
+  return { isDev: process.env.FRAME_PROFILE === "dev" || process.env.NODE_ENV === "development" };
 }
 
-// apps/newframe/src/platform/runtime/index.ts
-function getMainRuntime(runtimeProcess = process) {
-  const environment = runtimeProcess.env.NODE_ENV ?? null;
-  const profile = runtimeProcess.env.FRAME_PROFILE ?? null;
-  const isDev = profile === "dev" || environment === "development" || Boolean(runtimeProcess.defaultApp);
-  return {
-    environment: environment ?? (isDev ? "development" : "production"),
-    isDev,
-    profile
-  };
-}
-
-// apps/newframe/src/features/transactions/trade/domain/orders.ts
-var FlashOrderStatusSchema = _enum([
-  "pending",
-  "accepted",
-  "partially-filled",
-  "filled",
-  "cancelled",
-  "rejected",
-  "terminated",
-  "expired"
-]);
-var FlashOrderRecordSchema = object({
-  orderId: string2().min(1),
-  accountAddress: string2(),
-  provider: literal("flash"),
-  source: literal("flash"),
-  environment: string2(),
-  profile: string2().nullable(),
-  status: FlashOrderStatusSchema,
-  rawStatus: string2(),
-  orderType: FlashOrderTypeSchema,
-  side: FlashTradeSideSchema,
-  targetAsset: FlashAssetSchema,
-  contraAsset: FlashAssetSchema,
-  qty: string2(),
-  spentAsset: FlashAssetSchema,
-  spentAmount: string2(),
-  outputAmount: string2(),
-  estimatedOutputAmount: string2(),
-  targetNotional: string2().optional(),
-  contraNotional: string2().optional(),
-  filledOutputAmount: string2().nullable().optional(),
-  averageFillPrice: string2().nullable().optional(),
-  createdAt: number2(),
-  updatedAt: number2(),
-  terminalAt: number2().nullable().optional(),
-  open: boolean2(),
-  cancellable: boolean2(),
-  quoteId: string2().optional(),
-  receiveAsset: FlashAssetSchema,
-  rate: string2().optional(),
-  rawPayload: unknown().optional(),
-  rawStatusPayload: unknown().optional(),
-  fillHash: string2().nullable().optional(),
-  fillTransactionHash: string2().nullable().optional()
+// packages/flash/dist/wire.js
+var FlashWireOrderSchema = looseObject({
+  orderId: string2().min(1).optional(),
+  id: string2().min(1).optional(),
+  accountAddress: string2().optional(),
+  funderAddress: string2().optional(),
+  account: string2().optional(),
+  status: unknown().optional(),
+  open: boolean2().optional()
+}).refine((order) => Boolean(order.orderId ?? order.id), "Flash order response has no order id");
+var FlashQuoteLegSchema2 = looseObject({
+  asset: _enum(["target", "contra"]).optional().catch(undefined),
+  amount: union([string2(), number2()]).optional().catch(""),
+  notional: union([string2(), number2()]).optional().catch("")
 });
-
-// apps/newframe/src/features/transactions/trade/main/websocket.ts
-var retryableErrorCodes = new Set([
-  "CONNECTION_LIMIT",
-  "STREAMING_UNAVAILABLE",
-  "SUBSCRIBE_FAILED",
-  "SNAPSHOT_FAILED",
-  "STREAM_ERROR",
-  "INTERNAL_ERROR"
+var FlashToLegSchema = FlashQuoteLegSchema2.extend({
+  amount: union([string2(), number2()]).optional().catch("0")
+});
+var FlashQuotePayloadSchema = looseObject({
+  from: FlashQuoteLegSchema2.optional(),
+  to: FlashToLegSchema.optional(),
+  actions: looseObject({}).nullish(),
+  evm: looseObject({}).nullish(),
+  wrap: looseObject({}).nullish(),
+  approval: looseObject({}).nullish()
+});
+var FlashQuoteResponseSchema = FlashQuotePayloadSchema.extend({
+  quote: FlashQuotePayloadSchema.optional()
+});
+var FlashSubmitResponseSchema = looseObject({
+  orderId: string2().min(1).optional(),
+  id: string2().min(1).optional(),
+  order: FlashWireOrderSchema.optional(),
+  status: unknown().optional()
+}).refine((response) => Boolean(response.orderId ?? response.order?.orderId ?? response.order?.id ?? response.id), "Flash order submit did not return an order id").transform((response) => ({
+  ...response,
+  orderId: string2().parse(response.orderId ?? response.order?.orderId ?? response.order?.id ?? response.id)
+}));
+var FlashListOrdersResponseSchema = union([array(FlashWireOrderSchema), looseObject({ orders: array(FlashWireOrderSchema) })]).transform((response) => Array.isArray(response) ? { orders: response } : response);
+var FlashGetOrderResponseSchema = union([
+  looseObject({
+    order: FlashWireOrderSchema,
+    accountAddress: string2().optional(),
+    funderAddress: string2().optional(),
+    account: string2().optional()
+  }),
+  FlashWireOrderSchema
+]).transform((response) => ({
+  ...response,
+  order: FlashWireOrderSchema.parse("order" in response ? response.order : response)
+}));
+var FlashCancelOrderResponseSchema = union([
+  looseObject({ order: FlashWireOrderSchema.optional() }),
+  _null3().transform(() => ({ order: undefined }))
+]);
+var FlashWebSocketFrameSchema = union([
+  object({
+    channel: literal("subscriptions"),
+    type: literal("ack"),
+    subscriptions: array(string2()).catch([])
+  }),
+  object({
+    channel: literal("orders"),
+    type: _enum(["snapshot", "update"]),
+    orders: array(unknown())
+  }),
+  object({
+    type: literal("error"),
+    code: string2().catch("ERROR"),
+    message: string2().catch("")
+  })
 ]);
 
-// apps/newframe/src/features/transactions/trade/main/index.ts
-var FLASH_DEV_BASE_URL = "http://127.0.0.1:8422/v1";
-var FLASH_PROD_BASE_URL = "https://flash.definitive.fi/v1";
-var FLASH_API_KEY = "dpka_513a2bd7_57a2_46d2_927b_2a3857fe271b";
-var FLASH_MARKET_ORDER_NOTIFICATION_MS = 60 * 1000;
-var FLASH_RESOLVED_ORDER_NOTIFICATION_MS = 3 * 1000;
-var FLASH_MARKET_ORDER_POLL_MS = 3 * 1000;
-var FLASH_OPEN_ORDER_POLL_MS = 5 * 60 * 1000;
-var FLASH_STREAM_FALLBACK_POLL_MS = 30 * 1000;
-var MAX_SESSION_EXPIRATION_TIMER_MS = 24 * 60 * 60 * 1000;
-var terminalStatuses = new Set([
-  "filled",
-  "cancelled",
-  "rejected",
-  "terminated",
-  "expired"
-]);
-var openStatuses = new Set(["pending", "accepted", "partially-filled"]);
-function runtime() {
-  return getMainRuntime();
-}
-function isDevRuntime() {
-  return runtime().isDev === true;
-}
-function flashBaseUrl() {
-  return isDevRuntime() ? FLASH_DEV_BASE_URL : FLASH_PROD_BASE_URL;
-}
-function flashHeaders() {
-  const headers = {
-    accept: "application/json",
-    "content-type": "application/json"
-  };
-  if (!isDevRuntime()) {
-    headers["x-definitive-api-key"] = FLASH_API_KEY;
-  }
-  return headers;
-}
+// packages/flash/dist/protocol.js
 function normalizeAddress(address) {
   return typeof address === "string" ? address.trim().toLowerCase() : "";
 }
@@ -5859,7 +5141,7 @@ function stringValue(value, fallback = "") {
   }
   return fallback;
 }
-function chainIdFromSlug(input) {
+function flashChainIdFromSlug(input) {
   if (typeof input === "number") {
     return input;
   }
@@ -5879,24 +5161,11 @@ function chainIdFromSlug(input) {
   const caipParsed = Number(caipChainId);
   return Number.isInteger(caipParsed) && caipParsed > 0 ? caipParsed : undefined;
 }
-function requireSupportedChainId(chainId) {
-  if (!isFlashChainSupported(chainId, runtime())) {
+function requireSupportedChainId(chainId, runtime) {
+  if (!isFlashChainSupported(chainId, runtime)) {
     throw new Error(`Flash does not support chain ${chainId} for this runtime`);
   }
   return chainId;
-}
-function requireSide(side) {
-  if (side !== "buy" && side !== "sell") {
-    throw new Error("Unsupported Flash trade side");
-  }
-  return side;
-}
-function resolveAsset(input, label) {
-  const parsed = FlashAssetSchema.safeParse(input);
-  if (parsed.success) {
-    return parsed.data;
-  }
-  throw new Error(`Unsupported Flash ${label} asset`);
 }
 function normalizePercent(value) {
   if (value === undefined || String(value).trim() === "") {
@@ -5967,14 +5236,13 @@ function normalizeTriggers(request, orderType) {
   }
   return;
 }
-function buildFlashQuoteBody(request) {
-  request = FlashQuoteRequestSchema.parse(request);
-  const targetAsset = resolveAsset(request.targetAsset, "target");
-  const contraAsset = resolveAsset(request.contraAsset, "contra");
-  const side = requireSide(request.side);
+function buildFlashQuoteBodyValidated(request, runtime) {
+  const targetAsset = request.targetAsset;
+  const contraAsset = request.contraAsset;
+  const side = request.side;
   const chains = getFlashAssetPairChains({ side, targetAsset, contraAsset });
-  requireSupportedChainId(chains.targetChainId);
-  requireSupportedChainId(chains.contraChainId);
+  requireSupportedChainId(chains.targetChainId, runtime);
+  requireSupportedChainId(chains.contraChainId, runtime);
   const qty = normalizeAmount(request.qty ?? request.inputAmount);
   const orderType = request.orderType ?? FLASH_MARKET_ORDER_TYPE;
   const maxSlippage = normalizePercent(request.slippage);
@@ -5990,9 +5258,6 @@ function buildFlashQuoteBody(request) {
   const triggers = isTriggerOrder ? normalizeTriggers(request, orderType) : undefined;
   const supportsExpiry = orderType === "limit" || isTriggerOrder;
   const supportsLimitPrice = orderType === "limit" || orderType === "twap" || orderType === "stop" || orderType === "stop-loss" || orderType === "take-profit";
-  if (!request.accountAddress) {
-    throw new Error("Flash quote requires an account address");
-  }
   if (!qty || Number(qty) <= 0) {
     throw new Error("Flash quote requires a positive qty");
   }
@@ -6020,6 +5285,7 @@ function buildFlashQuoteBody(request) {
     ...triggers?.length ? { triggers } : {}
   };
 }
+var buildFlashQuoteBody = _function({ input: [FlashBoundQuoteRequestSchema, FlashRuntimeSchema.default(flashRuntimeFromEnv)] }).implement(buildFlashQuoteBodyValidated);
 function normalizeTx(tx, fallbackChainId) {
   const record = objectPayload(tx);
   const to = stringValue(record.to);
@@ -6028,23 +5294,14 @@ function normalizeTx(tx, fallbackChainId) {
     return null;
   }
   return {
-    chainId: chainIdFromSlug(record.chainId) ?? fallbackChainId,
+    chainId: flashChainIdFromSlug(record.chainId) ?? fallbackChainId,
     ...record.from ? { from: stringValue(record.from) } : {},
     to,
     data,
     value: stringValue(record.value, "0x0")
   };
 }
-function quoteAction({
-  amount,
-  amountRaw,
-  asset,
-  fallbackChainId,
-  kind,
-  label,
-  spender,
-  tx
-}) {
+function quoteAction({ amount, amountRaw, asset, fallbackChainId, kind, label, spender, tx }) {
   const normalizedTx = normalizeTx(tx, fallbackChainId);
   if (!normalizedTx) {
     return null;
@@ -6103,17 +5360,15 @@ function serializeTypedData(value) {
   }
   return JSON.stringify(value);
 }
-function normalizeFlashQuoteResponse(raw, request) {
-  request = FlashQuoteRequestSchema.parse(request);
-  const payload = objectPayload(raw);
+function normalizeFlashQuoteResponseValidated(payload, request, runtime) {
   const quotePayload = objectPayload(payload.quote ?? payload);
-  const targetAsset = resolveAsset(request.targetAsset, "target");
-  const contraAsset = resolveAsset(request.contraAsset, "contra");
-  const side = requireSide(request.side);
+  const targetAsset = request.targetAsset;
+  const contraAsset = request.contraAsset;
+  const side = request.side;
   const orderType = request.orderType ?? FLASH_MARKET_ORDER_TYPE;
   const chains = getFlashAssetPairChains({ side, targetAsset, contraAsset });
-  requireSupportedChainId(chains.targetChainId);
-  requireSupportedChainId(chains.contraChainId);
+  requireSupportedChainId(chains.targetChainId, runtime);
+  requireSupportedChainId(chains.contraChainId, runtime);
   if (chains.isCrossChain && orderType !== FLASH_MARKET_ORDER_TYPE) {
     throw new Error("Flash cross-chain trades support market orders only");
   }
@@ -6255,28 +5510,31 @@ function normalizeFlashQuoteResponse(raw, request) {
   };
   return FlashQuoteSchema.parse(quote);
 }
+var normalizeFlashQuoteResponse = _function({
+  input: [
+    unknown().pipe(FlashQuoteResponseSchema),
+    FlashBoundQuoteRequestSchema,
+    FlashRuntimeSchema.default(flashRuntimeFromEnv)
+  ]
+}).implement(normalizeFlashQuoteResponseValidated);
 function quoteTypedData(quote, field) {
   const evm = objectPayload(objectPayload(quote.raw).evm);
   return evm[`${field}Raw`] ?? evm[field];
 }
-function buildFlashSubmitBody(request) {
-  request = FlashSubmitOrderRequestSchema.parse(request);
-  if (!request.quote) {
-    throw new Error("Flash order submit requires a quote");
-  }
+function buildFlashSubmitBodyValidated(request, runtime) {
   const quote = request.quote;
   const chains = getFlashAssetPairChains(quote);
   if (chains.isCrossChain && quote.orderType !== FLASH_MARKET_ORDER_TYPE) {
     throw new Error("Flash cross-chain trades support market orders only");
   }
-  const quoteFields = buildFlashQuoteBody({
+  const quoteFields = buildFlashQuoteBodyValidated({
     ...request,
-    contraAsset: request.contraAsset ?? quote.contraAsset,
+    contraAsset: request.contraAsset,
     orderType: quote.orderType,
     qty: request.qty ?? request.inputAmount ?? quote.inputAmount,
-    side: request.side ?? quote.side,
-    targetAsset: request.targetAsset ?? quote.targetAsset
-  });
+    side: request.side,
+    targetAsset: request.targetAsset
+  }, runtime);
   const evmOrderTypedData = serializeTypedData(request.evmOrderTypedData ?? quoteTypedData(quote, "orderTypedData"));
   const evmPermitTypedData = serializeTypedData(request.evmPermitTypedData ?? quoteTypedData(quote, "permitTypedData"));
   const quoteId = request.quoteId ?? quote.id;
@@ -6302,17 +5560,260 @@ function buildFlashSubmitBody(request) {
     ...request.evmPermitSignature ? { evmPermitSignature: request.evmPermitSignature } : {}
   };
 }
+var buildFlashSubmitBody = _function({ input: [FlashSubmitOrderRequestSchema, FlashRuntimeSchema.default(flashRuntimeFromEnv)] }).implement(buildFlashSubmitBodyValidated);
+
+// packages/flash/dist/status.js
+var terminal = new Set(["filled", "cancelled", "rejected", "terminated", "expired"]);
+var open = new Set(["pending", "accepted", "partially-filled"]);
+function normalizeFlashStatus(status) {
+  if (status === undefined || status === null) {
+    return "accepted";
+  }
+  if (typeof status !== "string") {
+    return "terminated";
+  }
+  const raw = status.trim();
+  const value = (raw || "accepted").toLowerCase().replace(/^order_status_/, "").replaceAll("_", "-");
+  if (value === "canceled") {
+    return "cancelled";
+  }
+  if (["open", "active", "working", "created"].includes(value)) {
+    return "accepted";
+  }
+  if (terminal.has(value) || open.has(value)) {
+    return value;
+  }
+  return raw ? "terminated" : "accepted";
+}
+function flashRawStatus(status) {
+  return `ORDER_STATUS_${status.replaceAll("-", "_").toUpperCase()}`;
+}
+function isFlashTerminalStatus(status) {
+  return terminal.has(status);
+}
+
+// packages/flash/dist/api.js
+var FLASH_DEV_BASE_URL = "http://127.0.0.1:8422/v1";
+var FLASH_PROD_BASE_URL = "https://flash.definitive.fi/v1";
+var FLASH_API_KEY = "dpka_513a2bd7_57a2_46d2_927b_2a3857fe271b";
+var AddressSchema = string2().trim().regex(/^0x[0-9a-fA-F]{40}$/);
+var OrderIdSchema = string2().min(1);
+var SignatureSchema = string2().min(1);
+var ListOptionsSchema = object({
+  status: union([string2(), array(string2())]).optional(),
+  pageSize: number2().int().positive().optional()
+});
+var QuoteFunction = _function({
+  input: [FlashBoundQuoteRequestSchema],
+  output: object({ quote: FlashQuoteSchema, flash: unknown(), raw: FlashQuoteResponseSchema })
+});
+var SubmitOrderFunction = _function({
+  input: [FlashSubmitOrderRequestSchema],
+  output: FlashSubmitResponseSchema
+});
+var ListOrdersFunction = _function({
+  input: [AddressSchema, ListOptionsSchema.default({})],
+  output: FlashListOrdersResponseSchema
+});
+var GetOrderFunction = _function({
+  input: [AddressSchema, OrderIdSchema],
+  output: FlashGetOrderResponseSchema
+});
+var CancelOrderFunction = _function({
+  input: tuple([OrderIdSchema, SignatureSchema]).rest(string2().min(1)),
+  output: FlashCancelOrderResponseSchema
+});
+function flashBaseUrl(runtime = flashRuntimeFromEnv()) {
+  return runtime.isDev ? FLASH_DEV_BASE_URL : FLASH_PROD_BASE_URL;
+}
+function flashHeaders(runtime = flashRuntimeFromEnv(), baseUrl = flashBaseUrl(runtime)) {
+  const headers = { accept: "application/json", "content-type": "application/json" };
+  if (!runtime.isDev && new URL(baseUrl).origin === new URL(FLASH_PROD_BASE_URL).origin) {
+    headers["x-definitive-api-key"] = FLASH_API_KEY;
+  }
+  return headers;
+}
+function flashCancelMessage(orderId) {
+  return `Definitive Flash v1 \u2014 Cancel Order
+Order: ${orderId}`;
+}
+function errorMessage(payload, fallback) {
+  if (typeof payload === "string") {
+    return payload || fallback;
+  }
+  try {
+    return JSON.stringify(payload) || fallback;
+  } catch {
+    return String(payload) || fallback;
+  }
+}
+
+class FlashApiError extends Error {
+  status;
+  constructor(status, statusText, message) {
+    super(`Flash API ${status} ${statusText}: ${message}`);
+    this.status = status;
+  }
+}
+function createFlashApi(options = {}) {
+  const baseUrl = (options.baseUrl ?? flashBaseUrl(options.runtime)).replace(/\/$/, "");
+  const runtime = options.runtime ?? {
+    isDev: /^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/.test(baseUrl) || flashRuntimeFromEnv().isDev
+  };
+  const fetcher = options.fetch ?? ((input, init) => fetch(input, init));
+  async function request(path, init = {}) {
+    const headers = new Headers(flashHeaders(runtime, baseUrl));
+    new Headers(init.headers).forEach((value, name) => headers.set(name, value));
+    const response = await fetcher(`${baseUrl}${path}`, { ...init, headers });
+    const text = await response.text();
+    let payload = text || null;
+    if (text) {
+      try {
+        payload = JSON.parse(text);
+      } catch {}
+    }
+    if (!response.ok) {
+      throw new FlashApiError(response.status, response.statusText, errorMessage(payload, response.statusText));
+    }
+    return payload;
+  }
+  return {
+    quote: QuoteFunction.implementAsync(async (input) => {
+      const raw = FlashQuoteResponseSchema.parse(await request("/quote", {
+        method: "POST",
+        body: JSON.stringify(buildFlashQuoteBodyValidated(input, runtime))
+      }));
+      const quote = normalizeFlashQuoteResponseValidated(raw, input, runtime);
+      return { quote, flash: quote.raw ?? raw, raw };
+    }),
+    submitOrder: SubmitOrderFunction.implementAsync(async (input) => {
+      return FlashSubmitResponseSchema.parse(await request("/order", {
+        method: "POST",
+        ...input.idempotencyKey ? { headers: { "Idempotency-Key": input.idempotencyKey } } : {},
+        body: JSON.stringify(buildFlashSubmitBodyValidated(input, runtime))
+      }));
+    }),
+    listOrders: ListOrdersFunction.implementAsync(async (accountAddress, options) => {
+      const query = new URLSearchParams({ funderAddress: accountAddress });
+      if (options.status) {
+        const statuses = Array.isArray(options.status) ? options.status : options.status.split(",");
+        query.set("statuses", statuses.map((status) => flashRawStatus(normalizeFlashStatus(status))).join(","));
+      }
+      if (options.pageSize) {
+        query.set("pageSize", String(Math.min(200, options.pageSize)));
+      }
+      return FlashListOrdersResponseSchema.parse(await request(`/orders?${query}`));
+    }),
+    getOrder: GetOrderFunction.implementAsync(async (accountAddress, orderId) => {
+      const query = new URLSearchParams({ funderAddress: accountAddress });
+      return FlashGetOrderResponseSchema.parse(await request(`/orders/${encodeURIComponent(orderId)}?${query}`));
+    }),
+    cancelOrder: CancelOrderFunction.implementAsync(async (orderId, userSignature, ...messages) => {
+      return FlashCancelOrderResponseSchema.parse(await request(`/orders/${encodeURIComponent(orderId)}/cancel`, {
+        method: "POST",
+        body: JSON.stringify({
+          cancelMessage: messages[0] ?? flashCancelMessage(orderId),
+          userSignature
+        })
+      }));
+    })
+  };
+}
+
+// packages/flash/dist/execution.js
+function flashObject(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+function nestedValue(value, path) {
+  return path.reduce((current, key) => flashObject(current)[key], value);
+}
+function findFlashTypedData(quote, flashPayload, field) {
+  const quoteRaw = flashObject(quote.raw);
+  return nestedValue(flashPayload, ["actions", "evm", field]) ?? nestedValue(flashPayload, ["evm", field]) ?? nestedValue(flashPayload, [field]) ?? nestedValue(quoteRaw, ["actions", "evm", field]) ?? nestedValue(quoteRaw, ["evm", field]) ?? nestedValue(quoteRaw, [field]);
+}
+function parseFlashTypedData(value) {
+  if (typeof value !== "string") {
+    return value;
+  }
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+function serializeFlashTypedData(value) {
+  if (typeof value === "string") {
+    return value;
+  }
+  return value ? JSON.stringify(value) : "";
+}
+function flashTypedDataChainId(typedData, fallback) {
+  const value = flashObject(flashObject(typedData).domain).chainId;
+  if (value === undefined || value === null || value === "") {
+    return fallback;
+  }
+  const parsed = typeof value === "string" && value.toLowerCase().startsWith("0x") ? Number.parseInt(value, 16) : Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error("Invalid Flash chain id");
+  }
+  return parsed;
+}
+function buildFlashActionTransaction(action, expectedChainId) {
+  const rawChainId = action.tx.chainId;
+  const chainId = Number(rawChainId ?? expectedChainId);
+  if (!Number.isInteger(chainId) || chainId <= 0 || chainId !== expectedChainId) {
+    throw new Error("Invalid Flash action chain id");
+  }
+  return {
+    chainId,
+    transaction: {
+      to: action.tx.to,
+      data: action.tx.data,
+      value: action.tx.value ?? "0x0"
+    }
+  };
+}
+function buildFlashSubmitRequest({ accountAddress, bridgeQuoteId, flashPayload, idempotencyKey, orderSignature, permitSignature, quote, quoteId, quoteRequest }) {
+  const chains = getFlashAssetPairChains(quote);
+  const orderTypedData = findFlashTypedData(quote, flashPayload, "orderTypedData");
+  const orderTypedDataRaw = findFlashTypedData(quote, flashPayload, "orderTypedDataRaw") ?? orderTypedData;
+  const permitTypedData = findFlashTypedData(quote, flashPayload, "permitTypedData");
+  const permitTypedDataRaw = findFlashTypedData(quote, flashPayload, "permitTypedDataRaw") ?? permitTypedData;
+  if (permitTypedData && !permitSignature) {
+    throw new Error("Flash quote requires a permit signature.");
+  }
+  return {
+    ...quoteRequest,
+    accountAddress,
+    funderAddress: accountAddress,
+    recipientAddress: accountAddress,
+    contraChain: getFlashChainSlug(chains.contraChainId),
+    targetChain: getFlashChainSlug(chains.targetChainId),
+    quote,
+    ...quoteId ? { quoteId } : {},
+    ...bridgeQuoteId ? { bridgeQuoteId } : {},
+    rawPayload: flashPayload ?? quote.raw ?? null,
+    evmOrderTypedData: serializeFlashTypedData(orderTypedDataRaw),
+    ...permitTypedDataRaw ? {
+      evmPermitSignature: permitSignature,
+      evmPermitTypedData: serializeFlashTypedData(permitTypedDataRaw)
+    } : {},
+    signature: orderSignature,
+    orderSignature,
+    idempotencyKey
+  };
+}
 
 // apps/newframe-cli/src/journal.ts
 import { randomUUID as randomUUID2 } from "crypto";
 import { constants as constants2 } from "fs";
-import { chmod as chmod2, lstat as lstat2, mkdir as mkdir2, open as open2, readFile as readFile2, rename as rename2, rm as rm2 } from "fs/promises";
+import { chmod as chmod2, lstat as lstat2, mkdir as mkdir2, open as open3, readFile as readFile2, rename as rename2, rm as rm2 } from "fs/promises";
 import { join as join2 } from "path";
 
 // apps/newframe-cli/src/storage.ts
 import { randomUUID } from "crypto";
 import { constants } from "fs";
-import { chmod, lstat, mkdir, open, readFile, rename, rm } from "fs/promises";
+import { chmod, lstat, mkdir, open as open2, readFile, rename, rm } from "fs/promises";
 import { homedir } from "os";
 import { join } from "path";
 var addressPattern = /^0x[0-9a-f]{40}$/i;
@@ -6355,7 +5856,7 @@ async function saveSession(session, directory = stateDirectory()) {
     }
   }
   const temporary = join(directory, `.session-${randomUUID()}.tmp`);
-  const file = await open(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL, 384);
+  const file = await open2(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL, 384);
   try {
     await file.writeFile(`${JSON.stringify(session)}
 `);
@@ -6460,7 +5961,7 @@ async function saveSubmitProgress(key, progress, directory = stateDirectory()) {
     throw new Error("Flash submission journal path is not a regular file");
   }
   const temporary = join2(directory, `.submit-${key}-${randomUUID2()}.tmp`);
-  const file = await open2(temporary, constants2.O_WRONLY | constants2.O_CREAT | constants2.O_EXCL, 384);
+  const file = await open3(temporary, constants2.O_WRONLY | constants2.O_CREAT | constants2.O_EXCL, 384);
   try {
     await file.writeFile(`${JSON.stringify(progress)}
 `);
@@ -6493,7 +5994,7 @@ async function withSubmitLock(key, task, directory = stateDirectory()) {
   for (let attempt = 0;attempt < 2 && !locked; attempt++) {
     let created = false;
     try {
-      const file = await open2(lockPath, constants2.O_WRONLY | constants2.O_CREAT | constants2.O_EXCL, 384);
+      const file = await open3(lockPath, constants2.O_WRONLY | constants2.O_CREAT | constants2.O_EXCL, 384);
       created = true;
       try {
         await file.writeFile(`${process.pid}
@@ -6534,9 +6035,7 @@ async function withSubmitLock(key, task, directory = stateDirectory()) {
 // apps/newframe-cli/src/client.ts
 var defaultRpcUrl = "http://127.0.0.1:1248";
 var addressPattern2 = /^0x[0-9a-f]{40}$/i;
-var terminalStatuses2 = new Set(["filled", "cancelled", "rejected", "terminated", "expired"]);
-var openStatuses2 = new Set(["pending", "accepted", "partially-filled"]);
-function errorMessage(payload, fallback) {
+function errorMessage2(payload, fallback) {
   const record = flashObject(payload);
   if (typeof record.error === "string") {
     return record.error;
@@ -6588,30 +6087,12 @@ function assertTypedDataChain(typedData, expectedChainId) {
 function statusOf(order) {
   const record = flashObject(order);
   const nested = flashObject(record.order);
-  const value = nested.status ?? record.status;
-  if (value === undefined || value === null) {
-    return "accepted";
-  }
-  if (typeof value !== "string") {
-    return "terminated";
-  }
-  const raw = value.trim();
-  const status = (raw || "accepted").toLowerCase().replace(/^order_status_/, "").replaceAll("_", "-");
-  if (status === "canceled") {
-    return "cancelled";
-  }
-  if (["open", "active", "working", "created"].includes(status)) {
-    return "accepted";
-  }
-  if (terminalStatuses2.has(status) || openStatuses2.has(status)) {
-    return status;
-  }
-  return raw ? "terminated" : "accepted";
+  return normalizeFlashStatus(nested.status ?? record.status);
 }
 function isClosedOrder(order) {
   const record = flashObject(order);
   const nested = flashObject(record.order);
-  return nested.open === false || record.open === false || terminalStatuses2.has(statusOf(order));
+  return nested.open === false || record.open === false || isFlashTerminalStatus(statusOf(order));
 }
 function assertQuoteFresh(quote) {
   if (!quote.expiresAt) {
@@ -6641,6 +6122,7 @@ class NewframeClient {
   fetcher;
   pollIntervalMs;
   receiptTimeoutMs;
+  flash;
   constructor(options = {}) {
     this.rpcUrl = (options.rpcUrl ?? process.env.NEWFRAME_RPC_URL ?? defaultRpcUrl).replace(/\/$/, "");
     this.flashUrl = (options.flashUrl ?? process.env.NEWFRAME_FLASH_URL ?? flashBaseUrl()).replace(/\/$/, "");
@@ -6648,15 +6130,13 @@ class NewframeClient {
     this.fetcher = options.fetch ?? fetch;
     this.pollIntervalMs = options.pollIntervalMs ?? 2000;
     this.receiptTimeoutMs = options.receiptTimeoutMs ?? 120000;
-    if (/^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/.test(this.flashUrl)) {
-      process.env.FRAME_PROFILE = "dev";
-    }
+    this.flash = createFlashApi({ baseUrl: this.flashUrl, fetch: this.fetcher });
   }
   async request(url, init) {
     const response = await this.fetcher(url, init);
     const payload = await responsePayload(response);
     if (!response.ok) {
-      throw new HttpStatusError(response.status, errorMessage(payload, response.statusText));
+      throw new HttpStatusError(response.status, errorMessage2(payload, response.statusText));
     }
     return payload;
   }
@@ -6765,7 +6245,7 @@ class NewframeClient {
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params })
     }));
     if (payload.error) {
-      throw new Error(errorMessage(payload, "Newframe RPC failed"));
+      throw new Error(errorMessage2(payload, "Newframe RPC failed"));
     }
     if (!("result" in payload)) {
       throw new Error("Newframe RPC did not return a result");
@@ -6779,17 +6259,9 @@ class NewframeClient {
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params })
     }));
     if (payload.error) {
-      throw new Error(errorMessage(payload, "Newframe RPC failed"));
+      throw new Error(errorMessage2(payload, "Newframe RPC failed"));
     }
     return payload.result;
-  }
-  async flashRequest(path, init = {}) {
-    const headers = new Headers(flashHeaders());
-    if (/^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/.test(this.flashUrl)) {
-      headers.delete("x-definitive-api-key");
-    }
-    new Headers(init.headers).forEach((value, name) => headers.set(name, value));
-    return this.request(`${this.flashUrl}${path}`, { ...init, headers });
   }
   async quote(request) {
     const session = await this.session();
@@ -6797,10 +6269,8 @@ class NewframeClient {
       throw new Error("Quote account does not match the approved session account");
     }
     const boundRequest = { ...request, accountAddress: session.account };
-    const body = buildFlashQuoteBody(boundRequest);
-    const raw = await this.flashRequest("/quote", { method: "POST", body: JSON.stringify(body) });
-    const quote = normalizeFlashQuoteResponse(raw, boundRequest);
-    return { request: boundRequest, quote, flash: quote.raw ?? raw };
+    const { quote, flash } = await this.flash.quote(boundRequest);
+    return { request: boundRequest, quote, flash };
   }
   async waitForReceipt(hash, chainId) {
     const deadline = Date.now() + this.receiptTimeoutMs;
@@ -6898,18 +6368,9 @@ class NewframeClient {
         quoteId: quote.id,
         quoteRequest: request
       });
-      const body = buildFlashSubmitBody(submitRequest);
       assertQuoteFresh(quote);
-      const raw = await this.flashRequest("/order", {
-        method: "POST",
-        headers: { "Idempotency-Key": idempotencyKey },
-        body: JSON.stringify(body)
-      });
-      const payload = flashObject(raw);
-      const orderId = payload.orderId ?? flashObject(payload.order).orderId ?? payload.id;
-      if (typeof orderId !== "string" || !orderId) {
-        throw new Error("Flash did not return an order id");
-      }
+      const raw = await this.flash.submitOrder(submitRequest);
+      const orderId = raw.orderId;
       progress.orderId = orderId;
       progress.raw = raw;
       await save();
@@ -6918,22 +6379,11 @@ class NewframeClient {
   }
   async orders(options = {}) {
     const session = await this.session();
-    const query = new URLSearchParams({ funderAddress: session.account });
-    if (options.status) {
-      query.set("statuses", options.status.split(",").map((status) => {
-        const clean = status.trim().replaceAll("-", "_").toUpperCase();
-        return clean.startsWith("ORDER_STATUS_") ? clean : `ORDER_STATUS_${clean}`;
-      }).join(","));
-    }
-    if (options.pageSize) {
-      query.set("pageSize", String(Math.min(200, options.pageSize)));
-    }
-    return this.flashRequest(`/orders?${query}`);
+    return this.flash.listOrders(session.account, options);
   }
   async order(orderId) {
     const session = await this.session();
-    const query = new URLSearchParams({ funderAddress: session.account });
-    return this.flashRequest(`/orders/${encodeURIComponent(orderId)}?${query}`);
+    return this.flash.getOrder(session.account, orderId);
   }
   async watch(orderId, options = {}) {
     const deadline = Date.now() + (options.timeoutMs ?? 10 * 60000);
@@ -6945,26 +6395,22 @@ class NewframeClient {
       }
       await Bun.sleep(this.pollIntervalMs);
     }
-    throw new Error(`Timed out waiting for Flash order ${orderId}; last status: ${statusOf(latest) || "unknown"}`);
+    throw new Error(`Timed out waiting for Flash order ${orderId}; last status: ${statusOf(latest)}`);
   }
   async cancel(orderId) {
-    const order = flashObject(await this.order(orderId));
+    const order = await this.order(orderId);
     const session = await this.session();
-    const record = flashObject(order.order);
+    const record = order.order;
     const owner = record.accountAddress ?? record.funderAddress ?? record.account ?? order.accountAddress ?? order.funderAddress ?? order.account;
     if (typeof owner !== "string" || requireAddress(owner) !== requireAddress(session.account)) {
       throw new Error("Flash order does not belong to the approved session account");
     }
-    const cancelMessage = `Definitive Flash v1 \u2014 Cancel Order
-Order: ${orderId}`;
+    const cancelMessage = flashCancelMessage(orderId);
     const signature = await this.rpc("personal_sign", [cancelMessage, session.account]);
     if (typeof signature !== "string" || !signature) {
       throw new Error("Newframe did not return a cancel signature");
     }
-    return this.flashRequest(`/orders/${encodeURIComponent(orderId)}/cancel`, {
-      method: "POST",
-      body: JSON.stringify({ cancelMessage, userSignature: signature })
-    });
+    return this.flash.cancelOrder(orderId, signature, cancelMessage);
   }
 }
 

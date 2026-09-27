@@ -1,21 +1,30 @@
 import { describe, expect, it } from 'bun:test'
 
-import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
 import {
   FLASH_NATIVE_ETH_ASSET,
   FLASH_USDC_ASSET,
   FLASH_WETH_ASSET,
   balanceSummaryToFlashAsset,
   toFlashApiAssetAddress
-} from './assets'
+} from '@newframe/flash/assets'
 import {
   getFlashChainSlug,
   getFlashDefaultChainId,
   getFlashSupportedChainIds,
   isFlashChainSupported
-} from './chains'
-import { FLASH_ANVIL_CHAIN_ID, FLASH_BASE_CHAIN_ID, FLASH_NATIVE_ETH_TOKEN_ADDRESS } from './constants'
-import { getDefaultContraAsset, getDefaultContraAssetForChain, getFlashAssetPairChains } from './pair'
+} from '@newframe/flash/chains'
+import {
+  FLASH_ANVIL_CHAIN_ID,
+  FLASH_BASE_CHAIN_ID,
+  FLASH_NATIVE_ETH_TOKEN_ADDRESS
+} from '@newframe/flash/constants'
+import {
+  getDefaultContraAsset,
+  getDefaultContraAssetForChain,
+  getFlashAssetPairChains
+} from '@newframe/flash/pair'
+
+import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
 
 describe('flash domain helpers', () => {
   it('selects dev and production supported chain sets by runtime', () => {
