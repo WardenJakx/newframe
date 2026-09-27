@@ -92,6 +92,33 @@ it('hydrates networks in the background and tokens only when requested by the re
   images.dispose()
 })
 
+it('hydrates an embedded icon after adding a network', async () => {
+  const canonical = await createOriginImageStore()
+  const source = 'data:image/png;base64,iVBORw0KGgoBAgM='
+  const download = mock(async (sourceUrl: string) => imageFor(sourceUrl))
+  const images = createImageService(canonical, {
+    downloadImage: download,
+    getTokenDiscoveryProvider: () => ({ ok: false, error: 'missing_api_key' }),
+    log: { warn: mock() }
+  })
+
+  images.start()
+  canonical.getState().addNetwork({
+    id: 4663,
+    type: 'ethereum',
+    name: 'Robinhood Mainnet',
+    symbol: 'ETH',
+    explorer: 'https://robinscan.io',
+    primaryRpc: 'https://rpc.mainnet.chain.robinhood.com',
+    icon: source
+  })
+  await flushHydration()
+
+  expect(download).toHaveBeenCalledWith(source)
+  expect(canonical.getState().main.networksMeta.ethereum[4663].image).toEqual(imageFor(source))
+  images.dispose()
+})
+
 it('does not download images that already match their configured sources', async () => {
   const sourceUrl = 'https://cdn.example/network.png'
   const state = {

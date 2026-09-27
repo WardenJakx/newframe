@@ -39,7 +39,11 @@ function originImageSource(value: unknown) {
 }
 
 function configuredNetworkImageSource(chainId: number, metadata: ChainMetadata) {
-  return httpsImageUrl(metadata.icon) || httpsImageUrl(builtInChainIconUrl(chainId))
+  return (
+    httpsImageUrl(metadata.icon) ||
+    embeddedImageSource(metadata.icon) ||
+    httpsImageUrl(builtInChainIconUrl(chainId))
+  )
 }
 
 export function createImageService(
