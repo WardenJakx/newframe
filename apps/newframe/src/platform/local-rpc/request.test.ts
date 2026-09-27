@@ -1,7 +1,12 @@
 import { expect, it } from 'bun:test'
 
 import { createRpcGateway } from '../../app/main/gateway/rpc'
-import { createOriginSessionMonitor, createRpcRequestHandler, type RpcRequestDescription } from './request'
+import {
+  RPC_REQUEST_BURST,
+  createOriginSessionMonitor,
+  createRpcRequestHandler,
+  type RpcRequestDescription
+} from './request'
 
 const rpc = (method = 'eth_blockNumber', params: unknown[] = []): JSONRPCRequestPayload => ({
   id: 1,
@@ -97,6 +102,18 @@ it('normalizes one allowed request and applies its provider response', async () 
     opened: ['subscription-1'],
     responses: [{ id: 1, jsonrpc: '2.0', result: 'subscription-1' }],
     sessions: ['app.example-id']
+  })
+})
+
+it('limits total RPC requests across methods before dispatch', async () => {
+  const harness = setup()
+  for (let i = 0; i <= RPC_REQUEST_BURST; i++) {
+    await harness.run({ ...rpc(i % 2 ? 'eth_blockNumber' : 'eth_chainId'), id: i })
+  }
+
+  expect(harness.forwarded).toHaveLength(RPC_REQUEST_BURST)
+  expect(harness.responses.at(-1)).toMatchObject({
+    error: { code: -32005, message: 'Rate limit exceeded' }
   })
 })
 

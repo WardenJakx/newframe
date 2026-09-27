@@ -1,6 +1,7 @@
 import { expect, it } from 'bun:test'
 import { EventEmitter } from 'events'
 
+import { MAX_RPC_REQUEST_BYTES } from './protocol'
 import type { RpcRequestDescription } from './request'
 import { createWebSocketRpcTransport } from './ws'
 
@@ -92,4 +93,33 @@ it('adapts a WebSocket message to the shared request contract', async () => {
 
   normalized.writeResponse({ id: 1, jsonrpc: '2.0', result: 'ok' }, 'provider')
   expect(sent).toEqual([{ id: 1, jsonrpc: '2.0', result: 'ok' }])
+})
+
+it('closes an oversized WebSocket message before dispatch', () => {
+  let dispatched = false
+  const server = new FakeWebSocketServer()
+  const transport = createWebSocketRpcTransport({
+    provider: new FakeProvider(),
+    store: { endOriginSession: () => undefined },
+    origins: { parseFrameExtension: () => undefined } as never,
+    requestHandler: async () => {
+      dispatched = true
+    },
+    windows: { toggleTray: () => undefined },
+    createServer: () => server,
+    openReadyState: 1
+  })
+  let closeCode: number | undefined
+  const socket = Object.assign(new EventEmitter(), {
+    close: (code: number) => {
+      closeCode = code
+    }
+  })
+
+  transport.start({} as never)
+  server.emit('connection', socket, { headers: {}, url: '/' })
+  socket.emit('message', Buffer.alloc(MAX_RPC_REQUEST_BYTES + 1))
+
+  expect(closeCode).toBe(1009)
+  expect(dispatched).toBe(false)
 })

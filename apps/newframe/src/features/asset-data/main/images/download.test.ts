@@ -14,7 +14,7 @@ await mock.module('dns/promises', () => ({
   lookup: (...args: unknown[]) => mockLookup(...args)
 }))
 
-function createResponse(body: Buffer, contentType: string, ok = true) {
+function createResponse(body: Buffer, contentType: string, ok = true, contentLength = String(body.length)) {
   return {
     ok,
     status: ok ? 200 : 404,
@@ -24,12 +24,17 @@ function createResponse(body: Buffer, contentType: string, ok = true) {
           return contentType
         }
         if (name.toLowerCase() === 'content-length') {
-          return String(body.length)
+          return contentLength
         }
         return null
       }
     },
-    arrayBuffer: async () => body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength)
+    body: new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(body)
+        controller.close()
+      }
+    })
   }
 }
 
@@ -38,7 +43,7 @@ function createRedirect(location: string, status = 302) {
     ok: false,
     status,
     headers: { get: (name: string) => (name.toLowerCase() === 'location' ? location : null) },
-    arrayBuffer: async () => new ArrayBuffer(0)
+    body: null
   }
 }
 
@@ -60,6 +65,12 @@ it('downloads and returns a persistable base64 image payload', async () => {
     mimeType: 'image/png',
     sourceUrl: 'https://cdn.example/usdc.png'
   })
+})
+
+it('stops reading an image that exceeds the limit without a Content-Length header', async () => {
+  mockFetch.mockResolvedValue(createResponse(Buffer.alloc(1024 * 1024 + 1), 'image/png', true, ''))
+
+  expect(downloadImage('https://cdn.example/large.png')).rejects.toThrow('Image is too large')
 })
 
 it('decodes and validates embedded Firefox favicon data', async () => {

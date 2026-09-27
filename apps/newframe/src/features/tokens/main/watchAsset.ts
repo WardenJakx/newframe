@@ -1,5 +1,9 @@
 import Erc20Contract, { type Erc20ProviderPort } from '../../../platform/chain-rpc/contracts/erc20.js'
-import { fetchRemoteResource, downloadImage } from '../../asset-data/main/images/download.js'
+import {
+  fetchRemoteResource,
+  downloadImage,
+  readBoundedResponse
+} from '../../asset-data/main/images/download.js'
 import type { Token } from '../domain/state/token.js'
 
 const MAX_METADATA_BYTES = 256 * 1024
@@ -39,13 +43,10 @@ async function tokenUriMetadata(uri: string): Promise<Record<string, unknown>> {
   const timeout = setTimeout(() => controller.abort(), METADATA_TIMEOUT_MS)
   try {
     const response = await fetchRemoteResource(uri, controller.signal)
-    if (!response.ok || Number(response.headers.get('content-length') ?? 0) > MAX_METADATA_BYTES) {
+    if (!response.ok) {
       throw new Error('Could not load token metadata')
     }
-    const bytes = await response.arrayBuffer()
-    if (bytes.byteLength > MAX_METADATA_BYTES) {
-      throw new Error('Token metadata is too large')
-    }
+    const bytes = await readBoundedResponse(response, MAX_METADATA_BYTES, 'Token metadata is too large')
     return parseMetadata(new TextDecoder().decode(bytes))
   } finally {
     clearTimeout(timeout)

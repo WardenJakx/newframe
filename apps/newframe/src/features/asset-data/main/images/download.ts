@@ -212,6 +212,36 @@ export async function fetchRemoteResource(target: string, signal: AbortSignal) {
   throw new Error('Image has too many redirects')
 }
 
+export async function readBoundedResponse(response: Response, maxBytes: number, errorMessage: string) {
+  if (Number(response.headers.get('content-length') ?? 0) > maxBytes) {
+    throw new Error(errorMessage)
+  }
+  if (!response.body) {
+    throw new Error('Response has no body')
+  }
+  const reader = (response.body as ReadableStream<Uint8Array>).getReader()
+  const chunks: Buffer[] = []
+  let size = 0
+  try {
+    let result = await reader.read()
+    while (!result.done) {
+      const { value } = result
+      size += value.byteLength
+      if (size > maxBytes) {
+        throw new Error(errorMessage)
+      }
+      chunks.push(Buffer.from(value))
+      result = await reader.read()
+    }
+    return Buffer.concat(chunks, size)
+  } catch (error) {
+    void reader.cancel().catch(() => undefined)
+    throw error
+  } finally {
+    reader.releaseLock()
+  }
+}
+
 async function download(target: string): Promise<TokenImage> {
   if (target.trimStart().startsWith('data:')) {
     return decodeEmbeddedImage(target)
@@ -223,11 +253,7 @@ async function download(target: string): Promise<TokenImage> {
     if (!response.ok) {
       throw new Error(`Image fetch failed with ${response.status}`)
     }
-    const contentLength = Number(response.headers.get('content-length') ?? 0)
-    if (contentLength > MAX_IMAGE_BYTES) {
-      throw new Error('Image is too large')
-    }
-    const bytes = Buffer.from(await response.arrayBuffer())
+    const bytes = await readBoundedResponse(response, MAX_IMAGE_BYTES, 'Image is too large')
     const declared = normalizeMimeType(response.headers.get('content-type'))
     return imageFromBytes(bytes, declared, target)
   } finally {

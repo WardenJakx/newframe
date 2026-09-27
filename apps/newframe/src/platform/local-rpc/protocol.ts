@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+export const MAX_RPC_REQUEST_BYTES = 1024 * 1024
+
 const JsonRpcIdSchema = z.union([z.string(), z.number()])
 const JsonRpcParamsSchema = z.union([z.array(z.json()), z.record(z.string(), z.json())])
 
