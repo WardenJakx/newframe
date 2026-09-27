@@ -1,6 +1,16 @@
 import { createHash } from 'node:crypto'
 
-import { Interface, JsonRpcProvider, MaxUint256, Wallet, getAddress, isAddress, parseUnits } from 'ethers'
+import {
+  Interface,
+  JsonRpcProvider,
+  MaxUint256,
+  Wallet,
+  getAddress,
+  isAddress,
+  parseUnits,
+  verifyMessage,
+  verifyTypedData
+} from 'ethers'
 
 import {
   FLASH_NATIVE_ETH_ASSET,
@@ -88,6 +98,10 @@ class LocalTradeValidationError extends Error {}
 
 const quotes = new Map<string, LocalQuoteRecord>()
 const orders = new Map<string, LocalOrderRecord>()
+const idempotentOrders = new Map<
+  string,
+  { quoteReference: string; bodyFingerprint: string; orderId: string }
+>()
 const orderListeners = new Set<(order: Record<string, unknown>) => void>()
 
 export function subscribeLocalTradeOrders(listener: (order: Record<string, unknown>) => void) {
@@ -641,6 +655,11 @@ function orderTypedData({
     },
     primaryType: 'Order',
     types: {
+      EIP712Domain: [
+        { name: 'name', type: 'string' },
+        { name: 'version', type: 'string' },
+        { name: 'chainId', type: 'uint256' }
+      ],
       Order: [
         { name: 'quoteId', type: 'string' },
         { name: 'funder', type: 'address' },
@@ -967,6 +986,31 @@ function validateSubmitBody(quoteRecord: LocalQuoteRecord, body: Record<string, 
   if (body.evmOrderTypedData !== expectedOrderTypedData) {
     validationError('Local Flash submit evmOrderTypedData must exactly echo the quote')
   }
+  if (Date.parse(quoteRecord.quote.expiresAt ?? '') <= Date.now()) {
+    validationError('Local Flash quote has expired')
+  }
+  try {
+    const typedData = objectRecord(JSON.parse(String(expectedOrderTypedData)))
+    const types = { ...objectRecord(typedData.types) } as Record<
+      string,
+      Array<{ name: string; type: string }>
+    >
+    delete types.EIP712Domain
+    const recovered = verifyTypedData(
+      objectRecord(typedData.domain),
+      types,
+      objectRecord(typedData.message),
+      stringValue(body.userSignature)
+    )
+    if (recovered.toLowerCase() !== stringValue(quoteBody.funderAddress).toLowerCase()) {
+      validationError('Local Flash order signature does not match funderAddress')
+    }
+  } catch (error) {
+    if (error instanceof LocalTradeValidationError) {
+      throw error
+    }
+    validationError('Local Flash order signature is invalid')
+  }
 
   const expectedPermitTypedData = objectRecord(quoteResponse.evm).permitTypedData
   if (expectedPermitTypedData) {
@@ -1121,6 +1165,7 @@ function filterOrders(url: URL) {
 export function resetLocalTradeState() {
   quotes.clear()
   orders.clear()
+  idempotentOrders.clear()
 }
 
 export async function handleLocalTradeRequest(req: Request) {
@@ -1152,12 +1197,33 @@ export async function handleLocalTradeRequest(req: Request) {
       if (!quoteRecord) {
         return errorResponse(`Unknown local Flash quote: ${quoteReference}`, 404)
       }
+      const idempotencyKey = req.headers.get('idempotency-key')?.trim()
+      const bodyFingerprint = createHash('sha256').update(JSON.stringify(body)).digest('hex')
+      if (idempotencyKey) {
+        const previous = idempotentOrders.get(idempotencyKey)
+        if (previous) {
+          if (previous.quoteReference !== quoteReference) {
+            return errorResponse('Local Flash idempotency key already belongs to another quote', 409)
+          }
+          if (previous.bodyFingerprint !== bodyFingerprint) {
+            return errorResponse('Local Flash idempotency key already belongs to another submission', 409)
+          }
+          const order = orders.get(previous.orderId)
+          if (order) {
+            return jsonResponse({ orderId: order.orderId, order: orderResponse(order) })
+          }
+        }
+      }
+
       if (!body.userSignature) {
         return errorResponse('Local Flash submit requires userSignature', 400)
       }
       validateSubmitBody(quoteRecord, body)
 
       const order = storeOrder(quoteRecord, body)
+      if (idempotencyKey) {
+        idempotentOrders.set(idempotencyKey, { quoteReference, bodyFingerprint, orderId: order.orderId })
+      }
 
       return jsonResponse({ orderId: order.orderId, order: orderResponse(order) })
     }
@@ -1202,6 +1268,16 @@ export async function handleLocalTradeRequest(req: Request) {
       }
       if (!body.userSignature) {
         return errorResponse('Local Flash cancel requires userSignature', 400)
+      }
+      try {
+        if (
+          verifyMessage(cancelMessage, stringValue(body.userSignature)).toLowerCase() !==
+          order.accountAddress.toLowerCase()
+        ) {
+          return errorResponse('Local Flash cancel signature does not match order funder', 400)
+        }
+      } catch {
+        return errorResponse('Local Flash cancel signature is invalid', 400)
       }
       if (order.status === 'cancelled') {
         return jsonResponse({ orderId: order.orderId, order: orderResponse(order) })

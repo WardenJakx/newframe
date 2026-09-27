@@ -34,12 +34,12 @@ export const visualStages: VisualStage[] = [
   networkOnboardingStage,
   safeWatchStage,
   anvilPositionsStage,
-  agentSessionStage,
   tradeTicketStage,
   tradeMarketStage,
   tradeCrossChainStage,
   tradeLimitStage,
   sendStage,
   usdcIntegrationStage,
-  activityStage
+  activityStage,
+  agentSessionStage
 ]

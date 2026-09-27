@@ -1,0 +1,13 @@
+{
+  "name": "newframe-cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "newframe": "./src/index.ts"
+  },
+  "scripts": {
+    "start": "bun src/index.ts",
+    "typecheck": "tsc --noEmit --project tsconfig.json"
+  }
+}
