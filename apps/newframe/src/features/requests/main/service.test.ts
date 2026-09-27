@@ -426,6 +426,66 @@ describe('prompted request lifecycle', () => {
     expect(test.service.pendingCount).toBe(0)
   })
 
+  it.each([true, false])(
+    'settles duplicate add-chain requests together when approved=%s',
+    async (approved) => {
+      const request: AddChainRequest = {
+        handlerId: 'first',
+        type: 'addChain',
+        origin: 'app.example',
+        account: accountId,
+        chain: {
+          id: 4663,
+          type: 'ethereum',
+          name: 'Robinhood Mainnet',
+          symbol: 'ETH',
+          primaryRpc: 'https://rpc.example'
+        },
+        payload: {
+          id: 8,
+          jsonrpc: '2.0',
+          method: 'wallet_addEthereumChain',
+          params: [{ chainId: '0x1237', chainName: 'Robinhood Mainnet' }]
+        }
+      }
+      const duplicate = { ...request, handlerId: 'second', payload: { ...request.payload, id: 9 } }
+      const otherOrigin = {
+        ...request,
+        handlerId: 'other',
+        origin: 'other.example',
+        payload: { ...request.payload, id: 10 }
+      }
+      const differentSettings = {
+        ...request,
+        handlerId: 'different',
+        chain: { ...request.chain, primaryRpc: 'https://other.example' },
+        payload: {
+          ...request.payload,
+          id: 11,
+          params: [{ chainId: '0x1237', chainName: 'Robinhood Mainnet', rpcUrls: ['https://other.example'] }]
+        }
+      }
+      const responses: RPCResponsePayload[] = []
+      test.add(request, (response) => responses.push(response))
+      test.add(duplicate, (response) => responses.push(response))
+      test.add(otherOrigin, (response) => responses.push(response))
+      test.add(differentSettings, (response) => responses.push(response))
+
+      await test.service.resolveNetwork({
+        type: 'network.request-resolve',
+        requestId: request.handlerId,
+        approved
+      })
+
+      expect(responses.map((response) => response.id)).toEqual([8, 9])
+      expect(
+        responses.every((response) => (approved ? response.result === null : response.error?.code === 4001))
+      ).toBeTrue()
+      expect(test.service.pendingCount).toBe(2)
+      expect(test.state.addNetwork).toHaveBeenCalledTimes(approved ? 1 : 0)
+    }
+  )
+
   it('owns one continuation keyed by request ID and settles it exactly once', () => {
     const request = transactionRequest('request-once')
     const responses: RPCResponsePayload[] = []
