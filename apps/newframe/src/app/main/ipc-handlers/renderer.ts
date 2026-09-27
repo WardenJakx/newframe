@@ -689,7 +689,7 @@ export function createOperationRegistry(services: OperationServices) {
     'safe.discover': defineQuery('safe.discover', {
       roles: ['wallet-ui'],
       entrypoints: ['tray'],
-      handle: ({ address }) => safes.discoverNetworks(address),
+      handle: ({ address, chainId }) => safes.discoverNetworks(address, chainId),
       failure: []
     }),
     'safe.simulate': defineQuery('safe.simulate', {
