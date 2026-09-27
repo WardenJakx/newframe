@@ -31,7 +31,8 @@
     "apps/newframe-extension/.cache/**/*",
     "packages/ui/dist/**/*",
     "packages/ui/src/styled-system/**/*",
-    "apps/newframe-extension/src/styled-system/**/*"
+    "apps/newframe-extension/src/styled-system/**/*",
+    "skills/newframe/scripts/newframe.js"
   ],
   "rules": {
     "constructor-super": "error",

@@ -150,31 +150,7 @@ cast send 0xTargetAddress "setValue(uint256)" 123 \
 
 ### Give an AI agent autonomous access
 
-AI agent sessions let a local process use one approved Seed or Ring wallet without a confirmation for every signature. The [Newframe CLI](../newframe-cli/README.md) requests the session, stores its token privately, and uses it for signing and transactions. It also quotes and submits Flash orders directly to Flash, then reads their status.
-
-1. Unlock Newframe. In **Accounts**, enable AI access for a Seed or Ring wallet and select it. Enable the target chain before trading.
-2. From this repository, request a session. Approve the request in Newframe. The CLI prints the approved account and expiry, never the token.
-
-   ```bash
-   bun run cli session start --name "My Local Agent" --duration 600
-   ```
-
-3. Use the CLI for wallet and Flash operations. A quote file contains the provider quote and the exact payloads needed for signing. Submission handles any wrap, approval, permit, and order signatures required by that quote.
-
-   ```bash
-   bun run cli flash quote --request trade.json --out quote.json
-   bun run cli flash submit --quote quote.json
-   bun run cli flash orders
-   bun run cli flash watch ORDER_ID
-   ```
-
-4. Revoke the session when finished.
-
-   ```bash
-   bun run cli session revoke
-   ```
-
-Sessions expire after the approved duration and are invalidated when Newframe restarts. The user can also choose **Revoke AI sessions** or disable AI access from the account menu. See the [CLI guide](../newframe-cli/README.md) for request format, signing commands, and order cancellation.
+Install the [Newframe skill](../../skills/README.md) for Codex or Claude Code. It packages the CLI and explains how an agent connects to an AI-enabled wallet.
 
 ### Enable portfolio discovery
 
