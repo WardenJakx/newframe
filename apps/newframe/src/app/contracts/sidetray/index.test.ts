@@ -1,15 +1,12 @@
 import { describe, expect, it } from 'bun:test'
 
-import {
-  FLASH_NATIVE_ETH_ASSET,
-  FLASH_USDC_ASSET,
-  FLASH_WETH_ASSET
-} from '../../../features/transactions/trade/domain/assets'
+import { FLASH_NATIVE_ETH_ASSET, FLASH_USDC_ASSET, FLASH_WETH_ASSET } from '@newframe/flash/assets'
 import {
   FLASH_BASE_CHAIN_ID,
   FLASH_BASE_USDC_ADDRESS,
   FLASH_BASE_WETH_ADDRESS
-} from '../../../features/transactions/trade/domain/constants'
+} from '@newframe/flash/constants'
+
 import {
   buildSideTrayRoute,
   normalizeSideTrayFrameRequest,

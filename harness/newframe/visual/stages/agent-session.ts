@@ -3,12 +3,9 @@ import { chmod, copyFile, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
+import { FLASH_USDC_ADDRESS, FLASH_WETH_ADDRESS } from '@newframe/flash/constants'
 import { verifyMessage, verifyTypedData } from 'ethers'
 
-import {
-  FLASH_USDC_ADDRESS,
-  FLASH_WETH_ADDRESS
-} from '../../../../apps/newframe/src/features/transactions/trade/domain/constants.ts'
 import { anvilChainId, localTradeServiceUrl, newframeRpcUrl, rootDir } from '../../core/config.ts'
 import type { VisualStage } from '../types.ts'
 import { requireAccounts } from './helpers.ts'

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import type { BalanceSummary } from '../../../asset-data/domain/balance'
-import { FLASH_USDC_ASSET, FLASH_WETH_ASSET } from '../domain/assets'
+import { FLASH_USDC_ASSET, FLASH_WETH_ASSET } from '@newframe/flash/assets'
 import {
   FLASH_LIMIT_ORDER_TYPE,
   FLASH_MARKET_ORDER_TYPE,
@@ -10,9 +9,11 @@ import {
   FLASH_STOP_ORDER_TYPE,
   FLASH_TAKE_PROFIT_ORDER_TYPE,
   FLASH_TWAP_ORDER_TYPE
-} from '../domain/constants'
+} from '@newframe/flash/constants'
+import type { FlashQuote } from '@newframe/flash/schemas'
+
+import type { BalanceSummary } from '../../../asset-data/domain/balance'
 import { cleanFlashDecimal } from '../domain/policy'
-import type { FlashQuote } from '../domain/schemas'
 import {
   buildTradeAssetOptions,
   buildTradeQuoteRequest,

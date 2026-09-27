@@ -1,15 +1,15 @@
 import { expect, it } from 'bun:test'
 
-import { FLASH_USDC_ASSET, FLASH_WETH_ASSET, getFlashAssetsForChain } from './assets'
-import { FLASH_ANVIL_CHAIN_ID, FLASH_MARKET_ORDER_TYPE } from './constants'
+import { FLASH_USDC_ASSET, FLASH_WETH_ASSET, getFlashAssetsForChain } from '@newframe/flash/assets'
+import { FLASH_ANVIL_CHAIN_ID, FLASH_MARKET_ORDER_TYPE } from '@newframe/flash/constants'
 import {
   buildFlashActionTransaction,
   buildFlashSubmitRequest,
   findFlashTypedData,
   flashTypedDataChainId,
   parseFlashTypedData
-} from './execution'
-import type { FlashQuote, FlashQuoteAction } from './schemas'
+} from '@newframe/flash/execution'
+import type { FlashQuote, FlashQuoteAction } from '@newframe/flash/schemas'
 
 it('builds quoted actions and signature-bearing Flash submission data only in the portable execution layer', () => {
   const typedData = {

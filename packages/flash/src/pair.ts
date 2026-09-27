@@ -113,7 +113,7 @@ export function getDefaultContraAsset({
     candidates = sameChainOptions
   }
 
-  return candidates.find((asset) => hasAssetBalance(asset, balances)) ?? candidates[0] ?? FLASH_USDC_ASSET
+  return candidates.find((asset) => hasAssetBalance(asset, balances)) ?? candidates.at(0) ?? FLASH_USDC_ASSET
 }
 
 export function getDefaultContraAssetForChain({
@@ -134,7 +134,7 @@ export function getDefaultContraAssetForChain({
     )
   )
 
-  return candidates.find((asset) => hasAssetBalance(asset, balances)) ?? candidates[0] ?? FLASH_USDC_ASSET
+  return candidates.find((asset) => hasAssetBalance(asset, balances)) ?? candidates.at(0) ?? FLASH_USDC_ASSET
 }
 
 export function getDefaultSide({ targetAsset, balances }: FlashDefaultAssetOptions): FlashTradeSide {

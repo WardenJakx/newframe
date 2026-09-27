@@ -1,8 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, jest as timers, spyOn, type Mock } from 'bun:test'
 
 import { SignTypedDataVersion, signTypedData } from '@metamask/eth-sig-util'
-import { Interface, JsonRpcProvider, Wallet } from 'ethers'
-
 import {
   FLASH_ANVIL_CHAIN_ID,
   FLASH_BASE_CHAIN_ID,
@@ -11,7 +9,9 @@ import {
   FLASH_NATIVE_ETH_TOKEN_ADDRESS,
   FLASH_USDC_ADDRESS,
   FLASH_WETH_ADDRESS
-} from '../../src/features/transactions/trade/domain/constants'
+} from '@newframe/flash/constants'
+import { Interface, JsonRpcProvider, Wallet } from 'ethers'
+
 import { handleLocalTradeRequest, resetLocalTradeState, subscribeLocalTradeOrders } from './handler'
 
 const funderWallet = new Wallet('0x59c6995e998f97a5a0044976f094538a2f7d1c9f4e35b7b4a39e621ce6b38a13')

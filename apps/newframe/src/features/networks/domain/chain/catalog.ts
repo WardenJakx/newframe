@@ -1,15 +1,10 @@
+import { getFlashChainConfig } from '@newframe/flash/chains'
+
 import { MAINNET_ETH_ICON } from '../../../asset-data/domain/balance/index.js'
-import {
-  FLASH_BASE_USDC_ADDRESS,
-  FLASH_BASE_WETH_ADDRESS,
-  FLASH_USDC_ADDRESS,
-  FLASH_WETH_ADDRESS
-} from '../../../transactions/trade/domain/constants.js'
 import type { Chain, ChainMetadata } from '../state/chain.js'
 type ChainLayer = NonNullable<Chain['layer']>
 type RpcPreset = 'chainlist' | 'custom'
 type NativeIcon = 'chain' | 'eth'
-type FlashDefinition = readonly [order: number, slug: string, weth?: string, usdc?: string]
 type ChainDefinition = readonly [
   id: number,
   name: string,
@@ -19,8 +14,7 @@ type ChainDefinition = readonly [
   rpc: readonly [preset: RpcPreset, url: string],
   icon: string,
   primaryColor: ChainMetadata['primaryColor'],
-  nativeCurrency: readonly [symbol: string, name: string, icon: NativeIcon],
-  flash?: FlashDefinition
+  nativeCurrency: readonly [symbol: string, name: string, icon: NativeIcon]
 ]
 const definitions: readonly ChainDefinition[] = [
   [
@@ -32,8 +26,7 @@ const definitions: readonly ChainDefinition[] = [
     ['chainlist', 'https://ethereum-rpc.publicnode.com'],
     'https://chain-icons.s3.amazonaws.com/ethereum.png',
     'accent1',
-    ['ETH', 'Ether', 'eth'],
-    [0, 'ethereum', FLASH_WETH_ADDRESS, FLASH_USDC_ADDRESS]
+    ['ETH', 'Ether', 'eth']
   ],
   [
     10,
@@ -44,8 +37,7 @@ const definitions: readonly ChainDefinition[] = [
     ['chainlist', 'https://mainnet.optimism.io'],
     'https://frame.nyc3.cdn.digitaloceanspaces.com/icons/optimism.svg',
     'accent4',
-    ['ETH', 'Ether', 'eth'],
-    [1, 'optimism']
+    ['ETH', 'Ether', 'eth']
   ],
   [
     56,
@@ -56,8 +48,7 @@ const definitions: readonly ChainDefinition[] = [
     ['custom', 'https://bsc-dataseed.bnbchain.org'],
     'https://chain-icons.s3.amazonaws.com/bsc.png',
     'accent8',
-    ['BNB', 'BNB', 'chain'],
-    [2, 'bsc']
+    ['BNB', 'BNB', 'chain']
   ],
   [
     100,
@@ -79,8 +70,7 @@ const definitions: readonly ChainDefinition[] = [
     ['chainlist', 'https://polygon-bor-rpc.publicnode.com'],
     'https://frame.nyc3.cdn.digitaloceanspaces.com/icons/polygon.svg',
     'accent6',
-    ['MATIC', 'Matic', 'chain'],
-    [3, 'polygon']
+    ['MATIC', 'Matic', 'chain']
   ],
   [
     143,
@@ -91,8 +81,7 @@ const definitions: readonly ChainDefinition[] = [
     ['custom', 'https://rpc.monad.xyz'],
     'https://chain-icons.s3.us-east-1.amazonaws.com/monad.png',
     'accent6',
-    ['MON', 'Monad', 'chain'],
-    [10, 'monad']
+    ['MON', 'Monad', 'chain']
   ],
   [
     999,
@@ -103,8 +92,7 @@ const definitions: readonly ChainDefinition[] = [
     ['custom', 'https://rpc.hyperliquid.xyz/evm'],
     'https://chain-icons.s3.amazonaws.com/chainlist/999',
     'accent3',
-    ['HYPE', 'HYPE', 'chain'],
-    [4, 'hyperevm']
+    ['HYPE', 'HYPE', 'chain']
   ],
   [
     8453,
@@ -115,8 +103,7 @@ const definitions: readonly ChainDefinition[] = [
     ['chainlist', 'https://mainnet.base.org'],
     'https://frame.nyc3.cdn.digitaloceanspaces.com/baseiconcolor.png',
     'accent8',
-    ['ETH', 'Ether', 'eth'],
-    [5, 'base', FLASH_BASE_WETH_ADDRESS, FLASH_BASE_USDC_ADDRESS]
+    ['ETH', 'Ether', 'eth']
   ],
   [
     9745,
@@ -127,8 +114,7 @@ const definitions: readonly ChainDefinition[] = [
     ['custom', 'https://rpc.plasma.to'],
     'https://chain-icons.s3.amazonaws.com/plasma.png',
     'accent5',
-    ['XPL', 'Plasma', 'chain'],
-    [6, 'plasma']
+    ['XPL', 'Plasma', 'chain']
   ],
   [
     42161,
@@ -139,8 +125,7 @@ const definitions: readonly ChainDefinition[] = [
     ['chainlist', 'https://arb1.arbitrum.io/rpc'],
     'https://frame.nyc3.cdn.digitaloceanspaces.com/icons/arbitrum.svg',
     'accent7',
-    ['ETH', 'Ether', 'eth'],
-    [8, 'arbitrum']
+    ['ETH', 'Ether', 'eth']
   ],
   [
     43114,
@@ -151,8 +136,7 @@ const definitions: readonly ChainDefinition[] = [
     ['custom', 'https://api.avax.network/ext/bc/C/rpc'],
     'https://chain-icons.s3.amazonaws.com/avalanche.png',
     'accent8',
-    ['AVAX', 'Avalanche', 'chain'],
-    [9, 'avalanche']
+    ['AVAX', 'Avalanche', 'chain']
   ],
   [
     81457,
@@ -163,8 +147,7 @@ const definitions: readonly ChainDefinition[] = [
     ['custom', 'https://rpc.blast.io'],
     'https://chain-icons.s3.amazonaws.com/chainlist/81457',
     'accent4',
-    ['ETH', 'Ether', 'eth'],
-    [7, 'blast']
+    ['ETH', 'Ether', 'eth']
   ],
   [
     84532,
@@ -202,24 +185,27 @@ const definitions: readonly ChainDefinition[] = [
 ]
 export const BUILT_IN_CHAINS = Object.freeze(
   definitions.map(
-    ([id, name, layer, explorer, defaultEnabled, [preset, url], icon, primaryColor, native, flash]) => ({
-      id,
-      name,
-      layer,
-      isTestnet: layer === 'testnet',
-      explorer,
-      defaultEnabled,
-      rpc: { preset, url },
-      icon,
-      primaryColor,
-      nativeCurrency: {
-        symbol: native[0],
-        name: native[1],
-        icon: native[2] === 'eth' ? MAINNET_ETH_ICON : icon,
-        decimals: 18
-      },
-      ...(flash ? { flash: { order: flash[0], slug: flash[1], weth: flash[2], usdc: flash[3] } } : {})
-    })
+    ([id, name, layer, explorer, defaultEnabled, [preset, url], icon, primaryColor, native]) => {
+      const flash = getFlashChainConfig(id)
+      return {
+        id,
+        name,
+        layer,
+        isTestnet: layer === 'testnet',
+        explorer,
+        defaultEnabled,
+        rpc: { preset, url },
+        icon,
+        primaryColor,
+        nativeCurrency: {
+          symbol: native[0],
+          name: native[1],
+          icon: native[2] === 'eth' ? MAINNET_ETH_ICON : icon,
+          decimals: 18
+        },
+        ...(flash && { flash: { order: flash.order, slug: flash.slug, weth: flash.weth, usdc: flash.usdc } })
+      }
+    }
   )
 )
 export const BUILT_IN_CHAIN_ICON_URLS: Readonly<Record<number, string>> = Object.freeze(

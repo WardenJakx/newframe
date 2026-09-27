@@ -1,3 +1,9 @@
+import {
+  FlashAssetSchema,
+  FlashOrderTypeSchema,
+  FlashQuoteSchema as DomainFlashQuoteSchema,
+  FlashTradeSideSchema
+} from '@newframe/flash/schemas'
 import { z } from 'zod'
 
 import { SafeProposalSimulationSchema } from '../../features/accounts/domain/safe.js'
@@ -8,12 +14,6 @@ import {
   FLASH_MIN_TWAP_BUCKET_COUNT,
   FLASH_MIN_TWAP_DURATION_SECONDS
 } from '../../features/transactions/trade/domain/policy.js'
-import {
-  FlashAssetSchema,
-  FlashOrderTypeSchema,
-  FlashQuoteSchema as DomainFlashQuoteSchema,
-  FlashTradeSideSchema
-} from '../../features/transactions/trade/domain/schemas.js'
 import { AirGapRequestReferenceSchema } from '../../platform/signing/domain/airgap.js'
 
 const AddressSchema = z.string().regex(/^0x[0-9a-fA-F]{40}$/)

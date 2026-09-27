@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto'
 
+import { createFlashApi, flashBaseUrl, flashCancelMessage } from '@newframe/flash/api'
+import type { FlashQuoteRequest } from '@newframe/flash/contracts'
 import {
   buildFlashActionTransaction,
   buildFlashSubmitRequest,
@@ -7,24 +9,16 @@ import {
   flashObject,
   flashTypedDataChainId,
   parseFlashTypedData
-} from '../../newframe/src/features/transactions/trade/domain/execution.js'
-import { getFlashAssetPairChains } from '../../newframe/src/features/transactions/trade/domain/pair.js'
-import type { FlashQuote } from '../../newframe/src/features/transactions/trade/domain/schemas.js'
-import type { FlashQuoteRequest } from '../../newframe/src/features/transactions/trade/main/contracts.js'
-import {
-  buildFlashQuoteBody,
-  buildFlashSubmitBody,
-  flashBaseUrl,
-  flashHeaders,
-  normalizeFlashQuoteResponse
-} from '../../newframe/src/features/transactions/trade/main/index.js'
+} from '@newframe/flash/execution'
+import { getFlashAssetPairChains } from '@newframe/flash/pair'
+import type { FlashQuote } from '@newframe/flash/schemas'
+import { isFlashTerminalStatus, normalizeFlashStatus } from '@newframe/flash/status'
+
 import { readSubmitProgress, saveSubmitProgress, withSubmitLock } from './journal.js'
 import { clearSession, loadSession, saveSession, stateDirectory, type StoredSession } from './storage.js'
 
 const defaultRpcUrl = 'http://127.0.0.1:1248'
 const addressPattern = /^0x[0-9a-f]{40}$/i
-const terminalStatuses = new Set(['filled', 'cancelled', 'rejected', 'terminated', 'expired'])
-const openStatuses = new Set(['pending', 'accepted', 'partially-filled'])
 
 export interface QuoteEnvelope {
   request: FlashQuoteRequest
@@ -99,34 +93,13 @@ function assertTypedDataChain(typedData: unknown, expectedChainId: number) {
 function statusOf(order: unknown) {
   const record = flashObject(order)
   const nested = flashObject(record.order)
-  const value = nested.status ?? record.status
-  if (value === undefined || value === null) {
-    return 'accepted'
-  }
-  if (typeof value !== 'string') {
-    return 'terminated'
-  }
-  const raw = value.trim()
-  const status = (raw || 'accepted')
-    .toLowerCase()
-    .replace(/^order_status_/, '')
-    .replaceAll('_', '-')
-  if (status === 'canceled') {
-    return 'cancelled'
-  }
-  if (['open', 'active', 'working', 'created'].includes(status)) {
-    return 'accepted'
-  }
-  if (terminalStatuses.has(status) || openStatuses.has(status)) {
-    return status
-  }
-  return raw ? 'terminated' : 'accepted'
+  return normalizeFlashStatus(nested.status ?? record.status)
 }
 
 function isClosedOrder(order: unknown) {
   const record = flashObject(order)
   const nested = flashObject(record.order)
-  return nested.open === false || record.open === false || terminalStatuses.has(statusOf(order))
+  return nested.open === false || record.open === false || isFlashTerminalStatus(statusOf(order))
 }
 
 function assertQuoteFresh(quote: FlashQuote) {
@@ -158,6 +131,7 @@ export class NewframeClient {
   private readonly fetcher: typeof fetch
   private readonly pollIntervalMs: number
   private readonly receiptTimeoutMs: number
+  private readonly flash: ReturnType<typeof createFlashApi>
 
   constructor(options: ClientOptions = {}) {
     this.rpcUrl = (options.rpcUrl ?? process.env.NEWFRAME_RPC_URL ?? defaultRpcUrl).replace(/\/$/, '')
@@ -166,9 +140,7 @@ export class NewframeClient {
     this.fetcher = options.fetch ?? fetch
     this.pollIntervalMs = options.pollIntervalMs ?? 2_000
     this.receiptTimeoutMs = options.receiptTimeoutMs ?? 120_000
-    if (/^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/.test(this.flashUrl)) {
-      process.env.FRAME_PROFILE = 'dev'
-    }
+    this.flash = createFlashApi({ baseUrl: this.flashUrl, fetch: this.fetcher })
   }
 
   private async request(url: string, init: RequestInit): Promise<unknown> {
@@ -323,15 +295,6 @@ export class NewframeClient {
     return payload.result
   }
 
-  private async flashRequest(path: string, init: RequestInit = {}) {
-    const headers = new Headers(flashHeaders())
-    if (/^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/.test(this.flashUrl)) {
-      headers.delete('x-definitive-api-key')
-    }
-    new Headers(init.headers).forEach((value, name) => headers.set(name, value))
-    return this.request(`${this.flashUrl}${path}`, { ...init, headers })
-  }
-
   async quote(request: FlashQuoteRequest): Promise<QuoteEnvelope> {
     const session = await this.session()
     if (
@@ -341,10 +304,8 @@ export class NewframeClient {
       throw new Error('Quote account does not match the approved session account')
     }
     const boundRequest = { ...request, accountAddress: session.account }
-    const body = buildFlashQuoteBody(boundRequest)
-    const raw = await this.flashRequest('/quote', { method: 'POST', body: JSON.stringify(body) })
-    const quote = normalizeFlashQuoteResponse(raw, boundRequest)
-    return { request: boundRequest, quote, flash: quote.raw ?? raw }
+    const { quote, flash } = await this.flash.quote(boundRequest)
+    return { request: boundRequest, quote, flash }
   }
 
   private async waitForReceipt(hash: string, chainId: number) {
@@ -455,18 +416,9 @@ export class NewframeClient {
           quoteId: quote.id,
           quoteRequest: request
         })
-        const body = buildFlashSubmitBody(submitRequest)
         assertQuoteFresh(quote)
-        const raw = await this.flashRequest('/order', {
-          method: 'POST',
-          headers: { 'Idempotency-Key': idempotencyKey },
-          body: JSON.stringify(body)
-        })
-        const payload = flashObject(raw)
-        const orderId = payload.orderId ?? flashObject(payload.order).orderId ?? payload.id
-        if (typeof orderId !== 'string' || !orderId) {
-          throw new Error('Flash did not return an order id')
-        }
+        const raw = await this.flash.submitOrder(submitRequest)
+        const orderId = raw.orderId
         progress.orderId = orderId
         progress.raw = raw
         await save()
@@ -478,29 +430,12 @@ export class NewframeClient {
 
   async orders(options: { status?: string; pageSize?: number } = {}) {
     const session = await this.session()
-    const query = new URLSearchParams({ funderAddress: session.account })
-    if (options.status) {
-      query.set(
-        'statuses',
-        options.status
-          .split(',')
-          .map((status) => {
-            const clean = status.trim().replaceAll('-', '_').toUpperCase()
-            return clean.startsWith('ORDER_STATUS_') ? clean : `ORDER_STATUS_${clean}`
-          })
-          .join(',')
-      )
-    }
-    if (options.pageSize) {
-      query.set('pageSize', String(Math.min(200, options.pageSize)))
-    }
-    return this.flashRequest(`/orders?${query}`)
+    return this.flash.listOrders(session.account, options)
   }
 
   async order(orderId: string) {
     const session = await this.session()
-    const query = new URLSearchParams({ funderAddress: session.account })
-    return this.flashRequest(`/orders/${encodeURIComponent(orderId)}?${query}`)
+    return this.flash.getOrder(session.account, orderId)
   }
 
   async watch(orderId: string, options: { timeoutMs?: number } = {}) {
@@ -513,15 +448,13 @@ export class NewframeClient {
       }
       await Bun.sleep(this.pollIntervalMs)
     }
-    throw new Error(
-      `Timed out waiting for Flash order ${orderId}; last status: ${statusOf(latest) || 'unknown'}`
-    )
+    throw new Error(`Timed out waiting for Flash order ${orderId}; last status: ${statusOf(latest)}`)
   }
 
   async cancel(orderId: string) {
-    const order = flashObject(await this.order(orderId))
+    const order = await this.order(orderId)
     const session = await this.session()
-    const record = flashObject(order.order)
+    const record = order.order
     const owner =
       record.accountAddress ??
       record.funderAddress ??
@@ -532,14 +465,11 @@ export class NewframeClient {
     if (typeof owner !== 'string' || requireAddress(owner) !== requireAddress(session.account)) {
       throw new Error('Flash order does not belong to the approved session account')
     }
-    const cancelMessage = `Definitive Flash v1 — Cancel Order\nOrder: ${orderId}`
+    const cancelMessage = flashCancelMessage(orderId)
     const signature = await this.rpc('personal_sign', [cancelMessage, session.account])
     if (typeof signature !== 'string' || !signature) {
       throw new Error('Newframe did not return a cancel signature')
     }
-    return this.flashRequest(`/orders/${encodeURIComponent(orderId)}/cancel`, {
-      method: 'POST',
-      body: JSON.stringify({ cancelMessage, userSignature: signature })
-    })
+    return this.flash.cancelOrder(orderId, signature, cancelMessage)
   }
 }

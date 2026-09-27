@@ -1,4 +1,4 @@
-import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.js'
+const NATIVE_CURRENCY = '0x0000000000000000000000000000000000000000'
 import { getFlashChainConfig } from './chains.js'
 import {
   FLASH_ANVIL_CHAIN_ID,
@@ -173,7 +173,7 @@ export function getFlashDefaultTargetAsset(chainId = FLASH_ANVIL_CHAIN_ID) {
 
   return (
     assets.find((asset) => asset.symbol === FLASH_WETH_ASSET_SYMBOL) ??
-    assets[0] ?? {
+    assets.at(0) ?? {
       ...FLASH_WETH_ASSET,
       chainId,
       id: flashAssetId(chainId, toFlashApiAssetAddress(FLASH_WETH_ASSET))

@@ -90,6 +90,12 @@ export const FlashQuoteSchema = z.object({
   raw: z.unknown().optional()
 })
 
+export const FlashRuntimeSchema = z.object({
+  environment: z.string().nullish(),
+  isDev: z.boolean().nullish(),
+  profile: z.string().nullish()
+})
+
 export type FlashAsset = z.infer<typeof FlashAssetSchema>
 export type FlashOrderType = z.infer<typeof FlashOrderTypeSchema>
 export type FlashPriceTrigger = { notionalPrice: string; triggerType: 'upper' | 'lower' }
@@ -97,10 +103,6 @@ export type FlashQuote = z.infer<typeof FlashQuoteSchema>
 export type FlashQuoteAction = z.infer<typeof FlashQuoteActionSchema>
 export type FlashQuoteFee = z.infer<typeof FlashQuoteFeeSchema>
 export type FlashQuoteTransactionRequest = z.infer<typeof FlashQuoteTransactionRequestSchema>
-export type FlashRuntime = {
-  environment?: string | null
-  isDev?: boolean | null
-  profile?: string | null
-}
+export type FlashRuntime = z.infer<typeof FlashRuntimeSchema>
 export type FlashStep = z.infer<typeof FlashStepSchema>
 export type FlashTradeSide = z.infer<typeof FlashTradeSideSchema>

@@ -1,9 +1,5 @@
+import { FLASH_ANVIL_CHAIN_ID, FLASH_USDC_ADDRESS } from '@newframe/flash/constants'
 import { Interface, parseUnits } from 'ethers'
-
-import {
-  FLASH_ANVIL_CHAIN_ID,
-  FLASH_USDC_ADDRESS
-} from '../../../apps/newframe/src/features/transactions/trade/domain/constants.ts'
 
 const NEWFRAME_RPC_URL = 'http://127.0.0.1:1248'
 const CHAIN_ID = `0x${FLASH_ANVIL_CHAIN_ID.toString(16)}`

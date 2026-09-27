@@ -1,0 +1,30 @@
+{
+  "name": "@newframe/flash",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "default": "./dist/*.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.build.json",
+    "typecheck": "tsc --project tsconfig.build.json --noEmit && tsc --project tsconfig.json",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "zod": "^4.4.3",
+    "ws": "8.21.0"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.0",
+    "@types/node": "24",
+    "@types/ws": "^8.18.1",
+    "typescript": "7.0.2"
+  }
+}

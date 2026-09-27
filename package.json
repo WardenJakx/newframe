@@ -9,8 +9,9 @@
   ],
   "scripts": {
     "prepare": "husky",
+    "flash:build": "bun --cwd packages/flash build",
     "newframe": "bun --cwd apps/newframe",
-    "cli": "bun apps/newframe-cli/src/index.ts",
+    "cli": "bun run flash:build && bun apps/newframe-cli/src/index.ts",
     "extension": "bun --cwd apps/newframe-extension",
     "harness": "bun --cwd harness",
     "ui": "bun --cwd packages/ui",
@@ -19,7 +20,8 @@
     "dev": "bun run newframe dev",
     "install:preview": "bun run newframe install:preview",
     "test": "bun run test:unit",
-    "test:unit": "bun run --parallel test:newframe test:newframe-extension",
+    "test:unit": "bun run --parallel test:flash test:newframe test:newframe-extension",
+    "test:flash": "bun --cwd packages/flash test",
     "test:newframe": "bun run newframe test:unit",
     "test:newframe-extension": "bun run extension test",
     "test:all": "bun run test:unit",
@@ -33,7 +35,7 @@
     "format:check": "oxfmt --check '**/*.{yml,json,md,html,ts,tsx,js,mjs}'",
     "check": "bun run format:check && bun run typecheck && bun run lint && bun run knip && bun run test",
     "dep:report": "bun scripts/dep-report.ts",
-    "visual:harness:newframe": "bun exec 'node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types harness/newframe/visual-harness.ts'",
+    "visual:harness:newframe": "bun run flash:build && bun exec 'node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types harness/newframe/visual-harness.ts'",
     "scenario:newframe:provider": "bun harness/newframe/scenarios/provider-smoke.ts"
   },
   "lint-staged": {

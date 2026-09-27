@@ -1,3 +1,4 @@
+import { FLASH_NATIVE_ETH_TOKEN_ADDRESS } from '@newframe/flash/constants'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 
@@ -7,7 +8,6 @@ import ChainTokenIcon from '../../../../../shared/renderer/ui/ChainTokenIcon'
 import { persistedImageSource } from '../../../../asset-data/domain/image'
 import { tokenForId, tokenImageSource } from '../../../../tokens/domain'
 import { NATIVE_CURRENCY } from '../../../../tokens/domain/constants'
-import { FLASH_NATIVE_ETH_TOKEN_ADDRESS } from '../../domain/constants'
 import { orderAssetName, orderAssetSymbol } from './orderModel'
 import type { OrderAsset, OrderNetworkMap, OrderNetworkMetadataMap, OrderTokenCatalog } from './orderTypes'
 
