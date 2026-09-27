@@ -253,6 +253,24 @@ export const agentSessionStage: VisualStage = {
       await anvil.waitForBalance(recipient, balanceBefore + 1n)
       const stateAfter = await driver.getAppState()
       const selectedAfter = String(stateAfter.main?.currentAccount ?? '').toLowerCase()
+      const signatureHistory = stateAfter.main?.signatureHistory ?? []
+      if (
+        !signatureHistory.some(
+          (item) =>
+            item.accountId === credentials.account.toLowerCase() &&
+            item.signature === personalSignature &&
+            item.kind === 'message' &&
+            item.message === personalMessage
+        ) ||
+        !signatureHistory.some(
+          (item) =>
+            item.accountId === credentials.account.toLowerCase() &&
+            item.signature === typedSignature &&
+            item.kind === 'typed-data'
+        )
+      ) {
+        runtime.fail('Confirmed agent signatures were not saved in signature history')
+      }
 
       if (!/^0x[0-9a-fA-F]{64}$/.test(transactionHash)) {
         runtime.fail(`Agent send returned an invalid transaction hash: ${transactionHash}`)
@@ -335,6 +353,17 @@ export const agentSessionStage: VisualStage = {
       await driver.clearPanelAndOverlays()
       await tray.getByRole('tab', { name: 'Activity' }).click()
       await runtime.screenshot(tray, '08e-agent-autonomous-actions.png')
+
+      await tray.getByRole('button', { name: 'Main menu' }).click()
+      const menu = tray.getByRole('dialog', { name: 'Main menu' })
+      await menu.getByRole('button', { name: 'Settings' }).click()
+      const settings = tray.getByRole('dialog', { name: 'Settings' })
+      await settings.getByRole('tab', { name: 'Signature history' }).click()
+      await settings
+        .getByRole('combobox', { name: 'Signing account' })
+        .selectOption(credentials.account.toLowerCase())
+      await settings.getByText('newframe-agent').first().waitFor({ state: 'visible' })
+      await runtime.screenshot(tray, '08f-agent-signature-history.png')
     } finally {
       await rm(cliContext.stateDir, { recursive: true, force: true })
       if (revokedContext) {

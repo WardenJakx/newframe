@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
+import log from 'electron-log'
+
 import type {
   NetworkRequestResolveCommand,
   TransactionReplaceCommand
@@ -47,7 +49,7 @@ const editable = (request: AccountRequest) =>
 
 type Continuation = {
   respond: RPCRequestCallback
-  request?: Pick<AccountRequest, 'account' | 'handlerId' | 'payload'> & { safeTxHash?: string }
+  request?: AccountRequest
 }
 
 export interface PromptedRequestContinuationPort {
@@ -64,6 +66,9 @@ export interface PromptedRequestLifecyclePort extends PromptedRequestContinuatio
 type RequestAccount = NonNullable<ReturnType<Accounts['getFrameAccount']>>
 
 export interface RequestServicePorts {
+  history: {
+    record(request: SignatureRequest, signature: string): void
+  }
   accounts: Pick<
     Accounts,
     | 'clearRequestsByOrigin'
@@ -200,6 +205,19 @@ export function createRequestService(ports: RequestServicePorts) {
       const safeTxHash = (continuation.request as Pick<TransactionRequest, 'safeTxHash'>).safeTxHash
       if (safeTxHash && safeContinuations.get(safeTxHash.toLowerCase()) === requestId) {
         safeContinuations.delete(safeTxHash.toLowerCase())
+      }
+    }
+    if (
+      continuation.request &&
+      isSignatureRequest(continuation.request) &&
+      !response.error &&
+      typeof response.result === 'string' &&
+      /^0x[0-9a-fA-F]+$/.test(response.result)
+    ) {
+      try {
+        ports.history.record(continuation.request, response.result)
+      } catch (error) {
+        log.error('Could not record signature history', error)
       }
     }
     continuation.respond(response)
@@ -935,7 +953,7 @@ export function createRequestService(ports: RequestServicePorts) {
         if (located) {
           located.account.rejectRequest(located.request, shutdownError)
         } else if (continuation.request) {
-          settle(requestId, rpcError(continuation.request as AccountRequest, shutdownError))
+          settle(requestId, rpcError(continuation.request, shutdownError))
         } else {
           continuations.delete(requestId)
         }

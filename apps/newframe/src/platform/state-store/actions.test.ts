@@ -7,6 +7,10 @@ import { createTestStore as createActionHarness } from '../../../test/support/cr
 import { DEFAULT_PROFILE_ID, type OrderRecord } from '../../app/contracts/state/main'
 import { toTokenId } from '../../features/asset-data/domain/balance'
 import { RequestStatus } from '../../features/requests/contract/requests'
+import {
+  SIGNATURE_HISTORY_LIMIT,
+  type SignatureHistoryItem
+} from '../../features/settings/domain/state/signatureHistory'
 import { customTokens, tokensForAccount } from '../../features/tokens/domain'
 import { NATIVE_CURRENCY } from '../../features/tokens/domain/constants'
 import type { Token, TokenCatalog, TokenRecord } from '../../features/tokens/domain/state/token'
@@ -1004,6 +1008,32 @@ describe('#activity actions', () => {
 
     expect(getState().main.activity).toEqual({})
   })
+})
+
+it('deduplicates and bounds signature history, then clears it with saved data', () => {
+  const { actions, getState } = createActionHarness({ main: { signatureHistory: [] } })
+  const item = (id: string): SignatureHistoryItem => ({
+    id,
+    accountId: owner,
+    origin: 'app.example',
+    kind: 'message',
+    signedAt: '2026-09-27T12:00:00.000Z',
+    summary: 'hello',
+    message: 'hello',
+    signature: '0x1234'
+  })
+
+  for (let index = 0; index <= SIGNATURE_HISTORY_LIMIT; index++) {
+    actions.recordSignature(item(String(index)))
+  }
+  expect(getState().main.signatureHistory).toHaveLength(SIGNATURE_HISTORY_LIMIT)
+  expect(getState().main.signatureHistory[0]?.id).toBe(String(SIGNATURE_HISTORY_LIMIT))
+  actions.recordSignature({ ...item('50'), summary: 'updated' })
+  expect(getState().main.signatureHistory).toHaveLength(SIGNATURE_HISTORY_LIMIT)
+  expect(getState().main.signatureHistory[0]?.summary).toBe('updated')
+
+  actions.resetSavedData()
+  expect(getState().main.signatureHistory).toEqual([])
 })
 
 describe('#status notification actions', () => {

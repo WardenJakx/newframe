@@ -4,6 +4,7 @@ const baseProjectionState = {
   accounts: {},
   accountOrder: [],
   activity: {},
+  signatureHistory: [],
   balances: {},
   currentAccount: '',
   operations: {},

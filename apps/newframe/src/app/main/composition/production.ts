@@ -72,6 +72,7 @@ import {
   type SecurityService,
   type SecurityServicePorts
 } from '../../../features/security/main/service.js'
+import { signatureHistoryItem } from '../../../features/settings/domain/state/signatureHistory.js'
 import { createSettingsService } from '../../../features/settings/main/service.js'
 import { createTokenLookupAdapter } from '../../../features/tokens/main/production.js'
 import { createTokenService, type TokenService } from '../../../features/tokens/main/service.js'
@@ -210,6 +211,18 @@ export function createProductionCapabilities(
     simulation: createDeferredTransactionSimulationPort()
   }
   const safeMessages = createDeferredSafeMessageApprovalPort()
+  const recordSignature = (request: Parameters<typeof signatureHistoryItem>[0], signature: string) => {
+    const main = store.getState().main
+    const origins: Record<string, { name: string } | undefined> = main.origins
+    const networks: Record<number, { name: string } | undefined> = main.networks.ethereum
+    store.getState().recordSignature(
+      signatureHistoryItem(request, signature, {
+        origin: origins[request.origin]?.name ?? request.origin,
+        network: networks[request.chainId]?.name,
+        signedAt: new Date().toISOString()
+      })
+    )
+  }
   const safeTransactions: SafeTransactionPort = {
     prepareDraft: (input) => safeService.prepareDraft(input),
     attach: (draft, requestId) => safeService.attach(draft, requestId),
@@ -222,6 +235,9 @@ export function createProductionCapabilities(
     status: (query, owner) => safeService.status(query, owner)
   }
   const requestService = createRequestService({
+    history: {
+      record: recordSignature
+    },
     accounts: {
       clearRequestsByOrigin: (accountId, originId) => accounts.clearRequestsByOrigin(accountId, originId),
       get: (accountId) => accounts.get(accountId),
@@ -338,7 +354,23 @@ export function createProductionCapabilities(
       chainId: process.env.NEWFRAME_SAFE_CHAIN_ID
     })
   })
-  const safeMessageService = createSafeMessageService({ store, accounts, client: safeClient })
+  const safeMessageService = createSafeMessageService({
+    store,
+    accounts,
+    client: safeClient,
+    onOwnerSignature: ({ ownerId, request, typedMessage, signature }) => {
+      recordSignature(
+        {
+          ...request,
+          handlerId: `${request.handlerId}:${ownerId.toLowerCase()}`,
+          account: ownerId,
+          type: 'signTypedData',
+          typedMessage
+        },
+        signature
+      )
+    }
+  })
   const disconnectSafeMessages = safeMessages.connect(safeMessageService)
   const safeService = createSafeService({
     accounts,

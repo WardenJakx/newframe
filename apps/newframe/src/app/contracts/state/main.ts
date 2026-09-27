@@ -7,6 +7,7 @@ import { OriginSchema } from '../../../features/connections/domain/state/origin.
 import { PermissionSchema } from '../../../features/connections/domain/state/permission.js'
 import { ChainMetadataSchema, ChainSchema } from '../../../features/networks/domain/state/chain.js'
 import { ShortcutSchema } from '../../../features/settings/domain/state/shortcuts.js'
+import { SignatureHistorySchema } from '../../../features/settings/domain/state/signatureHistory.js'
 import { TokenCatalogSchema } from '../../../features/tokens/domain/state/token.js'
 import { AirGapPublicAccountSchema } from '../../../platform/signing/domain/airgap.js'
 
@@ -194,6 +195,7 @@ export const MainSchema = z
     assetRates: AssetRateMapSchema,
     tokens: TokenCatalogSchema,
     activity: ActivitySchema,
+    signatureHistory: SignatureHistorySchema,
     orders: OrdersSchema,
     mute: z.record(notificationTypes, z.boolean()),
     shortcuts: ShortcutsSchema,

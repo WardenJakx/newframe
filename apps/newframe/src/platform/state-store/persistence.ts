@@ -252,6 +252,7 @@ export function migratePersistedState(
     fromVersion !== 4 &&
     fromVersion !== 5 &&
     fromVersion !== 6 &&
+    fromVersion !== 7 &&
     fromVersion !== PERSISTENCE_VERSION
   ) {
     log.error('Cannot migrate unsupported canonical state version', fromVersion)
@@ -276,7 +277,7 @@ export function migratePersistedState(
     main: normalizeProfileState({
       ...mainWithoutLegacyRates,
       ...(fromVersion === 2 ? { tokens: { byId: {}, accountTokenIds: {} } } : {}),
-      ...(fromVersion < PERSISTENCE_VERSION ? { orders: {} } : {}),
+      ...(fromVersion < 7 ? { orders: {} } : {}),
       networksMeta: persistedNetworkMetadata(unknownRecord(mainWithoutLegacyRates.networksMeta))
     })
   }

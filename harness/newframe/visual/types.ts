@@ -143,6 +143,7 @@ export type AppState = {
     currentAccount?: string
     networks?: { ethereum?: Record<string, AppNetwork> }
     orders?: Record<string, FlashOrder>
+    signatureHistory?: Array<{ accountId: string; kind: string; signature: string; message: string }>
     origins?: Record<string, AppOrigin>
     permissions?: Record<string, Record<string, AppPermission>>
     showTestnets?: boolean

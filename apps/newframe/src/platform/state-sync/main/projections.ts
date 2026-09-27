@@ -525,6 +525,7 @@ export function projectWalletState(
     accounts,
     accountOrder,
     activity: main.activity,
+    signatureHistory: main.signatureHistory,
     appLock: main.appLock,
     autoDiscoverTokens: main.autoDiscoverTokens,
     autohide: main.autohide,

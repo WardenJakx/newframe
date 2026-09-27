@@ -146,6 +146,7 @@ const mainState: M = {
   permissions: {},
   balances: {},
   activity: {},
+  signatureHistory: [],
   orders: {},
   tokens: { byId: {}, accountTokenIds: {} },
   assetRates: {},

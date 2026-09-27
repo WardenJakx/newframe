@@ -129,6 +129,38 @@ function envelope(state: unknown, version = PERSISTENCE_VERSION) {
 }
 
 describe('canonical persistence lifecycle', () => {
+  it('restores signature history from storage and defaults older v7 state to an empty list', async () => {
+    const first = createTestRuntime()
+    await first.service.start()
+    const item = {
+      id: 'sign-1',
+      accountId: '0x1111111111111111111111111111111111111111',
+      origin: 'app.example',
+      kind: 'message' as const,
+      signedAt: '2026-09-27T12:00:00.000Z',
+      summary: 'hello',
+      message: 'hello',
+      signature: '0x1234'
+    }
+    first.store.getState().recordSignature(item)
+    first.scheduler.run()
+
+    const saved = first.storage.values.get(storageKey)
+    const restored = createTestRuntime([[storageKey, saved]])
+    await restored.service.start()
+    expect(restored.store.getState().main.signatureHistory).toEqual([item])
+
+    const older = selectPersistedState(canonicalState())
+    delete older.main.signatureHistory
+    const legacy = createTestRuntime([[storageKey, envelope(older, 7)]])
+    await legacy.service.start()
+    expect(legacy.store.getState().main.signatureHistory).toEqual([])
+
+    first.service.dispose()
+    restored.service.dispose()
+    legacy.service.dispose()
+  })
+
   it('hydrates a fresh store, coalesces queued writes, flushes on schedule, and disposes cleanly', async () => {
     const { scheduler, service, storage, store } = createTestRuntime()
 
@@ -494,7 +526,7 @@ describe('canonical persisted state contract', () => {
     current.main.autohide = true
     current.main.orders = { [order.orderId]: order }
 
-    expect(PERSISTENCE_VERSION).toBe(7)
+    expect(PERSISTENCE_VERSION).toBe(8)
     const migrated = migratePersistedState(current, 7)
     expect(migrated.main.orders).toEqual({ [order.orderId]: order })
     expect(migrated.main.autohide).toBeTrue()
@@ -684,6 +716,19 @@ describe('canonical persistence failure boundaries', () => {
     runtime.adapter.flush()
 
     expect(runtime.storage.values.get(storageKey)).toEqual(future)
+  })
+
+  it('leaves v8 state intact when a v7 app attempts to read it', () => {
+    const current = envelope({ main: { signatureHistory: [] } })
+    const storage = new MemoryPersistence([[storageKey, current]])
+    const adapter = createPersistenceAdapter({
+      storage,
+      clock: { now: () => 1_234 },
+      maxSupportedVersion: 7
+    })
+
+    expect(() => adapter.getItem(CANONICAL_STATE_STORAGE_NAME)).toThrow('created by a newer Newframe version')
+    expect([...storage.values.entries()]).toEqual([[storageKey, current]])
   })
 
   it('retains a queued snapshot when a durable write fails so a later flush can recover', async () => {

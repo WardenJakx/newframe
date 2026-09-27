@@ -236,3 +236,65 @@ describe('settings security operations', () => {
     }
   })
 })
+
+it('filters signature history without changing the selected wallet account', async () => {
+  fixture.client.executeCommand.mockReset()
+  const first = '0x1111111111111111111111111111111111111111'
+  const second = '0x2222222222222222222222222222222222222222'
+  const account = (id: string, name: string) => ({
+    id,
+    profileId: 'default-profile',
+    address: id,
+    name,
+    lastSignerType: 'address',
+    status: 'ok',
+    signer: '',
+    requests: {},
+    created: 'test:1'
+  })
+  fixture.state.reset(
+    walletState({
+      accounts: { [first]: account(first, 'Main wallet'), [second]: account(second, 'Vault') },
+      accountOrder: [first, second],
+      currentAccount: first,
+      signatureHistory: [
+        {
+          id: 'sig-1',
+          accountId: first,
+          origin: 'first.example',
+          kind: 'message',
+          signedAt: '2026-09-27T12:00:00.000Z',
+          summary: 'Hello',
+          message: 'Hello',
+          signature: '0x1234'
+        },
+        {
+          id: 'sig-2',
+          accountId: second,
+          origin: 'second.example',
+          kind: 'typed-data',
+          signedAt: '2026-09-27T11:00:00.000Z',
+          summary: 'Permit',
+          message: '{}',
+          signature: '0x5678'
+        }
+      ]
+    })
+  )
+  const { user } = renderSettings({
+    createWebAuthnCredential: async () => {
+      throw new Error('unused')
+    },
+    isBiometricUserCanceled: () => false,
+    isWebAuthnSupported: async () => false
+  })
+
+  await user.click(screen.getByRole('tab', { name: 'Signature history' }))
+  expect(screen.getByText('first.example')).toBeTruthy()
+  expect(screen.queryByText('second.example')).toBeNull()
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Signing account' }), second)
+  expect(screen.getByText('second.example')).toBeTruthy()
+  expect(screen.queryByText('first.example')).toBeNull()
+  expect(fixture.state.getState().currentAccount).toBe(first)
+  expect(commandCalls()).toHaveLength(0)
+})
