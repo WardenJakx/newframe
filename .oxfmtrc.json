@@ -45,6 +45,7 @@
     "package-lock.json",
     ".cache",
     "cache",
-    "scratch*"
+    "scratch*",
+    "skills/newframe/scripts/newframe.js"
   ]
 }

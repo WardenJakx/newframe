@@ -11,6 +11,7 @@
     "prepare": "husky",
     "newframe": "bun --cwd apps/newframe",
     "cli": "bun apps/newframe-cli/src/index.ts",
+    "build:skill:newframe": "bun build apps/newframe-cli/src/index.ts --target=bun --format=esm --packages=bundle --env=disable --outfile=skills/newframe/scripts/newframe.js",
     "extension": "bun --cwd apps/newframe-extension",
     "harness": "bun --cwd harness",
     "ui": "bun --cwd packages/ui",
