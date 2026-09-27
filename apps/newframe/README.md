@@ -127,6 +127,7 @@ Foundry scripts need unlocked-account mode so Forge sends `eth_sendTransaction` 
 ```bash
 export NEWFRAME_ACCOUNT=0xYourNewframeAccount
 export NEWFRAME_RPC_URL="http://127.0.0.1:1248?chainId=11155111"
+export FOUNDRY_ETH_RPC_HEADERS='["Origin:foundry"]'
 
 forge script script/Deploy.s.sol:Deploy \
   --rpc-url "$NEWFRAME_RPC_URL" \
@@ -137,7 +138,7 @@ forge script script/Deploy.s.sol:Deploy \
   --slow
 ```
 
-For one-off Cast calls, use the same endpoint:
+The header names Foundry in Newframe's access prompt and saved account grant. For one-off Cast calls, use the same endpoint and header:
 
 ```bash
 cast send 0xTargetAddress "setValue(uint256)" 123 \
