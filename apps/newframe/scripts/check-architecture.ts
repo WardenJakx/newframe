@@ -615,8 +615,54 @@ export function checkPlatformCommandAuthority(file: string, source: string) {
   return violations
 }
 
+function checkRequestBoundaryAuthority(file: string, source: string) {
+  if (!productionMain(file)) {
+    return []
+  }
+  const relative = path.relative(sourceRoot, file).replaceAll(path.sep, '/')
+  const violations: string[] = []
+  const protectedOwner = relative.startsWith('app/main/protected-operations/')
+  const signerImplementation = relative.startsWith('platform/signing/')
+  if (
+    !protectedOwner &&
+    !signerImplementation &&
+    /\bsigner\.sign(?:Message|TypedData|Transaction)\s*\(/.test(source)
+  ) {
+    violations.push(`${file}: signer execution belongs to the protected operations service`)
+  }
+  const entrypoint = relative.startsWith('platform/ipc/main/') || relative.startsWith('platform/local-rpc/')
+  if (
+    entrypoint &&
+    /\.(?:hasAccountAccessGrant|approveSign|approveSignTypedData|approveTransactionRequest|exportPrivateKey)\s*\(/.test(
+      source
+    )
+  ) {
+    violations.push(
+      `${file}: entry point authorization must pass operation policy and protected effects to the Gateway`
+    )
+  }
+  const sourceOwners = new Set([
+    'app/main/composition/production.ts',
+    'app/main/gateway/requestSource.ts',
+    'platform/ipc/main/operations.ts',
+    'platform/local-rpc/request.ts',
+    'features/agent-access/main/index.ts',
+    'app/main/ipc-handlers/rpc.ts'
+  ])
+  if (
+    !sourceOwners.has(relative) &&
+    /\bcreate(?:NewframeInternal|LocalApi|AiSessionClient|MainProcess)Source\s*\(/.test(source)
+  ) {
+    violations.push(
+      `${file}: request sources must be issued at an entry point or main-process composition boundary`
+    )
+  }
+  return violations
+}
+
 export function checkSource(file: string, source: string) {
   const violations = [
+    ...checkRequestBoundaryAuthority(file, source),
     ...checkDependencyDirection(file, source),
     ...checkAssetRateMutationAuthority(file, source),
     ...checkOperationContractAuthority(file, source),

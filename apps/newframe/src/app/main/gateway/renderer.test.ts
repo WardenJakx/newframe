@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { EventEmitter } from 'node:events'
 
-import { commandContracts, queryContracts } from '../../../app/contracts/operations'
-import type { SigningUiContext } from '../../signing/signers/Signer/index.js'
-import { createOperationDispatcher, createOperationRegistry, type OperationServices } from './operations'
+import { createOperationDispatcher } from '../../../platform/ipc/main/operations'
+import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.js'
+import { commandContracts, queryContracts } from '../../contracts/operations'
+import { createOperationRegistry, type OperationServices } from '../ipc-handlers/renderer'
 
 const fakes = (...names: string[]) =>
   Object.fromEntries(names.map((name) => [name, mock()])) as Record<string, ReturnType<typeof mock>>
@@ -101,13 +102,6 @@ const servicesWithMocks = [
   trade
 ]
 
-const createRendererPrincipal = mock((context: typeof trayContext) => ({
-  kind: 'renderer' as const,
-  role: context.clientType,
-  entrypoint: context.entrypoint,
-  webContentsId: context.webContentsId,
-  windowInstanceId: context.windowInstanceId
-}))
 const event = {} as Electron.IpcMainInvokeEvent
 const trayContext = {
   clientType: 'wallet-ui' as const,
@@ -129,6 +123,7 @@ function createTestServices() {
     accounts: { current: mock(), get: mock() },
     accountMutations,
     accountOnboarding,
+    protectedOperations: { exportPrivateKey: accountOnboarding.exportPrivateKey },
     safes,
     agent,
     networks,
@@ -143,7 +138,6 @@ function createTestServices() {
     tokens,
     trade,
     authorizeRenderer,
-    createRendererPrincipal,
     requestTokenImage,
     resolveName
   } as unknown as OperationServices
@@ -155,7 +149,6 @@ beforeEach(() => {
   authorizeRenderer.mockReset()
   resolveName.mockReset()
   requestTokenImage.mockReset()
-  createRendererPrincipal.mockClear()
   for (const service of servicesWithMocks) {
     Object.values(service).forEach((fn) => fn.mockReset())
   }

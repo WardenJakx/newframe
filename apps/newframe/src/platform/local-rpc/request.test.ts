@@ -1,12 +1,13 @@
 import { expect, it } from 'bun:test'
 
+import { createRpcGateway } from '../../app/main/gateway/rpc'
 import { createOriginSessionMonitor, createRpcRequestHandler, type RpcRequestDescription } from './request'
 
-const rpc = (method = 'eth_blockNumber'): JSONRPCRequestPayload => ({
+const rpc = (method = 'eth_blockNumber', params: unknown[] = []): JSONRPCRequestPayload => ({
   id: 1,
   jsonrpc: '2.0',
   method,
-  params: []
+  params
 })
 
 function setup({
@@ -29,19 +30,22 @@ function setup({
       payload: { ...payload, _origin: `${origin}-id` },
       chainId
     }),
-    isTrusted: async () => trusted
+    hasAccountAccessGrant: async () => trusted
   } as never
   const handler = createRpcRequestHandler({
     provider: {
-      send: (payload, respond, principal) => {
-        forwarded.push({ payload, principal })
-        if (send) {
-          return send(payload, respond)
+      send: createRpcGateway({
+        origins,
+        selectedAddresses: () => ['0x1111111111111111111111111111111111111111'],
+        handle: (payload, respond, principal) => {
+          forwarded.push({ payload, principal })
+          if (send) {
+            return send(payload, respond)
+          }
+          respond({ id: payload.id, jsonrpc: payload.jsonrpc, result: 'ok' })
         }
-        respond?.({ id: payload.id, jsonrpc: payload.jsonrpc, result: 'ok' })
-      }
+      })
     },
-    accounts: { getSelectedAddresses: () => ['0x1111111111111111111111111111111111111111'] },
     origins
   })
   const run = (rawPayload: JSONRPCRequestPayload, overrides: Partial<RpcRequestDescription> = {}) =>
@@ -67,7 +71,7 @@ it('normalizes one allowed request and applies its provider response', async () 
     send: (payload, respond) =>
       respond?.({ id: payload.id, jsonrpc: payload.jsonrpc, result: 'subscription-1' })
   })
-  const payload = rpc('eth_subscribe')
+  const payload = rpc('eth_subscribe', ['newHeads'])
 
   await harness.run(payload, {
     chainHint: '0x5',
@@ -104,7 +108,7 @@ it('rejects invalid chains and unauthorized protected requests before dispatch',
   await accounts.run(rpc('eth_accounts'))
 
   const signing = setup({ trusted: false })
-  await signing.run(rpc('personal_sign'))
+  await signing.run(rpc('personal_sign', ['0x1234', '0x1111111111111111111111111111111111111111']))
 
   expect(invalid.responses[0]).toMatchObject({ error: { code: -1 } })
   expect(accounts.responses[0]).toEqual({ id: 1, jsonrpc: '2.0', result: [] })
@@ -122,13 +126,13 @@ it('settles provider work once and rejects side effects for an ended transport r
       throw new Error('private failure')
     }
   })
-  await settled.run(rpc('eth_subscribe'), { onSubscriptionOpen: (id) => opened.push(id) })
+  await settled.run(rpc('eth_subscribe', ['newHeads']), { onSubscriptionOpen: (id) => opened.push(id) })
 
   const ended = setup({
     send: (payload, respond) =>
       respond?.({ id: payload.id, jsonrpc: payload.jsonrpc, result: 'subscription-2' })
   })
-  await ended.run(rpc('eth_subscribe'), {
+  await ended.run(rpc('eth_subscribe', ['newHeads']), {
     acceptsProviderResponse: () => false,
     onSubscriptionOpen: (id) => opened.push(id)
   })

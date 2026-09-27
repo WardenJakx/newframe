@@ -5,12 +5,12 @@ import log from 'electron-log'
 import { v5 as uuidv5 } from 'uuid'
 
 import { getProfileAccountIds } from '../../../app/contracts/state/main.js'
+import { authorizeGatewayOperation, type RequestSource } from '../../../app/main/gateway/requestSource.js'
 import { getSignerType } from '../../../platform/signing/domain/index.js'
 import type { SigningApprovalContext } from '../../../platform/signing/signers/Signer/index.js'
 import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.js'
 import type { ActivityRecord, Token } from '../../../platform/state-store/state/index.js'
 import { weiIntToEthInt, hexToInt } from '../../../shared/domain/hex.js'
-import { decideWalletAction, type TrustedPrincipal } from '../../access-control/main/authority.js'
 import { resolveAssetRate } from '../../asset-data/domain/asset/index.js'
 import type { DataScanner } from '../../asset-data/main/externalData/index.js'
 import type { NameResolutionService } from '../../name-resolution/main/nameResolution.js'
@@ -1271,7 +1271,7 @@ export class Accounts extends EventEmitter {
     return false
   }
 
-  async replaceTx(id: string, type: ReplacementType, principal: TrustedPrincipal) {
+  async replaceTx(id: string, type: ReplacementType, principal: RequestSource) {
     const currentAccount = this.current()
 
     return new Promise<void>((resolve, reject) => {
@@ -1339,7 +1339,7 @@ export class Accounts extends EventEmitter {
       _origin = frameOriginId
     }: { method: string; params: unknown[]; chainId: string; _origin?: string },
     cb: RPCRequestCallback,
-    principal?: TrustedPrincipal
+    principal?: RequestSource
   ) {
     this.dependencies.chainRpc.send(
       { id: 1, jsonrpc: '2.0', method, params, chainId, _origin },
@@ -2031,12 +2031,12 @@ export class Accounts extends EventEmitter {
   }
 
   routeRequest(
-    principal: TrustedPrincipal,
+    principal: RequestSource,
     req: AccountRequest,
     executeAutonomously?: (request: AccountRequest) => void
   ) {
     this.dependencies.requests.bind(req)
-    const decision = decideWalletAction(principal, req)
+    const decision = authorizeGatewayOperation(principal, req)
 
     if (decision.outcome === 'reject') {
       log.warn('Rejected wallet action', {

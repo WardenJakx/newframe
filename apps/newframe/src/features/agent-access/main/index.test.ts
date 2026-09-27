@@ -2,8 +2,10 @@ import { expect, it, jest as timers, mock } from 'bun:test'
 import { EventEmitter } from 'events'
 import { Readable } from 'stream'
 
+import { createRpcGateway } from '../../../app/main/gateway/rpc'
 import type { AccountRequest } from '../../requests/contract/requests'
 import { createAgentService } from './index'
+import type { AgentSessionCredentials } from './sessionStore'
 
 const accountId = '0x1111111111111111111111111111111111111111'
 
@@ -165,6 +167,32 @@ it('characterizes agent prompt timeout, disconnect, approval idempotency, and di
     expect(approved.status).toBe(200)
     expect(JSON.parse(approved.body)).toMatchObject({ account: accountId })
     expect(flash.startAgentSession).toHaveBeenCalledTimes(1)
+
+    const credentials = JSON.parse(approved.body) as AgentSessionCredentials
+    const handleRpc = mock((_payload: RPCRequestPayload) => {})
+    const rpcHandler = service.createHttpHandler({
+      send: createRpcGateway({ selectedAddresses: () => [accountId], handle: handleRpc })
+    })
+    for (const [method, code] of [
+      ['wallet_unknown', -32601],
+      ['eth_blockNumber', 4001]
+    ] as const) {
+      const rpcRequest = Object.assign(
+        Readable.from([Buffer.from(JSON.stringify({ id: 1, jsonrpc: '2.0', method, params: [] }))]),
+        {
+          headers: {
+            authorization: `Bearer ${credentials.sessionToken}`,
+            'x-newframe-agent-session': credentials.sessionId
+          },
+          method: 'POST',
+          url: '/agent/rpc'
+        }
+      )
+      const result = response()
+      await rpcHandler(rpcRequest as never, result as never)
+      expect(JSON.parse(result.body)).toMatchObject({ error: { code } })
+    }
+    expect(handleRpc).not.toHaveBeenCalled()
 
     const disposed = response()
     await handler(request() as never, disposed as never)

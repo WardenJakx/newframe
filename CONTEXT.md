@@ -61,6 +61,10 @@ _Avoid_: Trusted website, signing approval
 A human-approved, bounded grant that lets an automated client perform operations within its approved scope without a fresh human prompt until expiry or revocation.
 _Avoid_: CLI identity, indefinite permission
 
+**AI session credential**:
+A secret issued for an approved AI session that a local API client presents to exercise that session's authority. Possession does not extend its account, operation kinds, or duration.
+_Avoid_: Client identity, AI session label
+
 **AI session scope**:
 The account, operation kinds, and duration the human approves for an AI session. An autonomous request must remain within that scope.
 _Avoid_: Session scope, AI session label

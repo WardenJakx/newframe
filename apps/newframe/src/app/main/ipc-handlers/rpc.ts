@@ -2,45 +2,45 @@ import crypto from 'crypto'
 import EventEmitter from 'events'
 
 import { addHexPrefix, intToHex } from '@ethereumjs/util'
-import { recoverTypedSignature, SignTypedDataVersion } from '@metamask/eth-sig-util'
+import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import log from 'electron-log'
 import { isAddress } from 'ethers'
 import { shallow } from 'zustand/shallow'
 
-import packageFile from '../../../../../package.json' with { type: 'json' }
-import type { TokenData } from '../../../../platform/chain-rpc/contracts/erc20.js'
-import { JsonRpcResponseSchema } from '../../../../platform/local-rpc/protocol.js'
-import { getSignerType, Type as SignerType } from '../../../../platform/signing/domain/index.js'
-import { getCalldataDigest, getEip712Digests } from '../../../../platform/signing/signatures/digests.js'
-import * as sigParser from '../../../../platform/signing/signatures/index.js'
-import type {
-  SigningApprovalContext,
-  SigningUiContext
-} from '../../../../platform/signing/signers/Signer/index.js'
-import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
-import type { Permission } from '../../../../platform/state-store/state/index.js'
-import { isNonZeroHex } from '../../../../shared/domain/hex.js'
-import { capitalize } from '../../../../shared/domain/text.js'
+import packageFile from '../../../../package.json' with { type: 'json' }
+import { hasAddress } from '../../../features/accounts/domain/index.js'
+import { safeDecodedSchema } from '../../../features/accounts/domain/safe.js'
+import type { SafeTransactionPort } from '../../../features/accounts/main/safeTransactionPort.js'
+import type { OriginsService } from '../../../features/connections/main/origins.js'
+import type { AccountRequestPort } from '../../../features/connections/main/provider/accountRequestPort.js'
 import {
-  createMainPrincipal,
-  hasPrincipalCapability,
-  isAgentPrincipalActive,
-  type AgentPrincipal,
-  type TrustedPrincipal
-} from '../../../access-control/main/authority.js'
-import { hasAddress } from '../../../accounts/domain/index.js'
-import { safeDecodedSchema } from '../../../accounts/domain/safe.js'
-import type { SafeTransactionPort } from '../../../accounts/main/safeTransactionPort.js'
-import type { Chains } from '../../../networks/main/index.js'
-import type { Chain } from '../../../networks/main/index.js'
-import { estimateL1GasCost } from '../../../networks/main/l1GasFees.js'
+  checkExistingNonceGas,
+  ecRecover,
+  gasFees,
+  getPermissions,
+  getRawTx,
+  requestPermissions,
+  resError,
+  decodeMessage,
+  encodePersonalSignMessage
+} from '../../../features/connections/main/provider/helpers.js'
+import type { ProviderProxyConnection } from '../../../features/connections/main/provider/proxy.js'
+import type { ProviderStatePort } from '../../../features/connections/main/provider/statePort.js'
+import type { Subscription } from '../../../features/connections/main/provider/subscriptions.js'
+import {
+  SubscriptionType,
+  hasSubscriptionPermission
+} from '../../../features/connections/main/provider/subscriptions.js'
+import { getVersionFromTypedData } from '../../../features/connections/main/provider/typedData.js'
+import type { Chains } from '../../../features/networks/main/index.js'
+import type { Chain } from '../../../features/networks/main/index.js'
+import { estimateL1GasCost } from '../../../features/networks/main/l1GasFees.js'
 import type {
-  AccountRequest,
   TransactionRequest,
   SignTypedDataRequest,
   AddChainRequest,
   AddTokenRequest
-} from '../../../requests/contract/requests.js'
+} from '../../../features/requests/contract/requests.js'
 import type {
   EIP2612TypedData,
   LegacyTypedData,
@@ -48,51 +48,44 @@ import type {
   SignatureRequest,
   TypedData,
   TypedMessage
-} from '../../../requests/contract/requests.js'
-import { ApprovalType } from '../../../requests/domain/approval.js'
-import { isSignatureRequest } from '../../../requests/domain/index.js'
-import type { PromptedRequestContinuationPort } from '../../../requests/main/service.js'
-import { toTokenId } from '../../../tokens/domain/index.js'
-import {
-  applyTransactionAdjustments,
-  type TransactionApprovalAdjustments
-} from '../../../transactions/domain/approval.js'
-import type { TransactionData } from '../../../transactions/domain/index.js'
-import { normalizeChainId } from '../../../transactions/domain/index.js'
+} from '../../../features/requests/contract/requests.js'
+import { ApprovalType } from '../../../features/requests/domain/approval.js'
+import type { PromptedRequestContinuationPort } from '../../../features/requests/main/service.js'
+import { toTokenId } from '../../../features/tokens/domain/index.js'
+import type { TransactionData } from '../../../features/transactions/domain/index.js'
+import { normalizeChainId } from '../../../features/transactions/domain/index.js'
 import {
   populate as populateTransaction,
-  maxFee,
   classifyTransaction,
   signerCompatibility
-} from '../../../transactions/main/index.js'
-import type { RevealService } from '../../../transactions/main/reveal.js'
-import { mapRequest } from '../requests/index.js'
-import type { AccountRequestPort } from './accountRequestPort.js'
+} from '../../../features/transactions/main/index.js'
+import type { RevealService } from '../../../features/transactions/main/reveal.js'
+import type { TokenData } from '../../../platform/chain-rpc/contracts/erc20.js'
+import { JsonRpcResponseSchema } from '../../../platform/local-rpc/protocol.js'
+import { getSignerType, Type as SignerType } from '../../../platform/signing/domain/index.js'
+import { getCalldataDigest, getEip712Digests } from '../../../platform/signing/signatures/digests.js'
+import * as sigParser from '../../../platform/signing/signatures/index.js'
+import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
+import type { Permission } from '../../../platform/state-store/state/index.js'
+import { isNonZeroHex } from '../../../shared/domain/hex.js'
+import { capitalize } from '../../../shared/domain/text.js'
 import {
-  checkExistingNonceGas,
-  ecRecover,
-  feeTotalOverMax,
-  gasFees,
-  getPermissions,
-  getRawTx,
-  getSignedAddress,
-  requestPermissions,
-  resError,
-  decodeMessage,
-  encodePersonalSignMessage
-} from './helpers.js'
-import type { ProviderProxyConnection } from './proxy.js'
-import type { ProviderStatePort } from './statePort.js'
-import type { Subscription } from './subscriptions.js'
-import { SubscriptionType, hasSubscriptionPermission } from './subscriptions.js'
-import { getVersionFromTypedData } from './typedData.js'
+  createMainProcessSource,
+  hasSourceCapability,
+  isAiSessionActive,
+  type AiSessionClientSource,
+  type RequestSource
+} from '../gateway/requestSource.js'
+import { createRpcGateway } from '../gateway/rpc.js'
+import { rpcMethodPolicy } from '../gateway/rpcPolicy.js'
+import { ProtectedOperationsService } from '../protected-operations/service.js'
 
 export interface TransactionRequestContext {
   tokenData?: TokenData
 }
 
 const signTypedDataV4OnlySignerTypes: SignerType[] = [SignerType.Ledger, SignerType.Trezor, SignerType.AirGap]
-const proxyPrincipal = createMainPrincipal('provider-proxy', ['wallet:internal-state'])
+const proxyPrincipal = createMainProcessSource('provider-proxy', ['wallet:internal-state'])
 
 interface RequiredApproval {
   type: ApprovalType
@@ -134,7 +127,9 @@ function typedDataValue(value: unknown): LegacyTypedData | TypedData | undefined
   return undefined
 }
 
-export interface ProviderDependencies {
+export interface RpcIpcHandlerDependencies {
+  exportSecret?: (address: string) => Promise<{ type: string; value: string }>
+  origins?: Pick<OriginsService, 'hasAccountAccessGrant'>
   accounts: AccountRequestPort
   chains: Chains
   lookupChainIcon?: (chainId: number) => Promise<string>
@@ -146,7 +141,8 @@ export interface ProviderDependencies {
   safeTransactions?: Pick<SafeTransactionPort, 'prepareDraft' | 'attach'>
 }
 
-export class Provider extends EventEmitter {
+export class RpcIpcHandlers extends EventEmitter {
+  readonly protectedOperations: ProtectedOperationsService
   connected = false
   private storeUnsubscribes: Array<() => void> = []
   private started = false
@@ -159,6 +155,8 @@ export class Provider extends EventEmitter {
     networkChanged: []
   }
 
+  private readonly rpcOrigins: RpcIpcHandlerDependencies['origins']
+  private readonly dispatchRpc: ReturnType<typeof createRpcGateway>
   private readonly accounts: AccountRequestPort
   readonly connection: Chains
   private readonly lookupChainIcon?: (chainId: number) => Promise<string>
@@ -170,6 +168,8 @@ export class Provider extends EventEmitter {
   private readonly safeTransactions?: Pick<SafeTransactionPort, 'prepareDraft' | 'attach'>
 
   constructor({
+    exportSecret,
+    origins,
     accounts,
     chains,
     lookupChainIcon,
@@ -179,8 +179,21 @@ export class Provider extends EventEmitter {
     reveal,
     requests,
     safeTransactions
-  }: ProviderDependencies) {
+  }: RpcIpcHandlerDependencies) {
     super()
+    this.protectedOperations = new ProtectedOperationsService(
+      accounts,
+      chains,
+      store,
+      (data, respond) => this.getNonce(data, respond),
+      exportSecret
+    )
+    this.rpcOrigins = origins
+    this.dispatchRpc = createRpcGateway({
+      origins,
+      selectedAddresses: () => accounts.getSelectedAddresses(),
+      handle: (payload, respond, source) => this.handleRpc(payload, respond, source)
+    })
     this.accounts = accounts
     this.connection = chains
     this.lookupChainIcon = lookupChainIcon
@@ -422,121 +435,6 @@ export class Provider extends EventEmitter {
     res({ id: payload.id, jsonrpc: payload.jsonrpc, ...response })
   }
 
-  verifySignature(signed: string, message: string, address: string, cb: Callback<boolean>) {
-    getSignedAddress(signed, message, (err, verifiedAddress) => {
-      if (err) {
-        return cb(err)
-      }
-      if ((verifiedAddress ?? '').toLowerCase() !== address.toLowerCase()) {
-        return cb(new Error('Newframe verifySignature: Failed ecRecover check'))
-      }
-      cb(null, true)
-    })
-  }
-
-  private signingApproval(request: AccountRequest, ui?: SigningUiContext): SigningApprovalContext {
-    const accountId = request.account.toLowerCase()
-    const requestId = request.handlerId
-    const identity = (value: AccountRequest) =>
-      JSON.stringify(
-        [
-          value.handlerId,
-          value.type,
-          value.account.toLowerCase(),
-          value.payload,
-          'data' in value ? value.data : undefined,
-          'typedMessage' in value ? value.typedMessage : undefined,
-          value.authorization
-        ],
-        (_key, item: unknown) => (typeof item === 'function' ? undefined : item)
-      )
-    const expected = identity(request)
-    const typed = 'typedMessage' in request ? (request as SignTypedDataRequest).typedMessage : undefined
-    let chainIdValue: unknown = isSignatureRequest(request)
-      ? request.chainId
-      : (this.origin(request.origin)?.chain.id ?? 1)
-    if (request.type === 'transaction') {
-      chainIdValue = (request as TransactionRequest).data.chainId
-    } else if (typed && !Array.isArray(typed.data)) {
-      chainIdValue = typed.data.domain.chainId ?? chainIdValue
-    }
-    const chainId = Number(chainIdValue)
-    return {
-      requestId,
-      chainId,
-      ...(ui ? { ui } : {}),
-      isActive: () => {
-        const main = this.store.getState().main
-        const canonical = main.accounts[accountId]?.requests[requestId] as AccountRequest | undefined
-        return (
-          main.currentAccount === accountId &&
-          canonical?.status === 'pending' &&
-          canonical.authorization?.decision === 'prompt' &&
-          identity(canonical) === expected
-        )
-      }
-    }
-  }
-
-  approveSign(req: AccountRequest, cb: Callback<string>, context?: SigningUiContext) {
-    const [addressValue, rawMessageValue] = arrayValue(req.payload.params)
-    const address = typeof addressValue === 'string' ? addressValue : ''
-    const rawMessage = typeof rawMessageValue === 'string' ? rawMessageValue : ''
-    const message = encodePersonalSignMessage(rawMessage)
-
-    this.accounts.signMessage(
-      address,
-      message,
-      (err, signed) => {
-        if (err) {
-          cb(err, undefined)
-        } else {
-          const signature = signed ?? ''
-          this.verifySignature(signature, message, address, (err) => {
-            if (err) {
-              cb(err)
-            } else {
-              cb(null, signature)
-            }
-          })
-        }
-      },
-      this.signingApproval(req, context)
-    )
-  }
-
-  approveSignTypedData(req: SignTypedDataRequest, cb: Callback<string>, context?: SigningUiContext) {
-    const typedMessage = structuredClone(req.typedMessage)
-    const addressValue: unknown = req.payload.params[0]
-    if (typeof addressValue !== 'string') {
-      return cb(new Error('TypedData request missing address'))
-    }
-    const address = addressValue
-
-    this.accounts.signTypedData(
-      address,
-      typedMessage,
-      (err, signature = '') => {
-        if (err) {
-          cb(err)
-        } else {
-          try {
-            const recoveredAddress = recoverTypedSignature({ ...typedMessage, signature })
-            if (recoveredAddress.toLowerCase() !== address.toLowerCase()) {
-              throw new Error('TypedData signature verification failed')
-            }
-
-            cb(null, signature)
-          } catch (e) {
-            const err = e as Error
-            cb(err)
-          }
-        }
-      },
-      this.signingApproval(req, context)
-    )
-  }
-
   async getL1GasCost(txData: TransactionData) {
     const { chainId, type, ...tx } = txData
 
@@ -560,102 +458,6 @@ export class Provider extends EventEmitter {
     }
 
     return estimateL1GasCost(connectedProvider, txRequest)
-  }
-
-  private sendRawTransaction(
-    signedTransaction: string | undefined,
-    chainId: string,
-    payload: Pick<RPCRequestPayload, 'id' | 'jsonrpc'>,
-    respond: RPCRequestCallback
-  ) {
-    this.connection.send(
-      {
-        id: payload.id,
-        jsonrpc: payload.jsonrpc,
-        method: 'eth_sendRawTransaction',
-        params: [signedTransaction]
-      },
-      respond,
-      { type: 'ethereum', id: parseInt(chainId, 16) }
-    )
-  }
-
-  signAndSend(req: TransactionRequest, cb: Callback<string>, context?: SigningUiContext) {
-    const rawTx = structuredClone(req.data)
-    const maxTotalFee = maxFee(rawTx)
-
-    if (feeTotalOverMax(rawTx, maxTotalFee)) {
-      const chainId = parseInt(rawTx.chainId)
-      const symbol = this.store.getState().main.networks.ethereum[chainId]?.symbol
-      const displayAmount = symbol ? ` (${Math.floor(maxTotalFee / 1e18)} ${symbol})` : ''
-
-      const err = `Max fee is over hard limit${displayAmount}`
-
-      cb(new Error(err))
-    } else {
-      this.accounts.signTransaction(
-        rawTx,
-        (err, signedTx) => {
-          // Sign Transaction
-          if (err) {
-            cb(err)
-          } else {
-            this.accounts.setTxSigned(req.handlerId, (err) => {
-              if (err) {
-                return cb(err)
-              }
-              let done = false
-              const cast = () => {
-                this.sendRawTransaction(signedTx, req.data.chainId, req.payload, (response) => {
-                  clearInterval(broadcastTimer)
-                  if (done) {
-                    return
-                  }
-                  done = true
-                  if (response.error) {
-                    cb(Object.assign(new Error(response.error.message), { code: response.error.code }))
-                  } else {
-                    cb(null, response.result as string)
-                  }
-                })
-              }
-              const broadcastTimer = setInterval(() => cast(), 1000)
-              cast()
-            })
-          }
-        },
-        this.signingApproval(req, context)
-      )
-    }
-  }
-
-  approveTransactionRequest(req: TransactionRequest, cb: Callback<string>, context?: SigningUiContext) {
-    const signAndSend = (requestToSign: TransactionRequest) => {
-      log.info('approveRequest', requestToSign)
-
-      this.signAndSend(requestToSign, cb, context)
-    }
-
-    this.accounts.lockRequest(req.handlerId)
-
-    if (req.data.nonce) {
-      return signAndSend(req)
-    }
-
-    this.getNonce(req.data, (response) => {
-      if (response.error) {
-        return cb(Object.assign(new Error(response.error.message), { code: response.error.code }))
-      }
-
-      const updatedReq = this.accounts.updateNonce(req.handlerId, response.result as string)
-
-      if (updatedReq) {
-        signAndSend(updatedReq)
-      } else {
-        log.error(`could not find request with handlerId="${req.handlerId}"`)
-        cb(new Error('could not find request'))
-      }
-    })
   }
 
   private async getGasEstimate(rawTx: TransactionData) {
@@ -824,85 +626,12 @@ export class Provider extends EventEmitter {
   }
 
   /** Sign and broadcast a reviewed transaction with a named EOA, without changing selection. */
-  async executeAccountTransaction(
-    accountId: string,
-    reviewed: TransactionData,
-    adjustments: TransactionApprovalAdjustments | undefined,
-    context: SigningUiContext,
-    requestId: string
-  ): Promise<string> {
-    const normalizedId = accountId.toLowerCase()
-    const account = this.accounts.getFrameAccount(normalizedId)
-    if (
-      !account ||
-      account.id !== normalizedId ||
-      this.accounts.get(normalizedId)?.safe ||
-      reviewed.from?.toLowerCase() !== normalizedId
-    ) {
-      throw new Error('Executor account is unavailable or does not match the reviewed transaction.')
-    }
-    const candidate = adjustments ? applyTransactionAdjustments(reviewed, adjustments) : reviewed
-    const currentNonce = await new Promise<string>((resolve, reject) => {
-      this.getNonce(candidate, (response) => {
-        if (response.error || typeof response.result !== 'string') {
-          reject(new Error(response.error?.message ?? 'Could not revalidate executor nonce.'))
-        } else {
-          resolve(response.result)
-        }
-      })
-    })
-    if (BigInt(currentNonce) !== BigInt(candidate.nonce ?? '0x0')) {
-      throw new Error('Executor nonce changed. Prepare and review the transaction again.')
-    }
-    const maxTotalFee = maxFee(candidate)
-    if (feeTotalOverMax(candidate, maxTotalFee)) {
-      throw new Error('Max fee is over hard limit')
-    }
-    const signed = await new Promise<string>((resolve, reject) => {
-      account.signTransaction(
-        structuredClone(candidate),
-        (error, value) => {
-          if (error || !value) {
-            reject(error ?? new Error('Executor returned no signed transaction.'))
-          } else {
-            resolve(value)
-          }
-        },
-        {
-          requestId,
-          chainId: parseInt(candidate.chainId, 16),
-          signal: undefined,
-          isActive: () => context.isOwnerActive(),
-          ui: context
-        }
-      )
-    })
-    return new Promise<string>((resolve, reject) => {
-      this.sendRawTransaction(
-        signed,
-        candidate.chainId,
-        { id: crypto.randomUUID(), jsonrpc: '2.0' },
-        (response) => {
-          if (response.error || typeof response.result !== 'string') {
-            reject(
-              Object.assign(new Error(response.error?.message ?? 'Executor broadcast failed.'), {
-                code: response.error?.code
-              })
-            )
-          } else {
-            resolve(response.result)
-          }
-        }
-      )
-    })
-  }
-
   private requireActiveAgentSession(
-    principal: AgentPrincipal,
+    principal: AiSessionClientSource,
     payload: RPCRequestPayload,
     res: RPCRequestCallback
   ) {
-    if (isAgentPrincipalActive(principal)) {
+    if (isAiSessionActive(principal)) {
       return true
     }
     resError('Agent session is revoked or unavailable', payload, res)
@@ -911,14 +640,14 @@ export class Provider extends EventEmitter {
 
   sendAgentTransaction(
     payload: RPC.SendTransaction.Request,
-    principal: AgentPrincipal,
+    principal: AiSessionClientSource,
     res: RPCRequestCallback
   ) {
     if (!this.requireActiveAgentSession(principal, payload, res)) {
       return
     }
 
-    const account = this.accounts.getFrameAccount(principal.accountId) as AccountHandle | undefined
+    const account = this.accounts.getFrameAccount(principal.aiSession.accountId) as AccountHandle | undefined
     const txParams = (payload.params as unknown[])[0]
     if (!account || !txParams || typeof txParams !== 'object') {
       return resError('Agent transaction is missing its authorized account or transaction', payload, res)
@@ -932,7 +661,7 @@ export class Provider extends EventEmitter {
     }
 
     const from = (normalized.from ?? account.id).toLowerCase()
-    if (from !== principal.accountId || from !== account.id) {
+    if (from !== principal.aiSession.accountId || from !== account.id) {
       return resError('Agent session is not authorized for the transaction account', payload, res)
     }
 
@@ -966,17 +695,25 @@ export class Provider extends EventEmitter {
       } as TransactionRequest
 
       this.accounts.routeRequest(principal, request, (authorizedRequest) => {
-        this.executeAgentTransaction(account, authorizedRequest as TransactionRequest, principal, respond)
+        this.protectedOperations.executeAgentTransaction(
+          authorizedRequest as TransactionRequest,
+          principal,
+          respond
+        )
       })
     })
   }
 
-  sendAgentPersonalSign(payload: RPCRequestPayload, principal: AgentPrincipal, res: RPCRequestCallback) {
+  sendAgentPersonalSign(
+    payload: RPCRequestPayload,
+    principal: AiSessionClientSource,
+    res: RPCRequestCallback
+  ) {
     if (!this.requireActiveAgentSession(principal, payload, res)) {
       return
     }
 
-    const account = this.accounts.getFrameAccount(principal.accountId)
+    const account = this.accounts.getFrameAccount(principal.aiSession.accountId)
     const params = arrayValue(payload.params)
     const orderedParams: readonly unknown[] =
       isAddress(params[0]) && !isAddress(params[1]) ? [...params] : [params[1], params[0], ...params.slice(2)]
@@ -987,7 +724,7 @@ export class Provider extends EventEmitter {
     }
 
     const address = requestedAddress.toLowerCase()
-    if (address !== principal.accountId || address !== account.id) {
+    if (address !== principal.aiSession.accountId || address !== account.id) {
       return resError('Agent session is not authorized for the sign request account', payload, res)
     }
 
@@ -1007,41 +744,20 @@ export class Provider extends EventEmitter {
     }
 
     this.accounts.routeRequest(principal, request, () => {
-      if (!this.requireActiveAgentSession(principal, normalizedPayload, respond)) {
-        return
-      }
-
-      account.signMessage(message, (signingError, signed) => {
-        if (!this.requireActiveAgentSession(principal, normalizedPayload, respond)) {
-          return
-        }
-        if (signingError || !signed) {
-          return resError(signingError ?? 'Agent message signing failed', normalizedPayload, respond)
-        }
-
-        this.verifySignature(signed, message, account.id, (verificationError) => {
-          if (verificationError) {
-            return resError(verificationError, normalizedPayload, respond)
-          }
-          if (!this.requireActiveAgentSession(principal, normalizedPayload, respond)) {
-            return
-          }
-          respond({ id: normalizedPayload.id, jsonrpc: normalizedPayload.jsonrpc, result: signed })
-        })
-      })
+      this.protectedOperations.signAiSessionMessage(message, normalizedPayload, principal, respond)
     })
   }
 
   sendAgentTypedData(
     rawPayload: RPC.SignTypedData.Request,
-    principal: AgentPrincipal,
+    principal: AiSessionClientSource,
     res: RPCRequestCallback
   ) {
     if (!this.requireActiveAgentSession(principal, rawPayload, res)) {
       return
     }
 
-    const account = this.accounts.getFrameAccount(principal.accountId)
+    const account = this.accounts.getFrameAccount(principal.aiSession.accountId)
     const rawParams = arrayValue(rawPayload.params)
     const orderedParams: readonly unknown[] =
       isAddress(rawParams[1]) && !isAddress(rawParams[0])
@@ -1054,7 +770,7 @@ export class Provider extends EventEmitter {
     }
 
     const address = requestedAddress.toLowerCase()
-    if (address !== principal.accountId || address !== account.id) {
+    if (address !== principal.aiSession.accountId || address !== account.id) {
       return resError('Agent session is not authorized for the typed-data account', rawPayload, res)
     }
 
@@ -1104,74 +820,7 @@ export class Provider extends EventEmitter {
     }
 
     this.accounts.routeRequest(principal, request, () => {
-      if (!this.requireActiveAgentSession(principal, payload, respond)) {
-        return
-      }
-
-      account.signTypedData(typedMessage, (signingError, signature = '') => {
-        if (!this.requireActiveAgentSession(principal, payload, respond)) {
-          return
-        }
-        if (signingError || !signature) {
-          return resError(signingError ?? 'Agent typed-data signing failed', payload, respond)
-        }
-
-        try {
-          const recoveredAddress = recoverTypedSignature({ ...typedMessage, signature })
-          if (recoveredAddress.toLowerCase() !== account.id) {
-            throw new Error('TypedData signature verification failed')
-          }
-          respond({ id: payload.id, jsonrpc: payload.jsonrpc, result: signature })
-        } catch (error) {
-          resError(error as Error, payload, respond)
-        }
-      })
-    })
-  }
-
-  private executeAgentTransaction(
-    account: AccountHandle,
-    request: TransactionRequest,
-    principal: AgentPrincipal,
-    res: RPCRequestCallback
-  ) {
-    const signAndBroadcast = (data: TransactionData) => {
-      if (!this.requireActiveAgentSession(principal, request.payload, res)) {
-        return
-      }
-
-      const maxTotalFee = maxFee(data)
-      if (feeTotalOverMax(data, maxTotalFee)) {
-        return resError('Max fee is over hard limit', request.payload, res)
-      }
-
-      account.signTransaction(data, (signingError, signedTransaction) => {
-        if (!this.requireActiveAgentSession(principal, request.payload, res)) {
-          return
-        }
-        if (signingError || !signedTransaction) {
-          return resError(signingError ?? 'Agent transaction signing failed', request.payload, res)
-        }
-
-        this.sendRawTransaction(signedTransaction, data.chainId, request.payload, (response) => {
-          if (!response.error && typeof response.result === 'string') {
-            const trackedRequest = { ...request, data }
-            this.accounts.trackAutonomousTransaction(account.id, trackedRequest, response.result)
-          }
-          res(response)
-        })
-      })
-    }
-
-    if (request.data.nonce) {
-      return signAndBroadcast(request.data)
-    }
-
-    this.getNonce(request.data, (response) => {
-      if (response.error || typeof response.result !== 'string') {
-        return resError(response.error ?? 'Could not determine transaction nonce', request.payload, res)
-      }
-      signAndBroadcast({ ...request.data, nonce: response.result })
+      this.protectedOperations.signAiSessionTypedData(typedMessage, payload, principal, respond)
     })
   }
 
@@ -1179,7 +828,7 @@ export class Provider extends EventEmitter {
     payload: RPC.SendTransaction.Request,
     res: RPCRequestCallback,
     targetChain: Chain,
-    principal: TrustedPrincipal,
+    principal: RequestSource,
     context?: TransactionRequestContext
   ) {
     try {
@@ -1372,7 +1021,7 @@ export class Provider extends EventEmitter {
   _personalSign(
     payload: RPCRequestPayload,
     res: RPCRequestCallback,
-    principal: TrustedPrincipal,
+    principal: RequestSource,
     chainId?: number
   ) {
     const params = arrayValue(payload.params)
@@ -1393,7 +1042,7 @@ export class Provider extends EventEmitter {
     )
   }
 
-  sign(payload: RPCRequestPayload, res: RPCRequestCallback, principal: TrustedPrincipal, chainId?: number) {
+  sign(payload: RPCRequestPayload, res: RPCRequestCallback, principal: RequestSource, chainId?: number) {
     const [fromValue, messageValue] = arrayValue(payload.params)
     const from = typeof fromValue === 'string' ? fromValue : ''
     const message = typeof messageValue === 'string' ? messageValue : ''
@@ -1428,7 +1077,7 @@ export class Provider extends EventEmitter {
     rawPayload: RPC.SignTypedData.Request,
     version: SignTypedDataVersion | undefined,
     res: RPCCallback<RPC.SignTypedData.Response>,
-    principal: TrustedPrincipal,
+    principal: RequestSource,
     chainId?: number
   ) {
     // ensure param order is [address, data, ...] regardless of version
@@ -1563,7 +1212,7 @@ export class Provider extends EventEmitter {
     }
   }
 
-  subscribe(payload: RPC.Subscribe.Request, res: RPCSuccessCallback, principal?: TrustedPrincipal) {
+  subscribe(payload: RPC.Subscribe.Request, res: RPCSuccessCallback, principal?: RequestSource) {
     log.debug('provider subscribe', { payload })
 
     const subId = this.createSubscription(payload, principal)
@@ -1571,7 +1220,7 @@ export class Provider extends EventEmitter {
     res({ id: payload.id, jsonrpc: '2.0', result: subId })
   }
 
-  private createSubscription(payload: RPC.Subscribe.Request, principal?: TrustedPrincipal) {
+  private createSubscription(payload: RPC.Subscribe.Request, principal?: RequestSource) {
     const subId = addHexPrefix(crypto.randomBytes(16).toString('hex'))
     const subscriptionType = payload.params[0] as ProviderSubscriptionType
 
@@ -1651,9 +1300,9 @@ export class Provider extends EventEmitter {
       .forEach((subscription) => this.sendSubscriptionData(subscription.id, nextAccounts))
   }
 
-  private getOriginStatus(payload: RPCRequestPayload, res: RPCSuccessCallback, principal?: TrustedPrincipal) {
+  private getOriginStatus(payload: RPCRequestPayload, res: RPCSuccessCallback, principal?: RequestSource) {
     const { originId, originName, address, connected, chainId } = this.getOriginConnection(payload)
-    const selectedAddress = hasPrincipalCapability(principal, 'wallet:internal-state') ? address : ''
+    const selectedAddress = hasSourceCapability(principal, 'wallet:internal-state') ? address : ''
 
     res({
       id: payload.id,
@@ -1738,7 +1387,7 @@ export class Provider extends EventEmitter {
   private async addEthereumChain(
     payload: RPCRequestPayload,
     res: RPCRequestCallback,
-    principal: TrustedPrincipal
+    principal: RequestSource
   ) {
     if (!isRecord(payload.params[0])) {
       return resError('addChain request missing params', payload, res)
@@ -1842,7 +1491,7 @@ export class Provider extends EventEmitter {
     payload: RPCRequestPayload,
     cb: RPCRequestCallback,
     targetChain: Chain,
-    principal: TrustedPrincipal
+    principal: RequestSource
   ) {
     const tokenParams = isRecord(payload.params) ? payload.params : undefined
     const type = tokenParams?.type
@@ -1975,23 +1624,39 @@ export class Provider extends EventEmitter {
   }
 
   send(
+    payload: RPCRequestPayload,
+    respond: RPCRequestCallback = () => {},
+    source?: RequestSource,
+    context?: TransactionRequestContext
+  ): void | Promise<void> {
+    if (!context) {
+      return this.dispatchRpc(payload, respond, source)
+    }
+    return createRpcGateway({
+      origins: this.rpcOrigins,
+      selectedAddresses: () => this.accounts.getSelectedAddresses(),
+      handle: (input, reply, admitted) => this.handleRpc(input, reply, admitted, context)
+    })(payload, respond, source)
+  }
+
+  private handleRpc(
     requestPayload: RPCRequestPayload,
     res: RPCRequestCallback = () => {},
-    principal?: TrustedPrincipal,
+    principal?: RequestSource,
     context?: TransactionRequestContext
   ) {
-    // TODO: in the future this mapping will happen in the requests module so that the handler only ever
-    // has to worry about one shape of request, error handling for each request type will happen
-    // in the request handler for each type of request
-    let payload: RPCRequestPayload
-
-    try {
-      payload = mapRequest(requestPayload)
-    } catch (e) {
-      return resError({ message: (e as Error).message }, requestPayload, res)
-    }
+    const payload = requestPayload
 
     const method = payload.method || ''
+    if (principal?.kind === 'agent') {
+      if (method === 'eth_sendTransaction') {
+        return this.sendAgentTransaction(payload as RPC.SendTransaction.Request, principal, res)
+      }
+      if (method === 'personal_sign') {
+        return this.sendAgentPersonalSign(payload, principal, res)
+      }
+      return this.sendAgentTypedData(payload as RPC.SignTypedData.Request, principal, res)
+    }
 
     if (method === 'eth_sign' || method === 'eth_signTransaction') {
       return resError(
@@ -2026,6 +1691,10 @@ export class Provider extends EventEmitter {
         jsonrpc: payload.jsonrpc,
         result: this.accounts.getSelectedAddresses().map((a) => a.toLowerCase())
       })
+    }
+
+    if (method === 'eth_sendRawTransaction') {
+      return this.protectedOperations.submitRawTransaction(payload, res, targetChain)
     }
 
     if (method === 'eth_accounts') {
@@ -2129,7 +1798,10 @@ export class Provider extends EventEmitter {
     // remove custom data
     const { _origin, chainId, ...rpcPayload } = payload
 
-    // Pass everything else to our connection
+    if (rpcMethodPolicy(method)?.route !== 'chain') {
+      return resError({ code: -32601, message: 'Method not found' }, payload, res)
+    }
+    // Only explicitly registered chain methods can reach the upstream connection.
     this.connection.send(rpcPayload, res, targetChain)
   }
 

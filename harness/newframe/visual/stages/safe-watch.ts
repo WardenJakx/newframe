@@ -11,7 +11,7 @@ import {
   toUtf8Bytes
 } from 'ethers'
 
-import { anvilChainId, anvilRpcUrl, newframeRpcUrl } from '../../core/config.ts'
+import { anvilChainId, anvilRpcUrl, newframeRpcUrl, harnessAccountAddress } from '../../core/config.ts'
 import { harnessOrigin } from '../driver.ts'
 import type { VisualStage } from '../types.ts'
 
@@ -300,6 +300,18 @@ export const safeWatchStage: VisualStage = {
           )
         }
         await transactionReview.getByText('Gas-paying executor', { exact: true }).first().waitFor()
+        // A task profile may contain several ready EOAs. Choose the funded harness account explicitly.
+        const executor = transactionReview.getByRole('button', { name: 'Gas-paying executor', exact: true })
+        if ((await executor.textContent())?.includes('Choose an executor')) {
+          await executor.click()
+          const state = await driver.getAppState()
+          const name = state.main?.accounts?.[harnessAccountAddress]?.name
+          if (!name) {
+            runtime.fail('Harness executor account is unavailable')
+          }
+          await transactionReview.getByRole('option').filter({ hasText: name }).click()
+        }
+
         const executionState = await driver
           .waitForState(
             (state) => {
@@ -380,7 +392,11 @@ export const safeWatchStage: VisualStage = {
 
       await tray.getByRole('button', { name: 'Accounts', exact: true }).click()
       await accounts.getByRole('textbox', { name: 'Search accounts' }).fill(id)
-      await accounts.getByRole('button', { name: 'Safe Account account actions', exact: true }).click()
+      const shortAddress = `${id.slice(0, 8)}...${id.slice(-6)}`
+      await accounts
+        .getByRole('button', { name: new RegExp(shortAddress.replaceAll('.', '\\.'), 'i') })
+        .getByRole('button', { name: 'Safe Account account actions', exact: true })
+        .click()
       await accounts.getByRole('button', { name: 'Remove account', exact: true }).click()
       await accounts.getByRole('button', { name: 'Confirm remove', exact: true }).click()
       await driver.waitForState(

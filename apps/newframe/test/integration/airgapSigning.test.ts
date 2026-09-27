@@ -4,11 +4,11 @@ import { EventEmitter } from 'node:events'
 import { HDNodeWallet, ZeroAddress } from 'ethers'
 
 import { createSafeHandler } from '../../scripts/local-safe/handler.js'
+import { RpcIpcHandlers } from '../../src/app/main/ipc-handlers/rpc.js'
 import type { SafeProposal } from '../../src/features/accounts/domain/safe.js'
 import { createProductionAirGapService } from '../../src/features/accounts/main/airgap/production.js'
 import { Accounts } from '../../src/features/accounts/main/index.js'
 import { createSafeTransactionService } from '../../src/features/accounts/main/safeTransaction.js'
-import { Provider } from '../../src/features/connections/main/provider/index.js'
 import { createRequestApprovalAdapter } from '../../src/features/connections/main/provider/infrastructure/production.js'
 import { createProviderProxyConnection } from '../../src/features/connections/main/provider/proxy.js'
 import { createProviderStatePort } from '../../src/features/connections/main/provider/statePort.js'
@@ -151,7 +151,7 @@ function integrationFixture({
       throw new Error('Scanner not used')
     }
   })
-  const provider = new Provider({
+  const provider = new RpcIpcHandlers({
     accounts,
     chains,
     proxy,
@@ -160,7 +160,7 @@ function integrationFixture({
     reveal,
     requests: service
   })
-  const approval = createRequestApprovalAdapter(provider)
+  const approval = createRequestApprovalAdapter(provider.protectedOperations)
   const data = transaction()
   if (waitForNonce) {
     delete data.nonce
@@ -217,7 +217,7 @@ it('executes a reviewed Safe outer transaction with a named AirGap EOA without c
   })
   f.store.getState().setAccount({ id: safe })
   try {
-    const pending = f.provider.executeAccountTransaction(
+    const pending = f.provider.protectedOperations.executeAccountTransaction(
       f.address,
       transaction(),
       undefined,

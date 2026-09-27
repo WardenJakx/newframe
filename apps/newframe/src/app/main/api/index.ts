@@ -5,9 +5,9 @@ import WebSocket, { WebSocketServer } from 'ws'
 import type { Accounts } from '../../../features/accounts/main/index.js'
 import type { AgentService } from '../../../features/agent-access/main/index.js'
 import { createProductionOriginsService } from '../../../features/connections/main/origins.js'
-import type { Provider } from '../../../features/connections/main/provider/index.js'
 import type { RequestService } from '../../../features/requests/main/service.js'
 import type { FlashService } from '../../../features/transactions/trade/main/index.js'
+import { localApiPort } from '../../../platform/local-rpc/endpoint.js'
 import { createHttpRpcTransport } from '../../../platform/local-rpc/http.js'
 import { createRpcRequestHandler } from '../../../platform/local-rpc/request.js'
 import { createApiServer } from '../../../platform/local-rpc/server.js'
@@ -16,9 +16,10 @@ import {
   type WebSocketRpcTransportDependencies
 } from '../../../platform/local-rpc/ws.js'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
+import type { RpcIpcHandlers } from '../ipc-handlers/rpc.js'
 
 export function createProductionApiServer(
-  provider: Provider,
+  provider: RpcIpcHandlers,
   accounts: Accounts,
   flashService: FlashService,
   canonicalStore: CanonicalStoreReader,
@@ -30,7 +31,7 @@ export function createProductionApiServer(
   const storePort = {
     endOriginSession: (originId: string) => canonicalStore.getState().endOriginSession(originId)
   }
-  const requestHandler = createRpcRequestHandler({ provider, accounts, origins })
+  const requestHandler = createRpcRequestHandler({ provider, origins })
   const httpTransport = createHttpRpcTransport({
     provider,
     store: storePort,
@@ -51,8 +52,6 @@ export function createProductionApiServer(
     http: httpTransport,
     ws: wsTransport,
     createServer: (handler) => http.createServer(handler),
-    ...(process.env.NEWFRAME_VISUAL_HARNESS === 'true'
-      ? { port: Number(process.env.NEWFRAME_HARNESS_RPC_PORT ?? 1249) }
-      : {})
+    port: localApiPort()
   })
 }

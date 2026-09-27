@@ -3,9 +3,12 @@ import { EventEmitter } from 'events'
 
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 
+import {
+  createNewframeInternalSource,
+  authorizeGatewayOperation
+} from '../../../app/main/gateway/requestSource'
 import { createRendererAuthorizationRegistry } from '../../../platform/ipc/main/authorization'
 import type { SigningApprovalContext, SignerRequestContext } from '../../../platform/signing/signers/Signer'
-import { createRendererPrincipal, decideWalletAction } from '../../access-control/main/authority'
 import type { AccountRequest, CanonicalAccountRequest, TypedMessage } from '../../requests/contract/requests'
 import { RequestMode, RequestStatus } from '../../requests/contract/requests'
 import { ApprovalType } from '../../requests/domain/approval'
@@ -187,13 +190,13 @@ describe('#addRequest', () => {
       approvals: [{ type: ApprovalType.GasLimitApproval, approved: false, data: {} }],
       recognizedActions: [{ id: 'erc20:approve', data: actionData, update }]
     }
-    const rendererPrincipal = createRendererPrincipal({
+    const rendererPrincipal = createNewframeInternalSource({
       clientType: 'wallet-ui',
       entrypoint: 'tray',
       webContentsId: 7,
       windowInstanceId: 'wallet-window'
     })
-    const decision = decideWalletAction(rendererPrincipal, request)
+    const decision = authorizeGatewayOperation(rendererPrincipal, request)
     if (decision.outcome !== 'prompt') {
       throw new Error('renderer request was not prompt-authorized')
     }
@@ -657,35 +660,39 @@ describe('account signing boundary', () => {
     expect(store.getState().main.currentAccount).toBe('')
   })
 
-  it.each(['locked', 'foreign-profile', 'missing-signer', 'wrong-address', 'inactive-source'] as const)(
-    'rejects %s before device invocation',
-    (kind) => {
-      const test = signingFixture()
-      if (kind === 'locked') {
-        store.setState((state) => {
-          state.main.appLock.locked = true
-        })
-      }
-      if (kind === 'foreign-profile') {
-        store.setState((state) => {
-          state.main.accounts[account.id].profileId = 'other'
-        })
-      }
-      if (kind === 'missing-signer') {
-        signersMock.get.mockReturnValue(undefined)
-      }
-      if (kind === 'wrong-address') {
-        test.signer.addresses = []
-      }
-      if (kind === 'inactive-source') {
-        test.invalidate()
-      }
-      const callback = mock()
-      account.signTypedData(message(), callback, test.approval)
-      expect(callback.mock.calls[0][0]).toBeInstanceOf(Error)
-      expect(test.signer.signTypedData).not.toHaveBeenCalled()
+  it.each([
+    'locked',
+    'foreign-profile',
+    'missing-signer',
+    'wrong-address',
+    'inactive-source',
+    'missing-approval'
+  ] as const)('rejects %s before device invocation', (kind) => {
+    const test = signingFixture()
+    if (kind === 'locked') {
+      store.setState((state) => {
+        state.main.appLock.locked = true
+      })
     }
-  )
+    if (kind === 'foreign-profile') {
+      store.setState((state) => {
+        state.main.accounts[account.id].profileId = 'other'
+      })
+    }
+    if (kind === 'missing-signer') {
+      signersMock.get.mockReturnValue(undefined)
+    }
+    if (kind === 'wrong-address') {
+      test.signer.addresses = []
+    }
+    if (kind === 'inactive-source') {
+      test.invalidate()
+    }
+    const callback = mock()
+    account.signTypedData(message(), callback, kind === 'missing-approval' ? undefined : test.approval)
+    expect(callback.mock.calls[0][0]).toBeInstanceOf(Error)
+    expect(test.signer.signTypedData).not.toHaveBeenCalled()
+  })
 
   it.each(['source-abort', 'source-change', 'lock', 'owner-lifetime', 'close'] as const)(
     'cancels pending signing on %s and ignores late hardware completion',

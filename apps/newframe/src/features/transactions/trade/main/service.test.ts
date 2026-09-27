@@ -2,8 +2,8 @@ import { expect, it, mock } from 'bun:test'
 
 import { createTestStore } from '../../../../../test/support/createTestStore'
 import type { FlashQuoteRequest, TypedDataV4 } from '../../../../app/contracts/operations'
+import type { RequestSource } from '../../../../app/main/gateway/requestSource'
 import { createOperationService } from '../../../../platform/operations/service'
-import type { TrustedPrincipal } from '../../../access-control/main/authority'
 import { FLASH_USDC_ASSET, FLASH_WETH_ASSET, getFlashAssetsForChain } from '../domain/assets'
 import { FLASH_MARKET_ORDER_TYPE } from '../domain/constants'
 import type { FlashQuote } from '../domain/schemas'
@@ -15,7 +15,7 @@ const account = {
   address: '0x1111111111111111111111111111111111111111'
 }
 const owner = { clientType: 'sidetray' as const, windowInstanceId: 'trade-window' }
-const principal = { kind: 'renderer' } as TrustedPrincipal
+const principal = { kind: 'renderer' } as RequestSource
 const typedData = {
   domain: { chainId: 1 },
   message: { quoteId: 'quote-1' },
@@ -101,7 +101,7 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
   const submitTransaction = mock(
     async (
       _request: unknown,
-      _principal: TrustedPrincipal
+      _principal: RequestSource
     ): Promise<{ ok: true; transactionHash: string } | { ok: false; error: string; message?: string }> => ({
       ok: true as const,
       transactionHash: `0x${'a'.repeat(64)}`
@@ -117,7 +117,7 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
       signature: value.primaryType === 'Permit' ? '0xpermit' : '0xorder'
     })
   )
-  const signMessage = mock(async (_request: unknown, _principal: TrustedPrincipal) => ({
+  const signMessage = mock(async (_request: unknown, _principal: RequestSource) => ({
     ok: true as const,
     signature: '0xcancel'
   }))

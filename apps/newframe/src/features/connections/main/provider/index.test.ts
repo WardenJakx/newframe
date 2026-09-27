@@ -16,20 +16,20 @@ import { randomUUID } from 'node:crypto'
 import { addHexPrefix, intToHex } from '@ethereumjs/util'
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import log from 'electron-log'
-import { parseUnits, toBeHex } from 'ethers'
+import { Wallet, getBytes, parseUnits, toBeHex } from 'ethers'
 import { validate as validateUUID } from 'uuid'
 
+import {
+  createAiSessionClientSource,
+  createLocalApiSource,
+  type RequestSource
+} from '../../../../app/main/gateway/requestSource'
+import type { RpcIpcHandlers, TransactionRequestContext } from '../../../../app/main/ipc-handlers/rpc'
 import type { DecodedCallData } from '../../../../platform/chain-rpc/contracts'
 import { Type as SignerType } from '../../../../platform/signing/domain'
 import type { SigningApprovalContext, SigningUiContext } from '../../../../platform/signing/signers/Signer'
 import type { Chain as StoredChain, Gas, Permission } from '../../../../platform/state-store/state'
 import { gweiToHex } from '../../../../shared/domain/hex'
-import {
-  createAgentPrincipal,
-  createRpcPrincipal,
-  type AgentPrincipal,
-  type TrustedPrincipal
-} from '../../../access-control/main/authority'
 import { AccountSchema } from '../../../accounts/domain/state/account'
 import type { SafeTransactionPort } from '../../../accounts/main/safeTransactionPort'
 import type { Origin } from '../../../connections/domain/state/origin'
@@ -39,22 +39,22 @@ import type {
   AccountRequest,
   AddChainRequest,
   SignTypedDataRequest,
+  TypedMessage,
   TransactionRequest
 } from '../../../requests/contract/requests'
 import { TxClassification } from '../../../requests/contract/requests'
 import { GasFeesSource, type TransactionData } from '../../../transactions/domain'
 import type { AccountRequestPort } from './accountRequestPort'
-import type { Provider, TransactionRequestContext } from './index'
 import type { ProviderProxyConnection } from './proxy'
 import type { Subscription } from './subscriptions'
 
 const address = '0x22dd63c3619818fdbc262c78baee43cb61e9cccf'
-const principal = createRpcPrincipal({
+const principal = createLocalApiSource({
   transport: 'http',
   connectionId: 'provider-test',
   origin: 'frame.test'
 })
-const internalPrincipal = createRpcPrincipal({
+const internalPrincipal = createLocalApiSource({
   transport: 'websocket',
   connectionId: 'companion-test',
   origin: 'frame.test',
@@ -92,11 +92,12 @@ interface TestAccounts {
   clearRequestsByOrigin: ReturnType<typeof mock>
   current: ReturnType<typeof createCurrentMock>
   get: ReturnType<typeof createGetMock>
+  getSelectedAddresses(): string[]
   getAccounts(): string[]
   getFrameAccount: ReturnType<typeof createGetFrameAccountMock>
   lockRequest: ReturnType<typeof mock>
   routeRequest(
-    principal: TrustedPrincipal,
+    principal: RequestSource,
     request: AccountRequest,
     executeAutonomously?: (request: AccountRequest) => void
   ): boolean
@@ -124,25 +125,22 @@ interface TestChains {
   >
 }
 
-type PublicProvider = { [Key in keyof Provider]: Provider[Key] }
+type PublicProvider = { [Key in keyof RpcIpcHandlers]: RpcIpcHandlers[Key] }
 interface TestAgentAccount {
   id: string
-  signTransaction: ReturnType<typeof createSignTransactionMock>
+  signTransaction?: ReturnType<typeof createSignTransactionMock>
+  signMessage?: (message: string, cb: Callback<string>, context?: SigningApprovalContext) => void
+  signTypedData?: (message: TypedMessage, cb: Callback<string>, context?: SigningApprovalContext) => void
 }
 type TestProvider = Omit<PublicProvider, 'connection' | 'subscriptions'> & {
   connection: TestChains
   subscriptions: Record<string, Subscription[]>
-  executeAgentTransaction(
-    account: TestAgentAccount,
-    request: TransactionRequest,
-    principal: AgentPrincipal,
-    respond: RPCRequestCallback
-  ): void
 }
 
 let accountRequests: AccountRequest[] = []
 let provider: TestProvider
 const accounts: TestAccounts = {
+  getSelectedAddresses: () => [address],
   clearRequestsByOrigin: mock(),
   current: createCurrentMock(),
   get: createGetMock(),
@@ -291,7 +289,7 @@ const setNetworkGas = (id: number, gas: Gas) => {
     state.main.networksMeta.ethereum[id].gas = gas
   })
 }
-const expectQueuedRequestRejection = (sendRequest: (callback: RPCRequestCallback) => void) =>
+const expectQueuedRequestRejection = (sendRequest: (callback: RPCRequestCallback) => void | Promise<void>) =>
   new Promise<void>((resolve, reject) => {
     const callback = mock()
     accountRequestHook = (request, respond) => {
@@ -313,7 +311,7 @@ const expectQueuedRequestRejection = (sendRequest: (callback: RPCRequestCallback
         reject(error)
       }
     }
-    sendRequest(callback)
+    void sendRequest(callback)
   })
 
 await mock.module('../../../networks/main', () => {
@@ -380,9 +378,10 @@ beforeAll(async () => {
     return true
   }
 
-  const { Provider } = await import('./index')
+  const { RpcIpcHandlers } = await import('../../../../app/main/ipc-handlers/rpc')
   const { createProviderStatePort } = await import('./statePort')
-  provider = new Provider({
+  provider = new RpcIpcHandlers({
+    origins: { hasAccountAccessGrant: async () => true },
     accounts: accounts as unknown as AccountRequestPort,
     chains: connection as unknown as Chains,
     lookupChainIcon,
@@ -476,35 +475,46 @@ describe('#send', () => {
   })
 
   const send = (
-    request: object,
+    request: Omit<Partial<RPCRequestPayload>, 'params'> & { method: string; params?: unknown },
     cb: RPCRequestCallback = mock(),
-    requestPrincipal: TrustedPrincipal = principal
+    requestPrincipal: RequestSource = principal
   ) => {
-    void provider.send(
-      { ...request, _origin: '8073729a-5e59-53b7-9e69-5d9bcff94087' } as RPCRequestPayload,
+    return provider.send(
+      {
+        id: 1,
+        jsonrpc: '2.0',
+        params: [],
+        ...request,
+        _origin: '8073729a-5e59-53b7-9e69-5d9bcff94087'
+      } as RPCRequestPayload,
       cb,
       requestPrincipal
     )
   }
-  const sendResult = (request: object, requestPrincipal: TrustedPrincipal = principal) =>
-    new Promise<RPCResponsePayload>((resolve) => send(request, resolve, requestPrincipal))
+  const sendResult = (
+    request: Omit<Partial<RPCRequestPayload>, 'params'> & { method: string; params?: unknown },
+    requestPrincipal: RequestSource = principal
+  ) =>
+    new Promise<RPCResponsePayload>((resolve) => {
+      void send(request, resolve, requestPrincipal)
+    })
 
   ;[
     ['unknown', '0x63'],
     ['invalid', 'test']
   ].forEach(([description, chainId]) => {
     it(`returns an error when an ${description} chain is given`, async () => {
-      const response = await sendResult({ method: 'eth_testFrame', chainId })
+      const response = await sendResult({ method: 'eth_blockNumber', chainId })
       expect(connection.send).not.toHaveBeenCalled()
       expect(responseError(response).message).toMatch(/unknown chain/)
       expect(response.result).toBeUndefined()
     })
   })
 
-  it('rejects signing methods that do not carry a trusted transport principal', () => {
+  it('rejects signing methods that do not carry a trusted transport principal', async () => {
     const callback = mock()
 
-    void provider.send(
+    await provider.send(
       {
         id: 1,
         jsonrpc: '2.0',
@@ -546,7 +556,7 @@ describe('#send', () => {
 
   describe('#frame_getOriginStatus', () => {
     const originId = '8073729a-5e59-53b7-9e69-5d9bcff94087'
-    const cases: Array<[string, TrustedPrincipal, number, boolean, string, string]> = [
+    const cases: Array<[string, RequestSource, number, boolean, string, string]> = [
       ['returns the permitted address', principal, 42161, true, address, ''],
       ['exposes the selected address to internal requests', internalPrincipal, 1, false, '', address],
       ['hides the selected address from external requests', principal, 1, false, '', '']
@@ -568,7 +578,7 @@ describe('#send', () => {
   })
 
   describe('#frame_disconnectOrigin', () => {
-    it('removes the selected account permission and notifies origin account subscribers', (done) => {
+    it('removes the selected account permission and notifies origin account subscribers', async (done) => {
       const originId = '8073729a-5e59-53b7-9e69-5d9bcff94087'
       const subscription = {
         id: '0x9509a964a8d24a17fcfc7b77fc575b71',
@@ -595,7 +605,7 @@ describe('#send', () => {
         subscriptionEvent = payload
       })
 
-      send({ method: 'frame_disconnectOrigin' }, (response) => {
+      await send({ method: 'frame_disconnectOrigin' }, (response) => {
         expect(response.error).toBeUndefined()
         const result = rpcResult<{ connected: boolean; address: string }>(response)
         expect(result.connected).toBe(false)
@@ -620,15 +630,15 @@ describe('#send', () => {
       blockExplorerUrls: ['https://explorer.example.com'],
       ...overrides
     })
-    const sendRequest = (chain: ReturnType<typeof chainRequest>, cb: RPCRequestCallback) =>
-      send({ method: 'wallet_addEthereumChain', params: [chain] }, cb)
+    const sendRequest = async (chain: ReturnType<typeof chainRequest>, cb: RPCRequestCallback) =>
+      await send({ method: 'wallet_addEthereumChain', params: [chain] }, cb)
 
     it('creates an add-chain request with its Chainlist icon', async () => {
       const cb = mock()
       lookupChainIcon.mockImplementation(
         async () => 'https://icons.llamao.fi/icons/chains/rsz_bizarro-polygon.jpg'
       )
-      sendRequest(chainRequest(), cb)
+      await sendRequest(chainRequest(), cb)
       await Promise.resolve()
 
       expect(accountRequests).toHaveLength(1)
@@ -652,20 +662,20 @@ describe('#send', () => {
       expect(typeof accountRequests[0].handlerId).toBe('string')
     })
 
-    it('rejects unsafe RPC and block explorer URLs', () => {
+    it('rejects unsafe RPC and block explorer URLs', async () => {
       const rpcResponse = mock((_response: RPCResponsePayload) => {})
       const explorerResponse = mock((_response: RPCResponsePayload) => {})
 
-      sendRequest(chainRequest({ rpcUrls: ['file:///tmp/rpc'] }), rpcResponse)
+      await sendRequest(chainRequest({ rpcUrls: ['file:///tmp/rpc'] }), rpcResponse)
       // oxlint-disable-next-line no-script-url -- Verify rejection of an executable explorer URL.
-      sendRequest(chainRequest({ blockExplorerUrls: ['javascript:alert(1)'] }), explorerResponse)
+      await sendRequest(chainRequest({ blockExplorerUrls: ['javascript:alert(1)'] }), explorerResponse)
 
       expect(rpcError(rpcResponse.mock.calls[0][0]).message).toMatch(/invalid rpc url/i)
       expect(rpcError(explorerResponse.mock.calls[0][0]).message).toMatch(/invalid block explorer url/i)
       expect(accountRequests).toHaveLength(0)
     })
 
-    it('switches immediately when an add-chain target already exists', () => {
+    it('switches immediately when an add-chain target already exists', async () => {
       setNetwork(1, {
         id: 1,
         on: true,
@@ -676,7 +686,7 @@ describe('#send', () => {
       })
       const switchOriginChain = spyOn(storeState(), 'switchOriginChain').mockImplementation(() => undefined)
 
-      sendRequest(
+      await sendRequest(
         chainRequest({
           chainId: '0x1',
           nativeCurrency: { symbol: 'ETH' },
@@ -713,7 +723,7 @@ describe('#send', () => {
 
       const cb = mock()
 
-      sendRequest(
+      await sendRequest(
         chainRequest({
           chainId: '0x7a69',
           chainName: 'Newframe Local Anvil',
@@ -814,8 +824,8 @@ describe('#send', () => {
       }
     })
 
-    it('adds a request for a custom token', () => {
-      send(request)
+    it('adds a request for a custom token', async () => {
+      await send(request)
       expect(accountRequests).toHaveLength(1)
       expect(validateUUID(accountRequests[0].handlerId)).toBe(true)
       expect(accountRequests[0]).toEqual(
@@ -1020,10 +1030,12 @@ describe('#send', () => {
         Object.assign(payload, { chainId })
       }
 
-      void provider.send(payload, cb, principal, context)
+      return provider.send(payload, cb, principal, context)
     }
     const sendTransactionResult = (chainId?: string, context?: TransactionRequestContext) =>
-      new Promise<RPCResponsePayload>((resolve) => sendTransaction(resolve, chainId, context))
+      new Promise<RPCResponsePayload>((resolve) => {
+        void sendTransaction(resolve, chainId, context)
+      })
 
     beforeEach(() => {
       tx = {
@@ -1217,7 +1229,7 @@ describe('#send', () => {
       const route = accounts.routeRequest.bind(accounts)
       accounts.routeRequest = () => false
       try {
-        sendTransaction(mock())
+        await sendTransaction(mock())
         expect(prepareSafeDraft).toHaveBeenCalledTimes(1)
         expect(attachSafeDraft).not.toHaveBeenCalled()
       } finally {
@@ -1324,8 +1336,8 @@ describe('#send', () => {
       ]
     ]
     personalSignCases.forEach(([description, params, expectedMessage]) => {
-      it(`submits a request with the ${description}`, () => {
-        send({ method: 'personal_sign', params })
+      it(`submits a request with the ${description}`, async () => {
+        await send({ method: 'personal_sign', params })
         expect(accountRequests[0]).toMatchObject({
           payload: { params: [address, expectedMessage, password] }
         })
@@ -1377,8 +1389,8 @@ describe('#send', () => {
     validRequests.forEach(({ method, params, version, dataFirst, dataDescription }) => {
       it(`submits an ${method} request supplying ${dataDescription} data${
         dataFirst ? ' (inverted params)' : ''
-      }`, () => {
-        send({ method, params })
+      }`, async () => {
+        await send({ method, params })
 
         const expectedPayload = params[dataFirst ? 0 : 1]
         verifyRequest(version, expectedPayload)
@@ -1395,10 +1407,10 @@ describe('#send', () => {
       accounts.current.mockReturnValue(frameAccountFixture())
     })
 
-    it('handles typed data as a stringified json param', () => {
+    it('handles typed data as a stringified json param', async () => {
       const params = [JSON.stringify(typedData), address]
 
-      send({ method: 'eth_signTypedData', params })
+      await send({ method: 'eth_signTypedData', params })
 
       verifyRequest(SignTypedDataVersion.V4, typedData)
     })
@@ -1451,7 +1463,7 @@ describe('#send', () => {
       })
     })
 
-    it('should submit a V3 request to a Lattice', () => {
+    it('should submit a V3 request to a Lattice', async () => {
       accounts.get.mockImplementationOnce((addr: string) => {
         return addr === address
           ? { id: address, address, lastSignerType: SignerType.Lattice, getAccounts: () => [address] }
@@ -1459,7 +1471,7 @@ describe('#send', () => {
       })
       const params = [address, typedData]
 
-      send({ method: 'eth_signTypedData_v3', params })
+      await send({ method: 'eth_signTypedData_v3', params })
 
       verifyRequest(SignTypedDataVersion.V3, typedData)
     })
@@ -1467,12 +1479,12 @@ describe('#send', () => {
     const unknownVersions = ['_v5', '_v1.1', 'v3']
 
     unknownVersions.forEach((versionExtension) => {
-      it(`passes a request with unhandled method eth_signTypedData${versionExtension} through to the connection`, async () => {
-        mockConnectionError('received unhandled request')
+      it(`rejects unlisted method eth_signTypedData${versionExtension} before forwarding`, async () => {
         const params = [address, 'test']
         expect(
           responseError(await sendResult({ method: `eth_signTypedData${versionExtension}`, params })).message
-        ).toBe('received unhandled request')
+        ).toBe('Method not found')
+        expect(connection.send).not.toHaveBeenCalled()
       })
     })
   })
@@ -1501,10 +1513,13 @@ describe('#send', () => {
         })
       })
 
-      it('returns an error from the node if attempting to unsubscribe to an unknown event', async () => {
-        mockConnectionError('unknown event!')
+      it('rejects an unlisted subscription event before forwarding', async () => {
         const response = await subscribe('everythingChanged')
-        expect(response).toMatchObject({ id: 9, jsonrpc: '2.0', error: { message: 'unknown event!' } })
+        expect(response).toMatchObject({
+          id: 9,
+          jsonrpc: '2.0',
+          error: { code: -32602, message: 'Invalid method parameters' }
+        })
         expect(response.result).toBeUndefined()
       })
     })
@@ -1541,80 +1556,203 @@ describe('#send', () => {
   })
 })
 
-describe('#executeAgentTransaction', () => {
-  it.each([false, true])(
-    'broadcasts and records activity only for an active session, revoked: %s',
-    (revoked) => {
-      let active = true
-      const agentPrincipal = createAgentPrincipal({
-        sessionId: 'agent-session',
-        accountId: address,
-        expiresAt: Date.now() + 60_000,
-        isActive: () => active
-      })
-      const signTransaction = createSignTransactionMock()
-      const account = { id: address, signTransaction }
-      const request: TransactionRequest = {
-        handlerId: 'agent-request',
-        type: 'transaction',
-        origin: 'agent',
-        account: address,
-        payload: {
-          id: 'agent-rpc-request',
+describe('protected AI-session signatures', () => {
+  for (const kind of ['message', 'typed-data'] as const) {
+    it.each([
+      'active',
+      'revoked-before',
+      'revoked-during',
+      'signer-error',
+      'wrong-signer',
+      'wrong-account',
+      'selection-change',
+      'account-replaced'
+    ] as const)(
+      `${kind} signing enforces session liveness and verifies the signature: %s`,
+      async (scenario) => {
+        const wallet = new Wallet(`0x${'11'.repeat(32)}`)
+        const signingWallet = scenario === 'wrong-signer' ? new Wallet(`0x${'22'.repeat(32)}`) : wallet
+        let active = scenario !== 'revoked-before'
+        const source = createAiSessionClientSource({
+          sessionId: 'signature-session',
+          accountId: wallet.address,
+          expiresAt: Date.now() + 60_000,
+          isActive: () => active
+        })
+        let complete: Callback<string> | undefined
+        let approval: SigningApprovalContext | undefined
+        const capture = (_value: unknown, done: Callback<string>, context?: SigningApprovalContext) => {
+          complete = done
+          approval = context
+        }
+        const account = {
+          id: wallet.address.toLowerCase(),
+          signMessage: mock(capture),
+          signTypedData: mock(capture)
+        }
+        const payload: RPCRequestPayload = {
+          id: 1,
           jsonrpc: '2.0',
-          method: 'eth_sendTransaction',
-          params: [],
+          method: kind === 'message' ? 'personal_sign' : 'eth_signTypedData_v4',
+          params: [scenario === 'wrong-account' ? address : wallet.address, '0x1234'],
           _origin: 'agent'
-        },
-        data: {
-          chainId: '0xa',
-          type: '0x0',
-          gasPrice: '0x1',
-          gasLimit: '0x5208',
-          nonce: '0x0',
-          gasFeesSource: GasFeesSource.Dapp
-        },
-        approvals: [],
-        feesUpdatedByUser: false,
-        recipientType: 'unknown',
-        recognizedActions: [],
-        classification: TxClassification.NATIVE_TRANSFER
-      }
-      const respond = mock((_response: RPCResponsePayload) => {})
-
-      provider.executeAgentTransaction(account, request, agentPrincipal, respond)
-      expect(signTransaction).toHaveBeenCalledTimes(1)
-
-      active = !revoked
-      signTransaction.mock.calls[0][1](null, '0xsigned')
-
-      if (revoked) {
-        expect(connection.send).not.toHaveBeenCalled()
-        expect(accounts.trackAutonomousTransaction).not.toHaveBeenCalled()
+        }
+        accounts.getFrameAccount.mockReturnValue(account)
+        const message = '0x1234'
+        const typedMessage: TypedMessage = {
+          version: SignTypedDataVersion.V4,
+          data: {
+            types: { EIP712Domain: [], Test: [{ name: 'value', type: 'uint256' }] },
+            primaryType: 'Test',
+            domain: {},
+            message: { value: '7' }
+          }
+        }
+        const signature =
+          kind === 'message'
+            ? await signingWallet.signMessage(getBytes(message))
+            : await signingWallet.signTypedData(
+                {},
+                { Test: [{ name: 'value', type: 'uint256' }] },
+                { value: '7' }
+              )
+        const respond = mock((_response: RPCResponsePayload) => {})
+        if (kind === 'message') {
+          provider.protectedOperations.signAiSessionMessage(message, payload, source, respond)
+        } else {
+          provider.protectedOperations.signAiSessionTypedData(typedMessage, payload, source, respond)
+        }
+        if (scenario === 'revoked-before' || scenario === 'wrong-account') {
+          expect(account.signMessage).not.toHaveBeenCalled()
+          expect(account.signTypedData).not.toHaveBeenCalled()
+        } else {
+          expect(approval?.isActive()).toBe(true)
+          active = scenario !== 'revoked-during'
+          if (scenario === 'selection-change') {
+            accounts.current.mockReturnValue({ id: address })
+          }
+          if (scenario === 'account-replaced') {
+            accounts.getFrameAccount.mockReturnValue({ ...account })
+          }
+          expect(approval?.isActive()).toBe(active && scenario !== 'account-replaced')
+          if (!complete) {
+            throw new Error('Signer was not invoked')
+          }
+          complete(scenario === 'signer-error' ? new Error('Device refused') : null, signature)
+        }
         expect(respond).toHaveBeenCalledTimes(1)
-        expect(respond.mock.calls[0]?.[0]).toMatchObject({
-          error: { message: 'Agent session is revoked or unavailable' }
-        })
-      } else {
-        expect(connection.send).toHaveBeenCalledTimes(1)
-        const [payload, reply, chain] = connection.send.mock.calls[0]
-        expect<JSONRPCRequestPayload>(payload).toEqual({
-          id: request.payload.id,
-          jsonrpc: request.payload.jsonrpc,
-          method: 'eth_sendRawTransaction',
-          params: ['0xsigned']
-        })
-        expect(chain).toEqual({ type: 'ethereum', id: 10 })
-        expect(accounts.trackAutonomousTransaction).not.toHaveBeenCalled()
-
-        const response = { id: payload.id, jsonrpc: payload.jsonrpc, result: '0xhash' }
-        reply(response)
-
-        expect(accounts.trackAutonomousTransaction).toHaveBeenCalledWith(address, request, '0xhash')
-        expect(respond.mock.calls).toEqual([[response]])
+        const response = respond.mock.calls[0][0]
+        if (scenario === 'active' || scenario === 'selection-change') {
+          expect(response).toEqual({ id: 1, jsonrpc: '2.0', result: signature })
+        } else {
+          expect(response.error?.message).toBeTruthy()
+          expect(response.result).toBeUndefined()
+        }
+        expect(connection.send).not.toHaveBeenCalled()
       }
+    )
+  }
+})
+
+describe('#executeAgentTransaction', () => {
+  it.each([
+    'active',
+    'revoked',
+    'wrong-account',
+    'wrong-from',
+    'selection-change',
+    'account-replaced'
+  ] as const)('binds transaction execution and broadcast to the permitted account: %s', (scenario) => {
+    let active = true
+    const agentPrincipal = createAiSessionClientSource({
+      sessionId: 'agent-session',
+      accountId: address,
+      expiresAt: Date.now() + 60_000,
+      isActive: () => active
+    })
+    const signTransaction = createSignTransactionMock()
+    const account = { id: address, signTransaction }
+    const request: TransactionRequest = {
+      handlerId: 'agent-request',
+      type: 'transaction',
+      origin: 'agent',
+      account: address,
+      payload: {
+        id: 'agent-rpc-request',
+        jsonrpc: '2.0',
+        method: 'eth_sendTransaction',
+        params: [],
+        _origin: 'agent'
+      },
+      data: {
+        chainId: '0xa',
+        type: '0x0',
+        gasPrice: '0x1',
+        gasLimit: '0x5208',
+        nonce: '0x0',
+        gasFeesSource: GasFeesSource.Dapp
+      },
+      approvals: [],
+      feesUpdatedByUser: false,
+      recipientType: 'unknown',
+      recognizedActions: [],
+      classification: TxClassification.NATIVE_TRANSFER
     }
-  )
+    const respond = mock((_response: RPCResponsePayload) => {})
+
+    accounts.getFrameAccount.mockReturnValue(account)
+    request.data.from = scenario === 'wrong-from' ? '0x' + '11'.repeat(20) : address
+    if (scenario === 'wrong-account') {
+      request.account = '0x' + '11'.repeat(20)
+    }
+    provider.protectedOperations.executeAgentTransaction(request, agentPrincipal, respond)
+    if (scenario === 'wrong-account' || scenario === 'wrong-from') {
+      expect(signTransaction).not.toHaveBeenCalled()
+      expect(connection.send).not.toHaveBeenCalled()
+      expect(respond.mock.calls[0][0].error?.message).toContain('not authorized')
+      return
+    }
+    expect(signTransaction).toHaveBeenCalledTimes(1)
+    if (scenario === 'selection-change') {
+      accounts.current.mockReturnValue({ id: 'other-account' })
+    }
+    if (scenario === 'account-replaced') {
+      accounts.getFrameAccount.mockReturnValue({ ...account })
+    }
+    active = scenario !== 'revoked'
+    signTransaction.mock.calls[0][1](null, '0xsigned')
+
+    if (scenario === 'revoked' || scenario === 'account-replaced') {
+      expect(connection.send).not.toHaveBeenCalled()
+      expect(accounts.trackAutonomousTransaction).not.toHaveBeenCalled()
+      expect(respond).toHaveBeenCalledTimes(1)
+      expect(respond.mock.calls[0]?.[0]).toMatchObject({
+        error: {
+          message:
+            scenario === 'revoked'
+              ? 'Agent session is revoked or unavailable'
+              : 'AI session account is unavailable'
+        }
+      })
+    } else {
+      expect(connection.send).toHaveBeenCalledTimes(1)
+      const [payload, reply, chain] = connection.send.mock.calls[0]
+      expect<JSONRPCRequestPayload>(payload).toEqual({
+        id: request.payload.id,
+        jsonrpc: request.payload.jsonrpc,
+        method: 'eth_sendRawTransaction',
+        params: ['0xsigned']
+      })
+      expect(chain).toEqual({ type: 'ethereum', id: 10 })
+      expect(accounts.trackAutonomousTransaction).not.toHaveBeenCalled()
+
+      const response = { id: payload.id, jsonrpc: payload.jsonrpc, result: '0xhash' }
+      reply(response)
+
+      expect(accounts.trackAutonomousTransaction).toHaveBeenCalledWith(address, request, '0xhash')
+      expect(respond.mock.calls).toEqual([[response]])
+    }
+  })
 })
 
 describe('#executeAccountTransaction', () => {
@@ -1646,7 +1784,7 @@ describe('#executeAccountTransaction', () => {
     )
 
     try {
-      const result = await provider.executeAccountTransaction(
+      const result = await provider.protectedOperations.executeAccountTransaction(
         address,
         reviewed,
         { gasPrice: '0x2' },
@@ -1682,7 +1820,7 @@ describe('#signAndSend', () => {
   let tx: TransactionData
   let request: TransactionRequest
 
-  const signAndSend = (cb: Callback<string> = mock()) => provider.signAndSend(request, cb)
+  const signAndSend = (cb: Callback<string> = mock()) => provider.protectedOperations.signAndSend(request, cb)
 
   beforeEach(() => {
     tx = { chainId: '0x1', type: '0x0', gasFeesSource: GasFeesSource.Dapp }
@@ -1708,7 +1846,7 @@ describe('#signAndSend', () => {
     }
   })
 
-  it('allows a Fantom transaction with fees over the mainnet hard limit', (done) => {
+  it('allows a Fantom transaction with fees over the mainnet hard limit', async (done) => {
     // 200 gwei * 10M gas = 2 FTM
     tx.chainId = '0xfa'
     tx.type = '0x0'
@@ -1722,7 +1860,7 @@ describe('#signAndSend', () => {
     ['pre-EIP-1559', '0x0', 'gasPrice'],
     ['post-EIP-1559', '0x2', 'maxFeePerGas']
   ].forEach(([description, type, feeField]) => {
-    it(`does not allow a ${description} transaction above the hard limit`, (done) => {
+    it(`does not allow a ${description} transaction above the hard limit`, async (done) => {
       Object.assign(tx, {
         chainId: '0x1',
         type,
@@ -1756,7 +1894,7 @@ describe('#signAndSend', () => {
       })
     })
 
-    it('should not include an undefined "to" field', (done) => {
+    it('should not include an undefined "to" field', async (done) => {
       const txJson = {
         chainId: '0x1'
       }
@@ -1790,7 +1928,7 @@ describe('#signAndSend', () => {
       })
     })
 
-    it('waits for signed state, retries, and settles only the first broadcast response', () => {
+    it('waits for signed state, retries, and settles only the first broadcast response', async () => {
       tx.chainId = '0xa'
       accounts.setTxSigned.mockImplementation(() => {})
       const completed = mock((_error?: Error | null, _value?: string) => {})
@@ -1834,7 +1972,7 @@ describe('#signAndSend', () => {
         })
       })
 
-      it('returns a successful broadcast through its lifecycle callback', () => {
+      it('returns a successful broadcast through its lifecycle callback', async () => {
         Object.assign(tx, {
           chainId: '0x1',
           gasLimit: '0x5208',
@@ -1848,7 +1986,7 @@ describe('#signAndSend', () => {
         accounts.lockRequest = lockRequest
         const completed = mock((_error?: Error | null, _value?: string) => {})
 
-        provider.approveTransactionRequest(request, completed)
+        provider.protectedOperations.approveTransactionRequest(request, completed)
 
         expect(lockRequest.mock.calls.length).toBe(1)
         expect(signTransaction).toHaveBeenCalledTimes(1)
@@ -1864,7 +2002,7 @@ describe('#signAndSend', () => {
         mockConnectionError(errorMessage)
       })
 
-      it('handles a transaction send failure', (done) => {
+      it('handles a transaction send failure', async (done) => {
         Object.assign(tx, { chainId: '0x1' })
         signAndSend((err) => {
           expect(err?.message).toBe(errorMessage)

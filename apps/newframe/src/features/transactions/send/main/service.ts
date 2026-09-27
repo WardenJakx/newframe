@@ -1,9 +1,9 @@
 import { isAddress } from 'ethers'
 
 import type { SendRequestCommand } from '../../../../app/contracts/operations.js'
+import type { RequestSource } from '../../../../app/main/gateway/requestSource.js'
 import type { OperationService } from '../../../../platform/operations/service.js'
 import type { OperationOwner, OperationReference } from '../../../../platform/operations/types.js'
-import type { TrustedPrincipal } from '../../../access-control/main/authority.js'
 import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.js'
 import { toTokenId } from '../../../tokens/domain/index.js'
 import { buildSendTransaction, type SendTransaction } from '../domain/send.js'
@@ -52,7 +52,7 @@ export interface SendServicePorts {
         tokenData?: { decimals: number; name: string; symbol: string }
         transaction: SendTransaction
       },
-      principal: TrustedPrincipal
+      principal: RequestSource
     ): Promise<{ ok: true; transactionHash: string } | { ok: false; error: string; message?: string }>
   }
 }
@@ -184,7 +184,7 @@ export function createSendService(ports: SendServicePorts) {
 
   const execute = async (
     command: SendRequestCommand,
-    principal: TrustedPrincipal,
+    principal: RequestSource,
     reference: OperationReference,
     key: string
   ) => {
@@ -258,7 +258,7 @@ export function createSendService(ports: SendServicePorts) {
   }
 
   return {
-    submit(command: SendRequestCommand, principal: TrustedPrincipal, owner: OperationOwner) {
+    submit(command: SendRequestCommand, principal: RequestSource, owner: OperationOwner) {
       if (disposed) {
         return false
       }

@@ -14,10 +14,10 @@ import {
   type TradeSubmitCommand,
   type TypedDataV4
 } from '../../../../app/contracts/operations.js'
+import type { RequestSource } from '../../../../app/main/gateway/requestSource.js'
 import type { OperationEntityRef } from '../../../../platform/operations/operation.js'
 import type { OperationService } from '../../../../platform/operations/service.js'
 import type { OperationOwner, OperationReference } from '../../../../platform/operations/types.js'
-import type { TrustedPrincipal } from '../../../access-control/main/authority.js'
 import { FLASH_MARKET_ORDER_TYPE } from '../domain/constants.js'
 import {
   buildFlashActionTransaction,
@@ -62,11 +62,11 @@ export interface TradeServicePorts {
   signatures: {
     signMessage(
       command: { chainId: number; message: string },
-      principal: TrustedPrincipal
+      principal: RequestSource
     ): Promise<{ ok: true; signature: string } | { ok: false; error: string; message?: string }>
     signTypedData(
       command: { chainId: number; typedData: TypedDataV4 },
-      principal: TrustedPrincipal
+      principal: RequestSource
     ): Promise<{ ok: true; signature: string } | { ok: false; error: string; message?: string }>
   }
   transactions: {
@@ -76,7 +76,7 @@ export interface TradeServicePorts {
         idempotencyKey: string
         transaction: { to: string; data?: string; value?: string }
       },
-      principal: TrustedPrincipal
+      principal: RequestSource
     ): Promise<{ ok: true; transactionHash: string } | { ok: false; error: string; message?: string }>
   }
 }
@@ -324,7 +324,7 @@ export function createTradeService(ports: TradeServicePorts) {
 
   const executePrepare = async (
     command: TradeRequestCommand,
-    principal: TrustedPrincipal,
+    principal: RequestSource,
     owner: OperationOwner,
     execution: TradeExecution,
     key: string,
@@ -389,7 +389,7 @@ export function createTradeService(ports: TradeServicePorts) {
 
   const executeSubmit = async (
     command: TradeSubmitCommand,
-    principal: TrustedPrincipal,
+    principal: RequestSource,
     owner: OperationOwner,
     execution: TradeExecution,
     key: string,
@@ -488,7 +488,7 @@ export function createTradeService(ports: TradeServicePorts) {
 
   const acceptTradeAction = (
     command: TradeRequestCommand | TradeSubmitCommand,
-    principal: TrustedPrincipal,
+    principal: RequestSource,
     owner: OperationOwner
   ) => {
     if (disposed) {
@@ -546,7 +546,7 @@ export function createTradeService(ports: TradeServicePorts) {
 
   const executeCancel = async (
     command: FlashOrderCancelCommand,
-    principal: TrustedPrincipal,
+    principal: RequestSource,
     reference: OperationReference,
     key: string,
     ownerOrderKey: string,
@@ -694,15 +694,15 @@ export function createTradeService(ports: TradeServicePorts) {
       }
     },
 
-    prepare(command: TradeRequestCommand, principal: TrustedPrincipal, owner: OperationOwner) {
+    prepare(command: TradeRequestCommand, principal: RequestSource, owner: OperationOwner) {
       return acceptTradeAction(command, principal, owner)
     },
 
-    submit(command: TradeSubmitCommand, principal: TrustedPrincipal, owner: OperationOwner) {
+    submit(command: TradeSubmitCommand, principal: RequestSource, owner: OperationOwner) {
       return acceptTradeAction(command, principal, owner)
     },
 
-    cancel(command: FlashOrderCancelCommand, principal: TrustedPrincipal, owner: OperationOwner) {
+    cancel(command: FlashOrderCancelCommand, principal: RequestSource, owner: OperationOwner) {
       if (disposed) {
         return false
       }

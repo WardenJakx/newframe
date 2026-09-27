@@ -1,11 +1,11 @@
 import { Notification } from 'electron'
 
+import type { RpcIpcHandlers } from '../../../app/main/ipc-handlers/rpc.js'
 import { createOneResultCallbackBoundary } from '../../../platform/callbacks/oneResult.js'
 import { createBlockExplorerOpener } from '../../../platform/desktop/windows/window.js'
 import type { CanonicalStore } from '../../../platform/state-store/actions.js'
 import type store from '../../../platform/state-store/index.js'
 import { arraysEqual } from '../../../shared/domain/collections.js'
-import type { Provider } from '../../connections/main/provider/index.js'
 import type { Chains } from '../../networks/main/index.js'
 import type { Accounts } from './index.js'
 import type { AccountsRuntime } from './runtime.js'
@@ -97,7 +97,7 @@ export function createAddressChainUsageAdapter(
 
 export function createAccountSelectionAdapter(
   accounts: Pick<Accounts, 'getSelectedAddresses' | 'setSigner'>,
-  provider: Pick<Provider, 'accountsChanged'>
+  provider: Pick<RpcIpcHandlers, 'accountsChanged'>
 ): AccountServicePorts['selectAccount'] & { dispose(): void } {
   const callbacks = createOneResultCallbackBoundary()
   const selectAccount = async (accountId: string) => {

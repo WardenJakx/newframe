@@ -2,9 +2,9 @@ import type { IncomingMessage } from 'http'
 
 import { v5 as uuidv5 } from 'uuid'
 
+import { hasSourceCapability, type LocalApiSource } from '../../../app/main/gateway/requestSource.js'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
 import type { Permission } from '../../../platform/state-store/state/index.js'
-import { hasPrincipalCapability, type RpcPrincipal } from '../../access-control/main/authority.js'
 import type { Accounts } from '../../accounts/main/index.js'
 import type { AccessRequest } from '../../requests/contract/requests.js'
 import type { PromptedRequestContinuationPort } from '../../requests/main/service.js'
@@ -38,14 +38,14 @@ interface OriginStorePort {
 
 interface AccountAccessPort {
   current(): { address: Address } | null | undefined
-  routeRequest(principal: RpcPrincipal, request: AccessRequest): void
+  routeRequest(principal: LocalApiSource, request: AccessRequest): void
 }
 
 export interface OriginsServiceDependencies {
   store: OriginStorePort
   accounts: AccountAccessPort
   requests: OriginRequestContinuationPort
-  hasInternalStateCapability(principal: RpcPrincipal): boolean
+  hasInternalStateCapability(principal: LocalApiSource): boolean
   development(): boolean
 }
 
@@ -130,7 +130,7 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
     return requestExtensionPermission(extension)
   }
 
-  const requestPermission = (address: Address, fullPayload: RPCRequestPayload, principal: RpcPrincipal) => {
+  const requestPermission = (address: Address, fullPayload: RPCRequestPayload, principal: LocalApiSource) => {
     const { _origin: originId, ...payload } = fullPayload
     const permissionCheckId = `${address}:${originId}`
     const activeCheck = activePermissionChecks.get(permissionCheckId)
@@ -169,7 +169,7 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
     return result
   }
 
-  const isTrusted = async (payload: RPCRequestPayload, principal: RpcPrincipal) => {
+  const hasAccountAccessGrant = async (payload: RPCRequestPayload, principal: LocalApiSource) => {
     const originName = dependencies.store.getOrigin(payload._origin)?.name ?? 'Unknown'
     const currentAccount = dependencies.accounts.current()
     const permission = currentAccount
@@ -206,7 +206,7 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
     )
   }
 
-  return { isKnownExtension, isTrusted, parseFrameExtension, updateOrigin }
+  return { isKnownExtension, hasAccountAccessGrant, parseFrameExtension, updateOrigin }
 }
 
 export const parseOrigin = parseOriginName
@@ -251,7 +251,7 @@ export function createProductionOriginsService(
     store: productionStore,
     accounts,
     requests,
-    hasInternalStateCapability: (principal) => hasPrincipalCapability(principal, 'wallet:internal-state'),
+    hasInternalStateCapability: (principal) => hasSourceCapability(principal, 'wallet:internal-state'),
     development: () => process.env.NODE_ENV === 'development'
   })
 }

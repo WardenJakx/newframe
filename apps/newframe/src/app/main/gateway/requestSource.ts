@@ -1,18 +1,28 @@
 import { randomUUID } from 'node:crypto'
 
 import type {
+  AccountRequest,
+  RequestAuthorization,
+  RequestType
+} from '../../../features/requests/contract/requests.js'
+import type {
   AuthorizationContext,
   RendererEntrypoint,
   RendererRole
 } from '../../../platform/ipc/main/authorization.js'
-import type { AccountRequest, RequestAuthorization, RequestType } from '../../requests/contract/requests.js'
 
-const trustedPrincipalBrand = Symbol('newframe.trusted-principal')
+const requestSourceBrand = Symbol('newframe.request-source')
+const admittedSources = new WeakSet<object>()
+function admit<T extends object>(source: T): Readonly<T> {
+  admittedSources.add(source)
+  return Object.freeze(source)
+}
 
-type PrincipalBrand = { readonly [trustedPrincipalBrand]: true }
+type RequestSourceBrand = { readonly [requestSourceBrand]: true }
 
-export type RendererPrincipal = PrincipalBrand & {
+export type NewframeInternalSource = RequestSourceBrand & {
   readonly kind: 'renderer'
+  readonly participant: 'newframe-internal'
   readonly role: RendererRole
   readonly entrypoint: RendererEntrypoint
   readonly webContentsId: number
@@ -21,31 +31,43 @@ export type RendererPrincipal = PrincipalBrand & {
 
 export type TrustedCapability = 'wallet:internal-state'
 
-export type RpcPrincipal = PrincipalBrand & {
+export type LocalApiSource = RequestSourceBrand & {
   readonly kind: 'rpc'
+  readonly participant: 'local-api-client' | 'website' | 'companion-extension'
+  readonly websiteOrigin?: string
   readonly transport: 'http' | 'websocket'
   readonly connectionId: string
   readonly origin: string
   readonly capabilities: readonly TrustedCapability[]
 }
 
-export type AgentPrincipal = PrincipalBrand & {
-  readonly kind: 'agent'
+export type AiSessionAuthority = {
   readonly sessionId: string
   readonly accountId: string
   readonly expiresAt: number
   readonly isActive: () => boolean
 }
 
-export type MainPrincipal = PrincipalBrand & {
+export type AiSessionClientSource = RequestSourceBrand & {
+  readonly kind: 'agent'
+  readonly participant: 'local-api-client'
+  readonly aiSession: AiSessionAuthority
+}
+
+export type MainProcessSource = RequestSourceBrand & {
   readonly kind: 'main'
+  readonly participant: 'main-process'
   readonly component: string
   readonly capabilities: readonly TrustedCapability[]
 }
 
-export type TrustedPrincipal = RendererPrincipal | RpcPrincipal | AgentPrincipal | MainPrincipal
+export type RequestSource =
+  | NewframeInternalSource
+  | LocalApiSource
+  | AiSessionClientSource
+  | MainProcessSource
 
-type WalletAction = {
+type GatewayOperationIntent = {
   readonly id: string
   readonly requestType: RequestType
   readonly account: string
@@ -53,7 +75,7 @@ type WalletAction = {
   readonly principal: RequestAuthorization['principal']
 }
 
-export type ActionDecision =
+export type GatewayOperationDecision =
   | { readonly outcome: 'reject'; readonly reason: string }
   | { readonly outcome: 'prompt'; readonly authorization: RequestAuthorization }
   | { readonly outcome: 'autonomous'; readonly authorization: RequestAuthorization }
@@ -73,15 +95,11 @@ const requestTypes = new Set<RequestType>([
   'addToken'
 ])
 
-function hasTrustedBrand(value: unknown): value is TrustedPrincipal {
-  return Boolean(
-    value &&
-    typeof value === 'object' &&
-    (value as Record<PropertyKey, unknown>)[trustedPrincipalBrand] === true
-  )
+export function isRequestSource(value: unknown): value is RequestSource {
+  return typeof value === 'object' && value !== null && admittedSources.has(value)
 }
 
-function summarizePrincipal(principal: TrustedPrincipal): RequestAuthorization['principal'] {
+function summarizeRequestSource(principal: RequestSource): RequestAuthorization['principal'] {
   if (principal.kind === 'renderer') {
     return {
       kind: 'renderer',
@@ -104,19 +122,20 @@ function summarizePrincipal(principal: TrustedPrincipal): RequestAuthorization['
   if (principal.kind === 'agent') {
     return {
       kind: 'agent',
-      sessionId: principal.sessionId,
-      accountId: principal.accountId,
-      expiresAt: principal.expiresAt
+      sessionId: principal.aiSession.sessionId,
+      accountId: principal.aiSession.accountId,
+      expiresAt: principal.aiSession.expiresAt
     }
   }
 
   return { kind: 'main', component: principal.component }
 }
 
-export function createRendererPrincipal(context: AuthorizationContext): RendererPrincipal {
-  return Object.freeze({
-    [trustedPrincipalBrand]: true as const,
+export function createNewframeInternalSource(context: AuthorizationContext): NewframeInternalSource {
+  return admit({
+    [requestSourceBrand]: true as const,
     kind: 'renderer' as const,
+    participant: 'newframe-internal' as const,
     role: context.clientType,
     entrypoint: context.entrypoint,
     webContentsId: context.webContentsId,
@@ -124,71 +143,76 @@ export function createRendererPrincipal(context: AuthorizationContext): Renderer
   })
 }
 
-export function createRpcPrincipal(input: {
-  transport: RpcPrincipal['transport']
+export function createLocalApiSource(input: {
+  participant?: LocalApiSource['participant']
+  websiteOrigin?: string
+  transport: LocalApiSource['transport']
   connectionId: string
   origin: string
   capabilities?: readonly TrustedCapability[]
-}): RpcPrincipal {
-  return Object.freeze({
-    [trustedPrincipalBrand]: true as const,
+}): LocalApiSource {
+  return admit({
+    [requestSourceBrand]: true as const,
     kind: 'rpc' as const,
+    participant: input.participant ?? 'local-api-client',
+    ...(input.websiteOrigin ? { websiteOrigin: input.websiteOrigin } : {}),
     transport: input.transport,
     connectionId: input.connectionId,
     origin: input.origin,
-    capabilities: Object.freeze([...(input.capabilities ?? [])])
+    capabilities: Object.freeze(input.participant === 'website' ? [] : [...(input.capabilities ?? [])])
   })
 }
 
-export function createAgentPrincipal(input: {
-  sessionId: string
-  accountId: string
-  expiresAt: number
-  isActive: () => boolean
-}): AgentPrincipal {
-  return Object.freeze({
-    [trustedPrincipalBrand]: true as const,
+export function createAiSessionClientSource(input: AiSessionAuthority): AiSessionClientSource {
+  return admit({
+    [requestSourceBrand]: true as const,
     kind: 'agent' as const,
-    sessionId: input.sessionId,
-    accountId: input.accountId.toLowerCase(),
-    expiresAt: input.expiresAt,
-    isActive: input.isActive
+    participant: 'local-api-client' as const,
+    aiSession: Object.freeze({ ...input, accountId: input.accountId.toLowerCase() })
   })
 }
 
-export function isAgentPrincipalActive(principal: unknown): principal is AgentPrincipal {
-  if (!hasTrustedBrand(principal) || principal.kind !== 'agent' || principal.expiresAt <= Date.now()) {
+export function isAiSessionActive(principal: unknown): principal is AiSessionClientSource {
+  if (
+    !isRequestSource(principal) ||
+    principal.kind !== 'agent' ||
+    principal.aiSession.expiresAt <= Date.now()
+  ) {
     return false
   }
 
   try {
-    return principal.isActive()
+    return principal.aiSession.isActive()
   } catch {
     return false
   }
 }
 
-export function hasPrincipalCapability(principal: unknown, capability: TrustedCapability) {
+export function hasSourceCapability(principal: unknown, capability: TrustedCapability) {
   return (
-    hasTrustedBrand(principal) &&
-    (principal.kind === 'rpc' || principal.kind === 'main') &&
+    isRequestSource(principal) &&
+    (principal.kind === 'main' || (principal.kind === 'rpc' && principal.participant !== 'website')) &&
     principal.capabilities.includes(capability)
   )
 }
 
-export function createMainPrincipal(
+export function createMainProcessSource(
   component: string,
   capabilities: readonly TrustedCapability[] = []
-): MainPrincipal {
-  return Object.freeze({
-    [trustedPrincipalBrand]: true as const,
+): MainProcessSource {
+  return admit({
+    [requestSourceBrand]: true as const,
     kind: 'main' as const,
+    participant: 'main-process' as const,
     component,
     capabilities: Object.freeze([...capabilities])
   })
 }
 
-function buildAction(principal: TrustedPrincipal, request: AccountRequest): WalletAction | undefined {
+function buildOperationIntent(
+  principal: RequestSource,
+  request: AccountRequest
+): GatewayOperationIntent | undefined {
   if (!requestTypes.has(request.type) || !request.account || !request.handlerId || !request.payload.method) {
     return
   }
@@ -198,11 +222,11 @@ function buildAction(principal: TrustedPrincipal, request: AccountRequest): Wall
     requestType: request.type,
     account: request.account.toLowerCase(),
     method: request.payload.method,
-    principal: summarizePrincipal(principal)
+    principal: summarizeRequestSource(principal)
   })
 }
 
-function principalMayRequest(principal: TrustedPrincipal, requestType: RequestType) {
+function sourceMayRequest(principal: RequestSource, requestType: RequestType) {
   if (principal.kind === 'agent') {
     return signingRequestTypes.has(requestType)
   }
@@ -224,27 +248,30 @@ function principalMayRequest(principal: TrustedPrincipal, requestType: RequestTy
  * Ordinary trusted sources require a prompt. A live agent session can act autonomously only for
  * signing requests scoped to its approved account.
  */
-export function decideWalletAction(principal: unknown, request: AccountRequest): ActionDecision {
-  if (!hasTrustedBrand(principal)) {
+export function authorizeGatewayOperation(
+  principal: unknown,
+  request: AccountRequest
+): GatewayOperationDecision {
+  if (!isRequestSource(principal)) {
     return { outcome: 'reject', reason: 'Untrusted request source' }
   }
 
-  const action = buildAction(principal, request)
+  const action = buildOperationIntent(principal, request)
   if (!action) {
     return { outcome: 'reject', reason: 'Malformed wallet action' }
   }
-  if (!principalMayRequest(principal, request.type)) {
+  if (!sourceMayRequest(principal, request.type)) {
     return { outcome: 'reject', reason: 'Request source is not allowed to perform this action' }
   }
 
   if (principal.kind === 'agent') {
-    if (principal.expiresAt <= Date.now()) {
+    if (principal.aiSession.expiresAt <= Date.now()) {
       return { outcome: 'reject', reason: 'Agent session expired' }
     }
-    if (!isAgentPrincipalActive(principal)) {
+    if (!isAiSessionActive(principal)) {
       return { outcome: 'reject', reason: 'Agent session is revoked or unavailable' }
     }
-    if (action.account !== principal.accountId) {
+    if (action.account !== principal.aiSession.accountId) {
       return { outcome: 'reject', reason: 'Agent session is not authorized for this account' }
     }
 

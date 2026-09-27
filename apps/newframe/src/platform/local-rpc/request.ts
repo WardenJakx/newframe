@@ -1,23 +1,18 @@
 import { isHexString } from '@ethereumjs/util'
 
 import {
-  createRpcPrincipal,
-  type RpcPrincipal,
-  type TrustedPrincipal
-} from '../../features/access-control/main/authority.js'
+  createLocalApiSource,
+  type LocalApiSource,
+  type RequestSource
+} from '../../app/main/gateway/requestSource.js'
 import type { OriginsService } from '../../features/connections/main/origins.js'
-import protectedMethods from './protectedMethods.js'
 
 export interface RpcProviderSendPort {
   send(
     payload: RPCRequestPayload,
     respond?: (response: RPCResponsePayload) => void,
-    principal?: TrustedPrincipal
+    principal?: RequestSource
   ): void | Promise<void>
-}
-
-interface RpcAccountsPort {
-  getSelectedAddresses(): string[]
 }
 
 interface OriginSessionStorePort {
@@ -79,6 +74,7 @@ export type RpcResponseReason =
   | 'internal-error'
 
 interface RpcRequestContext {
+  source: LocalApiSource
   payload: RPCRequestPayload
   chainId: string
   respond(response: RPCResponsePayload, reason?: RpcResponseReason): void
@@ -88,7 +84,7 @@ export interface RpcRequestDescription {
   rawPayload: JSONRPCRequestPayload
   origin: string
   chainHint?: string
-  identity: Parameters<typeof createRpcPrincipal>[0]
+  identity: Parameters<typeof createLocalApiSource>[0]
   updateOrigin?: {
     connectionMessage?: boolean
     faviconSource?: string
@@ -112,11 +108,9 @@ export interface RpcRequestHandler {
 
 export function createRpcRequestHandler({
   provider,
-  accounts,
   origins
 }: {
   provider: RpcProviderSendPort
-  accounts: RpcAccountsPort
   origins: OriginsService
 }): RpcRequestHandler {
   return async (request) => {
@@ -142,7 +136,7 @@ export function createRpcRequestHandler({
         connectionMessage,
         faviconSource
       )
-      const principal: RpcPrincipal = createRpcPrincipal(request.identity)
+      const principal: LocalApiSource = createLocalApiSource(request.identity)
 
       if (request.session.refresh === 'before-validation') {
         request.session.monitor.extend(payload._origin)
@@ -171,31 +165,10 @@ export function createRpcRequestHandler({
         await request.postValidationInterceptor?.({
           payload,
           chainId,
+          source: principal,
           respond: (response, reason = 'provider') => respond(response, reason)
         })
       ) {
-        return
-      }
-
-      if (protectedMethods.includes(payload.method) && !(await origins.isTrusted(payload, principal))) {
-        if (payload.method === 'eth_accounts') {
-          respond({ id: payload.id, jsonrpc: payload.jsonrpc, result: [] }, 'unauthorized-accounts')
-          return
-        }
-
-        respond(
-          {
-            id: payload.id,
-            jsonrpc: payload.jsonrpc,
-            error: {
-              message: accounts.getSelectedAddresses()[0]
-                ? `Permission denied, approve ${request.origin} in Newframe to continue`
-                : 'No Newframe account selected',
-              code: 4001
-            }
-          },
-          'permission-denied'
-        )
         return
       }
 

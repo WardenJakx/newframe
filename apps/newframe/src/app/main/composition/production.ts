@@ -1,6 +1,5 @@
 import log from 'electron-log'
 
-import { createRendererPrincipal } from '../../../features/access-control/main/authority.js'
 import {
   createAccountOnboardingService,
   type AccountOnboardingPorts,
@@ -36,7 +35,7 @@ import {
   type ImageService,
   type ImageServiceAdapters
 } from '../../../features/asset-data/main/images/index.js'
-import { Provider } from '../../../features/connections/main/provider/index.js'
+import { createProductionOriginsService } from '../../../features/connections/main/origins.js'
 import {
   createProviderRequestAdapter,
   createRequestApprovalAdapter,
@@ -100,11 +99,7 @@ import {
   createRendererAuthorizationRegistry,
   type RendererAuthorizationRegistry
 } from '../../../platform/ipc/main/authorization.js'
-import {
-  createOperationDispatcher,
-  type IpcMainHandlerPort,
-  type OperationServices
-} from '../../../platform/ipc/main/operations.js'
+import { createOperationDispatcher, type IpcMainHandlerPort } from '../../../platform/ipc/main/operations.js'
 import { createStateStream } from '../../../platform/ipc/main/stateStream.js'
 import { createOperationService } from '../../../platform/operations/service.js'
 import type { PersistenceLifecycle } from '../../../platform/persistence/ports.js'
@@ -112,6 +107,9 @@ import { createSafeClient, safeServiceNetworks } from '../../../platform/safe/cl
 import { createSafeSimulationRpc } from '../../../platform/safe/simulation.js'
 import type store from '../../../platform/state-store/index.js'
 import { projectRendererState } from '../../../platform/state-sync/main/projections.js'
+import { createMainProcessSource } from '../gateway/requestSource.js'
+import type { OperationServices } from '../ipc-handlers/renderer.js'
+import { RpcIpcHandlers } from '../ipc-handlers/rpc.js'
 import {
   createPlatformService,
   type PlatformService,
@@ -123,7 +121,7 @@ export interface ProductionMainAppDependencies {
   ipc: IpcMainHandlerPort
   store: typeof store
   persistence: PersistenceLifecycle
-  provider: Provider
+  provider: RpcIpcHandlers
   accounts: Accounts
   flashService: FlashService
   chains: Chains
@@ -165,6 +163,7 @@ export interface ProductionCapabilityAdapters {
   portfolio: PortfolioServiceAdapters
   security: Omit<SecurityServicePorts, 'operations' | 'store'> & { dispose?(): void }
   accountOnboarding: Pick<AccountOnboardingPorts, 'hardware' | 'keystore' | 'secrets' | 'signers'> & {
+    protectedOperations: { exportSecret(address: string): Promise<{ type: string; value: string }> }
     dispose(): void
   }
   network: Pick<NetworkServicePorts, 'rpcMatchesChain'> & {
@@ -180,9 +179,12 @@ function createProductionProvider(
   proxy: ProviderProxyConnection,
   reveal: RevealService,
   requests: RequestService,
-  safeTransactions: SafeTransactionPort
+  safeTransactions: SafeTransactionPort,
+  exportSecret: NonNullable<import('../ipc-handlers/rpc.js').RpcIpcHandlerDependencies['exportSecret']>
 ) {
-  return new Provider({
+  return new RpcIpcHandlers({
+    exportSecret,
+    origins: createProductionOriginsService(store, accounts, requests),
     accounts,
     chains,
     lookupChainIcon,
@@ -267,9 +269,10 @@ export function createProductionCapabilities(
     proxy,
     reveal,
     requestService,
-    safeTransactions
+    safeTransactions,
+    (address) => adapters.accountOnboarding.protectedOperations.exportSecret(address)
   )
-  const requestApprovals = createRequestApprovalAdapter(provider)
+  const requestApprovals = createRequestApprovalAdapter(provider.protectedOperations)
   const resolveName = (name: string) => nameResolution.resolveAddress(name)
   const accountSelection = createAccountSelectionAdapter(accounts, provider)
   const assetRateService = createAssetRateService({
@@ -293,7 +296,10 @@ export function createProductionCapabilities(
     store
   })
   const accountOnboardingService = createAccountOnboardingService({
-    ...adapters.accountOnboarding,
+    hardware: adapters.accountOnboarding.hardware,
+    keystore: adapters.accountOnboarding.keystore,
+    secrets: adapters.accountOnboarding.secrets,
+    signers: adapters.accountOnboarding.signers,
     accounts: {
       add: (address, name, signer) => {
         accounts
@@ -341,7 +347,12 @@ export function createProductionCapabilities(
     client: safeClient,
     transactions: {
       accounts,
-      provider: createNamedAccountTransactionAdapter(provider),
+      provider: createNamedAccountTransactionAdapter({
+        prepareAccountTransaction: provider.prepareAccountTransaction.bind(provider),
+        executeAccountTransaction: provider.protectedOperations.executeAccountTransaction.bind(
+          provider.protectedOperations
+        )
+      }),
       submitted: (result) => requestService.notifySafeTransactionSubmitted(result)
     },
     simulate: (input, signal, observeConfiguration) =>
@@ -475,7 +486,7 @@ export function createProductionCapabilities(
 }
 
 function createProductionOperationServices(
-  provider: Provider,
+  provider: RpcIpcHandlers,
   accounts: Accounts,
   nameResolution: NameResolutionService,
   agentService: AgentService,
@@ -511,13 +522,13 @@ function createProductionOperationServices(
     requests: requestService,
     security: securityService,
     accountOnboarding: accountOnboardingService,
+    protectedOperations: provider.protectedOperations,
     send: sendService,
     trade: tradeService,
     settings: settingsService,
     tokens: tokenService,
     safes: safeService,
     authorizeRenderer: (event) => rendererAuthorization.authorizeRenderer(event),
-    createRendererPrincipal,
     requestTokenImage: (tokenId) => imageService.requestTokenImage(tokenId),
     resolveName: (name) => nameResolution.resolveAddress(name)
   }
@@ -590,6 +601,7 @@ export function createProductionMainApp({
   const app = createMainApp({ ipc, operationDispatcher, stateStream })
   const simulationProjection = createTransactionSimulationProjection(store)
   let disconnectCapabilities: Array<() => void> = []
+  const simulationSource = createMainProcessSource('transaction-simulation')
   const accountChainRpc: AccountChainRpcPort = {
     send: (payload, respond, principal) => provider.send(payload, respond, principal),
     sendAsync: (payload, callback) => provider.sendAsync(payload, callback),
@@ -622,7 +634,14 @@ export function createProductionMainApp({
         disconnectCapabilities.push(
           accountCapabilities.simulation.connect({
             simulateTransactionEffects: (request) =>
-              simulateTransactionEffects(request, provider, simulationProjection)
+              simulateTransactionEffects(
+                request,
+                {
+                  send: (payload, respond) => provider.send(payload, respond, simulationSource),
+                  sendAsync: (payload, callback) => provider.sendAsync(payload, callback)
+                },
+                simulationProjection
+              )
           })
         )
         provider.start()
