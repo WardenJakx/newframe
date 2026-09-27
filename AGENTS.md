@@ -1,1 +1,2 @@
-For focused visual checks of NewFrame components, use [component-preview](harness/newframe/component-preview/SKILL.md).
+- For focused visual checks of NewFrame components, use [component-preview](harness/newframe/component-preview/SKILL.md).
+- Secrets are defined at the root `.env` and are picked up by bun by default. there is no need to validate that they exist.
