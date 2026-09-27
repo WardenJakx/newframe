@@ -196,7 +196,7 @@ function decodeEmbeddedImage(target: string) {
   return imageFromBytes(bytes, declared, sourceUrl)
 }
 
-async function fetchRemoteImage(target: string, signal: AbortSignal) {
+export async function fetchRemoteResource(target: string, signal: AbortSignal) {
   let currentUrl = await validateRemoteImageUrl(target)
   for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects++) {
     const response = await electronNet.fetch(currentUrl, { signal, redirect: 'manual' })
@@ -219,7 +219,7 @@ async function download(target: string): Promise<TokenImage> {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT)
   try {
-    const response = await fetchRemoteImage(target, controller.signal)
+    const response = await fetchRemoteResource(target, controller.signal)
     if (!response.ok) {
       throw new Error(`Image fetch failed with ${response.status}`)
     }

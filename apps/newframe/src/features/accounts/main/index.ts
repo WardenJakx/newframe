@@ -181,6 +181,7 @@ export interface AccountsDependencies {
   reveal: RevealService
   runtime: AccountsRuntime
   createDataScanner: (store: CanonicalStoreReader) => DataScanner
+  registerTokens?: (tokens: Token[], options: { account: string; source: 'transaction' }) => void
   requests: PromptedRequestLifecyclePort
 }
 
@@ -565,7 +566,12 @@ export class Accounts extends EventEmitter {
     })
     const newTokens = tokens.filter((token) => !savedTokenIndex.has(toTokenId(token)))
     if (newTokens.length > 0) {
-      this.store.getState().upsertTokens(newTokens, { account: address, source: 'transaction' })
+      const options = { account: address, source: 'transaction' as const }
+      if (this.dependencies.registerTokens) {
+        this.dependencies.registerTokens(newTokens, options)
+      } else {
+        this.store.getState().upsertTokens(newTokens, options)
+      }
     }
 
     return tokens

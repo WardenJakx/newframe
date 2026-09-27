@@ -14,7 +14,10 @@ export interface DataScanner {
   refreshPositions: (address: Address, chainId: number, tokens: Token[]) => void
 }
 
-export default function createExternalDataScanner(canonicalStore: CanonicalStoreReader): DataScanner {
+export default function createExternalDataScanner(
+  canonicalStore: CanonicalStoreReader,
+  registerTokens?: Parameters<typeof Balances>[1]
+): DataScanner {
   const storeApi = {
     getActiveAddress: () => canonicalStore.getState().main.currentAccount || '',
     getAccount: (address: Address) =>
@@ -39,7 +42,7 @@ export default function createExternalDataScanner(canonicalStore: CanonicalStore
     const { locked, vaultExists } = canonicalStore.getState().main.appLock
     return vaultExists && !locked
   }
-  const balances = Balances(canonicalStore)
+  const balances = Balances(canonicalStore, registerTokens)
 
   let connectedChains: number[] = [],
     activeAccount: Address = ''

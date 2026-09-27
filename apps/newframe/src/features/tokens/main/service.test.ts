@@ -8,6 +8,35 @@ const address = '0x1111111111111111111111111111111111111111'
 const owner = { clientType: 'wallet-ui' as const, windowInstanceId: 'tray-test' }
 
 describe('token mutation service', () => {
+  it('registers discovered assets without a prompt and refreshes their contract metadata', async () => {
+    const store = createTestStore()
+    const operations = createOperationService({ store: store.store, clock: { now: () => 1 } })
+    const lookup = mock(async () => ({
+      decimals: 6,
+      name: 'Onchain token',
+      symbol: 'CHAIN',
+      totalSupply: '1000'
+    }))
+    const service = createTokenService({ lookup, operations, store: store.store })
+    const discovered = { address, chainId: 1, decimals: 18, name: 'Token', symbol: 'TKN' }
+
+    service.register([discovered], { account: '0xACCOUNT', source: 'transaction' })
+    expect(store.getState().main.tokens.byId[`1:${address}`]).toMatchObject({
+      name: 'Token',
+      custom: false,
+      sources: ['transaction']
+    })
+    await Promise.resolve()
+    expect(store.getState().main.tokens.byId[`1:${address}`]).toMatchObject({
+      name: 'Onchain token',
+      symbol: 'CHAIN',
+      decimals: 6
+    })
+    expect(store.getState().main.tokens.accountTokenIds['0xaccount']).toContain(`1:${address}`)
+    service.register([discovered], { account: '0xACCOUNT', source: 'transaction' })
+    expect(lookup).toHaveBeenCalledTimes(1)
+  })
+
   it('preserves custom upsert semantics and records safe add completion while removal uses canonical truth', async () => {
     const store = createTestStore()
     const operations = createOperationService({ store: store.store, clock: { now: () => 1 } })

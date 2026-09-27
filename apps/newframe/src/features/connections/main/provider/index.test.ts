@@ -16,7 +16,7 @@ import { randomUUID } from 'node:crypto'
 import { addHexPrefix, intToHex } from '@ethereumjs/util'
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import log from 'electron-log'
-import { Wallet, getBytes, parseUnits, toBeHex } from 'ethers'
+import { Wallet, getAddress, getBytes, parseUnits, toBeHex } from 'ethers'
 import { validate as validateUUID } from 'uuid'
 
 import {
@@ -159,6 +159,16 @@ let accountRequestHook:
   | ((request: AccountRequest, respond?: (response: RPCResponsePayload) => void) => void)
   | undefined
 const lookupChainIcon = mock(async (_chainId: number) => '')
+const watchAssetMetadata = mock(
+  async (tokenAddress: string, chainId: number, _type: string, options: Record<string, unknown>) => ({
+    address: tokenAddress,
+    chainId,
+    name: String(options.name),
+    symbol: String(options.symbol),
+    decimals: Number(options.decimals),
+    logoURI: typeof options.image === 'string' ? options.image : ''
+  })
+)
 const safeTxHash = `0x${'a'.repeat(64)}`
 const prepareSafeDraft = mock(
   (_input: Parameters<SafeTransactionPort['prepareDraft']>[0]) =>
@@ -393,6 +403,7 @@ beforeAll(async () => {
       resolveEntityType: mock(async () => 'unknown' as const)
     },
     requests: requestContinuations,
+    watchAssetMetadata,
     safeTransactions: {
       prepareDraft: prepareSafeDraft,
       attach: attachSafeDraft
@@ -433,6 +444,7 @@ beforeEach(() => {
   accountRequestHook = undefined
   lookupChainIcon.mockReset()
   lookupChainIcon.mockImplementation(async () => '')
+  watchAssetMetadata.mockClear()
   prepareSafeDraft.mockClear()
   attachSafeDraft.mockClear()
   decodeTransactionCalldata.mockReset()
@@ -814,7 +826,7 @@ describe('#send', () => {
         params: {
           type: 'ERC20',
           options: {
-            address: '0xbfa641051ba0a0ad1b0acf549a89536a0d76472e',
+            address: getAddress('0xbfa641051ba0a0ad1b0acf549a89536a0d76472e'),
             symbol: 'BADGER',
             name: 'BadgerDAO Token',
             decimals: 18,
@@ -825,7 +837,13 @@ describe('#send', () => {
     })
 
     it('adds a request for a custom token', async () => {
-      await send(request)
+      let responded = false
+      accountRequestHook = () => expect(responded).toBe(true)
+      await send(request, (response) => {
+        expect(response.result).toBe(true)
+        responded = true
+      })
+      expect(responded).toBe(true)
       expect(accountRequests).toHaveLength(1)
       expect(validateUUID(accountRequests[0].handlerId)).toBe(true)
       expect(accountRequests[0]).toEqual(
@@ -845,13 +863,28 @@ describe('#send', () => {
       )
     })
 
+    it('uses the requested chain and supports ERC-1046 token suggestions', async () => {
+      setNetwork(5, { id: 5, on: true })
+      request.params.type = 'ERC1046'
+      Object.assign(request.params.options, { chainId: 5 })
+
+      expect((await sendResult(request)).result).toBe(true)
+      expect(watchAssetMetadata).toHaveBeenCalledWith(
+        request.params.options.address?.toLowerCase(),
+        5,
+        'ERC1046',
+        request.params.options
+      )
+      expect(accountRequests[0]).toMatchObject({ type: 'addToken', token: { chainId: 5 } })
+    })
+
     it('does not add a request for a token that is already added', async () => {
       store.setState((state) => {
         const token = request.params.options
         if (!token.address) {
           throw new Error('Expected token address')
         }
-        state.main.tokens.byId[`1:${token.address}`] = {
+        state.main.tokens.byId[`1:${token.address.toLowerCase()}`] = {
           address: token.address,
           chainId: 1,
           decimals: token.decimals,
@@ -888,16 +921,18 @@ describe('#send', () => {
         request.params.type = type
         const error = responseError(await sendResult(request))
         expect(error.code).toBe(-1)
-        expect(error.message).toContain('only ERC-20 tokens are supported')
+        expect(error.message).toContain('only ERC-20 and ERC-1046 tokens are supported')
         expect(accountRequests).toHaveLength(0)
       })
     })
 
-    it('rejects a request with no token address', async () => {
+    it('rejects a request with no valid checksummed token address', async () => {
       delete request.params.options.address
-      const error = responseError(await sendResult(request))
-      expect(error.code).toBe(-1)
-      expect(error.message).toMatch('tokens must define an address')
+      expect(responseError(await sendResult(request)).message).toContain('valid address')
+      request.params.options.address = '0x1234'
+      expect(responseError(await sendResult(request)).message).toContain('valid address')
+      request.params.options.address = '0xbfa641051ba0a0ad1b0acf549a89536a0d76472e'
+      expect(responseError(await sendResult(request)).message).toContain('checksummed')
       expect(accountRequests).toHaveLength(0)
     })
   })
