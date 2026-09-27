@@ -3,11 +3,11 @@ import log from 'electron-log'
 import { getAddress, isAddress } from 'ethers'
 
 import { getProfileAccountIds } from '../../../app/contracts/state/main.js'
+import type { RpcIpcHandlers } from '../../../app/main/ipc-handlers/rpc.js'
 import type { Erc20ProviderPort, TokenData } from '../../../platform/chain-rpc/contracts/erc20.js'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
 import type { Token } from '../../../platform/state-store/state/index.js'
 import { persistedImageSource } from '../../asset-data/domain/image/index.js'
-import type { Provider } from '../../connections/main/provider/index.js'
 import type { TransactionRequest } from '../../requests/contract/requests.js'
 import { NATIVE_CURRENCY } from '../../tokens/domain/constants.js'
 import { tokenImageSource } from '../../tokens/domain/index.js'
@@ -60,7 +60,7 @@ interface TokenMetadata extends TokenData {
   logoURI?: string
 }
 
-type TransactionSimulationProviderPort = Pick<Provider, 'send'> & Erc20ProviderPort
+type TransactionSimulationProviderPort = Pick<RpcIpcHandlers, 'send'> & Erc20ProviderPort
 
 export interface TransactionSimulationProjection {
   getNativeCurrency(chainId: number): NativeCurrencyLike

@@ -4,6 +4,7 @@ import type {
   NetworkRequestResolveCommand,
   TransactionReplaceCommand
 } from '../../../app/contracts/operations.js'
+import type { RequestSource } from '../../../app/main/gateway/requestSource.js'
 import {
   findUnavailableSigners,
   isHardwareSigner,
@@ -13,7 +14,6 @@ import type { SigningUiContext } from '../../../platform/signing/signers/Signer/
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
 import type { Chain } from '../../../platform/state-store/state/index.js'
 import { toBigInt } from '../../../shared/domain/units.js'
-import type { TrustedPrincipal } from '../../access-control/main/authority.js'
 import type { Accounts } from '../../accounts/main/index.js'
 import type { SafeMessageApprovalResult } from '../../accounts/main/safeMessage.js'
 import type { SafeTransactionPort } from '../../accounts/main/safeTransactionPort.js'
@@ -912,7 +912,7 @@ export function createRequestService(ports: RequestServicePorts) {
       return true
     },
 
-    async replaceTransaction(command: TransactionReplaceCommand, principal: TrustedPrincipal) {
+    async replaceTransaction(command: TransactionReplaceCommand, principal: RequestSource) {
       if (locate(command.requestId)?.request.type !== 'transaction') {
         return false
       }

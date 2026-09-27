@@ -1,11 +1,11 @@
 import { expect, it, mock } from 'bun:test'
 import EventEmitter from 'events'
 
+import { RpcIpcHandlers } from '../../../../app/main/ipc-handlers/rpc'
 import createCanonicalStore from '../../../../platform/state-store/createCanonicalStore'
 import type { Chains } from '../../../networks/main'
 import type { AccountRequestPort } from './accountRequestPort'
 import { createProxyProvider } from './frameProvider'
-import { Provider } from './index'
 import { createProviderProxyConnection } from './proxy'
 import { createProviderStatePort } from './statePort'
 
@@ -49,7 +49,7 @@ function createProviderFixture(chainId?: number, start = false, proxy = new Even
     })
   }
   const requests = createRequestContinuations()
-  const provider = new Provider({
+  const provider = new RpcIpcHandlers({
     accounts: {} as AccountRequestPort,
     chains: connection,
     proxy: proxy as never,

@@ -277,7 +277,7 @@ export const FlashQuoteResultSchema = z.discriminatedUnion('ok', [
 
 export type FlashQuoteResult = z.infer<typeof FlashQuoteResultSchema>
 
-export const QueryBoundaryFailureSchema = z.strictObject({
+const QueryBoundaryFailureSchema = z.strictObject({
   ok: z.literal(false),
   error: z.enum(['invalid_query', 'unauthorized']),
   message: ErrorMessageSchema.optional()

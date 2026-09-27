@@ -330,3 +330,19 @@ test('allows intended process dependencies and boundary owners', () => {
     allows(checkDependencyDirection, file, source)
   }
 })
+
+test('keeps source issuance, gateway policy, and signer effects in their owners', () => {
+  rejects(checkSource, mainService, 'createLocalApiSource({})', 'request sources must be issued')
+  rejects(checkSource, mainService, 'signer.signTransaction(tx)', 'protected operations service')
+  rejects(
+    checkSource,
+    'apps/newframe/src/platform/local-rpc/http.ts',
+    'origins.hasAccountAccessGrant(payload, source)',
+    'pass operation policy'
+  )
+  allows(
+    checkSource,
+    'apps/newframe/src/app/main/protected-operations/signing.ts',
+    'signer.signTransaction(tx)'
+  )
+})

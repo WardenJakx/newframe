@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 
 import log from 'electron-log'
 
+import { rpcMethodPolicy } from '../../app/main/gateway/rpcPolicy.js'
 import { isAgentHttpRequest } from '../../features/agent-access/main/index.js'
 import { parseOrigin, parseRequestChainId } from '../../features/connections/main/origins.js'
 import { HttpJsonRpcRequestSchema, type HttpJsonRpcRequest } from './protocol.js'
@@ -191,7 +192,8 @@ export function createHttpRpcTransport({
         session: { monitor: sessionMonitor, refresh: 'before-validation' },
         acceptsProviderResponse: () => !res.writableEnded,
         writeResponse,
-        postValidationInterceptor: ({ payload }) => {
+        postValidationInterceptor: (context) => {
+          const { payload } = context
           if (payload.method !== 'eth_pollSubscriptions') {
             return false
           }
@@ -199,6 +201,15 @@ export function createHttpRpcTransport({
           if (typeof id !== 'string') {
             res.writeHead(401, { 'Content-Type': 'application/json' })
             res.end(JSON.stringify({ error: 'Invalid Client ID' }))
+            return true
+          }
+
+          if (!rpcMethodPolicy(payload.method)?.params.safeParse(payload.params).success) {
+            context.respond({
+              id: payload.id,
+              jsonrpc: payload.jsonrpc,
+              error: { code: -32602, message: 'Invalid method parameters' }
+            })
             return true
           }
 

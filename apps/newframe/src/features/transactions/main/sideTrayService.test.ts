@@ -4,7 +4,7 @@ const currentAccount = mock()
 const providerSend = mock()
 const initOrigin = mock()
 
-import { createRendererPrincipal } from '../../access-control/main/authority'
+import { createNewframeInternalSource } from '../../../app/main/gateway/requestSource'
 import { createSideTrayTransactionService } from './sideTrayService'
 
 let service: ReturnType<typeof createSideTrayTransactionService>
@@ -12,7 +12,7 @@ let chainAvailable = true
 
 const address = '0x1111111111111111111111111111111111111111'
 const target = '0x2222222222222222222222222222222222222222'
-const principal = createRendererPrincipal({
+const principal = createNewframeInternalSource({
   clientType: 'sidetray',
   entrypoint: 'sidetray',
   webContentsId: 1,

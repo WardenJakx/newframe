@@ -66,11 +66,11 @@ afterEach(() => {
 
 describe('critical coverage manifest integrity', () => {
   it('fails each stale or LCOV-omitted pattern independently', async () => {
-    const lcovPath = temporaryFile('lcov.info', lcov(['src/features/access-control/main/authority.ts']))
+    const lcovPath = temporaryFile('lcov.info', lcov(['src/app/main/gateway/requestSource.ts']))
     const manifestPath = temporaryFile(
       'manifest.json',
       manifest([
-        'src/features/access-control/main/authority.ts',
+        'src/app/main/gateway/requestSource.ts',
         'src/platform/secrets/vault.ts',
         'src/features/access-control/main/deleted-risk.ts'
       ])
@@ -109,20 +109,20 @@ describe('critical coverage manifest integrity', () => {
     const lcovPath = temporaryFile(
       'lcov.info',
       lcov([
-        { name: 'src/features/access-control/main/authority.ts', lineHits: 0 },
+        { name: 'src/app/main/gateway/requestSource.ts', lineHits: 0 },
         { name: 'src/platform/secrets/vault.ts', measurable: false }
       ])
     )
     const manifestPath = temporaryFile(
       'manifest.json',
-      manifest(['src/features/access-control/main/authority.ts', 'src/platform/secrets/vault.ts'])
+      manifest(['src/app/main/gateway/requestSource.ts', 'src/platform/secrets/vault.ts'])
     )
 
     const result = await runChecker(lcovPath, manifestPath)
 
     expect(result.exitCode).toBe(1)
     expect(result.stderr).toContain(
-      'pattern "src/features/access-control/main/authority.ts" matched "src/features/access-control/main/authority.ts", but LCOV reports zero executed lines'
+      'pattern "src/app/main/gateway/requestSource.ts" matched "src/app/main/gateway/requestSource.ts", but LCOV reports zero executed lines'
     )
     expect(result.stderr).toContain(
       'pattern "src/platform/secrets/vault.ts" matched "src/platform/secrets/vault.ts", but LCOV contains no measurable lines or functions'
@@ -133,13 +133,13 @@ describe('critical coverage manifest integrity', () => {
     const lcovPath = temporaryFile(
       'lcov.info',
       [
-        'SF:src/features/access-control/main/authority.ts\nFN:1,covered\nFNDA:1,covered\nFNF:1\nFNH:1\nDA:1,1\nend_of_record\n',
-        'SF:src/features/access-control/main/authority.ts\nFN:1,covered\nFNDA:1,covered\nFNF:1\nFNH:1\nDA:1,1\nDA:999,0\nend_of_record\n'
+        'SF:src/app/main/gateway/requestSource.ts\nFN:1,covered\nFNDA:1,covered\nFNF:1\nFNH:1\nDA:1,1\nend_of_record\n',
+        'SF:src/app/main/gateway/requestSource.ts\nFN:1,covered\nFNDA:1,covered\nFNF:1\nFNH:1\nDA:1,1\nDA:999,0\nend_of_record\n'
       ].join('')
     )
     const manifestPath = temporaryFile(
       'manifest.json',
-      manifestWithMinimum(['src/features/access-control/main/authority.ts'], {
+      manifestWithMinimum(['src/app/main/gateway/requestSource.ts'], {
         lines: 100,
         functions: 100
       })
@@ -151,7 +151,7 @@ describe('critical coverage manifest integrity', () => {
   })
 
   it('accepts a manifest only when every declared pattern exists and appears in LCOV', async () => {
-    const sources = ['src/features/access-control/main/authority.ts', 'src/platform/secrets/vault.ts']
+    const sources = ['src/app/main/gateway/requestSource.ts', 'src/platform/secrets/vault.ts']
     const lcovPath = temporaryFile('lcov.info', lcov(sources))
     const manifestPath = temporaryFile('manifest.json', manifest(sources))
 

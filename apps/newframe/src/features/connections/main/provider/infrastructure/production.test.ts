@@ -1,6 +1,6 @@
 import { describe, expect, it, mock } from 'bun:test'
 
-import { createRendererPrincipal } from '../../../../access-control/main/authority'
+import { createNewframeInternalSource } from '../../../../../app/main/gateway/requestSource'
 import { GasFeesSource } from '../../../../transactions/domain'
 import {
   createNamedAccountTransactionAdapter,
@@ -8,7 +8,7 @@ import {
   createRequestApprovalAdapter
 } from './production'
 
-const principal = createRendererPrincipal({
+const principal = createNewframeInternalSource({
   clientType: 'sidetray',
   entrypoint: 'sidetray',
   webContentsId: 1,

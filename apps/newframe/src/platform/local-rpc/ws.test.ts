@@ -79,7 +79,9 @@ it('adapts a WebSocket message to the shared request contract', async () => {
       transport: 'websocket',
       connectionId: 'socket-connection',
       origin: 'app.example',
-      capabilities: ['wallet:internal-state']
+      participant: 'website',
+      websiteOrigin: 'https://app.example',
+      capabilities: []
     },
     updateOrigin: {
       connectionMessage: true,

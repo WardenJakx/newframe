@@ -2,12 +2,13 @@ import { expect, it, mock } from 'bun:test'
 
 import { CommandResultSchema } from '../../src/app/contracts/operations'
 import { DEFAULT_PROFILE_ID } from '../../src/app/contracts/state/main'
+import type { OperationServices } from '../../src/app/main/ipc-handlers/renderer'
 import type { AccountRequest, TransactionRequest } from '../../src/features/requests/contract/requests'
 import { createRequestService } from '../../src/features/requests/main/service'
 import { createRequestRendererCapabilities } from '../../src/features/requests/renderer/requestCapabilities'
 import { createTokenService } from '../../src/features/tokens/main/service'
 import { GasFeesSource } from '../../src/features/transactions/domain'
-import { createOperationDispatcher, type OperationServices } from '../../src/platform/ipc/main/operations'
+import { createOperationDispatcher } from '../../src/platform/ipc/main/operations'
 import { createOperationService } from '../../src/platform/operations/service'
 import createInitialState from '../../src/platform/state-store/state'
 import { projectRendererState } from '../../src/platform/state-sync/main/projections'
@@ -178,6 +179,7 @@ it('acknowledges a real command and projects its completion only to the owning w
   const tokens = createTokenService({ lookup: async () => undefined, operations, store: store.store })
   const services = {
     accounts: { current: () => null, get: () => undefined },
+    protectedOperations: { exportPrivateKey: async () => undefined },
     airgap: {} as OperationServices['airgap'],
     safes: {} as OperationServices['safes'],
     accountMutations: {} as OperationServices['accountMutations'],
@@ -195,7 +197,6 @@ it('acknowledges a real command and projects its completion only to the owning w
     trade: {} as OperationServices['trade'],
     tokens,
     authorizeRenderer: () => ({ ...owner, webContentsId: 1 }),
-    createRendererPrincipal: (() => undefined) as never,
     requestTokenImage: () => undefined,
     resolveName: async () => ''
   } satisfies OperationServices

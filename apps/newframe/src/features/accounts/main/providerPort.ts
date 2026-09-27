@@ -1,8 +1,8 @@
-import type { TrustedPrincipal } from '../../access-control/main/authority.js'
+import type { RequestSource } from '../../../app/main/gateway/requestSource.js'
 import type { TransactionData } from '../../transactions/domain/index.js'
 
 export interface AccountChainRpcPort {
-  send(payload: RPCRequestPayload, respond: RPCRequestCallback, principal?: TrustedPrincipal): unknown
+  send(payload: RPCRequestPayload, respond: RPCRequestCallback, principal?: RequestSource): unknown
   sendAsync(payload: RPCRequestPayload, callback: Callback<RPCResponsePayload>): unknown
   getL1GasCost(transaction: TransactionData): Promise<bigint>
   on(event: string | symbol, listener: (...args: never[]) => void): unknown

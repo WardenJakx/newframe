@@ -20,12 +20,12 @@ import {
   DEFAULT_PROFILE_ID,
   type ActivityRecord
 } from '../../../app/contracts/state/main'
-import store from '../../../platform/state-store'
 import {
-  createAgentPrincipal,
-  createRpcPrincipal,
-  type TrustedPrincipal
-} from '../../access-control/main/authority'
+  createAiSessionClientSource,
+  createLocalApiSource,
+  type RequestSource
+} from '../../../app/main/gateway/requestSource'
+import store from '../../../platform/state-store'
 import {
   RequestMode,
   RequestStatus,
@@ -312,7 +312,7 @@ afterEach(() => {
 
 describe('#routeRequest', () => {
   it('attaches a prompt decision from the trusted transport before queueing', () => {
-    const principal = createRpcPrincipal({
+    const principal = createLocalApiSource({
       transport: 'http',
       connectionId: 'accounts-test',
       origin: 'app.example'
@@ -347,7 +347,7 @@ describe('#routeRequest', () => {
     }
 
     expect(
-      Accounts.routeRequest(forgedPrincipal as unknown as TrustedPrincipal, {
+      Accounts.routeRequest(forgedPrincipal as unknown as RequestSource, {
         ...request,
         account: account.address
       })
@@ -362,7 +362,7 @@ describe('#routeRequest', () => {
 
   it('executes an authorized agent action without adding it to the prompt queue', () => {
     const execute = mock()
-    const principal = createAgentPrincipal({
+    const principal = createAiSessionClientSource({
       sessionId: 'agent-session',
       accountId: account.address,
       expiresAt: Date.now() + 60_000,
@@ -380,7 +380,7 @@ describe('#routeRequest', () => {
   it('fails closed when an autonomous action has no executor', () => {
     const respond = mock()
     requestLifecycle.create(respond, request.handlerId)
-    const principal = createAgentPrincipal({
+    const principal = createAiSessionClientSource({
       sessionId: 'agent-session',
       accountId: account.address,
       expiresAt: Date.now() + 60_000,

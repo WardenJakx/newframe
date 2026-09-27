@@ -1,16 +1,18 @@
+import type { RequestSource } from '../../../../../app/main/gateway/requestSource.js'
+import type { RpcIpcHandlers } from '../../../../../app/main/ipc-handlers/rpc.js'
+import type { ProtectedOperationsService } from '../../../../../app/main/protected-operations/service.js'
 import { createOneResultCallbackBoundary } from '../../../../../platform/callbacks/oneResult.js'
 import type { SigningUiContext } from '../../../../../platform/signing/signers/Signer/index.js'
-import type { TrustedPrincipal } from '../../../../access-control/main/authority.js'
 import type {
   AccountRequest,
   SignTypedDataRequest,
   TransactionRequest
 } from '../../../../requests/contract/requests.js'
 import type { SideTrayTransactionPorts } from '../../../../transactions/main/sideTrayService.js'
-import type { Provider } from '../index.js'
 
 export function createNamedAccountTransactionAdapter(
-  provider: Pick<Provider, 'prepareAccountTransaction' | 'executeAccountTransaction'>
+  provider: Pick<RpcIpcHandlers, 'prepareAccountTransaction'> &
+    Pick<ProtectedOperationsService, 'executeAccountTransaction'>
 ) {
   return {
     prepare: provider.prepareAccountTransaction.bind(provider),
@@ -19,12 +21,12 @@ export function createNamedAccountTransactionAdapter(
 }
 
 export function createProviderRequestAdapter(
-  provider: Pick<Provider, 'send'>
+  provider: Pick<RpcIpcHandlers, 'send'>
 ): SideTrayTransactionPorts['provider'] & { dispose(): void } {
   const callbacks = createOneResultCallbackBoundary()
   return {
     dispose: () => callbacks.dispose(),
-    request(payload: RPCRequestPayload, principal: TrustedPrincipal, context) {
+    request(payload: RPCRequestPayload, principal: RequestSource, context) {
       return callbacks.run<RPCResponsePayload>((done) => {
         Promise.resolve(provider.send(payload, (response) => done(null, response), principal, context)).catch(
           done
@@ -35,7 +37,10 @@ export function createProviderRequestAdapter(
 }
 
 export function createRequestApprovalAdapter(
-  provider: Pick<Provider, 'approveSign' | 'approveSignTypedData' | 'approveTransactionRequest'>
+  provider: Pick<
+    ProtectedOperationsService,
+    'approveSign' | 'approveSignTypedData' | 'approveTransactionRequest'
+  >
 ) {
   const callbacks = createOneResultCallbackBoundary()
   const run = <TRequest extends AccountRequest>(

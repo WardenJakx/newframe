@@ -13,6 +13,7 @@ const memoryStorage = { getItem: () => null, setItem: () => undefined, removeIte
 function createAdapters(): ProductionCapabilityAdapters {
   return {
     accountOnboarding: {
+      protectedOperations: { exportSecret: async () => ({ type: 'privateKey', value: 'test' }) },
       dispose: mock(),
       hardware: {} as never,
       keystore: {} as never,

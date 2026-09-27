@@ -4,6 +4,7 @@ import log from 'electron-log'
 import { v4 as uuid } from 'uuid'
 import type WebSocket from 'ws'
 
+import { createExtensionGateway } from '../../app/main/gateway/extension.js'
 import { embeddedImageSource } from '../../features/asset-data/domain/image/index.js'
 import {
   parseOrigin,
@@ -111,6 +112,7 @@ export function createWebSocketRpcTransport({
   timers = systemTimers,
   createConnectionId = uuid
 }: WebSocketRpcTransportDependencies): WebSocketRpcTransport {
+  const extensionGateway = createExtensionGateway(windows)
   const subs: Record<string, Subscription> = {}
   const sessionMonitor = createOriginSessionMonitor({ store, timers })
   const socketDisposers = new Map<FrameWebSocket, () => void>()
@@ -201,6 +203,13 @@ export function createWebSocketRpcTransport({
         }
 
         const origin = parseOrigin(requestOrigin)
+        let participant: 'website' | 'companion-extension' | 'local-api-client' = 'local-api-client'
+        if (socket.frameExtension) {
+          participant = 'companion-extension'
+        }
+        if (proxiedExtensionRequest) {
+          participant = 'website'
+        }
 
         if (logTraffic(origin)) {
           log.info(
@@ -216,9 +225,12 @@ export function createWebSocketRpcTransport({
           chainHint: parseRequestChainId(req),
           identity: {
             transport: 'websocket',
+            participant,
+            ...(proxiedExtensionRequest ? { websiteOrigin: requestOrigin } : {}),
             connectionId: socket.id,
             origin,
-            capabilities: socket.companionInternal ? ['wallet:internal-state'] : []
+            capabilities:
+              socket.companionInternal && !proxiedExtensionRequest ? ['wallet:internal-state'] : []
           },
           updateOrigin: {
             connectionMessage: rawPayload.__extensionConnecting,
@@ -230,27 +242,7 @@ export function createWebSocketRpcTransport({
           },
           acceptsProviderResponse: () => true,
           writeResponse: (response) => respond(response),
-          postValidationInterceptor: (context) => {
-            const { chainId } = context
-            if (!socket.frameExtension || proxiedExtensionRequest) {
-              return false
-            }
-            if (rawPayload.method === 'frame_summon' && socket.companionInternal) {
-              windows.toggleTray()
-              return true
-            }
-
-            const { id, jsonrpc } = rawPayload
-            if (rawPayload.method === 'eth_chainId' || requestExtensionConnection) {
-              context.respond({ id, jsonrpc, result: chainId })
-              return true
-            }
-            if (rawPayload.method === 'net_version') {
-              context.respond({ id, jsonrpc, result: parseInt(chainId, 16) })
-              return true
-            }
-            return false
-          },
+          postValidationInterceptor: extensionGateway,
           observeProviderResponse: (response, payload) => {
             if (logTraffic(origin)) {
               log.info(

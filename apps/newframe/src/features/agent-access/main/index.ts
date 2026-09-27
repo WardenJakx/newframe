@@ -3,10 +3,10 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import log from 'electron-log'
 import { z } from 'zod'
 
+import { createAiSessionClientSource, createLocalApiSource } from '../../../app/main/gateway/requestSource.js'
+import type { RpcIpcHandlers } from '../../../app/main/ipc-handlers/rpc.js'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
-import { createAgentPrincipal, createRpcPrincipal } from '../../access-control/main/authority.js'
 import type { Accounts } from '../../accounts/main/index.js'
-import type { Provider } from '../../connections/main/provider/index.js'
 import type { AgentAccessRequest } from '../../requests/contract/requests.js'
 import type { PromptedRequestContinuationPort } from '../../requests/main/service.js'
 import type { FlashService } from '../../transactions/trade/main/index.js'
@@ -19,13 +19,6 @@ const CONNECTION_TIMEOUT_MS = 2 * 60 * 1_000
 const MAX_PENDING_CONNECTIONS = 8
 const MAX_BODY_BYTES = 64 * 1_024
 const AGENT_ORIGIN = 'newframe-agent'
-const AGENT_RPC_METHODS = new Set([
-  'eth_sendTransaction',
-  'personal_sign',
-  'eth_signTypedData',
-  'eth_signTypedData_v3',
-  'eth_signTypedData_v4'
-])
 
 const DescriptorSchema = z.strictObject({
   name: z.string().trim().min(1).max(128),
@@ -130,7 +123,7 @@ function authenticate(req: IncomingMessage, accounts: Accounts, runtime: AgentRu
 
   return {
     session,
-    principal: createAgentPrincipal({
+    principal: createAiSessionClientSource({
       sessionId: session.sessionId,
       accountId: session.accountId,
       expiresAt: session.expiresAt,
@@ -239,7 +232,7 @@ async function connect(
     }
   )
 
-  const principal = createRpcPrincipal({
+  const principal = createLocalApiSource({
     transport: 'http',
     connectionId: handlerId,
     origin: AGENT_ORIGIN
@@ -252,10 +245,7 @@ async function connect(
   }
 }
 
-type AgentProviderPort = Pick<
-  Provider,
-  'sendAgentPersonalSign' | 'sendAgentTransaction' | 'sendAgentTypedData'
->
+type AgentProviderPort = Pick<RpcIpcHandlers, 'send'>
 
 async function rpc(
   req: IncomingMessage,
@@ -283,35 +273,20 @@ async function rpc(
     (typeof payload.id !== 'string' && typeof payload.id !== 'number') ||
     !('method' in payload) ||
     typeof payload.method !== 'string' ||
-    !AGENT_RPC_METHODS.has(payload.method) ||
     !('params' in payload) ||
     !Array.isArray(payload.params)
   ) {
     return sendJson(res, 400, {
       jsonrpc: '2.0',
       id: typeof payload === 'object' && payload !== null && 'id' in payload ? payload.id : null,
-      error: { code: -32600, message: 'Invalid or unsupported agent request' }
+      error: { code: -32600, message: 'Invalid agent request' }
     })
   }
 
   const agentPayload = { ...(payload as JSONRPCRequestPayload), _origin: AGENT_ORIGIN }
   const respond: RPCRequestCallback = (response) => sendJson(res, response.error ? 400 : 200, response)
 
-  if (payload.method === 'eth_sendTransaction') {
-    return provider.sendAgentTransaction(
-      agentPayload as RPC.SendTransaction.Request,
-      authenticated.principal,
-      respond
-    )
-  }
-  if (payload.method === 'personal_sign') {
-    return provider.sendAgentPersonalSign(agentPayload, authenticated.principal, respond)
-  }
-  return provider.sendAgentTypedData(
-    agentPayload as RPC.SignTypedData.Request,
-    authenticated.principal,
-    respond
-  )
+  return provider.send(agentPayload, respond, authenticated.principal)
 }
 
 async function revoke(

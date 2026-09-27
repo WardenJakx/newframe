@@ -46,7 +46,6 @@ function harness() {
       remove: mock((signerId: string) => signers.delete(signerId))
     },
     secrets: {
-      exportPrivateKey: mock(async () => ({ type: 'privateKey', value: '0xsecret' })),
       generateSeedPhrase: mock(async () => 'seed phrase')
     }
   }
@@ -122,12 +121,6 @@ it('owns account creation and authorized hardware sessions while keeping all onb
   ])
 
   expect(await service.locateKeystore()).toEqual({ version: 3 })
-  accounts.set(addressA, { address: addressA })
-  expect(await service.exportPrivateKey(addressA)).toBe('0xsecret')
-  expect(await service.exportPrivateKey('missing')).toBeUndefined()
-  expect(
-    (ports.secrets.exportPrivateKey as Mock<typeof ports.secrets.exportPrivateKey>).mock.calls
-  ).toContainEqual([addressA])
   expect(await service.generateSeedPhrase()).toBe('seed phrase')
 
   expect(

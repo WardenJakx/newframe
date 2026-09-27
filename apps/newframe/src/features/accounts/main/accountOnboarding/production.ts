@@ -53,6 +53,7 @@ export function createProductionAccountOnboardingAdapters(
   external: ProductionAccountOnboardingExternal
 ): Pick<AccountOnboardingPorts, 'hardware' | 'keystore' | 'secrets' | 'signers'> & {
   dispose(): void
+  protectedOperations: { exportSecret(address: string): Promise<{ type: string; value: string }> }
 } {
   const callbacks = createOneResultCallbackBoundary()
   return {
@@ -152,9 +153,11 @@ export function createProductionAccountOnboardingAdapters(
         return true
       }
     },
+    protectedOperations: {
+      exportSecret: (address) =>
+        callbacks.run((done) => external.signers.exportAccountPrivateKey(address, done))
+    },
     secrets: {
-      exportPrivateKey: (address) =>
-        callbacks.run((done) => external.signers.exportAccountPrivateKey(address, done)),
       generateSeedPhrase: () => callbacks.run((done) => external.signers.newPhrase(done))
     }
   }

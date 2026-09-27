@@ -1,5 +1,6 @@
 import log from 'electron-log'
 
+import { localApiPort } from '../../../../../platform/local-rpc/endpoint.js'
 import createProvider from '../../../../connections/main/provider/connection.js'
 
 log.transports.console.format = '[scanWorker] {h}:{i}:{s}.{ms} {text}'
@@ -20,7 +21,10 @@ interface ExternalDataWorkerMessage {
 let heartbeat: NodeJS.Timeout
 let balances: BalanceLoader
 
-const eth = createProvider('http://127.0.0.1:1248', { origin: 'newframe-internal', name: 'scanWorker' })
+const eth = createProvider(`http://127.0.0.1:${localApiPort()}`, {
+  origin: 'newframe-internal',
+  name: 'scanWorker'
+})
 
 eth.on('connect', () => {
   balances = balancesLoader(eth)

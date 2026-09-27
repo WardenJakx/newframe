@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'bun:test'
 
-import type { AccountRequest, RequestType } from '../../requests/contract/requests'
+import type { AccountRequest, RequestType } from '../../../features/requests/contract/requests'
 import {
-  createMainPrincipal,
-  createAgentPrincipal,
-  createRendererPrincipal,
-  createRpcPrincipal,
-  decideWalletAction,
-  hasPrincipalCapability
-} from './authority'
+  createMainProcessSource,
+  createAiSessionClientSource,
+  createNewframeInternalSource,
+  createLocalApiSource,
+  authorizeGatewayOperation,
+  hasSourceCapability
+} from './requestSource'
 
 function request(type: RequestType = 'transaction'): AccountRequest {
   return {
@@ -35,21 +35,21 @@ describe('wallet action authority', () => {
       windowInstanceId: 'forged'
     }
 
-    expect(decideWalletAction(forgedRenderer, request())).toEqual({
+    expect(authorizeGatewayOperation(forgedRenderer, request())).toEqual({
       outcome: 'reject',
       reason: 'Untrusted request source'
     })
   })
 
   it('records renderer identity from the trusted principal rather than request fields', () => {
-    const principal = createRendererPrincipal({
+    const principal = createNewframeInternalSource({
       clientType: 'sidetray',
       entrypoint: 'sidetray',
       webContentsId: 42,
       windowInstanceId: 'window-42'
     })
 
-    const decision = decideWalletAction(principal, request())
+    const decision = authorizeGatewayOperation(principal, request())
 
     expect(decision).toMatchObject({
       outcome: 'prompt',
@@ -77,13 +77,13 @@ describe('wallet action authority', () => {
   })
 
   it('keeps RPC origin as transport metadata and still requires a prompt', () => {
-    const principal = createRpcPrincipal({
+    const principal = createLocalApiSource({
       transport: 'websocket',
       connectionId: 'socket-1',
       origin: 'app.example'
     })
 
-    expect(decideWalletAction(principal, request())).toMatchObject({
+    expect(authorizeGatewayOperation(principal, request())).toMatchObject({
       outcome: 'prompt',
       authorization: {
         decision: 'prompt',
@@ -98,7 +98,7 @@ describe('wallet action authority', () => {
   })
 
   it('accepts internal capabilities only from a branded transport principal', () => {
-    const principal = createRpcPrincipal({
+    const principal = createLocalApiSource({
       transport: 'websocket',
       connectionId: 'companion-1',
       origin: 'newframe-extension',
@@ -112,20 +112,20 @@ describe('wallet action authority', () => {
       capabilities: ['wallet:internal-state']
     }
 
-    expect(hasPrincipalCapability(principal, 'wallet:internal-state')).toBe(true)
-    expect(hasPrincipalCapability(forged, 'wallet:internal-state')).toBe(false)
+    expect(hasSourceCapability(principal, 'wallet:internal-state')).toBe(true)
+    expect(hasSourceCapability(forged, 'wallet:internal-state')).toBe(false)
     expect(Object.isFrozen(principal.capabilities)).toBe(true)
   })
 
   it('rejects action types that are outside a renderer role', () => {
-    const principal = createRendererPrincipal({
+    const principal = createNewframeInternalSource({
       clientType: 'sidetray',
       entrypoint: 'sidetray',
       webContentsId: 1,
       windowInstanceId: 'side-tray'
     })
 
-    expect(decideWalletAction(principal, request('access'))).toEqual({
+    expect(authorizeGatewayOperation(principal, request('access'))).toEqual({
       outcome: 'reject',
       reason: 'Request source is not allowed to perform this action'
     })
@@ -133,25 +133,25 @@ describe('wallet action authority', () => {
 
   it('keeps main and ordinary RPC actions on the prompt path', () => {
     const principals = [
-      createMainPrincipal('test'),
-      createRpcPrincipal({ transport: 'http', connectionId: 'http-1', origin: 'app.example' })
+      createMainProcessSource('test'),
+      createLocalApiSource({ transport: 'http', connectionId: 'http-1', origin: 'app.example' })
     ]
 
     for (const principal of principals) {
-      expect(decideWalletAction(principal, request()).outcome).toBe('prompt')
+      expect(authorizeGatewayOperation(principal, request()).outcome).toBe('prompt')
     }
   })
 
   it('allows a valid agent principal to act autonomously only for its session account', () => {
     let active = true
-    const principal = createAgentPrincipal({
+    const principal = createAiSessionClientSource({
       sessionId: 'session-1',
       accountId: '0x1111111111111111111111111111111111111111',
       expiresAt: Date.now() + 60_000,
       isActive: () => active
     })
 
-    expect(decideWalletAction(principal, request())).toMatchObject({
+    expect(authorizeGatewayOperation(principal, request())).toMatchObject({
       outcome: 'autonomous',
       authorization: {
         decision: 'autonomous',
@@ -162,36 +162,36 @@ describe('wallet action authority', () => {
         }
       }
     })
-    expect(decideWalletAction(principal, request('sign')).outcome).toBe('autonomous')
-    expect(decideWalletAction(principal, request('signTypedData')).outcome).toBe('autonomous')
+    expect(authorizeGatewayOperation(principal, request('sign')).outcome).toBe('autonomous')
+    expect(authorizeGatewayOperation(principal, request('signTypedData')).outcome).toBe('autonomous')
 
     expect(
-      decideWalletAction(principal, {
+      authorizeGatewayOperation(principal, {
         ...request(),
         account: '0x2222222222222222222222222222222222222222'
       })
     ).toEqual({ outcome: 'reject', reason: 'Agent session is not authorized for this account' })
 
     active = false
-    expect(decideWalletAction(principal, request())).toEqual({
+    expect(authorizeGatewayOperation(principal, request())).toEqual({
       outcome: 'reject',
       reason: 'Agent session is revoked or unavailable'
     })
   })
 
   it('rejects expired agent principals and agent connection-management actions', () => {
-    const principal = createAgentPrincipal({
+    const principal = createAiSessionClientSource({
       sessionId: 'expired',
       accountId: '0x1111111111111111111111111111111111111111',
       expiresAt: Date.now() - 1,
       isActive: () => true
     })
 
-    expect(decideWalletAction(principal, request())).toEqual({
+    expect(authorizeGatewayOperation(principal, request())).toEqual({
       outcome: 'reject',
       reason: 'Agent session expired'
     })
-    expect(decideWalletAction(principal, request('agentAccess'))).toEqual({
+    expect(authorizeGatewayOperation(principal, request('agentAccess'))).toEqual({
       outcome: 'reject',
       reason: 'Request source is not allowed to perform this action'
     })
@@ -199,7 +199,7 @@ describe('wallet action authority', () => {
 
   it('rejects malformed actions before they reach an account queue', () => {
     const malformed = { ...request(), account: '' }
-    expect(decideWalletAction(createMainPrincipal('test'), malformed)).toEqual({
+    expect(authorizeGatewayOperation(createMainProcessSource('test'), malformed)).toEqual({
       outcome: 'reject',
       reason: 'Malformed wallet action'
     })

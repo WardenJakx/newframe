@@ -1,8 +1,8 @@
 import { v5 as uuidv5 } from 'uuid'
 
 import type { TypedDataV4 } from '../../../app/contracts/operations.js'
+import type { RequestSource } from '../../../app/main/gateway/requestSource.js'
 import type { TokenData } from '../../../platform/chain-rpc/contracts/erc20.js'
-import type { TrustedPrincipal } from '../../access-control/main/authority.js'
 
 const internalOriginName = 'newframe-internal'
 const internalOriginId = uuidv5(internalOriginName, uuidv5.DNS)
@@ -18,7 +18,7 @@ export interface SideTrayTransactionPorts {
   provider: {
     request(
       payload: RPCRequestPayload,
-      principal: TrustedPrincipal,
+      principal: RequestSource,
       context?: { tokenData?: TokenData }
     ): Promise<RPCResponsePayload>
   }
@@ -79,7 +79,7 @@ export function createSideTrayTransactionService(ports: SideTrayTransactionPorts
         tokenData?: TokenData
         transaction: { to: string; data?: string; value?: string }
       },
-      principal: TrustedPrincipal
+      principal: RequestSource
     ) {
       const from = currentAccountAddress()
       if (!from) {
@@ -120,7 +120,7 @@ export function createSideTrayTransactionService(ports: SideTrayTransactionPorts
 
     async signCurrentAccountTypedData(
       command: { chainId: number; typedData: TypedDataV4 },
-      principal: TrustedPrincipal
+      principal: RequestSource
     ) {
       const from = currentAccountAddress()
       if (!from) {
@@ -155,10 +155,7 @@ export function createSideTrayTransactionService(ports: SideTrayTransactionPorts
       return { ok: true, signature: response.result } as const
     },
 
-    async signCurrentAccountMessage(
-      command: { chainId: number; message: string },
-      principal: TrustedPrincipal
-    ) {
+    async signCurrentAccountMessage(command: { chainId: number; message: string }, principal: RequestSource) {
       const from = currentAccountAddress()
       if (!from) {
         return { ok: false, error: 'no_current_account' } as const

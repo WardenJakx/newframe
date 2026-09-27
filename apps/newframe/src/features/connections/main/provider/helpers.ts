@@ -3,7 +3,7 @@ import { recoverPersonalSignature } from '@metamask/eth-sig-util'
 import log from 'electron-log'
 import { isHexString } from 'ethers'
 
-import protectedMethods from '../../../../platform/local-rpc/protectedMethods.js'
+import { accountAccessMethods } from '../../../../app/main/gateway/rpcPolicy.js'
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
 import { getAddress } from '../../../../shared/domain/address.js'
 import type { TransactionRequest } from '../../../requests/contract/requests.js'
@@ -158,7 +158,7 @@ export function getSignedAddress(signed: string, message: string, cb: Callback<s
 export function getPermissions(payload: JSONRPCRequestPayload, res: RPCRequestCallback) {
   const now = new Date().getTime()
   const toPermission = permission.bind(null, now)
-  const allowedOperations = protectedMethods.map(toPermission)
+  const allowedOperations = accountAccessMethods.map(toPermission)
 
   res({ id: payload.id, jsonrpc: '2.0', result: allowedOperations })
 }
