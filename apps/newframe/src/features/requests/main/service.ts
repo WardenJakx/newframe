@@ -864,6 +864,17 @@ export function createRequestService(ports: RequestServicePorts) {
       if (!chain) {
         return false
       }
+      const requestParams = request ? JSON.stringify(request.payload.params) : ''
+      const duplicates =
+        request && located
+          ? Object.values(located.account.requests).filter(
+              (candidate): candidate is AddChainRequest =>
+                candidate?.type === 'addChain' &&
+                candidate.handlerId !== request.handlerId &&
+                candidate.origin === request.origin &&
+                JSON.stringify(candidate.payload.params) === requestParams
+            )
+          : []
 
       if (command.approved) {
         const chainId = Number(chain.id)
@@ -887,9 +898,13 @@ export function createRequestService(ports: RequestServicePorts) {
         }
         if (request) {
           located?.account.resolveRequest(request, null)
+          duplicates.forEach((duplicate) => located?.account.resolveRequest(duplicate, null))
         }
       } else if (request) {
         located?.account.rejectRequest(request, { code: 4001, message: 'User rejected the request' })
+        duplicates.forEach((duplicate) =>
+          located?.account.rejectRequest(duplicate, { code: 4001, message: 'User rejected the request' })
+        )
       }
       if (homeCommand) {
         state.clearHomeCommand(homeCommand.id)

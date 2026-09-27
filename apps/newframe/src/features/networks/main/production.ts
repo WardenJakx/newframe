@@ -1,3 +1,6 @@
+import { persistedImageSource } from '../../asset-data/domain/image/index.js'
+import { downloadImage } from '../../asset-data/main/images/download.js'
+
 const CHAINLIST_CATALOG_URL = 'https://chainlist.org/rpcs.json'
 const CHAINLIST_ICON_BASE_URL = 'https://icons.llamao.fi/icons/chains/'
 const CHAINLIST_TIMEOUT_MS = 3_000
@@ -10,7 +13,10 @@ type ChainlistEntry = {
 
 type ChainlistFetch = (url: string, init: RequestInit) => Promise<Pick<Response, 'json' | 'ok'>>
 
-export function createChainlistIconLookup(fetchCatalog: ChainlistFetch = fetch) {
+export function createChainlistIconLookup(
+  fetchCatalog: ChainlistFetch = fetch,
+  loadImage: typeof downloadImage = downloadImage
+) {
   let catalogRequest: Promise<ChainlistEntry[]> | undefined
 
   const loadCatalog = async () => {
@@ -26,15 +32,24 @@ export function createChainlistIconLookup(fetchCatalog: ChainlistFetch = fetch) 
   }
 
   return async (chainId: number) => {
+    let slug: string
     try {
       catalogRequest ??= loadCatalog()
       const chain = (await catalogRequest).find((entry) => entry.chainId === chainId)
       const chainSlug = typeof chain?.chainSlug === 'string' ? chain.chainSlug.trim() : ''
       const icon = typeof chain?.icon === 'string' ? chain.icon.trim() : ''
-      const slug = chainSlug || icon
-      return slug ? `${CHAINLIST_ICON_BASE_URL}rsz_${encodeURIComponent(slug)}.jpg` : ''
+      slug = chainSlug || icon
     } catch {
       catalogRequest = undefined
+      return ''
+    }
+    if (!slug) {
+      return ''
+    }
+    try {
+      const source = `${CHAINLIST_ICON_BASE_URL}rsz_${encodeURIComponent(slug)}.jpg`
+      return persistedImageSource(await loadImage(source))
+    } catch {
       return ''
     }
   }

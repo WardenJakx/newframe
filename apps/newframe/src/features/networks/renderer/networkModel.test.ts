@@ -20,4 +20,21 @@ describe('createNetworkRows', () => {
 
     expect(rows.map((row) => row.chainId)).toEqual([10, 1])
   })
+
+  it('only marks user-added chains as removable', () => {
+    const rows = createNetworkRows({
+      balances: [],
+      networks: {
+        1: { name: 'Ethereum', on: true },
+        31337: { name: 'Localhost', on: false }
+      },
+      query: '',
+      showTestnets: false
+    })
+
+    expect(rows.map(({ chainId, removable }) => ({ chainId, removable }))).toEqual([
+      { chainId: 1, removable: false },
+      { chainId: 31337, removable: true }
+    ])
+  })
 })
