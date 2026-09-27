@@ -102,3 +102,11 @@ _Avoid_: Wallet action, JSON-RPC method, IPC message
 **Protected gateway operation**:
 A gateway operation involving private information, sensitive effects, or delegated authority that requires source-bound permission, a bounded grant, or fresh human approval. Protected does not mean a new prompt on every call.
 _Avoid_: Always-prompted operation
+
+## Visual checks
+
+**Component preview**:
+An isolated rendering of a Newframe desktop component from a fixture. It supports interaction and screenshots without launching the full app.
+
+**Visual harness**:
+Newframe's end-to-end visual check of the live development desktop app. It exercises user flows and captures screenshots of the resulting UI states.

@@ -1,2 +1,3 @@
-- For focused visual checks of NewFrame components, use [component-preview](harness/newframe/component-preview/SKILL.md).
+- For a component preview, use [component-preview](harness/newframe/component-preview/SKILL.md).
+- For changes that can affect the app, run the visual harness (`bun run visual:harness:newframe`) as part of testing.
 - Secrets are defined at the root `.env` and are picked up by bun by default. there is no need to validate that they exist.
