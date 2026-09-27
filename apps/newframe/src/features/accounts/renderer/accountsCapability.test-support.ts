@@ -58,7 +58,10 @@ export function createAccountsCapabilityFake() {
     })),
     createAccount: acknowledged<Parameters<AccountsCapability['createAccount']>[0]>(),
     discoverSafeNetworks: mock(
-      async (_address: string): Promise<CapabilityResult<AccountsCapability['discoverSafeNetworks']>> => []
+      async (
+        _address: string,
+        _chainId: number
+      ): Promise<CapabilityResult<AccountsCapability['discoverSafeNetworks']>> => []
     ),
     importSigner: acknowledged<Parameters<AccountsCapability['importSigner']>[0]>(),
     startSignerSession: acknowledged<Parameters<AccountsCapability['startSignerSession']>[0]>(),

@@ -496,8 +496,13 @@ it('authorizes Safe commands and delegates owned imports with generic acknowledg
   expect(await dispatcher.dispatchCommand({} as never, command)).toEqual({ ok: true })
   safes.discoverNetworks.mockReturnValue([{ chainId: 1, name: 'Ethereum', supported: true }])
   expect(
-    await dispatcher.dispatchQuery({} as never, { type: 'safe.discover', address: command.address })
+    await dispatcher.dispatchQuery({} as never, {
+      type: 'safe.discover',
+      address: command.address,
+      chainId: 1
+    })
   ).toEqual([{ chainId: 1, name: 'Ethereum', supported: true }])
+  expect(safes.discoverNetworks).toHaveBeenCalledWith(command.address, 1)
   safes.refresh.mockReturnValue(true)
   const refresh = { type: 'account.refresh', accountId: command.address, force: true }
   expect(await dispatcher.dispatchCommand({} as never, refresh)).toEqual({ ok: true })

@@ -610,7 +610,8 @@ const AccountRefreshCommandSchema = z.strictObject({
 export type AccountRefreshCommand = z.infer<typeof AccountRefreshCommandSchema>
 const SafeDiscoverQuerySchema = z.strictObject({
   type: z.literal('safe.discover'),
-  address: AddressSchema
+  address: AddressSchema,
+  chainId: ChainIdSchema.optional()
 })
 const SafeDiscoverResultSchema = z.array(
   z.strictObject({ chainId: ChainIdSchema, name: z.string(), supported: z.boolean() })

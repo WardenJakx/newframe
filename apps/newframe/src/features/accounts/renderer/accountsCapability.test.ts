@@ -133,6 +133,8 @@ it('maps every semantic account query to its exact catalog payload', async () =>
   await capability.getSecurityStatus()
   await capability.locateKeystore()
   await capability.generateSeed()
+  host.executeQuery.mockResolvedValueOnce([] as never)
+  await capability.discoverSafeNetworks(firstAddress, 1)
 
   expect(host.executeQuery.mock.calls).toEqual(
     [
@@ -141,7 +143,8 @@ it('maps every semantic account query to its exact catalog payload', async () =>
       { type: 'address.chain-usage', addresses: [firstAddress, secondAddress] },
       { type: 'security.status' },
       { type: 'keystore.locate' },
-      { type: 'seed.generate' }
+      { type: 'seed.generate' },
+      { type: 'safe.discover', address: firstAddress, chainId: 1 }
     ].map((query) => [query])
   )
 })

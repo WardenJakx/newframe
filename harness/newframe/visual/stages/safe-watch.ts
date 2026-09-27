@@ -37,11 +37,12 @@ export const safeWatchStage: VisualStage = {
       if ((await addressInput.inputValue()) !== safeSeed.safe) {
         runtime.fail('Safe address input did not retain the entered address')
       }
-      // Discovery waits for configured RPCs, whose timeout is 15 seconds.
+      // Each configured chain is checked independently; a matching chain is available as soon as it replies.
       await accounts
         .getByRole('button', { name: 'Import 1 Safe network', exact: true })
         .click({ timeout: 20_000 })
-      await accounts.getByText('Imported · Watch-only', { exact: true }).waitFor()
+      await addressInput.waitFor({ state: 'hidden', timeout: 20_000 })
+      await accounts.getByRole('textbox', { name: 'Search accounts' }).waitFor()
       const imported = await driver.waitForState(
         (state) => Boolean(state.main?.accounts?.[id]?.safe?.[chain]?.pending?.length),
         15_000,
