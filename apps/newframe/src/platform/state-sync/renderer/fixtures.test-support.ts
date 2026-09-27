@@ -4,7 +4,6 @@ const baseProjectionState = {
   accounts: {},
   accountOrder: [],
   activity: {},
-  signatureHistory: [],
   balances: {},
   currentAccount: '',
   operations: {},
@@ -19,6 +18,7 @@ const baseSideTrayState: SideTrayRendererState = baseProjectionState
 
 const baseWalletState: WalletRendererState = {
   ...baseProjectionState,
+  signatureHistory: [],
   appLock: { locked: false, vaultExists: false },
   autoDiscoverTokens: false,
   autohide: false,
