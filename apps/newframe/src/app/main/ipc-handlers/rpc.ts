@@ -4,7 +4,7 @@ import EventEmitter from 'events'
 import { addHexPrefix, intToHex } from '@ethereumjs/util'
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import log from 'electron-log'
-import { isAddress } from 'ethers'
+import { getAddress, isAddress } from 'ethers'
 import { shallow } from 'zustand/shallow'
 
 import packageFile from '../../../../package.json' with { type: 'json' }
@@ -52,6 +52,8 @@ import type {
 import { ApprovalType } from '../../../features/requests/domain/approval.js'
 import type { PromptedRequestContinuationPort } from '../../../features/requests/main/service.js'
 import { toTokenId } from '../../../features/tokens/domain/index.js'
+import type { Token } from '../../../features/tokens/domain/state/token.js'
+import { resolveWatchAsset } from '../../../features/tokens/main/watchAsset.js'
 import type { TransactionData } from '../../../features/transactions/domain/index.js'
 import { normalizeChainId } from '../../../features/transactions/domain/index.js'
 import {
@@ -139,6 +141,12 @@ export interface RpcIpcHandlerDependencies {
   reveal: Pick<RevealService, 'decode' | 'resolveEntityType'>
   requests: PromptedRequestContinuationPort
   safeTransactions?: Pick<SafeTransactionPort, 'prepareDraft' | 'attach'>
+  watchAssetMetadata?: (
+    address: string,
+    chainId: number,
+    type: 'ERC20' | 'ERC1046',
+    options: Record<string, unknown>
+  ) => Promise<Token>
 }
 
 export class RpcIpcHandlers extends EventEmitter {
@@ -166,6 +174,7 @@ export class RpcIpcHandlers extends EventEmitter {
   private readonly reveal: Pick<RevealService, 'decode' | 'resolveEntityType'>
   private readonly requests: PromptedRequestContinuationPort
   private readonly safeTransactions?: Pick<SafeTransactionPort, 'prepareDraft' | 'attach'>
+  private readonly watchAssetMetadata: NonNullable<RpcIpcHandlerDependencies['watchAssetMetadata']>
 
   constructor({
     exportSecret,
@@ -178,7 +187,8 @@ export class RpcIpcHandlers extends EventEmitter {
     store,
     reveal,
     requests,
-    safeTransactions
+    safeTransactions,
+    watchAssetMetadata
   }: RpcIpcHandlerDependencies) {
     super()
     this.protectedOperations = new ProtectedOperationsService(
@@ -203,6 +213,9 @@ export class RpcIpcHandlers extends EventEmitter {
     this.reveal = reveal
     this.requests = requests
     this.safeTransactions = safeTransactions
+    this.watchAssetMetadata =
+      watchAssetMetadata ??
+      ((address, chainId, type, options) => resolveWatchAsset(address, chainId, type, options, this))
     this.getNonce = this.getNonce.bind(this)
   }
 
@@ -1497,71 +1510,93 @@ export class RpcIpcHandlers extends EventEmitter {
     const type = tokenParams?.type
     const tokenData = tokenParams?.options
 
-    if (typeof type !== 'string' || type.toLowerCase() !== 'erc20' || !isRecord(tokenData)) {
-      return resError('only ERC-20 tokens are supported', payload, cb)
+    if ((type !== 'ERC20' && type !== 'ERC1046') || !isRecord(tokenData)) {
+      return resError('only ERC-20 and ERC-1046 tokens are supported', payload, cb)
+    }
+
+    const requestedAddress = tokenData.address
+    if (typeof requestedAddress !== 'string' || !isAddress(requestedAddress)) {
+      return resError('tokens must define a valid address', payload, cb)
+    }
+    if (getAddress(requestedAddress) !== requestedAddress) {
+      return resError('token address must be checksummed', payload, cb)
+    }
+    const requestedChainId = tokenData.chainId ?? targetChain.id
+    if (!Number.isSafeInteger(requestedChainId) || Number(requestedChainId) <= 0) {
+      return resError('invalid token chain ID', payload, cb)
+    }
+    const chainId = Number(requestedChainId)
+    const network = (
+      this.store.getState().main.networks.ethereum as Record<number, { on: boolean } | undefined>
+    )[chainId]
+    if (!network?.on) {
+      return resError('token chain is not connected', payload, cb)
     }
 
     this.getChainId(
       payload,
       (resp: RPCResponsePayload) => {
-        if (resp.error) {
-          return resError(resp.error, payload, cb)
-        }
-
-        const chainId = parseInt(resp.result as string)
-        const address = typeof tokenData.address === 'string' ? tokenData.address.toLowerCase() : ''
-        const symbol = typeof tokenData.symbol === 'string' ? tokenData.symbol.toUpperCase() : ''
-        const decimals = parseInt(
-          typeof tokenData.decimals === 'string' || typeof tokenData.decimals === 'number'
-            ? String(tokenData.decimals)
-            : '1'
-        )
-
-        if (!address) {
-          return resError('tokens must define an address', payload, cb)
-        }
-
-        const res: RPCRequestCallback = (response) => {
-          if (response.error) {
-            return cb(response)
+        void (async () => {
+          if (resp.error) {
+            return resError(resp.error, payload, cb)
           }
+
+          const address = requestedAddress.toLowerCase()
+
+          // don't attempt to add the token if it's already been added
+          const knownToken = (this.store.getState().main.tokens.byId as Record<string, Token | undefined>)[
+            toTokenId({ chainId, address })
+          ]
+          if (knownToken?.custom) {
+            return cb({ id: payload.id, jsonrpc: '2.0', result: true })
+          }
+
+          let token: Token
+          try {
+            token = await this.watchAssetMetadata(address, chainId, type, tokenData)
+          } catch (error) {
+            return resError(
+              error instanceof Error ? error.message : 'Could not load token metadata',
+              payload,
+              cb
+            )
+          }
+
+          token = {
+            ...token,
+            image: knownToken?.image ?? token.image
+          }
+          if (knownToken?.logoURI) {
+            token.logoURI = knownToken.logoURI
+          }
+          const similarToken = Object.values(this.store.getState().main.tokens.byId).find(
+            (known) =>
+              toTokenId(known) !== toTokenId(token) &&
+              (known.symbol.toLowerCase() === token.symbol.toLowerCase() ||
+                known.name.toLowerCase() === token.name.toLowerCase())
+          )
+          const account = this.accounts.current()
+          if (!account) {
+            return resError('no account selected', payload, cb)
+          }
+
+          const handlerId = this.requests.create(() => {})
           cb({ id: payload.id, jsonrpc: '2.0', result: true })
-        }
 
-        // don't attempt to add the token if it's already been added
-        const tokenExists = this.store.getState().main.tokens.byId[toTokenId({ chainId, address })]?.custom
-        if (tokenExists) {
-          return res({ id: payload.id, jsonrpc: '2.0', result: true })
-        }
-
-        let logoURI = ''
-        if (typeof tokenData.image === 'string') {
-          logoURI = tokenData.image
-        } else if (typeof tokenData.logoURI === 'string') {
-          logoURI = tokenData.logoURI
-        }
-
-        const token = {
-          chainId,
-          name: typeof tokenData.name === 'string' ? tokenData.name : capitalize(symbol),
-          address,
-          symbol,
-          decimals,
-          logoURI
-        }
-
-        const handlerId = this.requests.create(res)
-
-        this.accounts.routeRequest(principal, {
-          handlerId,
-          type: 'addToken',
-          token,
-          account: (this.accounts.current() as AccountHandle).id,
-          origin: payload._origin,
-          payload
-        } as AddTokenRequest)
+          this.accounts.routeRequest(principal, {
+            handlerId,
+            type: 'addToken',
+            token,
+            ...(similarToken
+              ? { warning: 'Another token uses this name or symbol. Check the contract address.' }
+              : {}),
+            account: account.id,
+            origin: payload._origin,
+            payload
+          } as AddTokenRequest)
+        })().catch((error: unknown) => log.error('Could not route token suggestion', error))
       },
-      targetChain
+      { type: 'ethereum', id: chainId }
     )
   }
 

@@ -345,6 +345,7 @@ export const WalletRequestSchema = z
     tokenData: z.unknown().optional(),
     chain: z.unknown().optional(),
     token: z.unknown().optional(),
+    warning: z.string().optional(),
     decodedData: z.unknown().optional(),
     chainData: z.unknown().optional(),
     simulation: z.unknown().optional(),

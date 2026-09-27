@@ -6,7 +6,7 @@ import log from 'electron-log'
 import { rpcMethodPolicy } from '../../app/main/gateway/rpcPolicy.js'
 import { isAgentHttpRequest } from '../../features/agent-access/main/index.js'
 import { parseOrigin, parseRequestChainId } from '../../features/connections/main/origins.js'
-import { HttpJsonRpcRequestSchema, type HttpJsonRpcRequest } from './protocol.js'
+import { HttpJsonRpcRequestSchema, MAX_RPC_REQUEST_BYTES, type HttpJsonRpcRequest } from './protocol.js'
 import {
   createOriginSessionMonitor,
   type ApiTimerPort,
@@ -144,6 +144,17 @@ export function createHttpRpcTransport({
     }
 
     const body: Buffer<ArrayBufferLike>[] = []
+    let bodyBytes = 0
+    let tooLarge = false
+    const rejectOversizedRequest = () => {
+      tooLarge = true
+      body.length = 0
+      res.writeHead(413, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ error: 'Request too large' }))
+    }
+    if (Number(req.headers['content-length'] ?? 0) > MAX_RPC_REQUEST_BYTES) {
+      rejectOversizedRequest()
+    }
     const processRequest = async () => {
       res.on('error', (error) => log.error('HTTP response error', error))
       const data = Buffer.concat(body).toString()
@@ -171,6 +182,8 @@ export function createHttpRpcTransport({
         let status = 200
         if (reason === 'internal-error') {
           status = 500
+        } else if (reason === 'rate-limited') {
+          status = 429
         } else if (reason === 'invalid-chain' || reason === 'permission-denied') {
           status = 401
         }
@@ -265,10 +278,23 @@ export function createHttpRpcTransport({
       })
     }
     req
-      .on('data', (chunk: string | Uint8Array) => body.push(Buffer.from(chunk)))
+      .on('data', (chunk: string | Uint8Array) => {
+        if (tooLarge) {
+          return
+        }
+        const bytes = Buffer.from(chunk)
+        bodyBytes += bytes.length
+        if (bodyBytes > MAX_RPC_REQUEST_BYTES) {
+          rejectOversizedRequest()
+          return
+        }
+        body.push(bytes)
+      })
       .on('end', () => {
-        // Request failures are converted to HTTP responses inside processRequest.
-        void processRequest()
+        if (!tooLarge) {
+          // Request failures are converted to HTTP responses inside processRequest.
+          void processRequest()
+        }
       })
       .on('error', (error) => log.error('HTTP request error', error))
   }

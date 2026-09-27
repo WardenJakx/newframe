@@ -12,7 +12,11 @@ import {
   type FrameExtension,
   type OriginsService
 } from '../../features/connections/main/origins.js'
-import { WebSocketJsonRpcRequestSchema, type WebSocketJsonRpcRequest } from './protocol.js'
+import {
+  MAX_RPC_REQUEST_BYTES,
+  WebSocketJsonRpcRequestSchema,
+  type WebSocketJsonRpcRequest
+} from './protocol.js'
 import {
   createOriginSessionMonitor,
   type ApiTimerPort,
@@ -101,6 +105,10 @@ function rawDataText(data: WebSocket.RawData): string {
   return Buffer.from(data).toString('utf8')
 }
 
+function rawDataBytes(data: WebSocket.RawData): number {
+  return Array.isArray(data) ? data.reduce((size, chunk) => size + chunk.length, 0) : data.byteLength
+}
+
 export function createWebSocketRpcTransport({
   provider,
   store,
@@ -162,6 +170,10 @@ export function createWebSocketRpcTransport({
     }
 
     const processMessage = async (data: WebSocket.RawData) => {
+      if (rawDataBytes(data) > MAX_RPC_REQUEST_BYTES) {
+        socket.close(1009, 'Request too large')
+        return
+      }
       const rawPayload: WebSocketJsonRpcRequest | false = validPayload(
         rawDataText(data),
         WebSocketJsonRpcRequestSchema

@@ -9,6 +9,7 @@ import type { RequestService } from '../../../features/requests/main/service.js'
 import type { FlashService } from '../../../features/transactions/trade/main/index.js'
 import { localApiPort } from '../../../platform/local-rpc/endpoint.js'
 import { createHttpRpcTransport } from '../../../platform/local-rpc/http.js'
+import { MAX_RPC_REQUEST_BYTES } from '../../../platform/local-rpc/protocol.js'
 import { createRpcRequestHandler } from '../../../platform/local-rpc/request.js'
 import { createApiServer } from '../../../platform/local-rpc/server.js'
 import {
@@ -44,7 +45,7 @@ export function createProductionApiServer(
     origins,
     requestHandler,
     windows,
-    createServer: (server) => new WebSocketServer({ server }),
+    createServer: (server) => new WebSocketServer({ server, maxPayload: MAX_RPC_REQUEST_BYTES }),
     openReadyState: WebSocket.OPEN
   })
 

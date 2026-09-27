@@ -101,7 +101,15 @@ export type ChainRequestView = RequestViewBase<'addChain' | 'switchChain'> & {
 }
 
 export type AddTokenRequestView = RequestViewBase<'addToken'> & {
-  token: { address: string; chainId: number; decimals: number; name: string; symbol: string }
+  warning?: string
+  token: {
+    address: string
+    chainId: number
+    decimals: number
+    name: string
+    symbol: string
+    image?: { base64: string; mimeType: string }
+  }
 }
 
 type TransactionParamView = {

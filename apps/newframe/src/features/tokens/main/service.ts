@@ -3,6 +3,7 @@ import type { OperationService } from '../../../platform/operations/service.js'
 import type { OperationOwner, OperationReference } from '../../../platform/operations/types.js'
 import type { CanonicalStore } from '../../../platform/state-store/actions.js'
 import { toTokenId } from '../domain/index.js'
+import type { Token, TokenSource } from '../domain/state/token.js'
 
 type TokenState = Pick<CanonicalStore, 'main' | 'removeCustomTokens' | 'upsertTokens'>
 
@@ -31,6 +32,47 @@ export function createTokenService(ports: TokenServicePorts) {
 
   return {
     lookup: (address: string, chainId: number) => ports.lookup(address, chainId),
+
+    register(tokens: Token[], options: { account?: string; source: TokenSource }) {
+      const state = ports.store.getState()
+      const byId = state.main.tokens.byId as Record<string, Token | undefined>
+      const unknown = tokens.filter((token) => !byId[toTokenId(token)])
+      if (options.account) {
+        state.upsertTokens(
+          tokens.map((token) => byId[toTokenId(token)] ?? token),
+          options
+        )
+      } else if (unknown.length) {
+        state.upsertTokens(unknown, options)
+      }
+
+      // Scanned balances already carry metadata from their token definitions.
+      // Transaction effects may only know a symbol, so refresh those onchain.
+      if (options.source === 'transaction') {
+        unknown.forEach((token) => {
+          void ports
+            .lookup(token.address, token.chainId)
+            .then((metadata) => {
+              if (!metadata?.name || !metadata.symbol || !Number.isInteger(metadata.decimals)) {
+                return
+              }
+              const current = (ports.store.getState().main.tokens.byId as Record<string, Token | undefined>)[
+                toTokenId(token)
+              ]
+              if (!current || current.custom) {
+                return
+              }
+              ports.store
+                .getState()
+                .upsertTokens(
+                  [{ ...current, name: metadata.name, symbol: metadata.symbol, decimals: metadata.decimals }],
+                  options
+                )
+            })
+            .catch(() => undefined)
+        })
+      }
+    },
 
     add(command: TokenAddCommand, owner: OperationOwner) {
       const reference: OperationReference = { owner, id: command.operationId, type: command.type }

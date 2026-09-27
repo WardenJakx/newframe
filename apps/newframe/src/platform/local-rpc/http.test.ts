@@ -2,6 +2,7 @@ import { expect, it } from 'bun:test'
 import { EventEmitter } from 'events'
 
 import { createHttpRpcTransport } from './http'
+import { MAX_RPC_REQUEST_BYTES } from './protocol'
 import type { RpcRequestDescription } from './request'
 
 class FakeProvider extends EventEmitter {
@@ -75,4 +76,39 @@ it('adapts an HTTP exchange to the shared request contract', async () => {
     status: 401
   })
   expect(normalized.acceptsProviderResponse()).toBe(false)
+})
+
+it('rejects an oversized HTTP body before dispatch', () => {
+  let dispatched = false
+  const transport = createHttpRpcTransport({
+    provider: new FakeProvider(),
+    store: { endOriginSession: () => undefined },
+    requestHandler: async () => {
+      dispatched = true
+    },
+    handleAgentRequest: async () => undefined
+  })
+  const request = Object.assign(new EventEmitter(), { headers: {}, method: 'POST', url: '/' })
+  const response = Object.assign(new EventEmitter(), {
+    status: 0,
+    writableEnded: false,
+    setHeader: () => undefined,
+    writeHead(status: number) {
+      this.status = status
+      return this
+    },
+    end() {
+      this.writableEnded = true
+      return this
+    }
+  })
+
+  transport.handler(request as never, response as never)
+  request.emit('data', Buffer.alloc(MAX_RPC_REQUEST_BYTES))
+  request.emit('data', Buffer.from('x'))
+  request.emit('end')
+
+  expect(response.status).toBe(413)
+  expect(response.writableEnded).toBe(true)
+  expect(dispatched).toBe(false)
 })

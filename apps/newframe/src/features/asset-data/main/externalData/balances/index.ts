@@ -104,7 +104,10 @@ function selectManualRefreshTokens({
   )
 }
 
-export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
+export default function (
+  store: Pick<StoreApi<CanonicalStore>, 'getState'>,
+  registerTokens?: (tokens: Token[], options: { account: string; source: 'onchain' }) => void
+) {
   const balancesFor = (address: Address) => {
     const balances = store.getState().main.balances as Record<string, Balance[] | undefined>
     return balances[address] ?? []
@@ -534,10 +537,15 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
       const unknownBalances = changedBalances.filter((b) => parseInt(b.balance) > 0 && !isKnown(b))
 
       if (unknownBalances.length > 0) {
-        store.getState().upsertTokens(unknownBalances, {
+        const options = {
           account: address,
-          source: 'onchain'
-        })
+          source: 'onchain' as const
+        }
+        if (registerTokens) {
+          registerTokens(unknownBalances, options)
+        } else {
+          store.getState().upsertTokens(unknownBalances, options)
+        }
       }
 
       // remove zero balances from the list of known tokens

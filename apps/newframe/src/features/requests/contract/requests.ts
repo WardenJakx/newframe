@@ -384,4 +384,5 @@ export interface AddChainRequest extends AccountRequest<'addChain'> {
 
 export interface AddTokenRequest extends AccountRequest<'addToken'> {
   token: Token
+  warning?: string
 }

@@ -257,7 +257,9 @@ export function createProductionCapabilities(
     nameResolution,
     reveal,
     runtime: adapters.accounts,
-    createDataScanner: createExternalDataScanner,
+    createDataScanner: (canonicalStore) =>
+      createExternalDataScanner(canonicalStore, (tokens, options) => tokenService.register(tokens, options)),
+    registerTokens: (tokens, options) => tokenService.register(tokens, options),
     requests: requestService
   })
   const chains = new Chains(store)

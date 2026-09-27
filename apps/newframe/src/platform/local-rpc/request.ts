@@ -68,6 +68,7 @@ type OriginSessionMonitor = ReturnType<typeof createOriginSessionMonitor>
 
 export type RpcResponseReason =
   | 'provider'
+  | 'rate-limited'
   | 'invalid-chain'
   | 'unauthorized-accounts'
   | 'permission-denied'
@@ -106,6 +107,9 @@ export interface RpcRequestHandler {
   (request: RpcRequestDescription): Promise<void>
 }
 
+const RPC_REQUESTS_PER_SECOND = 20
+export const RPC_REQUEST_BURST = 40
+
 export function createRpcRequestHandler({
   provider,
   origins
@@ -113,6 +117,8 @@ export function createRpcRequestHandler({
   provider: RpcProviderSendPort
   origins: OriginsService
 }): RpcRequestHandler {
+  let availableRequests = RPC_REQUEST_BURST
+  let lastRequest = Date.now()
   return async (request) => {
     const { rawPayload } = request
     let settled = false
@@ -125,6 +131,25 @@ export function createRpcRequestHandler({
     }
 
     try {
+      const now = Date.now()
+      availableRequests = Math.min(
+        RPC_REQUEST_BURST,
+        availableRequests + (Math.max(0, now - lastRequest) * RPC_REQUESTS_PER_SECOND) / 1000
+      )
+      lastRequest = now
+      if (availableRequests < 1) {
+        respond(
+          {
+            id: rawPayload.id,
+            jsonrpc: rawPayload.jsonrpc,
+            error: { code: -32005, message: 'Rate limit exceeded' }
+          },
+          'rate-limited'
+        )
+        return
+      }
+      availableRequests -= 1
+
       if (request.chainHint && !rawPayload.chainId) {
         rawPayload.chainId = request.chainHint
       }
