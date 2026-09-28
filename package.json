@@ -36,7 +36,7 @@
     "format:check": "oxfmt --check '**/*.{yml,json,md,html,ts,tsx,js,mjs}'",
     "check": "bun run format:check && bun run typecheck && bun run lint && bun run knip && bun run test",
     "dep:report": "bun scripts/dep-report.ts",
-    "visual:harness:newframe": "bun run flash:build && bun exec 'node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types harness/newframe/visual-harness.ts'",
+    "visual:harness:newframe": "bash harness/newframe/run-macos-vm.sh",
     "scenario:newframe:provider": "bun harness/newframe/scenarios/provider-smoke.ts"
   },
   "lint-staged": {
