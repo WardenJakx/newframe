@@ -75,7 +75,7 @@ export class ElectronApplicationService implements HarnessService<ElectronApplic
     const app = await this.launcher.launch({
       ...settings,
       colorScheme: 'no-preference',
-      timeout: 15_000
+      timeout: 30_000
     })
     app.context().setDefaultTimeout(this.timeoutMs)
     app.context().setDefaultNavigationTimeout(this.timeoutMs)
