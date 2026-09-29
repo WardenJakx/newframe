@@ -4,6 +4,1018 @@
 // apps/newframe-cli/src/index.ts
 import { readFile as readFile3, writeFile } from "fs/promises";
 
+// node_modules/.bun/@trpc+server@11.19.0+ff0372d108591aba/node_modules/@trpc/server/dist/observable-DwUFSuKv.mjs
+function observable(subscribe) {
+  const self = {
+    subscribe(observer) {
+      let teardownRef = null;
+      let isDone = false;
+      let unsubscribed = false;
+      let teardownImmediately = false;
+      function unsubscribe() {
+        if (teardownRef === null) {
+          teardownImmediately = true;
+          return;
+        }
+        if (unsubscribed)
+          return;
+        unsubscribed = true;
+        if (typeof teardownRef === "function")
+          teardownRef();
+        else if (teardownRef)
+          teardownRef.unsubscribe();
+      }
+      teardownRef = subscribe({
+        next(value) {
+          var _observer$next;
+          if (isDone)
+            return;
+          (_observer$next = observer.next) === null || _observer$next === undefined || _observer$next.call(observer, value);
+        },
+        error(err) {
+          var _observer$error;
+          if (isDone)
+            return;
+          isDone = true;
+          (_observer$error = observer.error) === null || _observer$error === undefined || _observer$error.call(observer, err);
+          unsubscribe();
+        },
+        complete() {
+          var _observer$complete;
+          if (isDone)
+            return;
+          isDone = true;
+          (_observer$complete = observer.complete) === null || _observer$complete === undefined || _observer$complete.call(observer);
+          unsubscribe();
+        }
+      });
+      if (teardownImmediately)
+        unsubscribe();
+      return { unsubscribe };
+    },
+    pipe(...operations) {
+      return operations.reduce(pipeReducer, self);
+    }
+  };
+  return self;
+}
+function pipeReducer(prev, fn) {
+  return fn(prev);
+}
+function observableToPromise(observable) {
+  const ac = new AbortController;
+  return new Promise((resolve, reject) => {
+    let isDone = false;
+    function onDone() {
+      if (isDone)
+        return;
+      isDone = true;
+      obs$.unsubscribe();
+    }
+    ac.signal.addEventListener("abort", () => {
+      reject(ac.signal.reason);
+    });
+    const obs$ = observable.subscribe({
+      next(data) {
+        isDone = true;
+        resolve(data);
+        onDone();
+      },
+      error(data) {
+        reject(data);
+      },
+      complete() {
+        ac.abort();
+        onDone();
+      }
+    });
+  });
+}
+
+// node_modules/.bun/@trpc+server@11.19.0+ff0372d108591aba/node_modules/@trpc/server/dist/observable-CSprJVOf.mjs
+function share(_opts) {
+  return (source) => {
+    let refCount = 0;
+    let subscription = null;
+    const observers = [];
+    function startIfNeeded() {
+      if (subscription)
+        return;
+      subscription = source.subscribe({
+        next(value) {
+          for (const observer of observers) {
+            var _observer$next;
+            (_observer$next = observer.next) === null || _observer$next === undefined || _observer$next.call(observer, value);
+          }
+        },
+        error(error) {
+          for (const observer of observers) {
+            var _observer$error;
+            (_observer$error = observer.error) === null || _observer$error === undefined || _observer$error.call(observer, error);
+          }
+        },
+        complete() {
+          for (const observer of observers) {
+            var _observer$complete;
+            (_observer$complete = observer.complete) === null || _observer$complete === undefined || _observer$complete.call(observer);
+          }
+        }
+      });
+    }
+    function resetIfNeeded() {
+      if (refCount === 0 && subscription) {
+        const _sub = subscription;
+        subscription = null;
+        _sub.unsubscribe();
+      }
+    }
+    return observable((subscriber) => {
+      refCount++;
+      observers.push(subscriber);
+      startIfNeeded();
+      return { unsubscribe() {
+        refCount--;
+        resetIfNeeded();
+        const index = observers.findIndex((v) => v === subscriber);
+        if (index > -1)
+          observers.splice(index, 1);
+      } };
+    });
+  };
+}
+var distinctUnsetMarker = Symbol();
+function behaviorSubject(initialValue) {
+  let value = initialValue;
+  const observerList = [];
+  const addObserver = (observer) => {
+    if (value !== undefined)
+      observer.next(value);
+    observerList.push(observer);
+  };
+  const removeObserver = (observer) => {
+    observerList.splice(observerList.indexOf(observer), 1);
+  };
+  const obs = observable((observer) => {
+    addObserver(observer);
+    return () => {
+      removeObserver(observer);
+    };
+  });
+  obs.next = (nextValue) => {
+    if (value === nextValue)
+      return;
+    value = nextValue;
+    for (const observer of observerList)
+      observer.next(nextValue);
+  };
+  obs.get = () => value;
+  return obs;
+}
+
+// node_modules/.bun/@trpc+client@11.19.0+18c69e608cdf50e2/node_modules/@trpc/client/dist/splitLink-BZPioDdG.mjs
+function createChain(opts) {
+  return observable((observer) => {
+    function execute(index = 0, op = opts.op) {
+      const next = opts.links[index];
+      if (!next)
+        throw new Error("No more links to execute - did you forget to add an ending link?");
+      return next({
+        op,
+        next(nextOp) {
+          return execute(index + 1, nextOp);
+        }
+      });
+    }
+    return execute().subscribe(observer);
+  });
+}
+
+// node_modules/.bun/@trpc+client@11.19.0+18c69e608cdf50e2/node_modules/@trpc/client/dist/objectSpread2-weooBxVk.mjs
+function _typeof(o) {
+  "@babel/helpers - typeof";
+  return _typeof = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(o) {
+    return typeof o;
+  } : function(o) {
+    return o && typeof Symbol == "function" && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o;
+  }, _typeof(o);
+}
+function toPrimitive(t, r) {
+  if (_typeof(t) != "object" || !t)
+    return t;
+  var e = t[Symbol.toPrimitive];
+  if (e !== undefined) {
+    var i = e.call(t, r || "default");
+    if (_typeof(i) != "object")
+      return i;
+    throw new TypeError("@@toPrimitive must return a primitive value.");
+  }
+  return (r === "string" ? String : Number)(t);
+}
+function toPropertyKey(t) {
+  var i = toPrimitive(t, "string");
+  return _typeof(i) == "symbol" ? i : i + "";
+}
+function _defineProperty(e, r, t) {
+  return (r = toPropertyKey(r)) in e ? Object.defineProperty(e, r, {
+    value: t,
+    enumerable: true,
+    configurable: true,
+    writable: true
+  }) : e[r] = t, e;
+}
+function ownKeys(e, r) {
+  var t = Object.keys(e);
+  if (Object.getOwnPropertySymbols) {
+    var o = Object.getOwnPropertySymbols(e);
+    r && (o = o.filter(function(r) {
+      return Object.getOwnPropertyDescriptor(e, r).enumerable;
+    })), t.push.apply(t, o);
+  }
+  return t;
+}
+function _objectSpread2(e) {
+  for (var r = 1;r < arguments.length; r++) {
+    var t = arguments[r] != null ? arguments[r] : {};
+    r % 2 ? ownKeys(Object(t), true).forEach(function(r) {
+      _defineProperty(e, r, t[r]);
+    }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function(r) {
+      Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r));
+    });
+  }
+  return e;
+}
+
+// node_modules/.bun/@trpc+server@11.19.0+ff0372d108591aba/node_modules/@trpc/server/dist/codes-D5Ya6_Bi.mjs
+function isObject(value) {
+  return !!value && !Array.isArray(value) && typeof value === "object";
+}
+function emptyObject() {
+  return Object.create(null);
+}
+var TRPC_ERROR_CODES_BY_KEY = {
+  PARSE_ERROR: -32700,
+  BAD_REQUEST: -32600,
+  INTERNAL_SERVER_ERROR: -32603,
+  NOT_IMPLEMENTED: -32603,
+  BAD_GATEWAY: -32603,
+  SERVICE_UNAVAILABLE: -32603,
+  GATEWAY_TIMEOUT: -32603,
+  UNAUTHORIZED: -32001,
+  PAYMENT_REQUIRED: -32002,
+  FORBIDDEN: -32003,
+  NOT_FOUND: -32004,
+  METHOD_NOT_SUPPORTED: -32005,
+  TIMEOUT: -32008,
+  CONFLICT: -32009,
+  PRECONDITION_FAILED: -32012,
+  PAYLOAD_TOO_LARGE: -32013,
+  UNSUPPORTED_MEDIA_TYPE: -32015,
+  UNPROCESSABLE_CONTENT: -32022,
+  PRECONDITION_REQUIRED: -32028,
+  TOO_MANY_REQUESTS: -32029,
+  CLIENT_CLOSED_REQUEST: -32099
+};
+var retryableRpcCodes = [
+  TRPC_ERROR_CODES_BY_KEY.BAD_GATEWAY,
+  TRPC_ERROR_CODES_BY_KEY.SERVICE_UNAVAILABLE,
+  TRPC_ERROR_CODES_BY_KEY.GATEWAY_TIMEOUT,
+  TRPC_ERROR_CODES_BY_KEY.INTERNAL_SERVER_ERROR
+];
+
+// node_modules/.bun/@trpc+server@11.19.0+ff0372d108591aba/node_modules/@trpc/server/dist/getErrorShape-B0JBUs-i.mjs
+var noop = () => {};
+var freezeIfAvailable = (obj) => {
+  if (Object.freeze)
+    Object.freeze(obj);
+};
+function createInnerProxy(callback, path, memo) {
+  var _memo$cacheKey;
+  const cacheKey = path.join(".");
+  (_memo$cacheKey = memo[cacheKey]) !== null && _memo$cacheKey !== undefined || (memo[cacheKey] = new Proxy(noop, {
+    get(_obj, key) {
+      if (typeof key !== "string" || key === "then")
+        return;
+      return createInnerProxy(callback, [...path, key], memo);
+    },
+    apply(_1, _2, args) {
+      const lastOfPath = path[path.length - 1];
+      if (lastOfPath === "valueOf" || lastOfPath === "toString" || lastOfPath === "toJSON")
+        return `tRPC.proxy(${path.slice(0, -1).join(".")})`;
+      let opts = {
+        args,
+        path
+      };
+      if (lastOfPath === "call")
+        opts = {
+          args: args.length >= 2 ? [args[1]] : [],
+          path: path.slice(0, -1)
+        };
+      else if (lastOfPath === "apply")
+        opts = {
+          args: args.length >= 2 ? args[1] : [],
+          path: path.slice(0, -1)
+        };
+      freezeIfAvailable(opts.args);
+      freezeIfAvailable(opts.path);
+      return callback(opts);
+    }
+  }));
+  return memo[cacheKey];
+}
+var createRecursiveProxy = (callback) => createInnerProxy(callback, [], emptyObject());
+var createFlatProxy = (callback) => {
+  return new Proxy(noop, { get(_obj, name) {
+    if (name === "then")
+      return;
+    return callback(name);
+  } });
+};
+function _typeof2(o) {
+  "@babel/helpers - typeof";
+  return _typeof2 = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(o) {
+    return typeof o;
+  } : function(o) {
+    return o && typeof Symbol == "function" && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o;
+  }, _typeof2(o);
+}
+function toPrimitive2(t, r) {
+  if (_typeof2(t) != "object" || !t)
+    return t;
+  var e = t[Symbol.toPrimitive];
+  if (e !== undefined) {
+    var i = e.call(t, r || "default");
+    if (_typeof2(i) != "object")
+      return i;
+    throw new TypeError("@@toPrimitive must return a primitive value.");
+  }
+  return (r === "string" ? String : Number)(t);
+}
+function toPropertyKey2(t) {
+  var i = toPrimitive2(t, "string");
+  return _typeof2(i) == "symbol" ? i : i + "";
+}
+function _defineProperty2(e, r, t) {
+  return (r = toPropertyKey2(r)) in e ? Object.defineProperty(e, r, {
+    value: t,
+    enumerable: true,
+    configurable: true,
+    writable: true
+  }) : e[r] = t, e;
+}
+function ownKeys2(e, r) {
+  var t = Object.keys(e);
+  if (Object.getOwnPropertySymbols) {
+    var o = Object.getOwnPropertySymbols(e);
+    r && (o = o.filter(function(r) {
+      return Object.getOwnPropertyDescriptor(e, r).enumerable;
+    })), t.push.apply(t, o);
+  }
+  return t;
+}
+function _objectSpread22(e) {
+  for (var r = 1;r < arguments.length; r++) {
+    var t = arguments[r] != null ? arguments[r] : {};
+    r % 2 ? ownKeys2(Object(t), true).forEach(function(r) {
+      _defineProperty2(e, r, t[r]);
+    }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys2(Object(t)).forEach(function(r) {
+      Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r));
+    });
+  }
+  return e;
+}
+
+// node_modules/.bun/@trpc+server@11.19.0+ff0372d108591aba/node_modules/@trpc/server/dist/tracked-D4jU_Hb3.mjs
+function transformResultInner(response, transformer) {
+  if ("error" in response) {
+    const error = transformer.deserialize(response.error);
+    return {
+      ok: false,
+      error: _objectSpread22(_objectSpread22({}, response), {}, { error })
+    };
+  }
+  return {
+    ok: true,
+    result: _objectSpread22(_objectSpread22({}, response.result), (!response.result.type || response.result.type === "data") && {
+      type: "data",
+      data: transformer.deserialize(response.result.data)
+    })
+  };
+}
+var TransformResultError = class extends Error {
+  constructor() {
+    super("Unable to transform response from server");
+  }
+};
+function transformResult(response, transformer) {
+  let result;
+  try {
+    result = transformResultInner(response, transformer);
+  } catch (_unused) {
+    throw new TransformResultError;
+  }
+  if (!result.ok && (!isObject(result.error.error) || typeof result.error.error["code"] !== "number"))
+    throw new TransformResultError;
+  if (result.ok && !isObject(result.result))
+    throw new TransformResultError;
+  return result;
+}
+var trackedSymbol = Symbol();
+
+// node_modules/.bun/@trpc+client@11.19.0+18c69e608cdf50e2/node_modules/@trpc/client/dist/TRPCClientError-CxFRO7Js.mjs
+function isTRPCClientError(cause) {
+  return cause instanceof TRPCClientError;
+}
+function isTRPCErrorResponse(obj) {
+  return isObject(obj) && isObject(obj["error"]) && typeof obj["error"]["code"] === "number" && typeof obj["error"]["message"] === "string";
+}
+function getMessageFromUnknownError(err, fallback) {
+  if (typeof err === "string")
+    return err;
+  if (isObject(err) && typeof err["message"] === "string")
+    return err["message"];
+  return fallback;
+}
+var TRPCClientError = class TRPCClientError extends Error {
+  constructor(message, opts) {
+    var _opts$result, _opts$result2;
+    const cause = opts === null || opts === undefined ? undefined : opts.cause;
+    super(message, { cause });
+    _defineProperty(this, "cause", undefined);
+    _defineProperty(this, "shape", undefined);
+    _defineProperty(this, "data", undefined);
+    _defineProperty(this, "meta", undefined);
+    this.meta = opts === null || opts === undefined ? undefined : opts.meta;
+    this.cause = cause;
+    this.shape = opts === null || opts === undefined || (_opts$result = opts.result) === null || _opts$result === undefined ? undefined : _opts$result.error;
+    this.data = opts === null || opts === undefined || (_opts$result2 = opts.result) === null || _opts$result2 === undefined ? undefined : _opts$result2.error.data;
+    this.name = "TRPCClientError";
+    Object.setPrototypeOf(this, TRPCClientError.prototype);
+  }
+  static from(_cause, opts = {}) {
+    const cause = _cause;
+    if (isTRPCClientError(cause)) {
+      if (opts.meta)
+        cause.meta = _objectSpread2(_objectSpread2({}, cause.meta), opts.meta);
+      return cause;
+    }
+    if (isTRPCErrorResponse(cause))
+      return new TRPCClientError(cause.error.message, _objectSpread2(_objectSpread2({}, opts), {}, {
+        result: cause,
+        cause: opts.cause
+      }));
+    return new TRPCClientError(getMessageFromUnknownError(cause, "Unknown error"), _objectSpread2(_objectSpread2({}, opts), {}, { cause }));
+  }
+};
+
+// node_modules/.bun/@trpc+client@11.19.0+18c69e608cdf50e2/node_modules/@trpc/client/dist/unstable-internals.mjs
+function getTransformer(transformer) {
+  const _transformer = transformer;
+  if (!_transformer)
+    return {
+      input: {
+        serialize: (data) => data,
+        deserialize: (data) => data
+      },
+      output: {
+        serialize: (data) => data,
+        deserialize: (data) => data
+      }
+    };
+  if ("input" in _transformer)
+    return _transformer;
+  return {
+    input: _transformer,
+    output: _transformer
+  };
+}
+
+// node_modules/.bun/@trpc+client@11.19.0+18c69e608cdf50e2/node_modules/@trpc/client/dist/httpUtils-CB_100ND.mjs
+var isFunction2 = (fn) => typeof fn === "function";
+function getFetch(customFetchImpl) {
+  if (customFetchImpl)
+    return customFetchImpl;
+  if (typeof window !== "undefined" && isFunction2(window.fetch))
+    return window.fetch.bind(window);
+  if (typeof globalThis !== "undefined" && isFunction2(globalThis.fetch))
+    return globalThis.fetch;
+  throw new Error("No fetch implementation found");
+}
+function raceAbortSignals(...signals) {
+  const ac = new AbortController;
+  for (const signal of signals)
+    if (signal === null || signal === undefined ? undefined : signal.aborted)
+      ac.abort();
+    else
+      signal === null || signal === undefined || signal.addEventListener("abort", () => ac.abort(), { once: true });
+  return ac.signal;
+}
+function resolveHTTPLinkOptions(opts) {
+  return {
+    url: opts.url.toString(),
+    fetch: opts.fetch,
+    transformer: getTransformer(opts.transformer),
+    methodOverride: opts.methodOverride
+  };
+}
+function arrayToDict(array) {
+  const dict = {};
+  for (let index = 0;index < array.length; index++) {
+    const element = array[index];
+    dict[index] = element;
+  }
+  return dict;
+}
+var METHOD = {
+  query: "GET",
+  mutation: "POST",
+  subscription: "PATCH"
+};
+function getInput(opts) {
+  return "input" in opts ? opts.transformer.input.serialize(opts.input) : arrayToDict(opts.inputs.map((_input) => opts.transformer.input.serialize(_input)));
+}
+var getUrl = (opts) => {
+  const parts = opts.url.split("?");
+  let url = parts[0].replace(/\/$/, "") + "/" + opts.path;
+  const queryParts = [];
+  if (parts[1])
+    queryParts.push(parts[1]);
+  if ("inputs" in opts)
+    queryParts.push("batch=1");
+  if (opts.type === "query" || opts.type === "subscription") {
+    const input = getInput(opts);
+    if (input !== undefined && opts.methodOverride !== "POST")
+      queryParts.push(`input=${encodeURIComponent(JSON.stringify(input))}`);
+  }
+  if (queryParts.length)
+    url += "?" + queryParts.join("&");
+  return url;
+};
+var getBody = (opts) => {
+  if (opts.type === "query" && opts.methodOverride !== "POST")
+    return;
+  const input = getInput(opts);
+  return input !== undefined ? JSON.stringify(input) : undefined;
+};
+var jsonHttpRequester = (opts) => {
+  return httpRequest(_objectSpread2(_objectSpread2({}, opts), {}, {
+    contentTypeHeader: "application/json",
+    getUrl,
+    getBody
+  }));
+};
+var AbortError = class extends Error {
+  constructor() {
+    const name = "AbortError";
+    super(name);
+    this.name = name;
+    this.message = name;
+  }
+};
+var throwIfAborted = (signal) => {
+  var _signal$throwIfAborte;
+  if (!(signal === null || signal === undefined ? undefined : signal.aborted))
+    return;
+  (_signal$throwIfAborte = signal.throwIfAborted) === null || _signal$throwIfAborte === undefined || _signal$throwIfAborte.call(signal);
+  if (typeof DOMException !== "undefined")
+    throw new DOMException("AbortError", "AbortError");
+  throw new AbortError;
+};
+async function fetchHTTPResponse(opts) {
+  var _opts$methodOverride, _opts$trpcAcceptHeade;
+  throwIfAborted(opts.signal);
+  const url = opts.getUrl(opts);
+  const body = opts.getBody(opts);
+  const method = (_opts$methodOverride = opts.methodOverride) !== null && _opts$methodOverride !== undefined ? _opts$methodOverride : METHOD[opts.type];
+  const resolvedHeaders = await (async () => {
+    const heads = await opts.headers();
+    if (Symbol.iterator in heads)
+      return Object.fromEntries(heads);
+    return heads;
+  })();
+  const headers = _objectSpread2(_objectSpread2(_objectSpread2({}, opts.contentTypeHeader && method !== "GET" ? { "content-type": opts.contentTypeHeader } : {}), opts.trpcAcceptHeader ? { [(_opts$trpcAcceptHeade = opts.trpcAcceptHeaderKey) !== null && _opts$trpcAcceptHeade !== undefined ? _opts$trpcAcceptHeade : "trpc-accept"]: opts.trpcAcceptHeader } : undefined), resolvedHeaders);
+  return getFetch(opts.fetch)(url, {
+    method,
+    signal: opts.signal,
+    body,
+    headers
+  });
+}
+async function httpRequest(opts) {
+  const meta = {};
+  const res = await fetchHTTPResponse(opts);
+  meta.response = res;
+  const json = await res.json();
+  meta.responseJSON = json;
+  return {
+    json,
+    meta
+  };
+}
+
+// node_modules/.bun/@trpc+client@11.19.0+18c69e608cdf50e2/node_modules/@trpc/client/dist/httpLink-Tm93WWFA.mjs
+function isOctetType(input) {
+  return input instanceof Uint8Array || input instanceof Blob;
+}
+function isFormData(input) {
+  return input instanceof FormData;
+}
+var universalRequester = (opts) => {
+  if ("input" in opts) {
+    const { input } = opts;
+    if (isFormData(input)) {
+      if (opts.type !== "mutation" && opts.methodOverride !== "POST")
+        throw new Error("FormData is only supported for mutations");
+      return httpRequest(_objectSpread2(_objectSpread2({}, opts), {}, {
+        contentTypeHeader: undefined,
+        getUrl,
+        getBody: () => input
+      }));
+    }
+    if (isOctetType(input)) {
+      if (opts.type !== "mutation" && opts.methodOverride !== "POST")
+        throw new Error("Octet type input is only supported for mutations");
+      return httpRequest(_objectSpread2(_objectSpread2({}, opts), {}, {
+        contentTypeHeader: "application/octet-stream",
+        getUrl,
+        getBody: () => input
+      }));
+    }
+  }
+  return jsonHttpRequester(opts);
+};
+function httpLink(opts) {
+  const resolvedOpts = resolveHTTPLinkOptions(opts);
+  return () => {
+    return (operationOpts) => {
+      const { op } = operationOpts;
+      return observable((observer) => {
+        const { path, input, type } = op;
+        if (type === "subscription")
+          throw new Error("Subscriptions are unsupported by `httpLink` - use `httpSubscriptionLink` or `wsLink`");
+        const ac = new AbortController;
+        const request = universalRequester(_objectSpread2(_objectSpread2({}, resolvedOpts), {}, {
+          type,
+          path,
+          input,
+          signal: raceAbortSignals(op.signal, ac.signal),
+          headers() {
+            if (!opts.headers)
+              return {};
+            if (typeof opts.headers === "function")
+              return opts.headers({ op });
+            return opts.headers;
+          }
+        }));
+        let isDone = false;
+        let meta = undefined;
+        request.then((res) => {
+          isDone = true;
+          meta = res.meta;
+          const transformed = transformResult(res.json, resolvedOpts.transformer.output);
+          if (!transformed.ok) {
+            observer.error(TRPCClientError.from(transformed.error, { meta }));
+            return;
+          }
+          observer.next({
+            context: res.meta,
+            result: transformed.result
+          });
+          observer.complete();
+        }).catch((cause) => {
+          isDone = true;
+          observer.error(TRPCClientError.from(cause, { meta }));
+        });
+        return () => {
+          if (!isDone)
+            ac.abort();
+        };
+      });
+    };
+  };
+}
+
+// node_modules/.bun/@trpc+client@11.19.0+18c69e608cdf50e2/node_modules/@trpc/client/dist/wsLink-Bm5LKL6z.mjs
+var resultOf = (value, ...args) => {
+  return typeof value === "function" ? value(...args) : value;
+};
+function withResolvers() {
+  let resolve;
+  let reject;
+  return {
+    promise: new Promise((res, rej) => {
+      resolve = res;
+      reject = rej;
+    }),
+    resolve,
+    reject
+  };
+}
+async function prepareUrl(urlOptions) {
+  const url = await resultOf(urlOptions.url);
+  if (!urlOptions.connectionParams)
+    return url;
+  return url + `${url.includes("?") ? "&" : "?"}connectionParams=1`;
+}
+async function buildConnectionMessage(connectionParams, encoder) {
+  const message = {
+    method: "connectionParams",
+    data: await resultOf(connectionParams)
+  };
+  return encoder.encode(message);
+}
+function asyncWsOpen(ws) {
+  const { promise, resolve, reject } = withResolvers();
+  ws.addEventListener("open", () => {
+    ws.removeEventListener("error", reject);
+    resolve();
+  });
+  ws.addEventListener("error", reject);
+  return promise;
+}
+function setupPingInterval(ws, { intervalMs, pongTimeoutMs }) {
+  let pingTimeout;
+  let pongTimeout;
+  function start() {
+    pingTimeout = setTimeout(() => {
+      ws.send("PING");
+      pongTimeout = setTimeout(() => {
+        ws.close();
+      }, pongTimeoutMs);
+    }, intervalMs);
+  }
+  function reset() {
+    clearTimeout(pingTimeout);
+    start();
+  }
+  function pong() {
+    clearTimeout(pongTimeout);
+    reset();
+  }
+  ws.addEventListener("open", start);
+  ws.addEventListener("message", ({ data }) => {
+    clearTimeout(pingTimeout);
+    start();
+    if (data === "PONG")
+      pong();
+  });
+  ws.addEventListener("close", () => {
+    clearTimeout(pingTimeout);
+    clearTimeout(pongTimeout);
+  });
+}
+var WsConnection = class WsConnection {
+  constructor(opts) {
+    var _opts$WebSocketPonyfi;
+    _defineProperty(this, "id", ++WsConnection.connectCount);
+    _defineProperty(this, "WebSocketPonyfill", undefined);
+    _defineProperty(this, "urlOptions", undefined);
+    _defineProperty(this, "keepAliveOpts", undefined);
+    _defineProperty(this, "encoder", undefined);
+    _defineProperty(this, "wsObservable", behaviorSubject(null));
+    _defineProperty(this, "openPromise", null);
+    this.WebSocketPonyfill = (_opts$WebSocketPonyfi = opts.WebSocketPonyfill) !== null && _opts$WebSocketPonyfi !== undefined ? _opts$WebSocketPonyfi : WebSocket;
+    if (!this.WebSocketPonyfill)
+      throw new Error("No WebSocket implementation found - you probably don't want to use this on the server, but if you do you need to pass a `WebSocket`-ponyfill");
+    this.urlOptions = opts.urlOptions;
+    this.keepAliveOpts = opts.keepAlive;
+    this.encoder = opts.encoder;
+  }
+  get ws() {
+    return this.wsObservable.get();
+  }
+  set ws(ws) {
+    this.wsObservable.next(ws);
+  }
+  isOpen() {
+    return !!this.ws && this.ws.readyState === this.WebSocketPonyfill.OPEN && !this.openPromise;
+  }
+  isClosed() {
+    return !!this.ws && (this.ws.readyState === this.WebSocketPonyfill.CLOSING || this.ws.readyState === this.WebSocketPonyfill.CLOSED);
+  }
+  async open() {
+    if (this.openPromise)
+      return this.openPromise;
+    this.id = ++WsConnection.connectCount;
+    const wsPromise = prepareUrl(this.urlOptions).then((url) => new this.WebSocketPonyfill(url));
+    this.openPromise = wsPromise.then(async (ws) => {
+      this.ws = ws;
+      ws.binaryType = "arraybuffer";
+      ws.addEventListener("message", function({ data }) {
+        if (data === "PING")
+          this.send("PONG");
+      });
+      if (this.keepAliveOpts.enabled)
+        setupPingInterval(ws, this.keepAliveOpts);
+      ws.addEventListener("close", () => {
+        if (this.ws === ws)
+          this.ws = null;
+      });
+      await asyncWsOpen(ws);
+      if (this.urlOptions.connectionParams)
+        ws.send(await buildConnectionMessage(this.urlOptions.connectionParams, this.encoder));
+    });
+    try {
+      await this.openPromise;
+    } finally {
+      this.openPromise = null;
+    }
+  }
+  async close() {
+    try {
+      await this.openPromise;
+    } finally {
+      var _this$ws;
+      (_this$ws = this.ws) === null || _this$ws === undefined || _this$ws.close();
+    }
+  }
+};
+_defineProperty(WsConnection, "connectCount", 0);
+
+// node_modules/.bun/@trpc+client@11.19.0+18c69e608cdf50e2/node_modules/@trpc/client/dist/index.mjs
+var TRPCUntypedClient = class {
+  constructor(opts) {
+    _defineProperty(this, "links", undefined);
+    _defineProperty(this, "runtime", undefined);
+    _defineProperty(this, "requestId", undefined);
+    this.requestId = 0;
+    this.runtime = {};
+    this.links = opts.links.map((link) => link(this.runtime));
+  }
+  $request(opts) {
+    var _opts$context;
+    return createChain({
+      links: this.links,
+      op: _objectSpread2(_objectSpread2({}, opts), {}, {
+        context: (_opts$context = opts.context) !== null && _opts$context !== undefined ? _opts$context : {},
+        id: ++this.requestId
+      })
+    }).pipe(share());
+  }
+  async requestAsPromise(opts) {
+    try {
+      const req$ = this.$request(opts);
+      return (await observableToPromise(req$)).result.data;
+    } catch (err) {
+      throw TRPCClientError.from(err);
+    }
+  }
+  query(path, input, opts) {
+    return this.requestAsPromise({
+      type: "query",
+      path,
+      input,
+      context: opts === null || opts === undefined ? undefined : opts.context,
+      signal: opts === null || opts === undefined ? undefined : opts.signal
+    });
+  }
+  mutation(path, input, opts) {
+    return this.requestAsPromise({
+      type: "mutation",
+      path,
+      input,
+      context: opts === null || opts === undefined ? undefined : opts.context,
+      signal: opts === null || opts === undefined ? undefined : opts.signal
+    });
+  }
+  subscription(path, input, opts) {
+    return this.$request({
+      type: "subscription",
+      path,
+      input,
+      context: opts.context,
+      signal: opts.signal
+    }).subscribe({
+      next(envelope) {
+        switch (envelope.result.type) {
+          case "state":
+            var _opts$onConnectionSta;
+            (_opts$onConnectionSta = opts.onConnectionStateChange) === null || _opts$onConnectionSta === undefined || _opts$onConnectionSta.call(opts, envelope.result);
+            break;
+          case "started":
+            var _opts$onStarted;
+            (_opts$onStarted = opts.onStarted) === null || _opts$onStarted === undefined || _opts$onStarted.call(opts, { context: envelope.context });
+            break;
+          case "stopped":
+            var _opts$onStopped;
+            (_opts$onStopped = opts.onStopped) === null || _opts$onStopped === undefined || _opts$onStopped.call(opts);
+            break;
+          case "data":
+          case undefined:
+            var _opts$onData;
+            (_opts$onData = opts.onData) === null || _opts$onData === undefined || _opts$onData.call(opts, envelope.result.data);
+        }
+      },
+      error(err) {
+        var _opts$onError;
+        (_opts$onError = opts.onError) === null || _opts$onError === undefined || _opts$onError.call(opts, err);
+      },
+      complete() {
+        var _opts$onComplete;
+        (_opts$onComplete = opts.onComplete) === null || _opts$onComplete === undefined || _opts$onComplete.call(opts);
+      }
+    });
+  }
+};
+var untypedClientSymbol = Symbol.for("trpc_untypedClient");
+var clientCallTypeMap = {
+  query: "query",
+  mutate: "mutation",
+  subscribe: "subscription"
+};
+var clientCallTypeToProcedureType = (clientCallType) => {
+  return clientCallTypeMap[clientCallType];
+};
+function createTRPCClientProxy(client) {
+  const proxy = createRecursiveProxy(({ path, args }) => {
+    const pathCopy = [...path];
+    const procedureType = clientCallTypeToProcedureType(pathCopy.pop());
+    const fullPath = pathCopy.join(".");
+    return client[procedureType](fullPath, ...args);
+  });
+  return createFlatProxy((key) => {
+    if (key === untypedClientSymbol)
+      return client;
+    return proxy[key];
+  });
+}
+function createTRPCClient(opts) {
+  return createTRPCClientProxy(new TRPCUntypedClient(opts));
+}
+function _OverloadYield(e, d) {
+  this.v = e, this.k = d;
+}
+function AsyncGenerator(e) {
+  var r, t;
+  function resume(r, t) {
+    try {
+      var n = e[r](t), o = n.value, u = o instanceof _OverloadYield;
+      Promise.resolve(u ? o.v : o).then(function(t) {
+        if (u) {
+          var i = r === "return" ? "return" : "next";
+          if (!o.k || t.done)
+            return resume(i, t);
+          t = e[i](t).value;
+        }
+        settle(n.done ? "return" : "normal", t);
+      }, function(e) {
+        resume("throw", e);
+      });
+    } catch (e) {
+      settle("throw", e);
+    }
+  }
+  function settle(e, n) {
+    switch (e) {
+      case "return":
+        r.resolve({
+          value: n,
+          done: true
+        });
+        break;
+      case "throw":
+        r.reject(n);
+        break;
+      default:
+        r.resolve({
+          value: n,
+          done: false
+        });
+    }
+    (r = r.next) ? resume(r.key, r.arg) : t = null;
+  }
+  this._invoke = function(e, n) {
+    return new Promise(function(o, u) {
+      var i = {
+        key: e,
+        arg: n,
+        resolve: o,
+        reject: u,
+        next: null
+      };
+      t ? t = t.next = i : (r = t = i, resume(e, n));
+    });
+  }, typeof e["return"] != "function" && (this["return"] = undefined);
+}
+AsyncGenerator.prototype[typeof Symbol == "function" && Symbol.asyncIterator || "@@asyncIterator"] = function() {
+  return this;
+}, AsyncGenerator.prototype.next = function(e) {
+  return this._invoke("next", e);
+}, AsyncGenerator.prototype["throw"] = function(e) {
+  return this._invoke("throw", e);
+}, AsyncGenerator.prototype["return"] = function(e) {
+  return this._invoke("return", e);
+};
+
+// packages/desktop-api/src/client.ts
+function createDesktopClient(baseUrl, options = {}) {
+  return createTRPCClient({
+    links: [httpLink({ url: `${baseUrl.replace(/\/$/, "")}/trpc`, ...options })]
+  });
+}
+function isDesktopClientError(error) {
+  return error instanceof TRPCClientError;
+}
+
 // node_modules/.bun/zod@4.4.3/node_modules/zod/v4/core/core.js
 var _a;
 function $constructor(name, initializer, params) {
@@ -164,7 +1176,7 @@ function slugify(input) {
   return input.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, "");
 }
 var captureStackTrace = "captureStackTrace" in Error ? Error.captureStackTrace : (..._args) => {};
-function isObject(data) {
+function isObject2(data) {
   return typeof data === "object" && data !== null && !Array.isArray(data);
 }
 var allowsEval = /* @__PURE__ */ cached(() => {
@@ -183,7 +1195,7 @@ var allowsEval = /* @__PURE__ */ cached(() => {
   }
 });
 function isPlainObject(o) {
-  if (isObject(o) === false)
+  if (isObject2(o) === false)
     return false;
   const ctor = o.constructor;
   if (ctor === undefined)
@@ -191,7 +1203,7 @@ function isPlainObject(o) {
   if (typeof ctor !== "function")
     return true;
   const prot = ctor.prototype;
-  if (isObject(prot) === false)
+  if (isObject2(prot) === false)
     return false;
   if (Object.prototype.hasOwnProperty.call(prot, "isPrototypeOf") === false) {
     return false;
@@ -1765,13 +2777,13 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
     }
     return propValues;
   });
-  const isObject2 = isObject;
+  const isObject = isObject2;
   const catchall = def.catchall;
   let value;
   inst._zod.parse = (payload, ctx) => {
     value ?? (value = _normalized.value);
     const input = payload.value;
-    if (!isObject2(input)) {
+    if (!isObject(input)) {
       payload.issues.push({
         expected: "object",
         code: "invalid_type",
@@ -1898,7 +2910,7 @@ var $ZodObjectJIT = /* @__PURE__ */ $constructor("$ZodObjectJIT", (inst, def) =>
     return (payload, ctx) => fn(shape, payload, ctx);
   };
   let fastpass;
-  const isObject2 = isObject;
+  const isObject = isObject2;
   const jit = !globalConfig.jitless;
   const allowsEval2 = allowsEval;
   const fastEnabled = jit && allowsEval2.value;
@@ -1907,7 +2919,7 @@ var $ZodObjectJIT = /* @__PURE__ */ $constructor("$ZodObjectJIT", (inst, def) =>
   inst._zod.parse = (payload, ctx) => {
     value ?? (value = _normalized.value);
     const input = payload.value;
-    if (!isObject2(input)) {
+    if (!isObject(input)) {
       payload.issues.push({
         expected: "object",
         code: "invalid_type",
@@ -1990,6 +3002,73 @@ var $ZodUnion = /* @__PURE__ */ $constructor("$ZodUnion", (inst, def) => {
     return Promise.all(results).then((results) => {
       return handleUnionResults(results, payload, inst, ctx);
     });
+  };
+});
+var $ZodDiscriminatedUnion = /* @__PURE__ */ $constructor("$ZodDiscriminatedUnion", (inst, def) => {
+  def.inclusive = false;
+  $ZodUnion.init(inst, def);
+  const _super = inst._zod.parse;
+  defineLazy(inst._zod, "propValues", () => {
+    const propValues = {};
+    for (const option of def.options) {
+      const pv = option._zod.propValues;
+      if (!pv || Object.keys(pv).length === 0)
+        throw new Error(`Invalid discriminated union option at index "${def.options.indexOf(option)}"`);
+      for (const [k, v] of Object.entries(pv)) {
+        if (!propValues[k])
+          propValues[k] = new Set;
+        for (const val of v) {
+          propValues[k].add(val);
+        }
+      }
+    }
+    return propValues;
+  });
+  const disc = cached(() => {
+    const opts = def.options;
+    const map = new Map;
+    for (const o of opts) {
+      const values = o._zod.propValues?.[def.discriminator];
+      if (!values || values.size === 0)
+        throw new Error(`Invalid discriminated union option at index "${def.options.indexOf(o)}"`);
+      for (const v of values) {
+        if (map.has(v)) {
+          throw new Error(`Duplicate discriminator value "${String(v)}"`);
+        }
+        map.set(v, o);
+      }
+    }
+    return map;
+  });
+  inst._zod.parse = (payload, ctx) => {
+    const input = payload.value;
+    if (!isObject2(input)) {
+      payload.issues.push({
+        code: "invalid_type",
+        expected: "object",
+        input,
+        inst
+      });
+      return payload;
+    }
+    const opt = disc.value.get(input?.[def.discriminator]);
+    if (opt) {
+      return opt._zod.run(payload, ctx);
+    }
+    if (def.unionFallback || ctx.direction === "backward") {
+      return _super(payload, ctx);
+    }
+    payload.issues.push({
+      code: "invalid_union",
+      errors: [],
+      note: "No matching discriminator",
+      discriminator: def.discriminator,
+      options: Array.from(disc.value.keys()),
+      input,
+      path: [def.discriminator],
+      inst
+    });
+    return payload;
   };
 });
 var $ZodIntersection = /* @__PURE__ */ $constructor("$ZodIntersection", (inst, def) => {
@@ -2196,6 +3275,132 @@ function handleTupleResults(itemResults, final, items, input, optoutStart) {
   }
   return final;
 }
+var $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
+  $ZodType.init(inst, def);
+  inst._zod.parse = (payload, ctx) => {
+    const input = payload.value;
+    if (!isPlainObject(input)) {
+      payload.issues.push({
+        expected: "record",
+        code: "invalid_type",
+        input,
+        inst
+      });
+      return payload;
+    }
+    const proms = [];
+    const values = def.keyType._zod.values;
+    if (values) {
+      payload.value = {};
+      const recordKeys = new Set;
+      for (const key of values) {
+        if (typeof key === "string" || typeof key === "number" || typeof key === "symbol") {
+          recordKeys.add(typeof key === "number" ? key.toString() : key);
+          const keyResult = def.keyType._zod.run({ value: key, issues: [] }, ctx);
+          if (keyResult instanceof Promise) {
+            throw new Error("Async schemas not supported in object keys currently");
+          }
+          if (keyResult.issues.length) {
+            payload.issues.push({
+              code: "invalid_key",
+              origin: "record",
+              issues: keyResult.issues.map((iss) => finalizeIssue(iss, ctx, config())),
+              input: key,
+              path: [key],
+              inst
+            });
+            continue;
+          }
+          const outKey = keyResult.value;
+          const result = def.valueType._zod.run({ value: input[key], issues: [] }, ctx);
+          if (result instanceof Promise) {
+            proms.push(result.then((result) => {
+              if (result.issues.length) {
+                payload.issues.push(...prefixIssues(key, result.issues));
+              }
+              payload.value[outKey] = result.value;
+            }));
+          } else {
+            if (result.issues.length) {
+              payload.issues.push(...prefixIssues(key, result.issues));
+            }
+            payload.value[outKey] = result.value;
+          }
+        }
+      }
+      let unrecognized;
+      for (const key in input) {
+        if (!recordKeys.has(key)) {
+          unrecognized = unrecognized ?? [];
+          unrecognized.push(key);
+        }
+      }
+      if (unrecognized && unrecognized.length > 0) {
+        payload.issues.push({
+          code: "unrecognized_keys",
+          input,
+          inst,
+          keys: unrecognized
+        });
+      }
+    } else {
+      payload.value = {};
+      for (const key of Reflect.ownKeys(input)) {
+        if (key === "__proto__")
+          continue;
+        if (!Object.prototype.propertyIsEnumerable.call(input, key))
+          continue;
+        let keyResult = def.keyType._zod.run({ value: key, issues: [] }, ctx);
+        if (keyResult instanceof Promise) {
+          throw new Error("Async schemas not supported in object keys currently");
+        }
+        const checkNumericKey = typeof key === "string" && number.test(key) && keyResult.issues.length;
+        if (checkNumericKey) {
+          const retryResult = def.keyType._zod.run({ value: Number(key), issues: [] }, ctx);
+          if (retryResult instanceof Promise) {
+            throw new Error("Async schemas not supported in object keys currently");
+          }
+          if (retryResult.issues.length === 0) {
+            keyResult = retryResult;
+          }
+        }
+        if (keyResult.issues.length) {
+          if (def.mode === "loose") {
+            payload.value[key] = input[key];
+          } else {
+            payload.issues.push({
+              code: "invalid_key",
+              origin: "record",
+              issues: keyResult.issues.map((iss) => finalizeIssue(iss, ctx, config())),
+              input: key,
+              path: [key],
+              inst
+            });
+          }
+          continue;
+        }
+        const result = def.valueType._zod.run({ value: input[key], issues: [] }, ctx);
+        if (result instanceof Promise) {
+          proms.push(result.then((result) => {
+            if (result.issues.length) {
+              payload.issues.push(...prefixIssues(key, result.issues));
+            }
+            payload.value[keyResult.value] = result.value;
+          }));
+        } else {
+          if (result.issues.length) {
+            payload.issues.push(...prefixIssues(key, result.issues));
+          }
+          payload.value[keyResult.value] = result.value;
+        }
+      }
+    }
+    if (proms.length) {
+      return Promise.all(proms).then(() => payload);
+    }
+    return payload;
+  };
+});
 var $ZodEnum = /* @__PURE__ */ $constructor("$ZodEnum", (inst, def) => {
   $ZodType.init(inst, def);
   const values = getEnumValues(def.entries);
@@ -3710,6 +4915,42 @@ var tupleProcessor = (schema, ctx, _json, params) => {
   if (typeof maximum === "number")
     json.maxItems = maximum;
 };
+var recordProcessor = (schema, ctx, _json, params) => {
+  const json = _json;
+  const def = schema._zod.def;
+  json.type = "object";
+  const keyType = def.keyType;
+  const keyBag = keyType._zod.bag;
+  const patterns = keyBag?.patterns;
+  if (def.mode === "loose" && patterns && patterns.size > 0) {
+    const valueSchema = process2(def.valueType, ctx, {
+      ...params,
+      path: [...params.path, "patternProperties", "*"]
+    });
+    json.patternProperties = {};
+    for (const pattern of patterns) {
+      json.patternProperties[pattern.source] = valueSchema;
+    }
+  } else {
+    if (ctx.target === "draft-07" || ctx.target === "draft-2020-12") {
+      json.propertyNames = process2(def.keyType, ctx, {
+        ...params,
+        path: [...params.path, "propertyNames"]
+      });
+    }
+    json.additionalProperties = process2(def.valueType, ctx, {
+      ...params,
+      path: [...params.path, "additionalProperties"]
+    });
+  }
+  const keyValues = keyType._zod.values;
+  if (keyValues) {
+    const validKeyValues = [...keyValues].filter((v) => typeof v === "string" || typeof v === "number");
+    if (validKeyValues.length > 0) {
+      json.required = validKeyValues;
+    }
+  }
+};
 var nullableProcessor = (schema, ctx, json, params) => {
   const def = schema._zod.def;
   const inner = process2(def.innerType, ctx, params);
@@ -4131,6 +5372,9 @@ var ZodURL = /* @__PURE__ */ $constructor("ZodURL", (inst, def) => {
   $ZodURL.init(inst, def);
   ZodStringFormat.init(inst, def);
 });
+function url(params) {
+  return _url(ZodURL, params);
+}
 var ZodEmoji = /* @__PURE__ */ $constructor("ZodEmoji", (inst, def) => {
   $ZodEmoji.init(inst, def);
   ZodStringFormat.init(inst, def);
@@ -4403,6 +5647,18 @@ function union(options, params) {
     ...normalizeParams(params)
   });
 }
+var ZodDiscriminatedUnion = /* @__PURE__ */ $constructor("ZodDiscriminatedUnion", (inst, def) => {
+  ZodUnion.init(inst, def);
+  $ZodDiscriminatedUnion.init(inst, def);
+});
+function discriminatedUnion(discriminator, options, params) {
+  return new ZodDiscriminatedUnion({
+    type: "union",
+    options,
+    discriminator,
+    ...normalizeParams(params)
+  });
+}
 var ZodIntersection = /* @__PURE__ */ $constructor("ZodIntersection", (inst, def) => {
   $ZodIntersection.init(inst, def);
   ZodType.init(inst, def);
@@ -4432,6 +5688,29 @@ function tuple(items, _paramsOrRest, _params) {
     type: "tuple",
     items,
     rest,
+    ...normalizeParams(params)
+  });
+}
+var ZodRecord = /* @__PURE__ */ $constructor("ZodRecord", (inst, def) => {
+  $ZodRecord.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json, params) => recordProcessor(inst, ctx, json, params);
+  inst.keyType = def.keyType;
+  inst.valueType = def.valueType;
+});
+function record(keyType, valueType, params) {
+  if (!valueType || !valueType._zod) {
+    return new ZodRecord({
+      type: "record",
+      keyType: string2(),
+      valueType: keyType,
+      ...normalizeParams(valueType)
+    });
+  }
+  return new ZodRecord({
+    type: "record",
+    keyType,
+    valueType,
     ...normalizeParams(params)
   });
 }
@@ -4869,6 +6148,69 @@ var FlashCancelOrderRequestSchema = object({
 
 // apps/newframe-cli/src/client.ts
 import { createHash } from "crypto";
+
+// packages/desktop-api/src/schemas.ts
+var AddressSchema = string2().regex(/^0x[0-9a-f]{40}$/i);
+var HexSchema = string2().regex(/^0x[0-9a-f]*$/i);
+var HashSchema = string2().regex(/^0x[0-9a-f]{64}$/i);
+var AgentDescriptorSchema = strictObject({
+  name: string2().trim().min(1).max(128),
+  description: string2().trim().max(512).optional(),
+  url: url({ protocol: /^https?:$/ }).max(2048).optional()
+});
+var AgentConnectSchema = strictObject({
+  descriptor: AgentDescriptorSchema,
+  durationSeconds: number2().int().min(60).max(180 * 24 * 60 * 60)
+});
+var SessionSchema = object({
+  sessionId: string2().min(1),
+  sessionToken: string2().min(1),
+  account: AddressSchema,
+  expiresAt: number2().finite()
+});
+var AgentCredentialsSchema = SessionSchema.extend({ descriptor: AgentDescriptorSchema });
+var RoutingSchema = object({
+  chainId: string2().optional(),
+  origin: string2().optional(),
+  connecting: boolean2().optional()
+});
+var RpcCallSchema = RoutingSchema.extend({
+  method: string2().min(1).max(128),
+  params: union([array(unknown()), record(string2(), unknown())]).default([])
+});
+var OriginStatusSchema = object({
+  originId: string2(),
+  origin: string2(),
+  connected: boolean2(),
+  address: string2(),
+  selectedAddress: string2().optional(),
+  chainId: string2().optional()
+});
+var ChainSchema = looseObject({
+  chainId: union([number2(), string2()]),
+  name: string2().optional(),
+  connected: boolean2().optional(),
+  icon: array(looseObject({ url: string2() })).optional()
+});
+var ProviderEventSchema = _enum([
+  "networkChanged",
+  "chainChanged",
+  "chainsChanged",
+  "accountsChanged",
+  "assetsChanged"
+]);
+var WalletEventSchema = discriminatedUnion("event", [
+  object({ event: literal("chainsChanged"), value: array(ChainSchema) }),
+  object({ event: literal("accountsChanged"), value: array(string2()) }),
+  object({ event: literal("chainChanged"), value: string2() }),
+  object({ event: literal("networkChanged"), value: union([string2(), number2()]) }),
+  object({ event: literal("assetsChanged"), value: unknown() })
+]);
+var RpcErrorSchema = object({
+  code: number2().optional(),
+  message: string2(),
+  data: unknown().optional()
+});
 
 // packages/flash/dist/chains.js
 var FLASH_CHAIN_REGISTRY = [
@@ -5596,7 +6938,7 @@ function isFlashTerminalStatus(status) {
 var FLASH_DEV_BASE_URL = "http://127.0.0.1:8422/v1";
 var FLASH_PROD_BASE_URL = "https://flash.definitive.fi/v1";
 var FLASH_API_KEY = "dpka_513a2bd7_57a2_46d2_927b_2a3857fe271b";
-var AddressSchema = string2().trim().regex(/^0x[0-9a-fA-F]{40}$/);
+var AddressSchema2 = string2().trim().regex(/^0x[0-9a-fA-F]{40}$/);
 var OrderIdSchema = string2().min(1);
 var SignatureSchema = string2().min(1);
 var ListOptionsSchema = object({
@@ -5612,11 +6954,11 @@ var SubmitOrderFunction = _function({
   output: FlashSubmitResponseSchema
 });
 var ListOrdersFunction = _function({
-  input: [AddressSchema, ListOptionsSchema.default({})],
+  input: [AddressSchema2, ListOptionsSchema.default({})],
   output: FlashListOrdersResponseSchema
 });
 var GetOrderFunction = _function({
-  input: [AddressSchema, OrderIdSchema],
+  input: [AddressSchema2, OrderIdSchema],
   output: FlashGetOrderResponseSchema
 });
 var CancelOrderFunction = _function({
@@ -5816,7 +7158,6 @@ import { constants } from "fs";
 import { chmod, lstat, mkdir, open as open2, readFile, rename, rm } from "fs/promises";
 import { homedir } from "os";
 import { join } from "path";
-var addressPattern = /^0x[0-9a-f]{40}$/i;
 function stateDirectory(env = process.env) {
   return env.NEWFRAME_CLI_STATE_DIR ?? join(env.XDG_STATE_HOME ?? join(homedir(), ".local", "state"), "newframe-cli");
 }
@@ -5832,14 +7173,11 @@ function sessionPath(directory) {
   return join(directory, "session.json");
 }
 function validateSession(value) {
-  if (!value || typeof value !== "object") {
+  const parsed = SessionSchema.safeParse(value);
+  if (!parsed.success) {
     throw new Error("Invalid stored session");
   }
-  const session = value;
-  if (typeof session.sessionId !== "string" || !session.sessionId || typeof session.sessionToken !== "string" || !session.sessionToken || typeof session.account !== "string" || !addressPattern.test(session.account) || typeof session.expiresAt !== "number" || !Number.isFinite(session.expiresAt)) {
-    throw new Error("Invalid stored session");
-  }
-  return session;
+  return parsed.data;
 }
 async function saveSession(session, directory = stateDirectory()) {
   validateSession(session);
@@ -6034,33 +7372,9 @@ async function withSubmitLock(key, task, directory = stateDirectory()) {
 
 // apps/newframe-cli/src/client.ts
 var defaultRpcUrl = "http://127.0.0.1:1248";
-var addressPattern2 = /^0x[0-9a-f]{40}$/i;
-function errorMessage2(payload, fallback) {
-  const record = flashObject(payload);
-  if (typeof record.error === "string") {
-    return record.error;
-  }
-  if (record.error && typeof record.error === "object") {
-    const message = flashObject(record.error).message;
-    if (typeof message === "string") {
-      return message;
-    }
-  }
-  return typeof payload === "string" && payload ? payload : fallback;
-}
-async function responsePayload(response) {
-  const text = await response.text();
-  if (!text) {
-    return null;
-  }
-  try {
-    return JSON.parse(text);
-  } catch {
-    return text;
-  }
-}
+var addressPattern = /^0x[0-9a-f]{40}$/i;
 function requireAddress(address) {
-  if (!addressPattern2.test(address)) {
+  if (!addressPattern.test(address)) {
     throw new Error("Invalid account address");
   }
   return address.toLowerCase();
@@ -6107,19 +7421,12 @@ function assertQuoteFresh(quote) {
   }
 }
 
-class HttpStatusError extends Error {
-  status;
-  constructor(status, message) {
-    super(`${status}: ${message}`);
-    this.status = status;
-  }
-}
-
 class NewframeClient {
   rpcUrl;
   flashUrl;
   stateDir;
   fetcher;
+  desktop;
   pollIntervalMs;
   receiptTimeoutMs;
   flash;
@@ -6128,17 +7435,19 @@ class NewframeClient {
     this.flashUrl = (options.flashUrl ?? process.env.NEWFRAME_FLASH_URL ?? flashBaseUrl()).replace(/\/$/, "");
     this.stateDir = options.stateDir ?? process.env.NEWFRAME_CLI_STATE_DIR;
     this.fetcher = options.fetch ?? fetch;
+    this.desktop = createDesktopClient(this.rpcUrl, { fetch: this.fetcher });
     this.pollIntervalMs = options.pollIntervalMs ?? 2000;
     this.receiptTimeoutMs = options.receiptTimeoutMs ?? 120000;
     this.flash = createFlashApi({ baseUrl: this.flashUrl, fetch: this.fetcher });
   }
-  async request(url, init) {
-    const response = await this.fetcher(url, init);
-    const payload = await responsePayload(response);
-    if (!response.ok) {
-      throw new HttpStatusError(response.status, errorMessage2(payload, response.statusText));
-    }
-    return payload;
+  agentClient(session) {
+    return createDesktopClient(this.rpcUrl, {
+      fetch: this.fetcher,
+      headers: () => ({
+        authorization: `Bearer ${session.sessionToken}`,
+        "x-newframe-agent-session": session.sessionId
+      })
+    });
   }
   async session() {
     return loadSession(this.stateDir);
@@ -6155,19 +7464,11 @@ class NewframeClient {
     if (existing) {
       let stale = false;
       try {
-        await this.request(`${this.rpcUrl}/agent/rpc`, {
-          method: "POST",
-          headers: {
-            authorization: `Bearer ${existing.sessionToken}`,
-            "content-type": "application/json",
-            "x-newframe-agent-session": existing.sessionId
-          },
-          body: "{}"
-        });
+        await this.agentClient(existing).agent.status.query();
       } catch (error) {
-        if (error instanceof HttpStatusError && error.status === 401) {
+        if (isDesktopClientError(error) && error.data?.code === "UNAUTHORIZED") {
           stale = true;
-        } else if (!(error instanceof HttpStatusError) || error.status !== 400) {
+        } else {
           throw error;
         }
       }
@@ -6176,25 +7477,15 @@ class NewframeClient {
       }
     }
     const { durationSeconds, ...descriptor } = input;
-    const payload = flashObject(await this.request(`${this.rpcUrl}/agent/session`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ descriptor, durationSeconds })
-    }));
-    const session = {
-      sessionId: typeof payload.sessionId === "string" ? payload.sessionId : "",
-      sessionToken: typeof payload.sessionToken === "string" ? payload.sessionToken : "",
-      account: typeof payload.account === "string" ? payload.account : "",
-      expiresAt: typeof payload.expiresAt === "number" ? payload.expiresAt : Number.NaN
-    };
-    if (!session.sessionId || !session.sessionToken || !addressPattern2.test(session.account) || !Number.isFinite(session.expiresAt) || session.expiresAt <= Date.now()) {
-      throw new Error("Newframe returned invalid session credentials");
+    const session = SessionSchema.parse(await this.desktop.agent.connect.mutate({ descriptor, durationSeconds }));
+    if (session.expiresAt <= Date.now()) {
+      throw new Error("Newframe returned expired session credentials");
     }
     if (existing) {
       try {
         await this.revokeCredentials(existing);
       } catch (error) {
-        if (!(error instanceof HttpStatusError) || error.status !== 401) {
+        if (!isDesktopClientError(error) || error.data?.code !== "UNAUTHORIZED") {
           await this.revokeCredentials(session).catch(() => {
             return;
           });
@@ -6214,7 +7505,7 @@ class NewframeClient {
     try {
       await this.revokeCredentials(session);
     } catch (error) {
-      if (!(error instanceof HttpStatusError) || error.status !== 401) {
+      if (!isDesktopClientError(error) || error.data?.code !== "UNAUTHORIZED") {
         throw error;
       }
       await clearSession(this.stateDir);
@@ -6224,44 +7515,17 @@ class NewframeClient {
     return { revoked: true, sessionId: session.sessionId };
   }
   revokeCredentials(session) {
-    return this.request(`${this.rpcUrl}/agent/session/${encodeURIComponent(session.sessionId)}`, {
-      method: "DELETE",
-      headers: {
-        authorization: `Bearer ${session.sessionToken}`,
-        "x-newframe-agent-session": session.sessionId
-      }
-    });
+    return this.agentClient(session).agent.revoke.mutate({ sessionId: session.sessionId });
   }
   async rpc(method, params = [], chainId) {
-    const session = await this.session();
-    const payload = flashObject(await this.request(`${this.rpcUrl}/agent/rpc`, {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${session.sessionToken}`,
-        "content-type": "application/json",
-        "x-newframe-agent-session": session.sessionId,
-        ...chainId ? { "x-newframe-chain-id": `0x${chainId.toString(16)}` } : {}
-      },
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params })
-    }));
-    if (payload.error) {
-      throw new Error(errorMessage2(payload, "Newframe RPC failed"));
-    }
-    if (!("result" in payload)) {
-      throw new Error("Newframe RPC did not return a result");
-    }
-    return payload.result;
+    return this.agentClient(await this.session()).rpc.mutate({
+      method,
+      params,
+      chainId: chainId ? `0x${chainId.toString(16)}` : undefined
+    });
   }
-  async publicRpc(method, params, chainId) {
-    const payload = flashObject(await this.request(this.rpcUrl, {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-newframe-chain-id": `0x${chainId.toString(16)}` },
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params })
-    }));
-    if (payload.error) {
-      throw new Error(errorMessage2(payload, "Newframe RPC failed"));
-    }
-    return payload.result;
+  publicRpc(method, params, chainId) {
+    return this.desktop.rpc.mutate({ method, params, chainId: `0x${chainId.toString(16)}` });
   }
   async quote(request) {
     const session = await this.session();
@@ -6288,7 +7552,11 @@ class NewframeClient {
   }
   async signTypedData(account, typedData, chainId) {
     assertTypedDataChain(typedData, chainId);
-    const signature = await this.rpc("eth_signTypedData_v4", [account, JSON.stringify(typedData)], chainId);
+    const signature = await this.agentClient(await this.session()).wallet.signTypedData.mutate({
+      account,
+      data: JSON.stringify(typedData),
+      chainId: `0x${chainId.toString(16)}`
+    });
     if (typeof signature !== "string" || !/^0x[0-9a-f]+$/i.test(signature)) {
       throw new Error("Newframe did not return a Flash signature");
     }
@@ -6336,7 +7604,10 @@ class NewframeClient {
         if (!step) {
           progress.actions[kind] = { phase: "sending" };
           await save();
-          const hash = await this.rpc("eth_sendTransaction", [{ ...built.transaction, from: account, chainId: `0x${spentChainId.toString(16)}` }], spentChainId);
+          const hash = await this.agentClient(session).wallet.sendTransaction.mutate({
+            transaction: { ...built.transaction, from: account, chainId: `0x${spentChainId.toString(16)}` },
+            chainId: `0x${spentChainId.toString(16)}`
+          });
           if (typeof hash !== "string" || !/^0x[0-9a-f]{64}$/i.test(hash)) {
             throw new Error("Newframe did not return a preparation transaction hash");
           }
@@ -6406,7 +7677,10 @@ class NewframeClient {
       throw new Error("Flash order does not belong to the approved session account");
     }
     const cancelMessage = flashCancelMessage(orderId);
-    const signature = await this.rpc("personal_sign", [cancelMessage, session.account]);
+    const signature = await this.agentClient(session).wallet.personalSign.mutate({
+      message: cancelMessage,
+      account: session.account
+    });
     if (typeof signature !== "string" || !signature) {
       throw new Error("Newframe did not return a cancel signature");
     }
@@ -6473,7 +7747,7 @@ async function jsonOrFile(source) {
     return jsonInput(source);
   }
 }
-async function run(argv = process.argv.slice(2), client = new NewframeClient) {
+async function run2(argv = process.argv.slice(2), client = new NewframeClient) {
   if (argv[0] === "help" || argv.includes("--help") || argv.includes("-h")) {
     return { usage };
   }
@@ -6535,15 +7809,19 @@ async function run(argv = process.argv.slice(2), client = new NewframeClient) {
 }
 if (import.meta.main) {
   try {
-    const result = await run();
+    const result = await run2();
     process.stdout.write(`${JSON.stringify(result)}
 `);
   } catch (error) {
-    process.stderr.write(`${JSON.stringify({ error: error instanceof Error ? error.message : String(error) })}
+    let message = error instanceof Error ? error.message : String(error);
+    if (isDesktopClientError(error) && error.data?.httpStatus) {
+      message = `${error.data.httpStatus}: ${message}`;
+    }
+    process.stderr.write(`${JSON.stringify({ error: message })}
 `);
     process.exitCode = 1;
   }
 }
 export {
-  run
+  run2 as run
 };

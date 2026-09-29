@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto'
 
+import { createDesktopClient, isDesktopClientError } from '@newframe/desktop-api/client'
+import { SessionSchema, type Session as StoredSession } from '@newframe/desktop-api/schemas'
 import { createFlashApi, flashBaseUrl, flashCancelMessage } from '@newframe/flash/api'
 import type { FlashQuoteRequest } from '@newframe/flash/contracts'
 import {
@@ -15,7 +17,7 @@ import type { FlashQuote } from '@newframe/flash/schemas'
 import { isFlashTerminalStatus, normalizeFlashStatus } from '@newframe/flash/status'
 
 import { readSubmitProgress, saveSubmitProgress, withSubmitLock } from './journal.js'
-import { clearSession, loadSession, saveSession, stateDirectory, type StoredSession } from './storage.js'
+import { clearSession, loadSession, saveSession, stateDirectory } from './storage.js'
 
 const defaultRpcUrl = 'http://127.0.0.1:1248'
 const addressPattern = /^0x[0-9a-f]{40}$/i
@@ -33,32 +35,6 @@ export interface ClientOptions {
   fetch?: typeof fetch
   pollIntervalMs?: number
   receiptTimeoutMs?: number
-}
-
-function errorMessage(payload: unknown, fallback: string) {
-  const record = flashObject(payload)
-  if (typeof record.error === 'string') {
-    return record.error
-  }
-  if (record.error && typeof record.error === 'object') {
-    const message = flashObject(record.error).message
-    if (typeof message === 'string') {
-      return message
-    }
-  }
-  return typeof payload === 'string' && payload ? payload : fallback
-}
-
-async function responsePayload(response: Response) {
-  const text = await response.text()
-  if (!text) {
-    return null
-  }
-  try {
-    return JSON.parse(text) as unknown
-  } catch {
-    return text
-  }
 }
 
 function requireAddress(address: string) {
@@ -115,20 +91,12 @@ function assertQuoteFresh(quote: FlashQuote) {
   }
 }
 
-class HttpStatusError extends Error {
-  constructor(
-    readonly status: number,
-    message: string
-  ) {
-    super(`${status}: ${message}`)
-  }
-}
-
 export class NewframeClient {
   readonly rpcUrl: string
   readonly flashUrl: string
   readonly stateDir?: string
   private readonly fetcher: typeof fetch
+  private readonly desktop: ReturnType<typeof createDesktopClient>
   private readonly pollIntervalMs: number
   private readonly receiptTimeoutMs: number
   private readonly flash: ReturnType<typeof createFlashApi>
@@ -138,18 +106,20 @@ export class NewframeClient {
     this.flashUrl = (options.flashUrl ?? process.env.NEWFRAME_FLASH_URL ?? flashBaseUrl()).replace(/\/$/, '')
     this.stateDir = options.stateDir ?? process.env.NEWFRAME_CLI_STATE_DIR
     this.fetcher = options.fetch ?? fetch
+    this.desktop = createDesktopClient(this.rpcUrl, { fetch: this.fetcher })
     this.pollIntervalMs = options.pollIntervalMs ?? 2_000
     this.receiptTimeoutMs = options.receiptTimeoutMs ?? 120_000
     this.flash = createFlashApi({ baseUrl: this.flashUrl, fetch: this.fetcher })
   }
 
-  private async request(url: string, init: RequestInit): Promise<unknown> {
-    const response = await this.fetcher(url, init)
-    const payload = await responsePayload(response)
-    if (!response.ok) {
-      throw new HttpStatusError(response.status, errorMessage(payload, response.statusText))
-    }
-    return payload
+  private agentClient(session: StoredSession) {
+    return createDesktopClient(this.rpcUrl, {
+      fetch: this.fetcher,
+      headers: () => ({
+        authorization: `Bearer ${session.sessionToken}`,
+        'x-newframe-agent-session': session.sessionId
+      })
+    })
   }
 
   private async session() {
@@ -168,20 +138,11 @@ export class NewframeClient {
     if (existing) {
       let stale = false
       try {
-        // The agent handler authenticates before it rejects this malformed RPC body.
-        await this.request(`${this.rpcUrl}/agent/rpc`, {
-          method: 'POST',
-          headers: {
-            authorization: `Bearer ${existing.sessionToken}`,
-            'content-type': 'application/json',
-            'x-newframe-agent-session': existing.sessionId
-          },
-          body: '{}'
-        })
+        await this.agentClient(existing).agent.status.query()
       } catch (error) {
-        if (error instanceof HttpStatusError && error.status === 401) {
+        if (isDesktopClientError(error) && error.data?.code === 'UNAUTHORIZED') {
           stale = true
-        } else if (!(error instanceof HttpStatusError) || error.status !== 400) {
+        } else {
           throw error
         }
       }
@@ -192,33 +153,17 @@ export class NewframeClient {
       }
     }
     const { durationSeconds, ...descriptor } = input
-    const payload = flashObject(
-      await this.request(`${this.rpcUrl}/agent/session`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ descriptor, durationSeconds })
-      })
+    const session = SessionSchema.parse(
+      await this.desktop.agent.connect.mutate({ descriptor, durationSeconds })
     )
-    const session: StoredSession = {
-      sessionId: typeof payload.sessionId === 'string' ? payload.sessionId : '',
-      sessionToken: typeof payload.sessionToken === 'string' ? payload.sessionToken : '',
-      account: typeof payload.account === 'string' ? payload.account : '',
-      expiresAt: typeof payload.expiresAt === 'number' ? payload.expiresAt : Number.NaN
-    }
-    if (
-      !session.sessionId ||
-      !session.sessionToken ||
-      !addressPattern.test(session.account) ||
-      !Number.isFinite(session.expiresAt) ||
-      session.expiresAt <= Date.now()
-    ) {
-      throw new Error('Newframe returned invalid session credentials')
+    if (session.expiresAt <= Date.now()) {
+      throw new Error('Newframe returned expired session credentials')
     }
     if (existing) {
       try {
         await this.revokeCredentials(existing)
       } catch (error) {
-        if (!(error instanceof HttpStatusError) || error.status !== 401) {
+        if (!isDesktopClientError(error) || error.data?.code !== 'UNAUTHORIZED') {
           await this.revokeCredentials(session).catch(() => undefined)
           throw error
         }
@@ -238,7 +183,7 @@ export class NewframeClient {
     try {
       await this.revokeCredentials(session)
     } catch (error) {
-      if (!(error instanceof HttpStatusError) || error.status !== 401) {
+      if (!isDesktopClientError(error) || error.data?.code !== 'UNAUTHORIZED') {
         throw error
       }
       await clearSession(this.stateDir)
@@ -249,50 +194,19 @@ export class NewframeClient {
   }
 
   private revokeCredentials(session: StoredSession) {
-    return this.request(`${this.rpcUrl}/agent/session/${encodeURIComponent(session.sessionId)}`, {
-      method: 'DELETE',
-      headers: {
-        authorization: `Bearer ${session.sessionToken}`,
-        'x-newframe-agent-session': session.sessionId
-      }
-    })
+    return this.agentClient(session).agent.revoke.mutate({ sessionId: session.sessionId })
   }
 
   async rpc(method: string, params: unknown[] = [], chainId?: number): Promise<unknown> {
-    const session = await this.session()
-    const payload = flashObject(
-      await this.request(`${this.rpcUrl}/agent/rpc`, {
-        method: 'POST',
-        headers: {
-          authorization: `Bearer ${session.sessionToken}`,
-          'content-type': 'application/json',
-          'x-newframe-agent-session': session.sessionId,
-          ...(chainId ? { 'x-newframe-chain-id': `0x${chainId.toString(16)}` } : {})
-        },
-        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params })
-      })
-    )
-    if (payload.error) {
-      throw new Error(errorMessage(payload, 'Newframe RPC failed'))
-    }
-    if (!('result' in payload)) {
-      throw new Error('Newframe RPC did not return a result')
-    }
-    return payload.result
+    return this.agentClient(await this.session()).rpc.mutate({
+      method,
+      params,
+      chainId: chainId ? `0x${chainId.toString(16)}` : undefined
+    })
   }
 
-  private async publicRpc(method: string, params: unknown[], chainId: number) {
-    const payload = flashObject(
-      await this.request(this.rpcUrl, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-newframe-chain-id': `0x${chainId.toString(16)}` },
-        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params })
-      })
-    )
-    if (payload.error) {
-      throw new Error(errorMessage(payload, 'Newframe RPC failed'))
-    }
-    return payload.result
+  private publicRpc(method: string, params: unknown[], chainId: number) {
+    return this.desktop.rpc.mutate({ method, params, chainId: `0x${chainId.toString(16)}` })
   }
 
   async quote(request: FlashQuoteRequest): Promise<QuoteEnvelope> {
@@ -325,7 +239,11 @@ export class NewframeClient {
 
   private async signTypedData(account: string, typedData: unknown, chainId: number) {
     assertTypedDataChain(typedData, chainId)
-    const signature = await this.rpc('eth_signTypedData_v4', [account, JSON.stringify(typedData)], chainId)
+    const signature = await this.agentClient(await this.session()).wallet.signTypedData.mutate({
+      account,
+      data: JSON.stringify(typedData),
+      chainId: `0x${chainId.toString(16)}`
+    })
     if (typeof signature !== 'string' || !/^0x[0-9a-f]+$/i.test(signature)) {
       throw new Error('Newframe did not return a Flash signature')
     }
@@ -378,11 +296,10 @@ export class NewframeClient {
           if (!step) {
             progress.actions[kind] = { phase: 'sending' }
             await save()
-            const hash = await this.rpc(
-              'eth_sendTransaction',
-              [{ ...built.transaction, from: account, chainId: `0x${spentChainId.toString(16)}` }],
-              spentChainId
-            )
+            const hash = await this.agentClient(session).wallet.sendTransaction.mutate({
+              transaction: { ...built.transaction, from: account, chainId: `0x${spentChainId.toString(16)}` },
+              chainId: `0x${spentChainId.toString(16)}`
+            })
             if (typeof hash !== 'string' || !/^0x[0-9a-f]{64}$/i.test(hash)) {
               throw new Error('Newframe did not return a preparation transaction hash')
             }
@@ -466,7 +383,10 @@ export class NewframeClient {
       throw new Error('Flash order does not belong to the approved session account')
     }
     const cancelMessage = flashCancelMessage(orderId)
-    const signature = await this.rpc('personal_sign', [cancelMessage, session.account])
+    const signature = await this.agentClient(session).wallet.personalSign.mutate({
+      message: cancelMessage,
+      account: session.account
+    })
     if (typeof signature !== 'string' || !signature) {
       throw new Error('Newframe did not return a cancel signature')
     }

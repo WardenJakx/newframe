@@ -4,14 +4,7 @@ import { chmod, lstat, mkdir, open, readFile, rename, rm } from 'node:fs/promise
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
-export interface StoredSession {
-  sessionId: string
-  sessionToken: string
-  account: string
-  expiresAt: number
-}
-
-const addressPattern = /^0x[0-9a-f]{40}$/i
+import { SessionSchema, type Session as StoredSession } from '@newframe/desktop-api/schemas'
 
 export function stateDirectory(env: NodeJS.ProcessEnv = process.env) {
   return (
@@ -34,23 +27,11 @@ function sessionPath(directory: string) {
 }
 
 function validateSession(value: unknown): StoredSession {
-  if (!value || typeof value !== 'object') {
+  const parsed = SessionSchema.safeParse(value)
+  if (!parsed.success) {
     throw new Error('Invalid stored session')
   }
-  const session = value as Partial<StoredSession>
-  if (
-    typeof session.sessionId !== 'string' ||
-    !session.sessionId ||
-    typeof session.sessionToken !== 'string' ||
-    !session.sessionToken ||
-    typeof session.account !== 'string' ||
-    !addressPattern.test(session.account) ||
-    typeof session.expiresAt !== 'number' ||
-    !Number.isFinite(session.expiresAt)
-  ) {
-    throw new Error('Invalid stored session')
-  }
-  return session as StoredSession
+  return parsed.data
 }
 
 export async function saveSession(session: StoredSession, directory = stateDirectory()) {

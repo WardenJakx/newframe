@@ -4,6 +4,7 @@ import type {
   TypedDataV1,
   TypedMessage as BaseTypedMessage
 } from '@metamask/eth-sig-util'
+import type { AgentConnect } from '@newframe/desktop-api/schemas'
 
 import type { Token } from '../../tokens/domain/state/token.js'
 import type { TransactionData, TransactionSimulation } from '../../transactions/domain/index.js'
@@ -368,14 +369,7 @@ export interface PermitSignatureRequest extends AccountRequest<'signErc20Permit'
 export type AccessRequest = AccountRequest<'access'>
 
 export interface AgentAccessRequest extends AccountRequest<'agentAccess'> {
-  data: {
-    descriptor: {
-      name: string
-      description?: string
-      url?: string
-    }
-    durationSeconds: number
-  }
+  data: AgentConnect
 }
 
 export interface AddChainRequest extends AccountRequest<'addChain'> {

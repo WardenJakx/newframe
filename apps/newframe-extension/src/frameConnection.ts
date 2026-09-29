@@ -1,46 +1,23 @@
 import EventEmitter from 'events'
 
-type JsonRpcParams = readonly unknown[]
+import { createDesktopSocket, isDesktopClientError } from '@newframe/desktop-api/client'
+import {
+  CompanionResponseSchema,
+  type CompanionPayload as JsonRpcPayload,
+  type CompanionResponse as JsonRpcResponse
+} from '@newframe/desktop-api/protocol'
+export type {
+  CompanionPayload as JsonRpcPayload,
+  CompanionResponse as JsonRpcResponse
+} from '@newframe/desktop-api/protocol'
 
-export interface JsonRpcPayload {
-  id?: number | string
-  jsonrpc?: '2.0'
-  method: string
-  params?: JsonRpcParams
-  chainId?: string
-  __frameOrigin?: string
-  __frameFavicon?: string
-  __extensionConnecting?: boolean
-}
-
-export interface JsonRpcResponse {
-  id?: number | string
-  jsonrpc?: '2.0'
-  result?: unknown
-  error?: unknown
-  method?: string
-  params?: JsonRpcParams | SubscriptionParams
-}
-
-interface SubscriptionParams {
-  subscription: string
-  result: unknown
-}
-
-interface PendingRequest {
-  method: string
-  resolve: (value: unknown) => void
-  reject: (error: unknown) => void
-}
-
-type ProviderEvent = 'networkChanged' | 'chainChanged' | 'chainsChanged' | 'accountsChanged' | 'assetsChanged'
+import type { ProviderEvent } from '@newframe/desktop-api/schemas'
 
 export interface RawFrameConnectionOptions {
   reconnectInterval?: number
   maxReconnectInterval?: number
   connectionTimeout?: number
   createSocket?: (url: string) => WebSocket
-  resetOnOpen?: boolean
   retryState?: unknown
   onRetryStateChange?: (state: ConnectionRetryState) => void
 }
@@ -63,43 +40,8 @@ const providerEvents: ProviderEvent[] = [
   'assetsChanged'
 ]
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
-
-function isJsonRpcId(value: unknown): value is number | string {
-  return typeof value === 'number' || typeof value === 'string'
-}
-
-function isSubscriptionParams(value: unknown): value is SubscriptionParams {
-  return isRecord(value) && typeof value.subscription === 'string' && 'result' in value
-}
-
 function isJsonRpcResponse(value: unknown): value is JsonRpcResponse {
-  if (!isRecord(value)) {
-    return false
-  }
-
-  if ('id' in value && value.id !== undefined && !isJsonRpcId(value.id)) {
-    return false
-  }
-  if ('jsonrpc' in value && value.jsonrpc !== undefined && value.jsonrpc !== '2.0') {
-    return false
-  }
-  if ('method' in value && value.method !== undefined && typeof value.method !== 'string') {
-    return false
-  }
-  if ('params' in value && value.params !== undefined) {
-    if (!Array.isArray(value.params) && !isSubscriptionParams(value.params)) {
-      return false
-    }
-  }
-
-  return value.id !== undefined || (typeof value.method === 'string' && isSubscriptionParams(value.params))
-}
-
-function normalizeParams(params?: JsonRpcParams) {
-  return params ? [...params] : []
+  return CompanionResponseSchema.safeParse(value).success
 }
 
 async function withTimeout<T>(promise: Promise<T>, timeout: number, message: string) {
@@ -117,41 +59,75 @@ async function withTimeout<T>(promise: Promise<T>, timeout: number, message: str
   }
 }
 
-function createPayload(
-  method: string,
-  params: JsonRpcParams = [],
-  id: number,
-  targetChain?: string,
-  options: Pick<JsonRpcPayload, '__frameOrigin' | '__extensionConnecting'> = {}
-) {
-  const payload: JsonRpcPayload = { id, method, params, jsonrpc: '2.0' }
+class ConnectionRetry {
+  private timer?: ReturnType<typeof setTimeout>
+  private retryAt = 0
+  private delay: number
+  private initial: number
+  private max: number
 
-  if (targetChain) {
-    payload.chainId = targetChain
+  constructor(private options: RawFrameConnectionOptions) {
+    this.initial = options.reconnectInterval ?? DEFAULT_RECONNECT_INTERVAL
+    this.max = options.maxReconnectInterval ?? DEFAULT_MAX_RECONNECT_INTERVAL
+    this.delay = this.initial
+    const saved = options.retryState as Partial<ConnectionRetryState> | undefined
+    if (
+      saved &&
+      typeof saved.retryAt === 'number' &&
+      Number.isFinite(saved.retryAt) &&
+      saved.retryAt >= 0 &&
+      saved.retryAt <= Date.now() + this.max &&
+      typeof saved.reconnectDelay === 'number' &&
+      Number.isFinite(saved.reconnectDelay) &&
+      saved.reconnectDelay >= this.initial &&
+      saved.reconnectDelay <= this.max
+    ) {
+      this.retryAt = saved.retryAt
+      this.delay = saved.reconnectDelay
+    }
   }
 
-  if (options.__frameOrigin) {
-    payload.__frameOrigin = options.__frameOrigin
+  run(connect: () => void) {
+    if (this.retryAt > Date.now()) {
+      this.timer ??= setTimeout(() => {
+        this.timer = undefined
+        connect()
+      }, this.retryAt - Date.now())
+    } else {
+      this.close()
+      connect()
+    }
   }
 
-  if (options.__extensionConnecting) {
-    payload.__extensionConnecting = options.__extensionConnecting
+  backoff() {
+    this.retryAt = Date.now() + this.delay
+    this.delay = Math.min(this.delay * 2, this.max)
+    this.save()
   }
 
-  return payload
+  reset() {
+    this.retryAt = 0
+    this.delay = this.initial
+    this.save()
+  }
+
+  close() {
+    clearTimeout(this.timer)
+    this.timer = undefined
+  }
+
+  private save() {
+    this.options.onRetryStateChange?.({ retryAt: this.retryAt, reconnectDelay: this.delay })
+  }
 }
 
 export class RawFrameConnection extends EventEmitter {
+  private retry: ConnectionRetry
   private socket?: WebSocket
-  private reconnectTimer?: ReturnType<typeof setTimeout>
   private connectionTimer?: ReturnType<typeof setTimeout>
   private queue: JsonRpcPayload[] = []
   private closing = false
-  private reconnectDelay: number
-  private retryAt = 0
 
-  private readonly reconnectInterval: number
-  private readonly maxReconnectInterval: number
   private readonly connectionTimeout: number
   private readonly createSocket: (url: string) => WebSocket
 
@@ -160,31 +136,13 @@ export class RawFrameConnection extends EventEmitter {
 
   constructor(
     private url: string,
-    private options: RawFrameConnectionOptions = {}
+    options: RawFrameConnectionOptions = {}
   ) {
     super()
 
-    this.reconnectInterval = options.reconnectInterval ?? DEFAULT_RECONNECT_INTERVAL
-    this.maxReconnectInterval = options.maxReconnectInterval ?? DEFAULT_MAX_RECONNECT_INTERVAL
+    this.retry = new ConnectionRetry(options)
     this.connectionTimeout = options.connectionTimeout ?? DEFAULT_CONNECTION_TIMEOUT
     this.createSocket = options.createSocket ?? ((url) => new WebSocket(url))
-    this.reconnectDelay = this.reconnectInterval
-
-    const saved = options.retryState as Partial<ConnectionRetryState> | null | undefined
-    if (
-      saved &&
-      typeof saved.retryAt === 'number' &&
-      Number.isFinite(saved.retryAt) &&
-      saved.retryAt >= 0 &&
-      saved.retryAt <= Date.now() + this.maxReconnectInterval &&
-      typeof saved.reconnectDelay === 'number' &&
-      Number.isFinite(saved.reconnectDelay) &&
-      saved.reconnectDelay >= this.reconnectInterval &&
-      saved.reconnectDelay <= this.maxReconnectInterval
-    ) {
-      this.retryAt = saved.retryAt
-      this.reconnectDelay = saved.reconnectDelay
-    }
     this.ensureConnected()
   }
 
@@ -202,7 +160,7 @@ export class RawFrameConnection extends EventEmitter {
 
   close() {
     this.closing = true
-    clearTimeout(this.reconnectTimer)
+    this.retry.close()
     clearTimeout(this.connectionTimer)
 
     const socket = this.socket
@@ -221,45 +179,7 @@ export class RawFrameConnection extends EventEmitter {
       return
     }
 
-    if (this.retryAt > Date.now()) {
-      this.reconnectTimer ??= setTimeout(() => {
-        this.reconnectTimer = undefined
-        this.ensureConnected()
-      }, this.retryAt - Date.now())
-      return
-    }
-    clearTimeout(this.reconnectTimer)
-    this.reconnectTimer = undefined
-    this.connect()
-  }
-
-  reconnect() {
-    if (this.closing) {
-      return
-    }
-    if (this.retryAt) {
-      return
-    }
-
-    clearTimeout(this.reconnectTimer)
-    clearTimeout(this.connectionTimer)
-    this.reconnectTimer = undefined
-    this.connectionTimer = undefined
-
-    const socket = this.socket
-    this.finishDisconnect(socket, false)
-
-    if (socket && socket.readyState < WebSocket.CLOSING) {
-      socket.close()
-    }
-
-    this.queueReconnect()
-  }
-
-  resetRetry() {
-    this.reconnectDelay = this.reconnectInterval
-    this.retryAt = 0
-    this.saveRetryState()
+    this.retry.run(() => this.connect())
   }
 
   private connect() {
@@ -271,8 +191,6 @@ export class RawFrameConnection extends EventEmitter {
     }
 
     this.closed = false
-    this.retryAt = 0
-    this.saveRetryState()
 
     let socket: WebSocket
     try {
@@ -309,9 +227,7 @@ export class RawFrameConnection extends EventEmitter {
 
     clearTimeout(this.connectionTimer)
     this.connectionTimer = undefined
-    if (this.options.resetOnOpen !== false) {
-      this.resetRetry()
-    }
+    this.retry.reset()
     this.connected = true
     this.emit('connect')
     this.flushQueue()
@@ -369,19 +285,12 @@ export class RawFrameConnection extends EventEmitter {
   }
 
   private queueReconnect() {
-    if (this.closing || this.retryAt) {
+    if (this.closing) {
       return
     }
 
-    const delay = this.reconnectDelay
-    this.reconnectDelay = Math.min(this.reconnectDelay * 2, this.maxReconnectInterval)
-    this.retryAt = Date.now() + delay
-    this.saveRetryState()
+    this.retry.backoff()
     this.ensureConnected()
-  }
-
-  private saveRetryState() {
-    this.options.onRetryStateChange?.({ retryAt: this.retryAt, reconnectDelay: this.reconnectDelay })
   }
 
   private flushQueue() {
@@ -406,233 +315,197 @@ export class RawFrameConnection extends EventEmitter {
 }
 
 export default class FrameBackgroundProvider extends EventEmitter {
-  connection: RawFrameConnection
+  readonly connection = Object.assign(new EventEmitter(), { ensureConnected: () => this.ensureConnected() })
   nextId = 1
-
-  private promises: Record<number | string, PendingRequest> = {}
-  private attemptedSubscriptions = new Set<ProviderEvent>()
-  private subscriptionEvents = new Map<string, ProviderEvent>()
-  private checkConnectionRunning = false
-  private requestApproval: boolean
+  private transport?: ReturnType<typeof createDesktopSocket>
+  private subscription?: { unsubscribe(): void }
+  private connectionTimer?: ReturnType<typeof setTimeout>
+  private retries: ConnectionRetry
   private connected = false
+  private closed = false
+  private requestApproval: boolean
+  private generation = 0
 
-  constructor(url: string, connectionOptions?: RawFrameConnectionOptions & { requestApproval?: boolean }) {
+  constructor(
+    private url: string,
+    private options: RawFrameConnectionOptions & { requestApproval?: boolean } = {}
+  ) {
     super()
-
-    this.requestApproval = connectionOptions?.requestApproval ?? false
-    this.connection = new RawFrameConnection(url, { ...connectionOptions, resetOnOpen: false })
-
-    this.connection.on('connect', () => {
-      this.checkConnection().catch(console.error)
-    })
-    this.connection.on('close', () => this.handleClose())
-    this.connection.on('payload', (payload: JsonRpcResponse) => this.handlePayload(payload))
-    this.on('newListener', (event: string | symbol) => this.handleNewListener(event))
+    this.requestApproval = options.requestApproval ?? false
+    this.retries = new ConnectionRetry(options)
+    this.ensureConnected()
   }
 
-  request<T = unknown>(payload: JsonRpcPayload) {
-    return this.doSend<T>(payload.method, payload.params, payload.chainId, true, payload)
+  get client() {
+    if (!this.transport) {
+      throw new Error('Not connected')
+    }
+    return this.transport.client
   }
-
-  send<T = unknown>(payload: JsonRpcPayload) {
-    return this.request<T>(payload)
-  }
-
-  close() {
-    this.connection.close()
-    this.connected = false
-    this.rejectPending(new Error('Not connected'))
-  }
-
   isConnected() {
     return this.connected
+  }
+
+  request(payload: JsonRpcPayload) {
+    return this.client.rpc.mutate({
+      method: payload.method,
+      params: payload.params ? [...payload.params] : [],
+      chainId: payload.chainId,
+      origin: payload.__frameOrigin,
+      connecting: payload.__extensionConnecting
+    })
+  }
+
+  private ensureConnected() {
+    if (this.closed || this.transport) {
+      return
+    }
+    this.retries.run(() => this.connect())
+  }
+
+  private connect() {
+    if (this.closed || this.transport) {
+      return
+    }
+    const generation = ++this.generation
+    const url = new URL(this.url)
+    url.pathname = '/trpc'
+    const createSocket = this.options.createSocket
+    const Socket = createSocket
+      ? (Object.assign(
+          function (url: string) {
+            return createSocket(url)
+          },
+          { CONNECTING: 0, OPEN: 1, CLOSING: 2, CLOSED: 3 }
+        ) as unknown as typeof WebSocket)
+      : undefined
+    this.transport = createDesktopSocket({
+      url: url.toString(),
+      WebSocket: Socket,
+      onOpen: () => {
+        if (generation !== this.generation) {
+          return
+        }
+        clearTimeout(this.connectionTimer)
+        this.connection.emit('connect')
+        void this.handshake(generation)
+      },
+      onClose: () => {
+        if (generation === this.generation) {
+          this.retry()
+        }
+      },
+      onError: () => {
+        if (generation === this.generation) {
+          this.retry()
+        }
+      },
+      // Application backoff persists across service-worker restarts and approval failures.
+      retryDelayMs: () => this.options.maxReconnectInterval ?? DEFAULT_MAX_RECONNECT_INTERVAL
+    })
+    this.connectionTimer = setTimeout(
+      () => this.retry(),
+      this.options.connectionTimeout ?? DEFAULT_CONNECTION_TIMEOUT
+    )
+  }
+
+  private async timed<T>(call: (signal: AbortSignal) => Promise<T>, timeout: number) {
+    const controller = new AbortController()
+    try {
+      return await withTimeout(call(controller.signal), timeout, 'Newframe connection timed out')
+    } finally {
+      controller.abort()
+    }
+  }
+
+  private async handshake(generation: number) {
+    const approval = this.requestApproval
+    this.requestApproval = false
+    try {
+      await this.timed(
+        (signal) =>
+          approval
+            ? this.client.extension.connect.mutate({}, { signal })
+            : this.client.wallet.chainId.query({}, { signal }),
+        HEALTH_CHECK_TIMEOUT
+      )
+      if (this.closed || generation !== this.generation) {
+        return
+      }
+      this.connected = true
+      this.retries.reset()
+      this.subscription = this.client.wallet.events.subscribe(
+        { events: providerEvents.filter((event) => this.listenerCount(event) > 0) },
+        {
+          onData: ({ event, value }) =>
+            this.emit(
+              event,
+              event === 'networkChanged' && typeof value === 'string' ? parseInt(value) : value
+            ),
+          onError: () => {
+            if (generation === this.generation) {
+              this.retry()
+            }
+          }
+        }
+      )
+      this.emit('connect')
+    } catch (error) {
+      if (generation !== this.generation || this.closed) {
+        return
+      }
+      if (isDesktopClientError(error) && error.data?.rpc?.code === 4001) {
+        this.emit('rejected')
+      }
+      this.retry()
+    }
   }
 
   async checkHealth(timeout = HEALTH_CHECK_TIMEOUT) {
     if (!this.connected) {
       return false
     }
-
     try {
-      await withTimeout(
-        this.doSend('web3_clientVersion', [], undefined, false),
-        timeout,
-        'Newframe connection health check timed out'
-      )
+      await this.timed((signal) => this.client.wallet.clientVersion.query({}, { signal }), timeout)
       return true
     } catch {
-      if (this.connection.connected) {
+      if (!this.closed) {
         this.emit('unresponsive')
-        this.connection.reconnect()
+        this.retry()
       }
       return false
     }
   }
 
-  private async checkConnection() {
-    if (this.checkConnectionRunning || this.connected) {
-      return
-    }
-
-    this.checkConnectionRunning = true
-
-    try {
-      const method = this.requestApproval ? 'frame_requestExtensionConnection' : 'eth_chainId'
-      this.requestApproval = false
-      await withTimeout(
-        this.doSend(method, [], undefined, false),
-        HEALTH_CHECK_TIMEOUT,
-        'Newframe connection handshake timed out'
-      )
-      if (!this.connection.connected) {
-        return
-      }
-      this.connection.resetRetry()
-      this.connected = true
-      this.emit('connect')
-      this.resumeSubscriptions()
-    } catch (e) {
-      this.connected = false
-      if (!this.connection.connected) {
-        return
-      }
-      this.connection.reconnect()
-      if (typeof e === 'object' && e !== null && 'code' in e && e.code === 4001) {
-        this.emit('rejected')
-      }
-    } finally {
-      this.checkConnectionRunning = false
-    }
-  }
-
-  private doSend<T = unknown>(
-    method: string,
-    params: JsonRpcParams = [],
-    targetChain?: string,
-    waitForConnection = true,
-    options: Pick<JsonRpcPayload, '__frameOrigin' | '__extensionConnecting'> = {}
-  ) {
-    const send = () =>
-      new Promise<T>((resolve, reject) => {
-        try {
-          const id = this.nextId++
-          const payload = createPayload(method, normalizeParams(params), id, targetChain, options)
-          this.promises[id] = {
-            method,
-            resolve: (value) => resolve(value as T),
-            reject
-          }
-          this.connection.send(payload)
-        } catch (e) {
-          reject(e)
-        }
-      })
-
-    if (this.connected || !waitForConnection) {
-      return send()
-    }
-
-    return new Promise<T>((resolve, reject) => {
-      const resolveSend = () => {
-        clearTimeout(disconnectTimer)
-        send().then(resolve, reject)
-      }
-      const disconnectTimer = setTimeout(() => {
-        this.off('connect', resolveSend)
-        reject(new Error('Not connected'))
-      }, 5000)
-
-      this.once('connect', resolveSend)
-    })
-  }
-
-  private handlePayload(payload: JsonRpcResponse) {
-    if (typeof payload.id !== 'undefined') {
-      const pending = this.promises[payload.id]
-      if (!pending) {
-        return
-      }
-
-      delete this.promises[payload.id]
-      if (payload.error) {
-        pending.reject(payload.error)
-      } else {
-        pending.resolve(payload.result)
-      }
-      return
-    }
-
-    if (!payload.method?.includes('_subscription') || !isSubscriptionParams(payload.params)) {
-      return
-    }
-
-    const event = this.subscriptionEvents.get(payload.params.subscription)
-    if (!event) {
-      return
-    }
-
-    this.handleProviderEvent(event, payload.params.result)
-  }
-
-  private handleClose() {
-    const wasConnected = this.connected
-
+  private stopTransport() {
+    ++this.generation
+    clearTimeout(this.connectionTimer)
+    this.subscription?.unsubscribe()
+    this.subscription = undefined
+    const transport = this.transport
+    this.transport = undefined
+    const connected = this.connected
     this.connected = false
-    this.attemptedSubscriptions.clear()
-    this.subscriptionEvents.clear()
-    this.rejectPending(new Error('Not connected'))
-
-    if (wasConnected) {
+    // Close the physical socket to reject in-flight calls before awaiting client shutdown.
+    transport?.socket.connection?.ws.close()
+    void transport?.socket.close()
+    this.connection.emit('close')
+    if (connected) {
       this.emit('disconnect')
     }
   }
 
-  private handleNewListener(event: string | symbol) {
-    if (!this.isProviderEvent(event) || this.attemptedSubscriptions.has(event)) {
+  private retry() {
+    if (this.closed || !this.transport) {
       return
     }
-    if (this.connected) {
-      // Subscription setup catches and logs failures internally.
-      void this.startProviderSubscription(event)
-    }
+    this.stopTransport()
+    this.retries.backoff()
+    this.ensureConnected()
   }
-
-  private async startProviderSubscription(event: ProviderEvent) {
-    this.attemptedSubscriptions.add(event)
-
-    try {
-      const subId = await this.doSend<string>('eth_subscribe', [event])
-      this.subscriptionEvents.set(subId, event)
-    } catch (e) {
-      console.warn(`Unable to subscribe to ${event}`, e)
-    }
-  }
-
-  private resumeSubscriptions() {
-    providerEvents.forEach((event) => {
-      if (this.listenerCount(event) && !this.attemptedSubscriptions.has(event)) {
-        // Subscription setup catches and logs failures internally.
-        void this.startProviderSubscription(event)
-      }
-    })
-  }
-
-  private handleProviderEvent(event: ProviderEvent, result: unknown) {
-    if (event === 'networkChanged') {
-      this.emit('networkChanged', typeof result === 'string' ? parseInt(result) : result)
-    } else {
-      this.emit(event, result)
-    }
-  }
-
-  private rejectPending(error: Error) {
-    const pending = this.promises
-    this.promises = {}
-
-    Object.values(pending).forEach(({ reject }) => reject(error))
-  }
-
-  private isProviderEvent(event: string | symbol): event is ProviderEvent {
-    return typeof event === 'string' && providerEvents.includes(event as ProviderEvent)
+  close() {
+    this.closed = true
+    this.retries.close()
+    this.stopTransport()
   }
 }

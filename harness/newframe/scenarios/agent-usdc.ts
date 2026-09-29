@@ -1,3 +1,5 @@
+import { createDesktopClient } from '@newframe/desktop-api/client'
+import type { AgentCredentials } from '@newframe/desktop-api/schemas'
 import { FLASH_ANVIL_CHAIN_ID, FLASH_USDC_ADDRESS } from '@newframe/flash/constants'
 import { Interface, parseUnits } from 'ethers'
 
@@ -11,12 +13,6 @@ const usdcInterface = new Interface([
   'function balanceOf(address account) view returns (uint256)',
   'function transfer(address to, uint256 amount) returns (bool)'
 ])
-
-type AgentCredentials = {
-  sessionId: string
-  sessionToken: string
-  account: string
-}
 
 type TransactionReceipt = {
   status: string
@@ -33,108 +29,28 @@ function requireString(value: unknown, label: string) {
   return value
 }
 
-async function responseJson(response: Response): Promise<unknown> {
-  const body: unknown = await response.json()
-  if (!response.ok) {
-    const message = isRecord(body) && typeof body.error === 'string' ? body.error : `HTTP ${response.status}`
-    throw new Error(message)
-  }
-  return body
-}
-
-function rpcResult(body: unknown, method: string) {
-  if (!isRecord(body)) {
-    throw new Error(`${method} returned an invalid JSON-RPC response`)
-  }
-  if (isRecord(body.error)) {
-    throw new Error(typeof body.error.message === 'string' ? body.error.message : `${method} failed`)
-  }
-  if (!('result' in body)) {
-    throw new Error(`${method} returned no result`)
-  }
-  return body.result
-}
+const desktop = createDesktopClient(NEWFRAME_RPC_URL, { headers: () => ({ origin: 'agent-usdc.e2e' }) })
+const agentClient = (credentials: AgentCredentials) =>
+  createDesktopClient(NEWFRAME_RPC_URL, {
+    headers: () => ({
+      authorization: `Bearer ${credentials.sessionToken}`,
+      'x-newframe-agent-session': credentials.sessionId
+    })
+  })
 
 async function requestAgentSession() {
   console.log('Approve the "USDC Transfer E2E" agent session in Newframe to continue.')
-
-  const response = await fetch(`${NEWFRAME_RPC_URL}/agent/session`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      descriptor: {
-        name: 'USDC Transfer E2E',
-        description: 'Sends 10 USDC to the requested recipient on the Newframe Anvil network.'
-      },
-      durationSeconds: 600
-    })
-  })
-
-  const body = await responseJson(response)
-  if (
-    !isRecord(body) ||
-    typeof body.sessionId !== 'string' ||
-    typeof body.sessionToken !== 'string' ||
-    typeof body.account !== 'string'
-  ) {
-    throw new Error('Agent session returned invalid credentials')
-  }
-  return {
-    sessionId: body.sessionId,
-    sessionToken: body.sessionToken,
-    account: body.account
-  }
-}
-
-async function revokeAgentSession(credentials: AgentCredentials) {
-  const response = await fetch(`${NEWFRAME_RPC_URL}/agent/session/${credentials.sessionId}`, {
-    method: 'DELETE',
-    headers: {
-      authorization: `Bearer ${credentials.sessionToken}`,
-      'x-newframe-agent-session': credentials.sessionId
-    }
-  })
-
-  if (response.status !== 204) {
-    throw new Error(`Agent session revocation failed with HTTP ${response.status}`)
-  }
-}
-
-async function newframeRpc(method: string, params: unknown[]) {
-  const response = await fetch(`${NEWFRAME_RPC_URL}?chainId=${FLASH_ANVIL_CHAIN_ID}`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      origin: 'agent-usdc.e2e'
+  return createDesktopClient(NEWFRAME_RPC_URL).agent.connect.mutate({
+    descriptor: {
+      name: 'USDC Transfer E2E',
+      description: 'Sends 10 USDC to the requested recipient on the Newframe Anvil network.'
     },
-    body: JSON.stringify({
-      id: method,
-      jsonrpc: '2.0',
-      method,
-      params,
-      chainId: CHAIN_ID
-    })
+    durationSeconds: 600
   })
-  return rpcResult(await responseJson(response), method)
 }
 
-async function agentRpc(credentials: AgentCredentials, method: string, params: unknown[]) {
-  const response = await fetch(`${NEWFRAME_RPC_URL}/agent/rpc`, {
-    method: 'POST',
-    headers: {
-      authorization: `Bearer ${credentials.sessionToken}`,
-      'content-type': 'application/json',
-      'x-newframe-agent-session': credentials.sessionId
-    },
-    body: JSON.stringify({
-      id: method,
-      jsonrpc: '2.0',
-      method,
-      params,
-      chainId: CHAIN_ID
-    })
-  })
-  return rpcResult(await responseJson(response), method)
+function newframeRpc(method: string, params: unknown[]) {
+  return desktop.rpc.mutate({ method, params, chainId: CHAIN_ID })
 }
 
 async function usdcBalance(address: string) {
@@ -174,18 +90,16 @@ async function main() {
 
   try {
     const data = usdcInterface.encodeFunctionData('transfer', [RECIPIENT, TRANSFER_AMOUNT])
-    const transactionHash = requireString(
-      await agentRpc(credentials, 'eth_sendTransaction', [
-        {
-          from: credentials.account,
-          to: FLASH_USDC_ADDRESS,
-          data,
-          value: '0x0',
-          chainId: CHAIN_ID
-        }
-      ]),
-      'eth_sendTransaction'
-    )
+    const transactionHash = await agentClient(credentials).wallet.sendTransaction.mutate({
+      transaction: {
+        from: credentials.account,
+        to: FLASH_USDC_ADDRESS,
+        data,
+        value: '0x0',
+        chainId: CHAIN_ID
+      },
+      chainId: CHAIN_ID
+    })
     const receipt = await waitForReceipt(transactionHash)
     const balanceAfter = await usdcBalance(RECIPIENT)
 
@@ -212,7 +126,7 @@ async function main() {
       })
     )
   } finally {
-    await revokeAgentSession(credentials)
+    await agentClient(credentials).agent.revoke.mutate({ sessionId: credentials.sessionId })
   }
 }
 

@@ -1,17 +1,25 @@
 import http from 'http'
+import { randomUUID } from 'node:crypto'
 
+import { MAX_RPC_REQUEST_BYTES } from '@newframe/desktop-api/protocol'
+import { desktopRouter } from '@newframe/desktop-api/router'
+import { createHTTPHandler } from '@trpc/server/adapters/standalone'
 import WebSocket, { WebSocketServer } from 'ws'
 
 import type { Accounts } from '../../../features/accounts/main/index.js'
 import type { AgentService } from '../../../features/agent-access/main/index.js'
-import { createProductionOriginsService } from '../../../features/connections/main/origins.js'
+import {
+  parseOrigin,
+  parseRequestChainId,
+  createProductionOriginsService
+} from '../../../features/connections/main/origins.js'
 import type { RequestService } from '../../../features/requests/main/service.js'
 import type { FlashService } from '../../../features/transactions/trade/main/index.js'
 import { localApiPort } from '../../../platform/local-rpc/endpoint.js'
 import { createHttpRpcTransport } from '../../../platform/local-rpc/http.js'
-import { MAX_RPC_REQUEST_BYTES } from '../../../platform/local-rpc/protocol.js'
-import { createRpcRequestHandler } from '../../../platform/local-rpc/request.js'
+import { createOriginSessionMonitor, createRpcRequestHandler } from '../../../platform/local-rpc/request.js'
 import { createApiServer } from '../../../platform/local-rpc/server.js'
+import { rpcCall } from '../../../platform/local-rpc/trpc.js'
 import {
   createWebSocketRpcTransport,
   type WebSocketRpcTransportDependencies
@@ -36,8 +44,7 @@ export function createProductionApiServer(
   const httpTransport = createHttpRpcTransport({
     provider,
     store: storePort,
-    requestHandler,
-    handleAgentRequest: agentService.createHttpHandler(provider)
+    requestHandler
   })
   const wsTransport = createWebSocketRpcTransport({
     provider,
@@ -49,8 +56,61 @@ export function createProductionApiServer(
     openReadyState: WebSocket.OPEN
   })
 
+  const monitor = createOriginSessionMonitor({ store: storePort })
+  const trpcHandler = createHTTPHandler({
+    router: desktopRouter,
+    basePath: '/trpc/',
+    maxBodySize: MAX_RPC_REQUEST_BYTES,
+    allowBatching: false,
+    createContext({ req, res }) {
+      const agent = agentService.createContext(req, res, provider)
+      if (req.headers.authorization || req.headers['x-newframe-agent-session']) {
+        return agent
+      }
+      const origin = parseOrigin(req.headers.origin)
+      return {
+        ...agent,
+        rpc: (input) =>
+          rpcCall((writeResponse) =>
+            requestHandler({
+              writeResponse,
+              rawPayload: {
+                id: 1,
+                jsonrpc: '2.0',
+                method: input.method,
+                params: input.params as readonly unknown[],
+                ...(input.chainId === undefined ? {} : { chainId: input.chainId })
+              },
+              origin,
+              chainHint: parseRequestChainId(req),
+              identity: { transport: 'http', connectionId: randomUUID(), origin },
+              session: { monitor, refresh: 'before-validation' },
+              acceptsProviderResponse: () => !res.destroyed
+            })
+          )
+      }
+    }
+  })
+  const nativeHttp = {
+    ...httpTransport,
+    get started() {
+      return httpTransport.started
+    },
+    handler: ((req, res) => {
+      if (new URL(req.url ?? '/', 'http://127.0.0.1').pathname.startsWith('/trpc/')) {
+        res.setHeader('Cache-Control', 'no-store')
+        trpcHandler(req, res)
+      } else {
+        httpTransport.handler(req, res)
+      }
+    }) as http.RequestListener,
+    dispose() {
+      monitor.dispose()
+      httpTransport.dispose()
+    }
+  }
   return createApiServer({
-    http: httpTransport,
+    http: nativeHttp,
     ws: wsTransport,
     createServer: (handler) => http.createServer(handler),
     port: localApiPort()

@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { readFile, writeFile } from 'node:fs/promises'
 
+import { isDesktopClientError } from '@newframe/desktop-api/client'
 import { FlashQuoteRequestSchema } from '@newframe/flash/contracts'
 
 import { NewframeClient } from './client.js'
@@ -139,9 +140,11 @@ if (import.meta.main) {
     const result = await run()
     process.stdout.write(`${JSON.stringify(result)}\n`)
   } catch (error) {
-    process.stderr.write(
-      `${JSON.stringify({ error: error instanceof Error ? error.message : String(error) })}\n`
-    )
+    let message = error instanceof Error ? error.message : String(error)
+    if (isDesktopClientError(error) && error.data?.httpStatus) {
+      message = `${error.data.httpStatus}: ${message}`
+    }
+    process.stderr.write(`${JSON.stringify({ error: message })}\n`)
     process.exitCode = 1
   }
 }

@@ -9,7 +9,7 @@ import {
   RoutedJsonRpcRequestSchema,
   WebSocketJsonRpcRequestSchema,
   extractJsonRpcId
-} from './protocol'
+} from '@newframe/desktop-api/protocol'
 
 describe('JSON-RPC requests', () => {
   it('parses canonical requests and defaults omitted params', () => {

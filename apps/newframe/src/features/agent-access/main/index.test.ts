@@ -1,47 +1,21 @@
 import { expect, it, jest as timers, mock } from 'bun:test'
 import { EventEmitter } from 'events'
-import { Readable } from 'stream'
+
+import { createDesktopCaller } from '@newframe/desktop-api/router'
 
 import { createRpcGateway } from '../../../app/main/gateway/rpc'
 import type { AccountRequest } from '../../requests/contract/requests'
 import { createAgentService } from './index'
-import type { AgentSessionCredentials } from './sessionStore'
 
 const accountId = '0x1111111111111111111111111111111111111111'
 
-function request() {
-  return Object.assign(
-    Readable.from([Buffer.from(JSON.stringify({ descriptor: { name: 'Test Agent' }, durationSeconds: 60 }))]),
-    {
-      headers: {},
-      method: 'POST',
-      url: '/agent/session'
-    }
-  )
-}
-
-function response() {
-  return Object.assign(new EventEmitter(), {
-    body: '',
-    destroyed: false,
-    status: 0,
-    writableEnded: false,
-    writeHead(status: number) {
-      this.status = status
-      return this
-    },
-    end(body = '') {
-      this.body = body
-      this.writableEnded = true
-      return this
-    }
-  })
-}
+const input = { descriptor: { name: 'Test Agent' }, durationSeconds: 60 }
 
 it('characterizes agent prompt timeout, disconnect, approval idempotency, and dispose cleanup', async () => {
   timers.useFakeTimers()
   try {
     const requests: Record<string, AccountRequest> = {}
+    let routedRequest = Promise.withResolvers<void>()
     const continuations = new Map<string, (response: RPCResponsePayload) => void>()
     const requestLifecycle = {
       bind: mock(),
@@ -106,6 +80,7 @@ it('characterizes agent prompt timeout, disconnect, approval idempotency, and di
         }
         requestLifecycle.bind(routed)
         requests[routed.handlerId] = routed
+        routedRequest.resolve()
         return true
       }
     }
@@ -122,90 +97,106 @@ it('characterizes agent prompt timeout, disconnect, approval idempotency, and di
       } as never,
       requestLifecycle
     )
-    const handler = service.createHttpHandler({} as never)
+    const connect = (response = new EventEmitter()) =>
+      createDesktopCaller(
+        service.createContext({ headers: {} } as never, response as never, {} as never)
+      ).agent.connect(input)
 
-    const timedOut = response()
-    await handler(request() as never, timedOut as never)
+    const pending = Array.from({ length: 8 }, () => connect())
+    await routedRequest.promise
+    expect(connect()).rejects.toMatchObject({ code: 'TOO_MANY_REQUESTS' })
+    for (const id of Object.keys(requests)) {
+      service.resolveAgentAccessRequest(id, true)
+    }
+    await Promise.all(pending)
+    flash.startAgentSession.mockClear()
+    routedRequest = Promise.withResolvers<void>()
+
+    const browser = createDesktopCaller(
+      service.createContext(
+        { headers: { origin: 'https://example.com' } } as never,
+        new EventEmitter() as never,
+        {} as never
+      )
+    )
+    expect(browser.agent.connect(input)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+
+    const timedOutResponse = connect().catch((error: unknown) => error)
+    await routedRequest.promise
+    routedRequest = Promise.withResolvers<void>()
     const timedOutId = Object.keys(requests)[0]
     timers.advanceTimersByTime(119_999)
-    expect({ pending: Boolean(requests[timedOutId]), responseEnded: timedOut.writableEnded }).toEqual({
-      pending: true,
-      responseEnded: false
-    })
+    expect(Boolean(requests[timedOutId])).toBe(true)
     timers.advanceTimersByTime(1)
+    expect(await timedOutResponse).toMatchObject({ message: 'Agent connection request expired' })
     expect({
-      body: JSON.parse(timedOut.body) as unknown,
       lateApproval: service.resolveAgentAccessRequest(timedOutId, true),
-      pending: Boolean(requests[timedOutId]),
-      status: timedOut.status
+      pending: Boolean(requests[timedOutId])
     }).toEqual({
-      body: { error: 'Agent connection request expired' },
-      lateApproval: false,
-      pending: false,
-      status: 403
-    })
-
-    const disconnected = response()
-    await handler(request() as never, disconnected as never)
-    const disconnectedId = Object.keys(requests)[0]
-    disconnected.emit('close')
-    expect({
-      body: JSON.parse(disconnected.body) as unknown,
-      lateApproval: service.resolveAgentAccessRequest(disconnectedId, true),
-      pending: Boolean(requests[disconnectedId])
-    }).toEqual({
-      body: { error: 'Agent disconnected before approval' },
       lateApproval: false,
       pending: false
     })
 
-    const approved = response()
-    await handler(request() as never, approved as never)
+    const disconnected = new EventEmitter()
+    const disconnectedResponse = connect(disconnected).catch((error: unknown) => error)
+    await routedRequest.promise
+    routedRequest = Promise.withResolvers<void>()
+    const disconnectedId = Object.keys(requests)[0]
+    disconnected.emit('close')
+    expect(await disconnectedResponse).toMatchObject({ message: 'Agent disconnected before approval' })
+    expect({
+      lateApproval: service.resolveAgentAccessRequest(disconnectedId, true),
+      pending: Boolean(requests[disconnectedId])
+    }).toEqual({
+      lateApproval: false,
+      pending: false
+    })
+
+    const approvedResponse = connect()
+    await routedRequest.promise
+    routedRequest = Promise.withResolvers<void>()
     const approvedId = Object.keys(requests)[0]
     expect(service.resolveAgentAccessRequest(approvedId, true)).toBe(true)
     expect(service.resolveAgentAccessRequest(approvedId, true)).toBe(false)
-    expect(approved.status).toBe(200)
-    expect(JSON.parse(approved.body)).toMatchObject({ account: accountId })
+    const credentials = await approvedResponse
+    expect(credentials).toMatchObject({ account: accountId })
     expect(flash.startAgentSession).toHaveBeenCalledTimes(1)
 
-    const credentials = JSON.parse(approved.body) as AgentSessionCredentials
     const handleRpc = mock((_payload: RPCRequestPayload) => {})
-    const rpcHandler = service.createHttpHandler({
-      send: createRpcGateway({ selectedAddresses: () => [accountId], handle: handleRpc })
-    })
-    for (const [method, code] of [
-      ['wallet_unknown', -32601],
-      ['eth_blockNumber', 4001]
-    ] as const) {
-      const rpcRequest = Object.assign(
-        Readable.from([Buffer.from(JSON.stringify({ id: 1, jsonrpc: '2.0', method, params: [] }))]),
+    const caller = createDesktopCaller(
+      service.createContext(
         {
           headers: {
             authorization: `Bearer ${credentials.sessionToken}`,
             'x-newframe-agent-session': credentials.sessionId
-          },
-          method: 'POST',
-          url: '/agent/rpc'
+          }
+        } as never,
+        new EventEmitter() as never,
+        {
+          send: createRpcGateway({ selectedAddresses: () => [accountId], handle: handleRpc })
         }
       )
-      const result = response()
-      await rpcHandler(rpcRequest as never, result as never)
-      expect(JSON.parse(result.body)).toMatchObject({ error: { code } })
+    )
+    for (const [method, code] of [
+      ['wallet_unknown', -32601],
+      ['eth_blockNumber', 4001]
+    ] as const) {
+      expect(caller.rpc({ method, params: [] })).rejects.toMatchObject({ cause: { rpc: { code } } })
     }
     expect(handleRpc).not.toHaveBeenCalled()
 
-    const disposed = response()
-    await handler(request() as never, disposed as never)
+    const disposedResponse = connect().catch((error: unknown) => error)
+    await routedRequest.promise
+    routedRequest = Promise.withResolvers<void>()
     const disposedId = Object.keys(requests)[0]
     service.dispose()
+    expect(await disposedResponse).toMatchObject({ message: 'Agent service stopped before approval' })
     expect({
       lateApproval: service.resolveAgentAccessRequest(disposedId, true),
-      requestRemainsCanonical: Boolean(requests[disposedId]),
-      responseEnded: disposed.writableEnded
+      requestRemainsCanonical: Boolean(requests[disposedId])
     }).toEqual({
       lateApproval: false,
-      requestRemainsCanonical: false,
-      responseEnded: true
+      requestRemainsCanonical: false
     })
   } finally {
     timers.useRealTimers()
@@ -232,8 +223,9 @@ it.each(['safe', 'airgap'] as const)('rejects %s AI enablement and session readi
   expect(service.setAgentAccess(accountId, true)).toBeFalse()
   expect(account.agentEnabled).toBeFalse()
   account.agentEnabled = true
-  const result = response()
-  await service.createHttpHandler({} as never)(request() as never, result as never)
-  expect(result.status).toBe(403)
+  const caller = createDesktopCaller(
+    service.createContext({ headers: {} } as never, new EventEmitter() as never, {} as never)
+  )
+  expect(caller.agent.connect(input)).rejects.toMatchObject({ code: 'FORBIDDEN' })
   service.dispose()
 })

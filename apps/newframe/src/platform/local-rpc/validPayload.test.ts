@@ -4,7 +4,8 @@ import {
   HttpJsonRpcRequestSchema,
   RoutedJsonRpcRequestSchema,
   WebSocketJsonRpcRequestSchema
-} from './protocol'
+} from '@newframe/desktop-api/protocol'
+
 import validatePayloadTyped from './validPayload'
 
 // real function under test, exercised with invalid payloads

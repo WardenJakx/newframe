@@ -30,7 +30,11 @@ class FakeWebSocket extends EventTarget {
 }
 
 const flushPromises = async () => {
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 40; i++) {
+    await Promise.resolve()
+  }
+  timers.advanceTimersByTime(0)
+  for (let i = 0; i < 40; i++) {
     await Promise.resolve()
   }
 }
@@ -141,7 +145,6 @@ describe('RawFrameConnection reconnects', () => {
 
     const restored = new RawFrameConnection('ws://newframe', { ...options, retryState })
     restored.ensureConnected()
-    restored.reconnect()
     timers.advanceTimersByTime(1999)
     restored.ensureConnected()
     expect(sockets).toHaveLength(2)
@@ -177,8 +180,12 @@ describe('FrameBackgroundProvider health check', () => {
   it('backs off handshake errors, timeouts and declines through the 60s cap', async () => {
     const sockets: FakeWebSocket[] = []
     const onRejected = mock()
+    let retryAt = 0
     const provider = new FrameBackgroundProvider('ws://newframe', {
       requestApproval: true,
+      onRetryStateChange: (state) => {
+        retryAt = state.retryAt
+      },
       createSocket: () => {
         const socket = new FakeWebSocket()
         sockets.push(socket)
@@ -188,37 +195,58 @@ describe('FrameBackgroundProvider health check', () => {
     provider.on('rejected', onRejected)
     const delays = [1000, 2000, 4000, 8000, 16000, 32000, 60000, 60000]
     for (const [i, delay] of delays.entries()) {
+      await flushPromises()
       sockets[i]!.open()
-      const handshake = JSON.parse(sockets[i]!.sent[0]!) as { id: number; method: string }
-      expect(handshake.method).toBe(i === 0 ? 'frame_requestExtensionConnection' : 'eth_chainId')
+      await flushPromises()
+      const handshake = JSON.parse(sockets[i]!.sent[0]!) as { id: number; params: { path: string } }
+      expect(handshake.params.path).toBe(i === 0 ? 'extension.connect' : 'wallet.chainId')
       if (i === 2) {
         timers.advanceTimersByTime(5000)
       } else {
-        sockets[i]!.receive({ id: handshake.id, error: { code: i === 1 ? -1 : 4001 } })
+        sockets[i]!.receive({
+          id: handshake.id,
+          error: {
+            code: -32603,
+            message: 'denied',
+            data: {
+              code: 'INTERNAL_SERVER_ERROR',
+              httpStatus: 500,
+              rpc: { code: i === 1 ? -1 : 4001, message: 'denied' }
+            }
+          }
+        })
       }
       await flushPromises()
       expect(await provider.checkHealth()).toBe(false)
       provider.connection.ensureConnected()
       expect(sockets[i]!.readyState).toBe(WebSocket.CLOSED)
       expect(sockets[i]!.sent).toHaveLength(1)
-      timers.advanceTimersByTime(delay - 1)
+      expect(retryAt - Date.now()).toBeLessThanOrEqual(delay)
+      timers.advanceTimersByTime(retryAt - Date.now() - 1)
       provider.connection.ensureConnected()
       expect(sockets).toHaveLength(i + 1)
       timers.advanceTimersByTime(1)
+      await flushPromises()
       provider.connection.ensureConnected()
       expect(sockets).toHaveLength(i + 2)
     }
     expect(onRejected).toHaveBeenCalledTimes(6)
 
+    await flushPromises()
     sockets[8]!.open()
+    await flushPromises()
     const handshake = JSON.parse(sockets[8]!.sent[0]!) as { id: number }
-    sockets[8]!.receive({ id: handshake.id, result: '0x1' })
+    sockets[8]!.receive({ id: handshake.id, result: { type: 'data', data: '0x1' } })
     await flushPromises()
     expect(provider.isConnected()).toBe(true)
+    await flushPromises()
     sockets[8]!.close()
+    await flushPromises()
     timers.advanceTimersByTime(1000)
+    await flushPromises()
     expect(sockets).toHaveLength(10)
     provider.close()
+    await flushPromises()
   })
 
   it('starts manual recreation at the initial delay and requests approval once', async () => {
@@ -229,21 +257,38 @@ describe('FrameBackgroundProvider health check', () => {
       return socket as unknown as WebSocket
     }
     const previous = new FrameBackgroundProvider('ws://newframe', { createSocket })
+    await flushPromises()
     sockets[0]!.close()
-    timers.advanceTimersByTime(1000)
-    sockets[1]!.close()
-    previous.close()
-    const provider = new FrameBackgroundProvider('ws://newframe', { createSocket, requestApproval: true })
-    sockets[2]!.open()
-    const handshake = JSON.parse(sockets[2]!.sent[0]!) as { id: number; method: string }
-    expect(handshake.method).toBe('frame_requestExtensionConnection')
-    sockets[2]!.receive({ id: handshake.id, error: { code: 4001 } })
     await flushPromises()
     timers.advanceTimersByTime(1000)
+    await flushPromises()
+    sockets[1]!.close()
+    await flushPromises()
+    previous.close()
+    await flushPromises()
+    const provider = new FrameBackgroundProvider('ws://newframe', { createSocket, requestApproval: true })
+    await flushPromises()
+    sockets[2]!.open()
+    await flushPromises()
+    const handshake = JSON.parse(sockets[2]!.sent[0]!) as { id: number; params: { path: string } }
+    expect(handshake.params.path).toBe('extension.connect')
+    sockets[2]!.receive({
+      id: handshake.id,
+      error: {
+        code: -32603,
+        message: 'denied',
+        data: { code: 'INTERNAL_SERVER_ERROR', httpStatus: 500, rpc: { code: 4001, message: 'denied' } }
+      }
+    })
+    await flushPromises()
+    timers.advanceTimersByTime(1000)
+    await flushPromises()
     expect(sockets).toHaveLength(4)
+    await flushPromises()
     sockets[3]!.open()
-    const reconnectRequest = JSON.parse(sockets[3]!.sent[0]!) as { method?: unknown }
-    expect(reconnectRequest.method).toBe('eth_chainId')
+    await flushPromises()
+    const reconnectRequest = JSON.parse(sockets[3]!.sent[0]!) as { params: { path: string } }
+    expect(reconnectRequest.params.path).toBe('wallet.chainId')
     provider.close()
     await flushPromises()
   })
@@ -255,9 +300,11 @@ describe('FrameBackgroundProvider health check', () => {
     })
     const onConnect = mock()
     provider.on('connect', onConnect)
+    await flushPromises()
     socket.open()
+    await flushPromises()
     const handshake = JSON.parse(socket.sent[0]!) as { id: number }
-    socket.receive({ id: handshake.id, result: '0x1' })
+    socket.receive({ id: handshake.id, result: { type: 'data', data: '0x1' } })
     provider.close()
     await flushPromises()
     expect(onConnect).not.toHaveBeenCalled()
@@ -267,7 +314,11 @@ describe('FrameBackgroundProvider health check', () => {
   it('replaces an open socket that stops answering', async () => {
     const sockets: FakeWebSocket[] = []
     const onUnresponsive = mock()
+    let retryAt = 0
     const provider = new FrameBackgroundProvider('ws://newframe', {
+      onRetryStateChange: (state) => {
+        retryAt = state.retryAt
+      },
       createSocket: () => {
         const socket = new FakeWebSocket()
         sockets.push(socket)
@@ -276,9 +327,11 @@ describe('FrameBackgroundProvider health check', () => {
     })
     provider.on('unresponsive', onUnresponsive)
 
+    await flushPromises()
     sockets[0]!.open()
+    await flushPromises()
     const connectionCheck = JSON.parse(sockets[0]!.sent[0]!) as { id: number }
-    sockets[0]!.receive({ id: connectionCheck.id, jsonrpc: '2.0', result: '0x1' })
+    sockets[0]!.receive({ id: connectionCheck.id, jsonrpc: '2.0', result: { type: 'data', data: '0x1' } })
     await flushPromises()
     expect(provider.isConnected()).toBe(true)
 
@@ -291,11 +344,13 @@ describe('FrameBackgroundProvider health check', () => {
     expect(sockets[0]!.readyState).toBe(WebSocket.CLOSED)
     expect(await provider.checkHealth()).toBe(false)
     provider.connection.ensureConnected()
-    timers.advanceTimersByTime(999)
+    timers.advanceTimersByTime(retryAt - Date.now() - 1)
     expect(sockets).toHaveLength(1)
     timers.advanceTimersByTime(1)
+    await flushPromises()
     expect(sockets).toHaveLength(2)
 
     provider.close()
+    await flushPromises()
   })
 })

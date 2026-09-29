@@ -1,11 +1,5 @@
+import type { AvailableChain } from '@newframe/desktop-api/schemas'
 import { createStore } from 'zustand/vanilla'
-
-export interface AvailableChain {
-  chainId: number | string
-  name?: string
-  connected?: boolean
-  icon?: { url: string }[]
-}
 
 export type ConnectionStatus =
   | 'desktop-unavailable'
