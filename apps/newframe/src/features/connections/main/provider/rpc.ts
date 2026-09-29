@@ -1,15 +1,14 @@
 import EventEmitter from 'events'
 
-import type { JsonRpcApiProvider, JsonRpcPayload } from 'ethers'
-import { FetchRequest, JsonRpcProvider, WebSocketProvider } from 'ethers'
-import WebSocket from 'ws'
-
 import {
   EthSubscriptionNotificationSchema,
   type EthSubscriptionNotification,
   type JsonRpcError,
   type JsonRpcResponse
-} from '../../../../platform/local-rpc/protocol.js'
+} from '@newframe/desktop-api/protocol'
+import type { JsonRpcApiProvider, JsonRpcPayload } from 'ethers'
+import { FetchRequest, JsonRpcProvider, WebSocketProvider } from 'ethers'
+import WebSocket from 'ws'
 
 export type RpcParams = readonly unknown[] | Record<string, unknown>
 

@@ -1,12 +1,15 @@
 import type { IncomingMessage, RequestListener, ServerResponse } from 'http'
 import { randomUUID } from 'node:crypto'
 
+import {
+  HttpJsonRpcRequestSchema,
+  MAX_RPC_REQUEST_BYTES,
+  type HttpJsonRpcRequest
+} from '@newframe/desktop-api/protocol'
 import log from 'electron-log'
 
 import { rpcMethodPolicy } from '../../app/main/gateway/rpcPolicy.js'
-import { isAgentHttpRequest } from '../../features/agent-access/main/index.js'
 import { parseOrigin, parseRequestChainId } from '../../features/connections/main/origins.js'
-import { HttpJsonRpcRequestSchema, MAX_RPC_REQUEST_BYTES, type HttpJsonRpcRequest } from './protocol.js'
 import {
   createOriginSessionMonitor,
   type ApiTimerPort,
@@ -46,7 +49,6 @@ export interface HttpRpcTransportDependencies {
   provider: HttpProviderPort
   store: HttpStorePort
   requestHandler: RpcRequestHandler
-  handleAgentRequest: (req: IncomingMessage, res: ServerResponse) => Promise<unknown>
   timers?: ApiTimerPort
   createConnectionId?: () => string
 }
@@ -60,7 +62,6 @@ export function createHttpRpcTransport({
   provider,
   store,
   requestHandler,
-  handleAgentRequest,
   timers = systemTimers,
   createConnectionId = randomUUID
 }: HttpRpcTransportDependencies): HttpRpcTransport {
@@ -121,11 +122,6 @@ export function createHttpRpcTransport({
   }
 
   const handler = (req: IncomingMessage, res: ServerResponse) => {
-    if (isAgentHttpRequest(req)) {
-      void handleAgentRequest(req, res)
-      return
-    }
-
     res.setHeader('Access-Control-Allow-Origin', '*')
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
     res.setHeader(

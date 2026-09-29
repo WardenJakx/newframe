@@ -1,8 +1,9 @@
 import { expect, it } from 'bun:test'
 import { EventEmitter } from 'events'
 
+import { MAX_RPC_REQUEST_BYTES } from '@newframe/desktop-api/protocol'
+
 import { createHttpRpcTransport } from './http'
-import { MAX_RPC_REQUEST_BYTES } from './protocol'
 import type { RpcRequestDescription } from './request'
 
 class FakeProvider extends EventEmitter {
@@ -19,7 +20,6 @@ it('adapts an HTTP exchange to the shared request contract', async () => {
     requestHandler: async (request) => {
       captured = request
     },
-    handleAgentRequest: async () => undefined,
     createConnectionId: () => 'http-connection'
   })
   const request = Object.assign(new EventEmitter(), {
@@ -85,8 +85,7 @@ it('rejects an oversized HTTP body before dispatch', () => {
     store: { endOriginSession: () => undefined },
     requestHandler: async () => {
       dispatched = true
-    },
-    handleAgentRequest: async () => undefined
+    }
   })
   const request = Object.assign(new EventEmitter(), { headers: {}, method: 'POST', url: '/' })
   const response = Object.assign(new EventEmitter(), {

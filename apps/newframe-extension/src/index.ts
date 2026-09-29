@@ -1,11 +1,13 @@
 /* globals chrome */
+import type { AvailableChain } from '@newframe/desktop-api/schemas'
+
 import FrameBackgroundProvider, {
   RawFrameConnection,
   type ConnectionRetryState,
   type JsonRpcPayload,
   type JsonRpcResponse
 } from './frameConnection'
-import { frameStateStore, type AvailableChain, type ConnectionStatus } from './frameState'
+import { frameStateStore, type ConnectionStatus } from './frameState'
 
 type Provider = FrameBackgroundProvider
 
@@ -96,15 +98,6 @@ function tabFromMessage(value: unknown): TabLike | undefined {
 
 const subs: Record<string, Subscription> = {}
 const pending: Record<string, PendingRequest> = {}
-
-interface OriginStatus {
-  originId: string
-  origin: string
-  connected: boolean
-  address: string
-  selectedAddress?: string
-  chainId?: string
-}
 
 // helper functions
 const originFromUrl = (url?: string) => {
@@ -199,7 +192,7 @@ async function fetchAvailableChains() {
     return
   }
   try {
-    const chains = await provider.request<AvailableChain[]>({ method: 'wallet_getEthereumChains' })
+    const chains = await provider.client.wallet.getEthereumChains.query({})
     setChains(chains)
   } catch (e) {
     console.error('Error fetching chains', e)
@@ -236,11 +229,7 @@ async function refreshActiveOriginStatus(tab?: TabLike) {
   }
 
   try {
-    const status = await provider.request<OriginStatus>({
-      method: 'frame_getOriginStatus',
-      __frameOrigin: origin,
-      __extensionConnecting: true
-    })
+    const status = await provider.client.origins.getStatus.query({ origin, connecting: true })
 
     setOriginStatus(
       status.origin || origin,
@@ -265,11 +254,7 @@ async function disconnectActiveOrigin(tab?: TabLike) {
   }
 
   try {
-    const status = await provider.request<OriginStatus>({
-      method: 'frame_disconnectOrigin',
-      __frameOrigin: origin,
-      __extensionConnecting: true
-    })
+    const status = await provider.client.origins.disconnect.mutate({ origin, connecting: true })
 
     setOriginStatus(status.origin || origin, false, '')
   } catch (e) {
@@ -582,7 +567,7 @@ function addStateListeners() {
     }
 
     if (payload.method === 'frame_summon') {
-      return provider?.connection.send({ jsonrpc: '2.0', id: 1, method, params })
+      return provider?.client.extension.summon.mutate({})
     }
 
     if (!provider?.isConnected() || !dappConnection) {

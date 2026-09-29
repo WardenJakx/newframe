@@ -1,5 +1,14 @@
 import type { IncomingMessage, Server } from 'http'
+import { EventEmitter, on } from 'node:events'
 
+import {
+  MAX_RPC_REQUEST_BYTES,
+  WebSocketJsonRpcRequestSchema,
+  type WebSocketJsonRpcRequest
+} from '@newframe/desktop-api/protocol'
+import { desktopRouter, type DesktopContext } from '@newframe/desktop-api/router'
+import { WalletEventSchema } from '@newframe/desktop-api/schemas'
+import { getWSConnectionHandler } from '@trpc/server/adapters/ws'
 import log from 'electron-log'
 import { v4 as uuid } from 'uuid'
 import type WebSocket from 'ws'
@@ -13,16 +22,12 @@ import {
   type OriginsService
 } from '../../features/connections/main/origins.js'
 import {
-  MAX_RPC_REQUEST_BYTES,
-  WebSocketJsonRpcRequestSchema,
-  type WebSocketJsonRpcRequest
-} from './protocol.js'
-import {
   createOriginSessionMonitor,
   type ApiTimerPort,
   type RpcProviderSendPort,
   type RpcRequestHandler
 } from './request.js'
+import { rpcCall } from './trpc.js'
 import validPayload from './validPayload.js'
 
 function faviconSource(value: unknown): string | undefined {
@@ -58,6 +63,7 @@ interface FrameWebSocket extends WebSocket {
   id: string
   origin?: string
   frameExtension?: FrameExtension
+  notify?: (payload: RPC.Susbcription.Response) => void
   companionInternal: boolean
 }
 
@@ -158,7 +164,7 @@ export function createWebSocketRpcTransport({
       new URL(req.url ?? '/', 'http://127.0.0.1').searchParams.get('scope') === 'internal'
     )
 
-    const respond = (payload: RPCResponsePayload) => {
+    const defaultRespond = (payload: RPCResponsePayload) => {
       if (socket.readyState !== openReadyState) {
         return
       }
@@ -169,20 +175,7 @@ export function createWebSocketRpcTransport({
       })
     }
 
-    const processMessage = async (data: WebSocket.RawData) => {
-      if (rawDataBytes(data) > MAX_RPC_REQUEST_BYTES) {
-        socket.close(1009, 'Request too large')
-        return
-      }
-      const rawPayload: WebSocketJsonRpcRequest | false = validPayload(
-        rawDataText(data),
-        WebSocketJsonRpcRequestSchema
-      )
-      if (!rawPayload) {
-        log.warn('Invalid WebSocket RPC payload')
-        return
-      }
-
+    const processPayload = async (rawPayload: WebSocketJsonRpcRequest, respond = defaultRespond) => {
       const faviconMetadata = rawPayload.__frameFavicon
       delete rawPayload.__frameFavicon
       try {
@@ -282,6 +275,72 @@ export function createWebSocketRpcTransport({
       }
     }
 
+    const notifications = new EventEmitter()
+    const native = new URL(req.url ?? '/', 'http://127.0.0.1').pathname === '/trpc'
+    const context = (): DesktopContext => ({
+      rpc: (input) =>
+        rpcCall((respond) =>
+          processPayload(
+            {
+              id: 1,
+              jsonrpc: '2.0',
+              method: input.method,
+              params: input.params as WebSocketJsonRpcRequest['params'],
+              ...(input.chainId === undefined ? {} : { chainId: input.chainId }),
+              __frameOrigin: input.origin,
+              __extensionConnecting: input.connecting
+            },
+            respond
+          )
+        ),
+      async *events(events, signal) {
+        const subscriptions = new Map<string, (typeof events)[number]>()
+        const stream = on(notifications, 'notification', { signal })
+        const rpc = context().rpc
+        try {
+          for (const event of events) {
+            const id = await rpc({ method: 'eth_subscribe', params: [event] })
+            if (typeof id !== 'string') {
+              throw new Error('Invalid subscription ID')
+            }
+            subscriptions.set(id, event)
+          }
+          for await (const [payload] of stream) {
+            const message = payload as RPC.Susbcription.Response
+            const params = message.params as { subscription: string; result: unknown }
+            const event = subscriptions.get(params.subscription)
+            if (event) {
+              yield WalletEventSchema.parse({ event, value: params.result })
+            }
+          }
+        } catch (error) {
+          if (!signal?.aborted) {
+            throw error
+          }
+        } finally {
+          await stream.return?.()
+          for (const id of subscriptions.keys()) {
+            await rpc({ method: 'eth_unsubscribe', params: [id] }).catch(() => undefined)
+          }
+        }
+      }
+    })
+    if (native) {
+      socket.notify = (payload) => notifications.emit('notification', payload)
+    }
+    const processMessage = async (data: WebSocket.RawData) => {
+      if (rawDataBytes(data) > MAX_RPC_REQUEST_BYTES) {
+        socket.close(1009, 'Request too large')
+        return
+      }
+      const rawPayload = validPayload(rawDataText(data), WebSocketJsonRpcRequestSchema)
+      if (!rawPayload) {
+        log.warn('Invalid WebSocket RPC payload')
+        return
+      }
+      await processPayload(rawPayload)
+    }
+
     const messageHandler = (data: WebSocket.RawData) => {
       // Message failures are converted to RPC responses inside processMessage.
       void processMessage(data)
@@ -298,7 +357,15 @@ export function createWebSocketRpcTransport({
       socketDisposers.delete(socket)
     }
 
-    socket.on('message', messageHandler)
+    if (native) {
+      getWSConnectionHandler({
+        router: desktopRouter,
+        wss: wsServer,
+        createContext: () => context()
+      })(socket, req)
+    } else {
+      socket.on('message', messageHandler)
+    }
     socket.on('error', errorHandler)
     socket.on('close', closeHandler)
     socketDisposers.set(socket, disposeSocket)
@@ -311,7 +378,11 @@ export function createWebSocketRpcTransport({
     }
     const subscription = (subs as Record<string, Subscription | undefined>)[subscriptionId]
     if (subscription?.socket.readyState === openReadyState) {
-      subscription.socket.send(JSON.stringify(payload))
+      if (subscription.socket.notify) {
+        subscription.socket.notify(payload)
+      } else {
+        subscription.socket.send(JSON.stringify(payload))
+      }
     }
   }
 

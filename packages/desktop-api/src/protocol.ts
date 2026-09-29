@@ -79,3 +79,33 @@ export type WebSocketJsonRpcRequest = z.infer<typeof WebSocketJsonRpcRequestSche
 export type JsonRpcError = z.infer<typeof JsonRpcErrorSchema>
 export type JsonRpcResponse = z.infer<typeof JsonRpcResponseSchema>
 export type EthSubscriptionNotification = z.infer<typeof EthSubscriptionNotificationSchema>
+
+// The injected provider permits omitted IDs/version fields before transport encoding.
+export const CompanionPayloadSchema = z.object({
+  id: JsonRpcIdSchema.optional(),
+  jsonrpc: z.literal('2.0').optional(),
+  method: z.string(),
+  params: z.array(z.unknown()).readonly().optional(),
+  chainId: z.string().optional(),
+  __frameOrigin: z.string().optional(),
+  __frameFavicon: z.string().optional(),
+  __extensionConnecting: z.boolean().optional()
+})
+export const SubscriptionParamsSchema = z.object({ subscription: z.string(), result: z.unknown() })
+export const CompanionResponseSchema = z
+  .object({
+    id: JsonRpcIdSchema.optional(),
+    jsonrpc: z.literal('2.0').optional(),
+    result: z.unknown().optional(),
+    error: z.unknown().optional(),
+    method: z.string().optional(),
+    params: z.union([z.array(z.unknown()).readonly(), SubscriptionParamsSchema]).optional()
+  })
+  .refine(
+    (value) =>
+      value.id !== undefined ||
+      (typeof value.method === 'string' && SubscriptionParamsSchema.safeParse(value.params).success)
+  )
+export type CompanionPayload = z.infer<typeof CompanionPayloadSchema>
+export type CompanionResponse = z.infer<typeof CompanionResponseSchema>
+export type SubscriptionParams = z.infer<typeof SubscriptionParamsSchema>

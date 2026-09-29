@@ -1,11 +1,8 @@
 import EventEmitter from 'events'
 
+import { extractJsonRpcId, JsonRpcResponseOrNotificationSchema } from '@newframe/desktop-api/protocol'
 import log from 'electron-log'
 
-import {
-  extractJsonRpcId,
-  JsonRpcResponseOrNotificationSchema
-} from '../../../../platform/local-rpc/protocol.js'
 import {
   createError,
   createJsonRpcProvider,

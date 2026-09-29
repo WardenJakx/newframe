@@ -1,10 +1,9 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
 
-export type AgentDescriptor = {
-  name: string
-  description?: string
-  url?: string
-}
+import type {
+  AgentDescriptor,
+  AgentCredentials as AgentSessionCredentials
+} from '@newframe/desktop-api/schemas'
 
 export type AgentSession = {
   sessionId: string
@@ -14,14 +13,6 @@ export type AgentSession = {
   createdAt: number
   expiresAt: number
   revokedAt?: number
-}
-
-export type AgentSessionCredentials = {
-  sessionId: string
-  sessionToken: string
-  account: string
-  descriptor: AgentDescriptor
-  expiresAt: number
 }
 
 const tokenDigest = (token: string) => createHash('sha256').update(token, 'utf8').digest()
