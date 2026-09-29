@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["unicorn"],
+  "plugins": ["unicorn", "oxc"],
   "jsPlugins": ["./apps/newframe/scripts/oxlint-plugin-newframe.mjs"],
   "options": {
     "typeAware": true
@@ -35,6 +35,7 @@
     "skills/newframe/scripts/newframe.js"
   ],
   "rules": {
+    "oxc/no-barrel-file": "error",
     "constructor-super": "error",
     "for-direction": "error",
     "getter-return": "error",
