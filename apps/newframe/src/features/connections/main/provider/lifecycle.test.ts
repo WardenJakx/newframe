@@ -53,7 +53,7 @@ function createProviderFixture(chainId?: number, start = false, proxy = new Even
     accounts: {} as AccountRequestPort,
     chains: connection,
     proxy: proxy as never,
-    state: createProviderStatePort(store),
+    state: createProviderStatePort(store, { refreshBalances: () => {} }),
     store,
     reveal: { decode: async () => undefined, resolveEntityType: async () => 'unknown' },
     requests
