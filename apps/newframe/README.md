@@ -6,9 +6,9 @@ For the full project overview, features, and surface map, start with the [root R
 
 ## Download and get started
 
-### Install the unsigned macOS arm64 release
+### Install the macOS arm64 release
 
-The downloadable desktop build is currently an unsigned macOS arm64 DMG for Apple silicon. Windows, Linux, Intel Mac, signed, and notarized downloads are not currently published.
+New desktop releases are Developer ID signed and Apple notarized macOS arm64 DMGs for Apple silicon. Windows, Linux, and Intel Mac downloads are not currently published. Older unsigned releases retain their own installation notes.
 
 1. From [GitHub Releases](https://github.com/wardenjakx/newframe/releases), download both `Newframe-Desktop-<version>-macOS-arm64.dmg` and `Newframe-Desktop-<version>-macOS-arm64.dmg.sha256`.
 2. In Terminal, change to the download directory and verify the checksum:
@@ -20,15 +20,9 @@ The downloadable desktop build is currently an unsigned macOS arm64 DMG for Appl
    Continue only when the command reports `OK`.
 
 3. Open the DMG and drag Newframe into the Applications folder.
-4. Because this preview is unsigned, remove the macOS quarantine attribute after installing it:
+4. Open Newframe from Applications and confirm the normal macOS first-launch prompt.
 
-   ```bash
-   xattr -dr com.apple.quarantine "/Applications/Newframe.app"
-   ```
-
-5. Open Newframe from Applications.
-
-Only remove the quarantine attribute after verifying the checksum and confirming that the DMG came from this repository. Do not bypass Gatekeeper for an unverified file.
+Automatic updates are disabled. Download future desktop releases manually from this repository. Maintainers can follow the [desktop release guide](../../docs/desktop-releases.md) to configure Apple credentials and publish a release.
 
 ### Roll back the desktop app
 
