@@ -13,14 +13,16 @@ import {
 
 import { anvilChainId, anvilRpcUrl, newframeRpcUrl, harnessAccountAddress } from '../../core/config.ts'
 import { harnessOrigin } from '../driver.ts'
-import type { VisualStage } from '../types.ts'
+import type { AppState, VisualStage } from '../types.ts'
 
 const EIP1271_MAGIC_VALUE = '0x1626ba7e'
 const EIP1271_SIGNATURE = 'function isValidSignature(bytes32 hash, bytes signature) view returns (bytes4)'
 
+const statusNotifications = (state: AppState) => state.view?.notifications ?? {}
+
 export const safeWatchStage: VisualStage = {
   name: 'watch Safe and inspect proposal',
-  async run({ driver, runtime, tray, safeSeed }) {
+  async run({ anvil, driver, runtime, tray, safeSeed }) {
     const original = await driver.getAppState()
     const selected = original.main?.accounts?.[original.main.currentAccount ?? '']
     const id = safeSeed.safe.toLowerCase()
@@ -238,6 +240,14 @@ export const safeWatchStage: VisualStage = {
         await driver.approveAccessRequest(accessRequest)
         await accessPromise
 
+        const activityBeforeSigning = Object.keys((await driver.getAppState()).main?.activity ?? {}).sort()
+        const assertSigningDoesNotCreateActivity = async (label: string) => {
+          const activityIds = Object.keys((await driver.getAppState()).main?.activity ?? {}).sort()
+          if (!isDeepStrictEqual(activityIds, activityBeforeSigning)) {
+            runtime.fail(`${label} created activity without an onchain execution`)
+          }
+        }
+
         const message = hexlify(toUtf8Bytes('Newframe Safe EIP-1271 acceptance'))
         const signaturePromise = dappProvider.send('personal_sign', [message, safeSeed.safe])
         void signaturePromise.catch(() => undefined)
@@ -263,8 +273,10 @@ export const safeWatchStage: VisualStage = {
         if (typeof validity !== 'string' || validity !== EIP1271_MAGIC_VALUE) {
           runtime.fail(`Safe EIP-1271 validation returned ${String(validity)}`)
         }
+        await assertSigningDoesNotCreateActivity('Safe message signing')
         runtime.evidence('safeMessageOwnerApproved', safeSeed.owners[0])
         runtime.evidence('safeMessageEip1271', EIP1271_MAGIC_VALUE)
+        runtime.evidence('safeMessageSigningCreatesActivity', false)
 
         const sendState = { settled: false }
         const transactionHashPromise = dappProvider
@@ -300,6 +312,8 @@ export const safeWatchStage: VisualStage = {
             'Safe eth_sendTransaction completed after owner approval without explicit execution'
           )
         }
+        await assertSigningDoesNotCreateActivity('Safe owner approval')
+        runtime.evidence('safeOwnerApprovalCreatesActivity', false)
         await transactionReview.getByText('Gas-paying executor', { exact: true }).first().waitFor()
         // A task profile may contain several ready EOAs. Choose the funded harness account explicitly.
         const executor = transactionReview.getByRole('button', { name: 'Gas-paying executor', exact: true })
@@ -355,6 +369,62 @@ export const safeWatchStage: VisualStage = {
             `Safe eth_sendTransaction returned an invalid outer hash: ${String(outerTxHash)}`
           )
         }
+
+        const submittedState = await driver
+          .waitForState(
+            (state) =>
+              Boolean(state.main?.activity?.[outerTxHash]) &&
+              statusNotifications(state)[`transaction:${outerTxHash}`]?.state === 'pending',
+            15_000,
+            'Safe execution did not create shared activity and a pending transaction notification'
+          )
+          .catch(async () => {
+            const state = await driver.getAppState()
+            const activity = state.main?.activity?.[outerTxHash]
+            const notification = state.view?.notifications?.[`transaction:${outerTxHash}`]
+            return runtime.fail(
+              `Safe execution activity/notification stalled: ${JSON.stringify({
+                hash: outerTxHash,
+                activityStatus: activity?.status ?? null,
+                notificationState: notification?.state ?? null
+              })}`
+            )
+          })
+        const activity = submittedState.main?.activity?.[outerTxHash]
+        const participants = Array.isArray(activity?.accounts)
+          ? activity.accounts.map((account) => String(account).toLowerCase()).sort()
+          : []
+        const executorId =
+          execution?.executorId?.toLowerCase() ??
+          runtime.fail('Safe execution did not retain its executor account')
+        if (
+          activity?.account?.toLowerCase() !== id ||
+          activity.hash?.toLowerCase() !== outerTxHash.toLowerCase() ||
+          !isDeepStrictEqual(participants, [id, executorId].sort()) ||
+          submittedState.main?.activity?.[requestSafeTxHash]
+        ) {
+          runtime.fail('Safe execution activity did not associate the Safe and executor with the outer hash')
+        }
+        const notification = statusNotifications(submittedState)[`transaction:${outerTxHash}`]
+        const hashNotifications = Object.values(statusNotifications(submittedState)).filter(
+          (candidate) => candidate.target?.hash?.toLowerCase() === outerTxHash.toLowerCase()
+        )
+        if (
+          hashNotifications.length !== 1 ||
+          notification.target?.type !== 'transactionActivity' ||
+          notification.target.activityId !== outerTxHash ||
+          notification.target.account?.toLowerCase() !== id
+        ) {
+          runtime.fail('Safe execution did not reuse one shared transaction activity notification')
+        }
+        await tray
+          .getByRole('region', { name: 'Status notifications' })
+          .getByRole('button', { name: `Pending ${notification.title ?? ''}`, exact: true })
+          .click()
+        const activityDetails = tray.getByRole('dialog', { name: 'Transaction activity details' })
+        await activityDetails.getByText(/^(Submitted|Confirming)$/, { exact: true }).waitFor()
+        await runtime.screenshot(tray, '08i-safe-execution-activity-pending.png')
+
         const receipt = await chainProvider.waitForTransaction(outerTxHash, 1, 15_000)
         const outerTransaction = await chainProvider.getTransaction(outerTxHash)
         if (
@@ -383,9 +453,47 @@ export const safeWatchStage: VisualStage = {
         if ((await executedSafe.nonce()) !== 1n) {
           runtime.fail('Safe execution did not advance the onchain Safe nonce')
         }
+        await anvil.mineBlocks(4)
+        await driver.waitForState(
+          (state) =>
+            state.main?.activity?.[outerTxHash]?.status === 'succeeded' &&
+            statusNotifications(state)[`transaction:${outerTxHash}`]?.state === 'completed',
+          30_000,
+          'Safe execution did not complete the shared activity and notification lifecycle'
+        )
+        await activityDetails.getByText('Confirmed', { exact: true }).waitFor()
+        await runtime.screenshot(tray, '08j-safe-execution-activity-confirmed.png')
+        await activityDetails.getByRole('button', { name: 'Back to activity', exact: true }).click()
+        await driver.selectNetwork('Newframe Local Anvil')
+        const activityList = tray.getByRole('group', { name: 'Activity list' })
+        for (const [accountId, filename] of [
+          [id, '08k-safe-account-activity.png'],
+          [executorId, '08l-safe-executor-activity.png']
+        ] as const) {
+          await driver.setSelectedAccount({ id: accountId, address: accountId })
+          await tray.getByRole('tab', { name: 'Activity', exact: true }).click()
+          const copy = activityList.getByRole('button', {
+            name: `Copy transaction hash ${outerTxHash}`,
+            exact: true
+          })
+          await copy.waitFor()
+          if ((await copy.count()) !== 1) {
+            runtime.fail(`Safe execution appears more than once in activity for ${accountId}`)
+          }
+          await copy.click()
+          await activityList
+            .getByRole('button', { name: `Transaction hash copied ${outerTxHash}`, exact: true })
+            .waitFor()
+          await runtime.screenshot(tray, filename)
+        }
+        await driver.setSelectedAccount({ id, address: id })
+        await driver.clearPanelAndOverlays()
         runtime.evidence('safeDappSafeTxHash', requestSafeTxHash)
         runtime.evidence('safeDappOuterTxHash', outerTxHash)
         runtime.evidence('safeDappSeparateExecution', true)
+        runtime.evidence('safeExecutionActivityBothAccounts', true)
+        runtime.evidence('safeExecutionActivityStatus', 'succeeded')
+        runtime.evidence('safeExecutionNotificationLifecycle', 'pending -> completed')
       } finally {
         dappProvider.destroy()
         chainProvider.destroy()

@@ -25,6 +25,72 @@ describe('activityModel', () => {
     expect(transactionStatusLabel('succeeded')).toBe('Confirmed')
   })
 
+  it.each(['submitted', 'confirming', 'succeeded', 'reverted'])(
+    'shows one shared %s execution for each implicated account',
+    (status) => {
+      const activity = {
+        execution: {
+          id: 'execution',
+          hash: '0xtransaction',
+          account: '0xsafe',
+          accounts: ['0xSafe', '0xExecutor'],
+          chainId: 1,
+          status
+        }
+      }
+      const rows = (accountAddress: string, selectedChainId = 1) =>
+        createActivityRows({
+          accountAddress,
+          activity,
+          networks: { 1: { on: true }, 10: { on: true } },
+          selectedChainId,
+          showTestnets: false
+        })
+
+      expect(rows('0xsafe').map((row) => [row.id, row.hash, row.status])).toEqual([
+        ['execution', '0xtransaction', status]
+      ])
+      expect(rows('0xexecutor').map((row) => [row.id, row.hash, row.status])).toEqual([
+        ['execution', '0xtransaction', status]
+      ])
+      expect(rows('0xowner')).toEqual([])
+      expect(rows('0xexecutor', 10)).toEqual([])
+    }
+  )
+
+  it('prefers account-relative effects over shared execution without duplicate rows', () => {
+    const execution = {
+      id: 'execution',
+      hash: '0xtransaction',
+      account: '0xsafe',
+      accounts: ['0xsafe', '0xexecutor'],
+      chainId: 1
+    }
+    const recipient = {
+      id: 'recipient',
+      hash: '0xtransaction',
+      account: '0xexecutor',
+      chainId: 1,
+      display: { title: 'Receive ETH' }
+    }
+    for (const activity of [
+      { execution, recipient },
+      { recipient, execution }
+    ]) {
+      const rows = (accountAddress: string) =>
+        createActivityRows({
+          accountAddress,
+          activity,
+          networks: { 1: { on: true } },
+          selectedChainId: 0,
+          showTestnets: false
+        })
+
+      expect(rows('0xexecutor').map((row) => row.id)).toEqual(['recipient'])
+      expect(rows('0xsafe').map((row) => row.id)).toEqual(['execution'])
+    }
+  })
+
   it('formats persisted confirmation metadata for the activity row', () => {
     const activity = {
       submittedAt: new Date('2026-07-23T13:32:00Z').getTime(),

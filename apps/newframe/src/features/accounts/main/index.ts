@@ -450,7 +450,7 @@ export class Accounts extends EventEmitter {
       }
 
       const id = transactionAccountActivityId(hash, address)
-      const { positionsRefreshedAt: _positionsRefreshedAt, ...shared } = source
+      const { positionsRefreshedAt: _positionsRefreshedAt, accounts: _accounts, ...shared } = source
       this.store.getState().finalizeActivity(id, 'succeeded', {
         ...shared,
         id,
@@ -479,6 +479,15 @@ export class Accounts extends EventEmitter {
       handlerId,
       account: account.address,
       address: account.address,
+      ...(req.safeTxHash && req.safeExecution?.submitted?.executorId
+        ? {
+            accounts: [
+              ...new Set(
+                [account.address, req.safeExecution.submitted.executorId].map((id) => id.toLowerCase())
+              )
+            ]
+          }
+        : {}),
       chainId: chain?.id,
       chainType: chain?.type ?? 'ethereum',
       nonce: req.safeTxHash ? undefined : req.data.nonce,

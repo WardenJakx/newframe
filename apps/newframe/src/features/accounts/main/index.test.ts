@@ -202,7 +202,7 @@ const flushPromises = async (count = 4) => {
     await Promise.resolve()
   }
 }
-function mockConfirmedReceipt(receiptBlock: number) {
+function mockConfirmedReceipt(receiptBlock: number, status: '0x1' | '0x0' = '0x1') {
   provider.send = mock((payload: RPCRequestPayload, cb: RPCRequestCallback) => {
     if (payload.method === 'eth_subscribe') {
       return cb(rpcError(-32601, 'unsupported'))
@@ -211,7 +211,7 @@ function mockConfirmedReceipt(receiptBlock: number) {
       return cb(rpcResult(intToHex(receiptBlock + TRANSACTION_CONFIRMATION_TARGET)))
     }
     if (payload.method === 'eth_getTransactionReceipt') {
-      return cb(rpcResult({ status: '0x1', blockNumber: intToHex(receiptBlock), gasUsed: '0x5208' }))
+      return cb(rpcResult({ status, blockNumber: intToHex(receiptBlock), gasUsed: '0x5208' }))
     }
     cb(rpcResult(null))
   })
@@ -397,64 +397,102 @@ describe('#routeRequest', () => {
   })
 })
 
-it('records queue-initiated Safe execution under the Safe without executor fee or nonce attribution', () => {
-  const safeTxHash = `0x${'a'.repeat(64)}`
-  const outerTxHash = `0x${'b'.repeat(64)}`
-  const executorId = account2.address
-  store.setState((state) => {
-    state.main.accounts[accountAddress].safe = {
-      '1': {
-        chainId: 1,
-        address: accountAddress,
-        configuration: { owners: [executorId], threshold: 1, nonce: '0' },
-        pending: [
-          {
-            safeTxHash,
-            safe: accountAddress,
-            nonce: '0',
-            to: executorId,
-            value: '1',
-            operation: 0,
-            data: '0x',
-            confirmations: [executorId],
-            local: {
-              createdAt: 1,
-              confirmations: [],
-              publication: { status: 'local' },
-              execution: {
-                status: 'submitted',
-                executorId,
-                transactionHash: outerTxHash
+it.each(['0x1', '0x0'] as const)(
+  'records queue-initiated Safe execution for the Safe and executor with receipt %s',
+  async (receiptStatus) => {
+    const safeTxHash = `0x${'a'.repeat(64)}`
+    const outerTxHash = `0x${'b'.repeat(64)}`
+    const executorId = account2.address
+    mockConfirmedReceipt(100, receiptStatus)
+    store.setState((state) => {
+      state.main.accounts[accountAddress].safe = {
+        '1': {
+          chainId: 1,
+          address: accountAddress,
+          configuration: { owners: [executorId], threshold: 1, nonce: '0' },
+          pending: [
+            {
+              safeTxHash,
+              safe: accountAddress,
+              nonce: '0',
+              to: executorId,
+              value: '1',
+              operation: 0,
+              data: '0x',
+              confirmations: [executorId],
+              local: {
+                createdAt: 1,
+                confirmations: [],
+                publication: { status: 'local' },
+                execution: {
+                  status: 'submitted',
+                  executorId,
+                  transactionHash: outerTxHash
+                }
               }
             }
-          }
-        ]
-      }
-    }
-  })
-
-  expect(Accounts.trackSafeExecution(safeTxHash, outerTxHash)).toBeTrue()
-  expect(storeState().main.activity[outerTxHash]).toMatchObject({
-    hash: outerTxHash,
-    account: accountAddress,
-    address: accountAddress,
-    nonce: undefined,
-    data: { from: accountAddress, to: executorId, value: '0x1', data: '0x' },
-    metadata: {
-      safe: {
-        safeTxHash,
-        outer: {
-          executorId,
-          submitted: { outerTxHash, executorId }
+          ]
         }
       }
+    })
+
+    const accounts = createAccounts()
+    accounts.initialize()
+    try {
+      expect(accounts.trackSafeExecution(safeTxHash, outerTxHash)).toBeTrue()
+      expect(accounts.trackSafeExecution(safeTxHash, outerTxHash)).toBeTrue()
+      expect(storeState().main.activity[outerTxHash]).toMatchObject({
+        hash: outerTxHash,
+        account: accountAddress,
+        address: accountAddress,
+        accounts: [accountAddress, executorId],
+        status: 'submitted',
+        nonce: undefined,
+        data: { from: accountAddress, to: executorId, value: '0x1', data: '0x' },
+        metadata: {
+          safe: {
+            safeTxHash,
+            outer: {
+              executorId,
+              submitted: { outerTxHash, executorId }
+            }
+          }
+        }
+      })
+      expect(storeState().view.notifications[`transaction:${outerTxHash}`]?.state).toBe('pending')
+      expect(
+        provider.send.mock.calls.filter(
+          ([payload]) => payload.method === 'eth_getTransactionReceipt' && payload.params[0] === outerTxHash
+        )
+      ).toHaveLength(1)
+      await flushPromises()
+      expect(storeState().main.activity[outerTxHash]).toMatchObject({
+        accounts: [accountAddress, executorId],
+        status: receiptStatus === '0x1' ? 'succeeded' : 'reverted',
+        gasSpent: null,
+        nonce: undefined
+      })
+      expect(
+        Object.values(storeState().main.activity).filter((activity) => activity.hash === outerTxHash)
+      ).toHaveLength(1)
+      expect(
+        Object.values(storeState().view.notifications).filter(
+          (notification) => notification.id === `transaction:${outerTxHash}`
+        )
+      ).toHaveLength(1)
+      expect(storeState().view.notifications[`transaction:${outerTxHash}`]?.state).toBe(
+        receiptStatus === '0x1' ? 'completed' : 'failed'
+      )
+      ActivityRecordSchema.parse(storeState().main.activity[outerTxHash])
+    } finally {
+      accounts.close()
+      store.setState((state) => {
+        state.main.activity = {}
+        delete state.main.accounts[accountAddress].safe
+      })
     }
-  })
-  store.setState((state) => {
-    state.main.activity = {}
-    delete state.main.accounts[accountAddress].safe
-  })
-})
+  }
+)
 
 it('selects the first remaining account when removing the current account', () => {
   store.setState((state) => {
@@ -739,6 +777,91 @@ describe('transaction fee editing', () => {
 })
 
 describe('#setTxSent', () => {
+  it.each(['0x1', '0x0'] as const)(
+    'shares live Safe execution activity with the submitted executor with receipt %s',
+    async (receiptStatus) => {
+      const hash = `0x${(receiptStatus === '0x1' ? 'c1' : 'c2').repeat(32)}`
+      const outgoing = {
+        id: 'safe-token-out',
+        kind: 'erc20',
+        direction: 'out',
+        label: 'Asset out',
+        amount: '0x1',
+        decimals: 6,
+        symbol: 'USDC'
+      } satisfies TransactionEffect
+      const incoming = {
+        ...outgoing,
+        id: 'executor-token-in',
+        direction: 'in',
+        label: 'Asset in'
+      } satisfies TransactionEffect
+      request.safeTxHash = `0x${'d1'.repeat(32)}`
+      request.safeExecution = {
+        executorId: account.address,
+        submitted: { outerTxHash: hash, executorId: account2.address.toUpperCase() }
+      }
+      mockConfirmedReceipt(100, receiptStatus)
+      notificationMock.mockClear()
+      const accounts = createAccounts()
+      accounts.initialize()
+      try {
+        requiredFrameAccount(accounts, account.address).addRequest(request, mock())
+        patchRequest((request) => {
+          request.simulation = {
+            status: 'success',
+            effects: [outgoing],
+            effectsProfileId: DEFAULT_PROFILE_ID,
+            effectsByAccount: { [account.address]: [outgoing], [account2.address]: [incoming] }
+          }
+        })
+
+        accounts.setTxSent(request.handlerId, hash)
+        expect(storeState().main.activity[hash]).toMatchObject({
+          account: account.address,
+          accounts: [account.address, account2.address],
+          status: 'submitted'
+        })
+        expect(storeState().view.notifications[`transaction:${hash}`]?.state).toBe('pending')
+        timers.advanceTimersByTime(1000)
+        await flushPromises()
+
+        const activity = storeState().main.activity
+        expect(activity[hash]).toMatchObject({
+          accounts: [account.address, account2.address],
+          status: receiptStatus === '0x1' ? 'succeeded' : 'reverted',
+          balanceChanges: receiptStatus === '0x1' ? [outgoing] : [],
+          nonce: undefined,
+          gasSpent: null
+        })
+        const executorActivity = activity[`${hash}:${account2.address}`]
+        if (receiptStatus === '0x1') {
+          expect(executorActivity).toMatchObject({
+            account: account2.address,
+            balanceChanges: [incoming],
+            display: { title: 'Receive USDC', subtitle: 'Incoming transfer' }
+          })
+          expect(executorActivity.accounts).toBeUndefined()
+          ActivityRecordSchema.parse(executorActivity)
+        } else {
+          expect(executorActivity).toBeUndefined()
+        }
+        expect(
+          Object.values(storeState().view.notifications).filter(
+            (notification) => notification.id === `transaction:${hash}`
+          )
+        ).toHaveLength(1)
+        expect(storeState().view.notifications[`transaction:${hash}`]?.state).toBe(
+          receiptStatus === '0x1' ? 'completed' : 'failed'
+        )
+        expect(notificationMock).toHaveBeenCalledTimes(receiptStatus === '0x1' ? 1 : 0)
+        ActivityRecordSchema.parse(activity[hash])
+      } finally {
+        accounts.close()
+      }
+    }
+  )
+
   it('keeps activity submitted when asynchronous confirmation monitoring fails', async () => {
     const hash = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
     notificationMock.mockClear()
@@ -892,6 +1015,7 @@ describe('#setTxSent', () => {
 
       const activity = store.getState().main.activity
       expect(activity[hash].status).toBe('succeeded')
+      expect(activity[hash].accounts).toBeUndefined()
       expect(activity[hash].balanceChanges).toEqual([outgoing])
       ActivityRecordSchema.parse(activity[hash])
       const recipient = activity[`${hash}:${account2.address}`]
@@ -1047,6 +1171,43 @@ describe('#setTxSent', () => {
     )
 
     accounts.close()
+  })
+
+  it('preserves Safe executor attribution when persisted activity resumes without its request', async () => {
+    const hash = `0x${'c3'.repeat(32)}`
+    const safeTxHash = `0x${'d3'.repeat(32)}`
+    mockConfirmedReceipt(200)
+    setSubmittedActivity(hash, {
+      accounts: [account.address, account2.address],
+      nonce: undefined,
+      data: { ...request.data, nonce: undefined },
+      metadata: {
+        safe: {
+          safeTxHash,
+          outer: { submitted: { outerTxHash: hash, executorId: account2.address } }
+        }
+      }
+    })
+    const persisted = ActivityRecordSchema.parse(storeState().main.activity[hash])
+    store.setState((state) => {
+      state.main.activity[hash] = persisted
+    })
+    const accounts = createAccounts()
+    try {
+      accounts.initialize()
+      await flushPromises()
+      expect(storeState().main.activity[hash]).toMatchObject({
+        account: account.address,
+        accounts: [account.address, account2.address],
+        status: 'succeeded',
+        gasSpent: null,
+        nonce: undefined,
+        metadata: { safe: { safeTxHash } }
+      })
+      ActivityRecordSchema.parse(storeState().main.activity[hash])
+    } finally {
+      accounts.close()
+    }
   })
 
   it('pauses persisted activity immediately and resumes it once without overlapping RPC', async () => {

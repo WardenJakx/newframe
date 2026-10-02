@@ -129,6 +129,7 @@ describe('wallet renderer projection records', () => {
     expect(
       WalletActivityRecordSchema.parse({
         id: 'activity-1',
+        accounts: ['0xsafe', '0xexecutor'],
         status: 'submitted',
         chainId: 1,
         decodedData: {
@@ -154,6 +155,7 @@ describe('wallet renderer projection records', () => {
       })
     ).toEqual({
       id: 'activity-1',
+      accounts: ['0xsafe', '0xexecutor'],
       status: 'submitted',
       chainId: 1,
       decodedData: {

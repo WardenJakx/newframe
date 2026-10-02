@@ -221,13 +221,14 @@ describe('canonical persistence lifecycle', () => {
 })
 
 describe('canonical persisted state contract', () => {
-  it('round-trips finalized transaction gas and balance changes', () => {
+  it('round-trips finalized transaction accounts, gas, and balance changes', () => {
     const durable = canonicalState()
     const hash = `0x${'1'.repeat(64)}`
     durable.main.activity[hash] = {
       id: hash,
       hash,
       account: '0x1111111111111111111111111111111111111111',
+      accounts: ['0x1111111111111111111111111111111111111111', '0x2222222222222222222222222222222222222222'],
       chainId: 1,
       status: 'succeeded',
       confirmations: 3,
