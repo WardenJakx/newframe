@@ -1,5 +1,6 @@
 import { cva } from '../styled-system/css/cva.js'
 import type { RecipeVariantProps } from '../styled-system/types/recipe.js'
+import { textColorVariants } from './Text.js'
 
 const icons = {
   warning: {
@@ -160,14 +161,7 @@ const iconRecipe = cva({
     },
     tone: {
       inherit: {},
-      primary: { color: 'text.primary' },
-      secondary: { color: 'text.secondary' },
-      muted: { color: 'text.muted' },
-      accent: { color: 'action.primary' },
-      success: { color: 'action.primary' },
-      danger: { color: 'status.danger' },
-      warning: { color: 'status.warning' },
-      special: { color: 'status.special' }
+      ...textColorVariants
     }
   },
   defaultVariants: { size: 'medium', tone: 'inherit', visible: true }

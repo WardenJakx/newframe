@@ -72,18 +72,12 @@ export function NetworkSelector({ label, onSelect, options }: NetworkSelectorPro
       reserveMenuSpace
       selectedId={selectedOption?.id}
       trigger={
-        selectedOption ? (
-          <>
-            <MediaIcon size='compact' source={selectedOption.iconUrl} />
-            <Text display='inline' truncate variant='compactAction'>
-              {selectedOption.label}
-            </Text>
-          </>
-        ) : (
+        <>
+          {selectedOption ? <MediaIcon size='compact' source={selectedOption.iconUrl} /> : null}
           <Text display='inline' truncate variant='compactAction'>
-            {label}
+            {selectedOption?.label ?? label}
           </Text>
-        )
+        </>
       }
       triggerSize='compact'
     />

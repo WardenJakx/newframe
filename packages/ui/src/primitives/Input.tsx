@@ -5,22 +5,27 @@ import { cx } from '../styled-system/css/cx.js'
 import type { RecipeVariantProps } from '../styled-system/types/recipe.js'
 import { textRecipe } from './Text.js'
 
+export const inputControlStyles = {
+  minWidth: 0,
+  width: '100%',
+  borderWidth: 'thin',
+  borderStyle: 'solid',
+  borderColor: 'transparent',
+  outline: 0,
+  borderRadius: 'default',
+  background: 'bg.raised',
+  color: 'text.primary',
+  _placeholder: { color: 'text.disabled' },
+  _focusVisible: { borderColor: 'border.focus' }
+} as const
+
+export const inputInvalidVariants = {
+  true: { borderColor: 'status.danger', boxShadow: 'focus-danger' },
+  false: {}
+} as const
+
 export const inputRecipe = cva({
-  base: {
-    minWidth: 0,
-    width: '100%',
-    height: 'input',
-    borderWidth: 'thin',
-    borderStyle: 'solid',
-    borderColor: 'transparent',
-    outline: 0,
-    borderRadius: 'default',
-    background: 'bg.raised',
-    color: 'text.primary',
-    paddingInline: '4',
-    _placeholder: { color: 'text.disabled' },
-    _focusVisible: { borderColor: 'border.focus' }
-  },
+  base: { ...inputControlStyles, height: 'input', paddingInline: '4' },
   variants: {
     appearance: {
       plain: {
@@ -51,10 +56,7 @@ export const inputRecipe = cva({
       start: { textAlign: 'left' },
       end: { textAlign: 'right' }
     },
-    invalid: {
-      true: { borderColor: 'status.danger', boxShadow: 'focus-danger' },
-      false: {}
-    }
+    invalid: inputInvalidVariants
   },
   defaultVariants: { align: 'start', appearance: 'control', invalid: false }
 })
@@ -63,14 +65,8 @@ export type InputRecipeProps = RecipeVariantProps<typeof inputRecipe>
 
 export function inputClasses(props: InputRecipeProps) {
   const appearance = props?.appearance
-  let variant: 'amount' | 'code' | 'numeric' | 'supporting' = 'supporting'
-  if (appearance === 'amount') {
-    variant = 'amount'
-  } else if (appearance === 'numeric') {
-    variant = 'numeric'
-  } else if (appearance === 'code') {
-    variant = 'code'
-  }
+  const variant =
+    appearance === 'amount' || appearance === 'numeric' || appearance === 'code' ? appearance : 'supporting'
   return cx(inputRecipe(props), textRecipe({ variant }))
 }
 

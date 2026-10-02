@@ -4,6 +4,7 @@ import { SearchField } from '@newframe/ui/search-field'
 import { Spacer } from '@newframe/ui/spacer'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
+import { Fragment } from 'react'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
 import type { TokenImageCapability } from '../../../shared/renderer/capabilities'
@@ -143,6 +144,43 @@ export function PositionsView({
   const dustHidden = groups.dust.length - dustRows.length
   const secondaryLabel = `${groups.secondary.length} ${groups.secondary.length === 1 ? 'asset' : 'assets'} below 1% hidden`
   const dustLabel = `${groups.dust.length} low value ${groups.dust.length === 1 ? 'token' : 'tokens'} hidden`
+  const renderRows = (balances: BalanceSummary[]) =>
+    balances.map((balance) => (
+      <PositionRow
+        key={`${balance.chainId}:${balance.address}`}
+        balance={balance}
+        imageCapability={imageCapability}
+        networks={networks}
+        networksMeta={networksMeta}
+        onOpen={onOpenAsset}
+      />
+    ))
+  const collapsibleGroups = [
+    {
+      id: 'secondary',
+      count: groups.secondary.length,
+      label: secondaryLabel,
+      value: `$${formatUsdRate(groups.secondaryValue, 2)}`,
+      expanded: secondaryExpanded,
+      rows: secondaryRows,
+      hiddenCount: secondaryHidden,
+      moreLabel: `Show ${Math.min(50, secondaryHidden)} more assets`,
+      onToggle: onToggleSecondary,
+      onShowMore: onShowMoreSecondary
+    },
+    {
+      id: 'dust',
+      count: groups.dust.length,
+      label: dustLabel,
+      value: '<$0.01',
+      expanded: dustExpanded,
+      rows: dustRows,
+      hiddenCount: dustHidden,
+      moreLabel: `Show ${Math.min(50, dustHidden)} more low value tokens`,
+      onToggle: onToggleDust,
+      onShowMore: onShowMoreDust
+    }
+  ]
 
   return (
     <>
@@ -162,97 +200,38 @@ export function PositionsView({
           </Text>
         ) : (
           <Stack gap='none'>
-            {groups.important.map((balance) => (
-              <PositionRow
-                key={`${balance.chainId}:${balance.address}`}
-                balance={balance}
-                imageCapability={imageCapability}
-                networks={networks}
-                networksMeta={networksMeta}
-                onOpen={onOpenAsset}
-              />
-            ))}
-            {groups.secondary.length ? (
-              <>
-                <Button
-                  appearance='subtle'
-                  expanded={secondaryExpanded}
-                  label={secondaryLabel}
-                  onPress={onToggleSecondary}
-                  size='small'
-                  width='full'
-                >
-                  <Icon name='chevronDown' size='small' tone='muted' />
-                  <Text display='inline' variant='body' tone='secondary' truncate>
-                    {secondaryLabel}
-                  </Text>
-                  <Spacer />
-                  <Text
-                    display='inline'
-                    variant='numeric'
-                  >{`$${formatUsdRate(groups.secondaryValue, 2)}`}</Text>
-                </Button>
-                {secondaryExpanded
-                  ? secondaryRows.map((balance) => (
-                      <PositionRow
-                        key={`${balance.chainId}:${balance.address}`}
-                        balance={balance}
-                        imageCapability={imageCapability}
-                        networks={networks}
-                        networksMeta={networksMeta}
-                        onOpen={onOpenAsset}
-                      />
-                    ))
-                  : null}
-                {secondaryExpanded ? (
-                  <MoreRows
-                    hiddenCount={secondaryHidden}
-                    label={`Show ${Math.min(50, secondaryHidden)} more assets`}
-                    onClick={onShowMoreSecondary}
-                  />
-                ) : null}
-              </>
-            ) : null}
-            {groups.dust.length ? (
-              <>
-                <Button
-                  appearance='subtle'
-                  expanded={dustExpanded}
-                  label={dustLabel}
-                  onPress={onToggleDust}
-                  size='small'
-                  width='full'
-                >
-                  <Icon name='chevronDown' size='small' tone='muted' />
-                  <Text display='inline' variant='body' tone='secondary' truncate>
-                    {dustLabel}
-                  </Text>
-                  <Spacer />
-                  <Text display='inline' variant='numeric'>
-                    {'<$0.01'}
-                  </Text>
-                </Button>
-                {dustExpanded
-                  ? dustRows.map((balance) => (
-                      <PositionRow
-                        key={`${balance.chainId}:${balance.address}`}
-                        balance={balance}
-                        imageCapability={imageCapability}
-                        networks={networks}
-                        networksMeta={networksMeta}
-                        onOpen={onOpenAsset}
-                      />
-                    ))
-                  : null}
-                {dustExpanded ? (
-                  <MoreRows
-                    hiddenCount={dustHidden}
-                    label={`Show ${Math.min(50, dustHidden)} more low value tokens`}
-                    onClick={onShowMoreDust}
-                  />
-                ) : null}
-              </>
-            ) : null}
+            {renderRows(groups.important)}
+            {collapsibleGroups.map((group) =>
+              group.count ? (
+                <Fragment key={group.id}>
+                  <Button
+                    appearance='subtle'
+                    expanded={group.expanded}
+                    label={group.label}
+                    onPress={group.onToggle}
+                    size='small'
+                    width='full'
+                  >
+                    <Icon name='chevronDown' size='small' tone='muted' />
+                    <Text display='inline' variant='body' tone='secondary' truncate>
+                      {group.label}
+                    </Text>
+                    <Spacer />
+                    <Text display='inline' variant='numeric'>
+                      {group.value}
+                    </Text>
+                  </Button>
+                  {group.expanded ? renderRows(group.rows) : null}
+                  {group.expanded ? (
+                    <MoreRows
+                      hiddenCount={group.hiddenCount}
+                      label={group.moreLabel}
+                      onClick={group.onShowMore}
+                    />
+                  ) : null}
+                </Fragment>
+              ) : null
+            )}
           </Stack>
         )}
       </main>

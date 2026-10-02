@@ -1,6 +1,9 @@
+import { Icon } from '@newframe/ui/icon'
+import { Stack } from '@newframe/ui/stack'
+import { Text } from '@newframe/ui/text'
+
 import { formatUnits, isUnlimited, toBigInt } from '../../../../../shared/domain/units'
 import { AddressIdentity } from '../../../../../shared/renderer/ui/AddressIdentity'
-import { chainColorValue } from '../../../../networks/domain/chain/colors'
 import type { SourceValue } from '../../format/displayValue'
 import useCopiedMessage from '../../hooks/useCopiedMessage'
 import type { RequestRendererCapabilities } from '../../requestCapabilities'
@@ -77,9 +80,7 @@ const PermitOverview = ({
         panel={capabilities.panel}
         key={`signErc20Permit:${handlerId}`}
         req={req}
-        i={0}
         title={`${chainName} Token Permit`}
-        color={chainColor ? chainColorValue(chainColor) : ''}
         img={icon}
         headerMode={true}
       >
@@ -233,6 +234,3 @@ const PermitRequest = ({ capabilities, req, originName, favicon, step, chainData
 }
 
 export default PermitRequest
-import { Icon } from '@newframe/ui/icon'
-import { Stack } from '@newframe/ui/stack'
-import { Text } from '@newframe/ui/text'

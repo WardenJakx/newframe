@@ -9,8 +9,7 @@ const mediaIconRecipe = cva({
     placeItems: 'center',
     overflow: 'hidden',
     borderRadius: '50%',
-    background: 'bg.control',
-    '& img': { width: '100%', height: '100%', objectFit: 'cover' }
+    background: 'bg.control'
   },
   variants: {
     size: {

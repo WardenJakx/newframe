@@ -15,12 +15,10 @@ import type { WalletRendererState } from '../../../../platform/state-sync/contra
 import { selectOperationById } from '../../../../platform/state-sync/renderer/selectors/operation'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
 import { AddressIdentity } from '../../../../shared/renderer/ui/AddressIdentity'
+import { ChainIcon } from '../../../../shared/renderer/ui/ChainIcon'
 import { accountDisplayType } from '../../../../shared/renderer/ui/signerPresentation'
-import { persistedImageSource } from '../../../asset-data/domain/image'
-import { chainColorValue } from '../../../networks/domain/chain/colors'
 import { toTokenId } from '../../domain'
 import type { Token } from '../../domain/state/token'
-import RingIcon from '../RingIcon'
 import type { TokensCapability } from '../tokensCapability'
 
 type SelectedChain = {
@@ -121,7 +119,7 @@ function SelectChain({
         <Stack gap='xsmall'>
           {activeChains.map((chain) => {
             const chainId = chain.id
-            const { primaryColor, image } = metadataByChain[chainId] ?? {}
+            const { primaryColor } = metadataByChain[chainId] ?? {}
 
             return (
               <Button
@@ -130,7 +128,7 @@ function SelectChain({
                 onPress={() => onNavigate({ chain: { id: chainId, color: primaryColor, name: chain.name } })}
                 width='full'
               >
-                <RingIcon color={chainColorValue(primaryColor)} img={persistedImageSource(image)} small />
+                <ChainIcon chainId={chainId} networks={chains} networksMeta={chainMetadata} size='large' />
                 <Text variant='label'>{chain.name}</Text>
               </Button>
             )

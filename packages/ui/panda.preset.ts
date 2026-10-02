@@ -5,7 +5,7 @@ import {
   colorPrimitives,
   darkColorSemantics,
   systemColors,
-  type SemanticColorName
+  type ColorReference
 } from './src/tokens/colors.js'
 import { elevationTokens } from './src/tokens/elevation.js'
 import { layerTokens } from './src/tokens/layers.js'
@@ -24,9 +24,7 @@ function tokensWithPrefix(tokens: Record<string, string>, prefix: string) {
   )
 }
 
-function semanticColor(name: SemanticColorName) {
-  const reference = darkColorSemantics[name]
-
+function semanticColor(reference: ColorReference) {
   if (typeof reference === 'string') {
     return { value: `{colors.${reference}}` }
   }
@@ -34,6 +32,32 @@ function semanticColor(name: SemanticColorName) {
   return {
     value: `color-mix(in srgb, {colors.${reference.color}} ${reference.alpha * 100}%, transparent)`
   }
+}
+
+type ColorTokenGroup = { [name: string]: ColorTokenGroup | { value: string } }
+
+function semanticColorTokens() {
+  const values = {
+    ...Object.fromEntries(
+      Object.entries(darkColorSemantics).map(([name, reference]) => [name, semanticColor(reference)])
+    ),
+    ...Object.fromEntries(Object.entries(systemColors).map(([name, value]) => [name, { value }]))
+  }
+  const colors: ColorTokenGroup = {}
+  for (const [name, token] of Object.entries(values)) {
+    const parts = name.split('-')
+    if (parts.at(-1) === 'default') {
+      parts.pop()
+    }
+    let group = colors
+    for (const part of parts) {
+      group[part] ??= {}
+      group = group[part] as ColorTokenGroup
+    }
+    // DEFAULT gives both a group and its nested colors the same public token names.
+    group.DEFAULT = token
+  }
+  return colors
 }
 
 export const newframePreset = definePreset({
@@ -80,76 +104,7 @@ export const newframePreset = definePreset({
         },
         zIndex: tokensWithPrefix(layerTokens, 'nf-layer-')
       },
-      semanticTokens: {
-        colors: {
-          action: {
-            danger: {
-              DEFAULT: semanticColor('action-danger'),
-              border: semanticColor('action-danger-border'),
-              hover: semanticColor('action-danger-hover'),
-              subtle: semanticColor('action-danger-subtle')
-            },
-            primary: {
-              DEFAULT: semanticColor('action-primary'),
-              border: semanticColor('action-primary-border'),
-              hover: semanticColor('action-primary-hover'),
-              subtle: semanticColor('action-primary-subtle'),
-              text: semanticColor('action-primary-text')
-            }
-          },
-          bg: {
-            card: semanticColor('bg-card'),
-            control: semanticColor('bg-control'),
-            hover: semanticColor('bg-hover'),
-            primary: semanticColor('bg-primary'),
-            raised: semanticColor('bg-raised'),
-            secondary: semanticColor('bg-secondary')
-          },
-          border: {
-            DEFAULT: semanticColor('border-default'),
-            focus: semanticColor('border-focus'),
-            strong: semanticColor('border-strong'),
-            subtle: semanticColor('border-subtle')
-          },
-          qr: {
-            background: { value: systemColors['qr-background'] },
-            foreground: { value: systemColors['qr-foreground'] }
-          },
-          scrim: semanticColor('scrim'),
-          shadow: {
-            DEFAULT: semanticColor('shadow-default'),
-            strong: semanticColor('shadow-strong'),
-            subtle: semanticColor('shadow-subtle')
-          },
-          status: {
-            danger: {
-              DEFAULT: semanticColor('status-danger'),
-              subtle: semanticColor('status-danger-subtle')
-            },
-            pending: semanticColor('status-pending'),
-            special: {
-              DEFAULT: semanticColor('status-special'),
-              subtle: semanticColor('status-special-subtle')
-            },
-            success: {
-              DEFAULT: semanticColor('status-success'),
-              subtle: semanticColor('status-success-subtle')
-            },
-            warning: {
-              DEFAULT: semanticColor('status-warning'),
-              border: semanticColor('status-warning-border'),
-              subtle: semanticColor('status-warning-subtle')
-            }
-          },
-          text: {
-            disabled: semanticColor('text-disabled'),
-            inverse: semanticColor('text-inverse'),
-            muted: semanticColor('text-muted'),
-            primary: semanticColor('text-primary'),
-            secondary: semanticColor('text-secondary')
-          }
-        }
-      },
+      semanticTokens: { colors: semanticColorTokens() },
       keyframes: {
         overlayShow: {
           from: { opacity: 0, transform: 'translateX(calc(-1 * token(sizes.motion-distance-overlay)))' },

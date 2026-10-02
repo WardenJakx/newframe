@@ -3,30 +3,18 @@ import { forwardRef } from 'react'
 import { cva } from '../styled-system/css/cva.js'
 import { cx } from '../styled-system/css/cx.js'
 import type { RecipeVariantProps } from '../styled-system/types/recipe.js'
+import { inputControlStyles, inputInvalidVariants } from './Input.js'
 import { textRecipe } from './Text.js'
 
 const textAreaRecipe = cva({
   base: {
-    minWidth: 0,
-    width: '100%',
+    ...inputControlStyles,
     minHeight: 'field-vertical',
     resize: 'vertical',
-    borderWidth: 'thin',
-    borderStyle: 'solid',
-    borderColor: 'transparent',
-    outline: 0,
-    borderRadius: 'default',
-    background: 'bg.raised',
-    color: 'text.primary',
-    padding: '4',
-    _placeholder: { color: 'text.disabled' },
-    _focusVisible: { borderColor: 'border.focus' }
+    padding: '4'
   },
   variants: {
-    invalid: {
-      true: { borderColor: 'status.danger', boxShadow: 'focus-danger' },
-      false: {}
-    },
+    invalid: inputInvalidVariants,
     code: {
       true: {},
       false: {}

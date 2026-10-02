@@ -292,7 +292,7 @@ class Tray {
     const autoHideOn = !!getStore().getState().main.autohide
     const sideTrayShowing = sideTrayManager.isShowing()
 
-    log.debug(`%ccanAutoHide ${JSON.stringify({ autoHideOn, sideTrayShowing })}`, 'color: blue')
+    log.debug(`canAutoHide ${JSON.stringify({ autoHideOn, sideTrayShowing })}`)
 
     return autoHideOn && !sideTrayShowing
   }

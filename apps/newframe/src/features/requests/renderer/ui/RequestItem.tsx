@@ -14,12 +14,8 @@ type RequestItemProps = {
   title: string
   svgName?: IconName
   img?: string
-  color?: string
   headerMode?: boolean
   children?: ReactNode
-  account?: string
-  handlerId?: string
-  i?: number
 }
 
 const getElapsedTime = (req: RequestItemRequestView) => {

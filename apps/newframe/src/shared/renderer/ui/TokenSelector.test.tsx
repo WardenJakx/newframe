@@ -1,4 +1,4 @@
-import { describe, expect, it, spyOn } from 'bun:test'
+import { describe, expect, it, mock, spyOn } from 'bun:test'
 
 import React from 'react'
 
@@ -248,6 +248,34 @@ describe('ChainTokenIcon', () => {
 })
 
 describe('TokenSelector', () => {
+  it('shows remaining assets outside search and searches across paginated items', async () => {
+    const onShowMore = mock(() => {})
+    const { user } = render(
+      <TokenSelector
+        ariaLabel='Choose token'
+        imageCapability={utilityPorts}
+        items={items.slice(0, 1)}
+        searchableItems={items}
+        networks={networks}
+        networksMeta={networksMeta}
+        onOpenChange={() => {}}
+        onSelect={() => {}}
+        open
+        pagination={{ rowsHidden: 1, increment: 50, onShowMore }}
+        selectedId='eth'
+      />
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Show 1 more assets' }))
+    expect(onShowMore).toHaveBeenCalledTimes(1)
+    await user.type(screen.getByLabelText('Search tokens'), 'long token')
+
+    expect(screen.getByRole('option').textContent).toContain('abcDEFG')
+    expect(screen.queryByRole('button', { name: 'Show 1 more assets' })).toBeNull()
+    await user.clear(screen.getByLabelText('Search tokens'))
+    expect(screen.getByRole('button', { name: 'Show 1 more assets' })).toBeTruthy()
+  })
+
   it('selects highlighted items with the keyboard', async () => {
     const { user } = render(<ControlledSelector />)
 

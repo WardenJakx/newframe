@@ -10,7 +10,7 @@ const statusDotRecipe = cva({
     },
     tone: {
       accent: { background: 'action.primary' },
-      success: { background: 'action.primary' },
+      success: { background: 'status.success' },
       danger: { background: 'status.danger' },
       warning: { background: 'status.warning' },
       neutral: {

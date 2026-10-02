@@ -17,16 +17,9 @@ export function ToggleButton({
   pressed,
   size
 }: ToggleButtonProps) {
-  let buttonAppearance: 'row' | 'segment' | 'switch' = 'segment'
-  if (appearance === 'row') {
-    buttonAppearance = 'row'
-  } else if (appearance === 'switch') {
-    buttonAppearance = 'switch'
-  }
-
   return (
     <Button
-      appearance={buttonAppearance}
+      appearance={appearance ?? 'segment'}
       checked={appearance === 'switch' ? (pressed ?? false) : undefined}
       disabled={disabled}
       label={label}
