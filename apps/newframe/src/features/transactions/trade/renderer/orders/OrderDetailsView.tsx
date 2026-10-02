@@ -157,30 +157,23 @@ export function OrderDetailsView({
           {detailRow('Terminal', orderDateTime(order.terminalAt))}
           {detailRow('Fill hash', order.fillHash ?? order.fillTransactionHash, true)}
         </Stack>
-        {rawStatusPayload ? (
-          <Surface padding='small' radius='small' tone='subtle'>
-            <Stack gap='xsmall'>
-              <Text tone='muted' variant='overline'>
-                Status Payload
-              </Text>
-              <pre className={payloadRecipe()}>
-                <Text variant='microCode'>{rawStatusPayload}</Text>
-              </pre>
-            </Stack>
-          </Surface>
-        ) : null}
-        {rawPayload ? (
-          <Surface padding='small' radius='small' tone='subtle'>
-            <Stack gap='xsmall'>
-              <Text tone='muted' variant='overline'>
-                Raw Payload
-              </Text>
-              <pre className={payloadRecipe()}>
-                <Text variant='microCode'>{rawPayload}</Text>
-              </pre>
-            </Stack>
-          </Surface>
-        ) : null}
+        {[
+          ['Status Payload', rawStatusPayload],
+          ['Raw Payload', rawPayload]
+        ].map(([label, payload]) =>
+          payload ? (
+            <Surface key={label} padding='small' radius='small' tone='subtle'>
+              <Stack gap='xsmall'>
+                <Text tone='muted' variant='overline'>
+                  {label}
+                </Text>
+                <pre className={payloadRecipe()}>
+                  <Text variant='microCode'>{payload}</Text>
+                </pre>
+              </Stack>
+            </Surface>
+          ) : null
+        )}
       </Stack>
     </TrayOverlay>
   )

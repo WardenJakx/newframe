@@ -197,64 +197,64 @@ export function ActivityView<TRecord extends ActivityViewRecord>({
           const submitted = activityTimestampLabel(record)
           const confirmed = record.status === 'succeeded'
           const canOpenExplorer = confirmed && !!record.hash && !!networks[Number(record.chainId)]?.explorer
-          const right = confirmed ? (
+          const right = (
             <Stack align='end' gap='xsmall'>
-              <Inline align='center' gap='none'>
-                {canOpenExplorer ? (
-                  <Button
-                    appearance='ghost'
-                    label={`Open transaction ${record.hash ?? ''} in explorer`}
-                    onPress={() => onOpenExplorer(record)}
-                    size='compact'
-                  >
-                    <span className={transactionLinkRecipe()} data-transaction-link=''>
-                      <Text display='inline' tone='secondary' variant='code'>
-                        {shortHash(record.hash)}
-                      </Text>
-                    </span>
-                  </Button>
-                ) : (
-                  <Text display='inline' tone='secondary' variant='code'>
-                    {shortHash(record.hash)}
-                  </Text>
-                )}
-                {record.hash ? (
-                  <CopyButton
-                    clipboard={clipboard}
-                    copiedLabel={`Transaction hash copied ${record.hash}`}
-                    copiedTitle='Transaction hash copied'
-                    label={`Copy transaction hash ${record.hash}`}
-                    title='Copy transaction hash'
-                    value={record.hash}
-                  />
-                ) : null}
-              </Inline>
-              <Text tone='muted' variant='caption'>
-                {submitted}
-              </Text>
-            </Stack>
-          ) : (
-            <Stack align='end' gap='xsmall'>
-              <Text tone={record.status === 'reverted' ? 'danger' : 'warning'} variant='supporting'>
-                {status}
-              </Text>
+              {confirmed ? (
+                <Inline align='center' gap='none'>
+                  {canOpenExplorer ? (
+                    <Button
+                      appearance='ghost'
+                      label={`Open transaction ${record.hash ?? ''} in explorer`}
+                      onPress={() => onOpenExplorer(record)}
+                      size='compact'
+                    >
+                      <span className={transactionLinkRecipe()} data-transaction-link=''>
+                        <Text display='inline' tone='secondary' variant='code'>
+                          {shortHash(record.hash)}
+                        </Text>
+                      </span>
+                    </Button>
+                  ) : (
+                    <Text display='inline' tone='secondary' variant='code'>
+                      {shortHash(record.hash)}
+                    </Text>
+                  )}
+                  {record.hash ? (
+                    <CopyButton
+                      clipboard={clipboard}
+                      copiedLabel={`Transaction hash copied ${record.hash}`}
+                      copiedTitle='Transaction hash copied'
+                      label={`Copy transaction hash ${record.hash}`}
+                      title='Copy transaction hash'
+                      value={record.hash}
+                    />
+                  ) : null}
+                </Inline>
+              ) : (
+                <Text tone={record.status === 'reverted' ? 'danger' : 'warning'} variant='supporting'>
+                  {status}
+                </Text>
+              )}
               <Text tone='muted' variant='caption'>
                 {submitted}
               </Text>
             </Stack>
           )
+          const content = (
+            <ActivityRowContent
+              imageCapability={imageCapability}
+              networks={networks}
+              networksMeta={networksMeta}
+              record={record}
+              right={right}
+              tokens={tokens}
+            />
+          )
 
           if (confirmed) {
             return (
               <div className={activityRowRecipe()} key={record.id}>
-                <ActivityRowContent
-                  imageCapability={imageCapability}
-                  networks={networks}
-                  networksMeta={networksMeta}
-                  record={record}
-                  right={right}
-                  tokens={tokens}
-                />
+                {content}
               </div>
             )
           }
@@ -267,14 +267,7 @@ export function ActivityView<TRecord extends ActivityViewRecord>({
               onPress={() => onOpen(record.id)}
               width='full'
             >
-              <ActivityRowContent
-                imageCapability={imageCapability}
-                networks={networks}
-                networksMeta={networksMeta}
-                record={record}
-                right={right}
-                tokens={tokens}
-              />
+              {content}
             </Button>
           )
         })}

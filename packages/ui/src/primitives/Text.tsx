@@ -3,6 +3,17 @@ import type { ReactNode } from 'react'
 import { cva } from '../styled-system/css/cva.js'
 import type { RecipeVariantProps } from '../styled-system/types/recipe.js'
 
+export const textColorVariants = {
+  primary: { color: 'text.primary' },
+  secondary: { color: 'text.secondary' },
+  muted: { color: 'text.muted' },
+  accent: { color: 'action.primary' },
+  success: { color: 'status.success' },
+  danger: { color: 'status.danger' },
+  warning: { color: 'status.warning' },
+  special: { color: 'status.special' }
+} as const
+
 export const textRecipe = cva({
   base: { minWidth: 0 },
   variants: {
@@ -57,15 +68,8 @@ export const textRecipe = cva({
       numeric: { fontFamily: 'mono', fontSize: 'label', fontWeight: 'medium' }
     },
     tone: {
-      primary: { color: 'text.primary' },
-      secondary: { color: 'text.secondary' },
-      muted: { color: 'text.muted' },
+      ...textColorVariants,
       disabled: { color: 'text.disabled' },
-      accent: { color: 'action.primary' },
-      success: { color: 'status.success' },
-      danger: { color: 'status.danger' },
-      warning: { color: 'status.warning' },
-      special: { color: 'status.special' },
       inverse: { color: 'text.inverse' }
     },
     align: {

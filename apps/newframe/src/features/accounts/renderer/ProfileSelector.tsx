@@ -3,6 +3,7 @@ import { Icon } from '@newframe/ui/icon'
 import { IconButton } from '@newframe/ui/icon-button'
 import { Input } from '@newframe/ui/input'
 import { ScrollArea } from '@newframe/ui/scroll-area'
+import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 import React from 'react'
 
@@ -76,21 +77,6 @@ const profileRowRecipe = cva({
 
 const managementRecipe = cva({
   base: { padding: '4' }
-})
-
-const columnRecipe = cva({
-  base: { display: 'flex', minWidth: 0, flexDirection: 'column' },
-  variants: {
-    gap: { none: { gap: 0 }, xsmall: { gap: '2' }, small: { gap: '4' } },
-    grow: { true: { flex: '1 1 0' }, false: {} }
-  },
-  defaultVariants: { gap: 'small', grow: false }
-})
-
-const rowRecipe = cva({
-  base: { display: 'flex', minWidth: 0, alignItems: 'center', gap: '4' },
-  variants: { grow: { true: { flex: '1 1 0' }, false: {} } },
-  defaultVariants: { grow: false }
 })
 
 function profileValue(profile: ProfileSummary) {
@@ -402,7 +388,7 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
         {loadingAccounts ? <Text tone='secondary'>Loading accounts…</Text> : null}
         {!loadingAccounts && movableAccounts.length ? (
           <ScrollArea height='menu'>
-            <div className={columnRecipe({ gap: 'xsmall' })}>
+            <Stack gap='xsmall'>
               <Text tone='secondary' variant='caption'>
                 Move accounts into this profile (optional)
               </Text>
@@ -418,28 +404,28 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
                   >
                     <Text tone={selected ? 'accent' : 'secondary'}>{selected ? '✓' : '○'}</Text>
                     <AddressAvatar address={account.address} accountType={account.accountType} />
-                    <div className={columnRecipe({ gap: 'none', grow: true })}>
+                    <Stack gap='none' grow>
                       <Text variant='caption' truncate>
                         {account.name}
                       </Text>
                       <Text tone='muted' variant='micro' truncate>
                         {shortAddress(account.address)}
                       </Text>
-                    </div>
+                    </Stack>
                   </Button>
                 )
               })}
-            </div>
+            </Stack>
           </ScrollArea>
         ) : null}
-        <div className={rowRecipe()}>
+        <Stack align='center' direction='row'>
           <Button appearance='primary' disabled={submitting} onPress={() => void submitCreate()} size='small'>
             <Text variant='caption'>Create profile</Text>
           </Button>
           <Button appearance='ghost' onPress={resetManagement} size='small'>
             <Text variant='caption'>Cancel</Text>
           </Button>
-        </div>
+        </Stack>
       </>
     )
   } else if (displayedMode === 'rename') {
@@ -455,42 +441,42 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
           onValueChange={setName}
           value={name}
         />
-        <div className={rowRecipe()}>
+        <Stack align='center' direction='row'>
           <Button appearance='primary' disabled={submitting} onPress={() => void submitRename()} size='small'>
             <Text variant='caption'>Save</Text>
           </Button>
           <Button appearance='ghost' onPress={resetManagement} size='small'>
             <Text variant='caption'>Cancel</Text>
           </Button>
-        </div>
+        </Stack>
       </>
     )
   } else if (displayedMode === 'delete') {
     managementFields = (
       <>
         <Text variant='caption'>Delete {managedProfile?.name}? This cannot be undone.</Text>
-        <div className={rowRecipe()}>
+        <Stack align='center' direction='row'>
           <Button appearance='danger' disabled={submitting} onPress={() => void submitDelete()} size='small'>
             <Text variant='caption'>Confirm delete</Text>
           </Button>
           <Button appearance='ghost' onPress={resetManagement} size='small'>
             <Text variant='caption'>Cancel</Text>
           </Button>
-        </div>
+        </Stack>
       </>
     )
   }
 
   const management = (
     <div className={managementRecipe()}>
-      <div className={columnRecipe({ gap: 'small' })}>
+      <Stack gap='small'>
         {managementFields}
         {visibleError ? (
           <Text tone='danger' variant='caption'>
             {visibleError}
           </Text>
         ) : null}
-      </div>
+      </Stack>
     </div>
   )
 
@@ -520,18 +506,18 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
         ref={triggerRef}
         width='full'
       >
-        <div className={rowRecipe({ grow: true })}>
-          <div className={columnRecipe({ grow: true })}>
+        <Stack align='center' direction='row' grow>
+          <Stack grow>
             <Text align='start' variant='control' truncate>
               {activeProfile?.name ?? 'Profiles'}
             </Text>
-          </div>
+          </Stack>
           <Icon name={displayedOpen ? 'chevronUp' : 'chevronDown'} size='small' tone='muted' />
-        </div>
+        </Stack>
       </Button>
       {displayedOpen ? (
         <div aria-label='Profiles' className={menuRecipe()} data-profile-menu id={menuId} role='dialog'>
-          <div className={columnRecipe({ gap: 'xsmall' })}>
+          <Stack gap='xsmall'>
             {profiles.map((profile) => {
               const selected = profile.id === currentProfile
               const managing =
@@ -544,27 +530,27 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
               }
               return (
                 <div key={profile.id} className={profileRowRecipe({ selected })}>
-                  <div className={rowRecipe()}>
+                  <Stack align='center' direction='row'>
                     <Button
                       appearance='selectionOption'
                       label={'Switch to ' + profile.name}
                       pressed={selected}
                       onPress={() => void handleSelect(profile.id)}
                     >
-                      <div className={columnRecipe({ gap: 'none', grow: true })}>
+                      <Stack gap='none' grow>
                         <Text align='start' variant='label' truncate>
                           {profile.name}
                         </Text>
                         <Text align='start' tone='muted' variant='micro'>
                           {profile.accountCount} {profile.accountCount === 1 ? 'Account' : 'Accounts'}
                         </Text>
-                      </div>
+                      </Stack>
                       <Text align='end' variant='numeric' shrink={false}>
                         {profileValue(profile)}
                       </Text>
                       {selected ? <Icon name='check' size='small' tone='accent' /> : null}
                     </Button>
-                    <div className={rowRecipe()}>
+                    <Stack align='center' direction='row'>
                       <IconButton
                         appearance='ghost'
                         icon='edit'
@@ -586,8 +572,8 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
                         }}
                         size='small'
                       />
-                    </div>
-                  </div>
+                    </Stack>
+                  </Stack>
                   {managing ? management : null}
                 </div>
               )
@@ -610,7 +596,7 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
                 {visibleError}
               </Text>
             ) : null}
-          </div>
+          </Stack>
         </div>
       ) : null}
     </div>

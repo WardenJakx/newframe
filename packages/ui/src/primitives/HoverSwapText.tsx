@@ -1,17 +1,15 @@
 import type { ReactNode } from 'react'
 
-import { cva } from '../styled-system/css/cva.js'
+import { css } from '../styled-system/css/css.js'
 
-const hoverSwapTextRecipe = cva({
-  base: {
-    display: 'inline-block',
-    minWidth: 0,
-    maxWidth: '100%',
-    '& > [data-hover-swap-text="primary"]': { display: 'block' },
-    '& > [data-hover-swap-text="alternate"]': { display: 'none' },
-    '&:hover > [data-hover-swap-text="primary"]': { display: 'none' },
-    '&:hover > [data-hover-swap-text="alternate"]': { display: 'block' }
-  }
+const hoverSwapTextClass = css({
+  display: 'inline-block',
+  minWidth: 0,
+  maxWidth: '100%',
+  '& > [data-hover-swap-text="primary"]': { display: 'block' },
+  '& > [data-hover-swap-text="alternate"]': { display: 'none' },
+  '&:hover > [data-hover-swap-text="primary"]': { display: 'none' },
+  '&:hover > [data-hover-swap-text="alternate"]': { display: 'block' }
 })
 
 export type HoverSwapTextProps = {
@@ -21,7 +19,7 @@ export type HoverSwapTextProps = {
 
 export function HoverSwapText({ alternate, children }: HoverSwapTextProps) {
   return (
-    <span className={hoverSwapTextRecipe()}>
+    <span className={hoverSwapTextClass}>
       <span data-hover-swap-text='primary'>{children}</span>
       <span aria-hidden data-hover-swap-text='alternate'>
         {alternate}

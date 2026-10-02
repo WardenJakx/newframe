@@ -1,7 +1,8 @@
+import { css } from '../styled-system/css/css.js'
 import { cva } from '../styled-system/css/cva.js'
 import type { RecipeVariantProps } from '../styled-system/types/recipe.js'
 
-const rangeFrameRecipe = cva({ base: { display: 'flex', paddingBlockStart: '1' } })
+const rangeFrameClass = css({ display: 'flex', paddingBlockStart: '1' })
 
 const rangeRecipe = cva({
   base: {
@@ -31,7 +32,7 @@ export type RangeProps = RecipeVariantProps<typeof rangeRecipe> & {
 
 export function Range({ label, max, min, onValueChange, step, tone, value }: RangeProps) {
   return (
-    <div className={rangeFrameRecipe()}>
+    <div className={rangeFrameClass}>
       <input
         aria-label={label}
         className={rangeRecipe({ tone })}

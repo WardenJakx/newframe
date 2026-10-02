@@ -358,17 +358,11 @@ export function TradeView({
       <TokenSelector
         ariaLabel={`Select ${asset.field} asset`}
         imageCapability={capability}
-        footer={
-          asset.rowsHidden > 0 ? (
-            <Stack>
-              <Button onPress={() => events.onShowMoreAssets(asset.field)}>
-                <Text align='center' variant='supporting' tone='secondary'>
-                  {`Show ${Math.min(TOKEN_SELECTOR_ROWS_INCREMENT, asset.rowsHidden)} more assets`}
-                </Text>
-              </Button>
-            </Stack>
-          ) : null
-        }
+        pagination={{
+          increment: TOKEN_SELECTOR_ROWS_INCREMENT,
+          onShowMore: () => events.onShowMoreAssets(asset.field),
+          rowsHidden: asset.rowsHidden
+        }}
         items={asset.selectorItems}
         searchableItems={asset.searchableItems}
         networks={model.networks}
@@ -381,34 +375,8 @@ export function TradeView({
     )
   }
 
-  const renderTradeDirectionSwitch = () => {
-    const nextSide = state.side === 'buy' ? 'SELL' : 'BUY'
-
-    return (
-      <IconButton
-        label={`Switch to ${nextSide}`}
-        appearance='subtle'
-        icon='swap'
-        onPress={events.onToggleSide}
-        size='compact'
-        title={`Switch to ${nextSide}`}
-      />
-    )
-  }
-
-  const renderTradeBalanceSlider = (asset: TradeAssetViewModel) => {
-    return (
-      <BalanceRange
-        label={asset.symbol}
-        balanceLabel={asset.balanceLabel}
-        direction={state.side}
-        onChange={(value) => events.onBalancePercentChange(asset.field, value)}
-        value={asset.balancePercent}
-      />
-    )
-  }
-
   const renderTradeAssetCard = (asset: TradeAssetViewModel) => {
+    const nextSide = state.side === 'buy' ? 'SELL' : 'BUY'
     return (
       <Surface
         border={asset.border}
@@ -421,7 +389,16 @@ export function TradeView({
             <Text variant='label' tone={asset.intentTone}>
               {asset.intent}
             </Text>
-            {asset.canSwitchDirection ? renderTradeDirectionSwitch() : null}
+            {asset.canSwitchDirection ? (
+              <IconButton
+                label={`Switch to ${nextSide}`}
+                appearance='subtle'
+                icon='swap'
+                onPress={events.onToggleSide}
+                size='compact'
+                title={`Switch to ${nextSide}`}
+              />
+            ) : null}
           </Stack>
           <Stack align='center' direction='row' gap='medium' justify='between'>
             {renderTradeAssetSelector(asset)}
@@ -440,7 +417,13 @@ export function TradeView({
             </Stack>
           </Stack>
           {asset.editable ? (
-            renderTradeBalanceSlider(asset)
+            <BalanceRange
+              label={asset.symbol}
+              balanceLabel={asset.balanceLabel}
+              direction={state.side}
+              onChange={(value) => events.onBalancePercentChange(asset.field, value)}
+              value={asset.balancePercent}
+            />
           ) : (
             <Stack align='center' direction='row' gap='medium' justify='end'>
               <Text variant='supporting' tone='secondary'>
@@ -516,35 +499,23 @@ export function TradeView({
     )
   }
 
-  const renderTradeAdvanced = () => {
-    return (
-      <Disclosure
-        icon='settings'
-        label='Advanced'
-        onToggle={events.onToggleAdvanced}
-        open={state.advancedOpen}
-      >
-        {renderTradeAdvancedFields()}
-      </Disclosure>
-    )
-  }
-
-  const renderTradeFooter = () => {
-    return (
-      <Stack grow>
-        <Button appearance='primary' disabled={!model.action.enabled} onPress={events.onReview} size='large'>
-          <Text align='center' variant='action' tone='inverse'>
-            {model.action.label}
-          </Text>
-        </Button>
-      </Stack>
-    )
-  }
-
   return (
     <SidePanel
       closeLabel='Close Trade'
-      footer={renderTradeFooter()}
+      footer={
+        <Stack grow>
+          <Button
+            appearance='primary'
+            disabled={!model.action.enabled}
+            onPress={events.onReview}
+            size='large'
+          >
+            <Text align='center' variant='action' tone='inverse'>
+              {model.action.label}
+            </Text>
+          </Button>
+        </Stack>
+      }
       footerSpace='compact'
       onClose={events.onClose}
       title='Trade'
@@ -554,7 +525,14 @@ export function TradeView({
         {renderTradeAssetCard(state.target)}
         {renderTradeAssetCard(state.contra)}
         {renderTradeOrderFields()}
-        {renderTradeAdvanced()}
+        <Disclosure
+          icon='settings'
+          label='Advanced'
+          onToggle={events.onToggleAdvanced}
+          open={state.advancedOpen}
+        >
+          {renderTradeAdvancedFields()}
+        </Disclosure>
         {model.quote ? (
           <Surface border='subtle' padding='medium' radius='small' tone='transparent'>
             {renderTradeQuoteMeta()}

@@ -2,7 +2,6 @@ import { Button } from '@newframe/ui/button'
 import { Icon } from '@newframe/ui/icon'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
-import React from 'react'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
 import type { ClipboardCapability, TokenImageCapability } from '../../../shared/renderer/capabilities'
@@ -45,9 +44,6 @@ export function AssetDetailsView({
   const chain = networks[asset.chainId] ?? {}
   const price = Number(asset.rate?.usdRate ?? 0)
   const nativeAsset = isNativeCurrency(asset.address)
-  const detailRow = (label: string, value: React.ReactNode, monospace = false) => (
-    <DetailRow code={monospace} label={label} value={value} />
-  )
   const footer = (
     <Stack direction='row' gap='small'>
       <Button
@@ -123,24 +119,26 @@ export function AssetDetailsView({
             </Stack>
           </Stack>
           <Stack gap='none'>
-            {detailRow('Price', priceLabel)}
-            {detailRow('Balance', `${asset.displayBalance} ${asset.symbol}`)}
-            {detailRow(
-              'Chain',
-              <Stack align='center' direction='row' gap='xsmall' justify='end'>
-                <ChainIcon
-                  chainId={asset.chainId}
-                  networks={networks}
-                  networksMeta={networksMeta}
-                  size='large'
-                />
-                <Text truncate variant='label'>
-                  {chain.name ?? `Chain ${asset.chainId}`}
-                </Text>
-              </Stack>
-            )}
+            <DetailRow label='Price' value={priceLabel} />
+            <DetailRow label='Balance' value={`${asset.displayBalance} ${asset.symbol}`} />
+            <DetailRow
+              label='Chain'
+              value={
+                <Stack align='center' direction='row' gap='xsmall' justify='end'>
+                  <ChainIcon
+                    chainId={asset.chainId}
+                    networks={networks}
+                    networksMeta={networksMeta}
+                    size='large'
+                  />
+                  <Text truncate variant='label'>
+                    {chain.name ?? `Chain ${asset.chainId}`}
+                  </Text>
+                </Stack>
+              }
+            />
             {nativeAsset ? (
-              detailRow('Contract Address', 'Native asset')
+              <DetailRow label='Contract Address' value='Native asset' />
             ) : (
               <DetailRow
                 code

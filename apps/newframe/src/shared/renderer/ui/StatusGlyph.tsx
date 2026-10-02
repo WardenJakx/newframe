@@ -20,7 +20,7 @@ const glyphRecipe = cva({
   variants: {
     state: {
       pending: { background: 'bg.primary', color: 'action.primary' },
-      completed: { background: 'action.primary', color: 'action.primary.text' },
+      completed: { background: 'status.success', color: 'text.inverse' },
       failed: { background: 'status.danger', color: 'text.inverse' },
       idle: { background: 'bg.control', color: 'text.muted' }
     },
@@ -43,34 +43,16 @@ const dotRecipe = cva({
 
 const StatusGlyph = ({ state, size = 'medium' }: StatusGlyphProps) => {
   const iconSize = size === 'small' ? 'small' : 'medium'
-
+  let content = <span className={dotRecipe()} />
   if (state === 'pending') {
-    return (
-      <span aria-hidden='true' className={glyphRecipe({ size, state })} data-status-glyph={state}>
-        <Spinner label='Pending' size='small' />
-      </span>
-    )
-  }
-
-  if (state === 'completed') {
-    return (
-      <span aria-hidden='true' className={glyphRecipe({ size, state })} data-status-glyph={state}>
-        <Icon name='check' size={iconSize} />
-      </span>
-    )
-  }
-
-  if (state === 'failed') {
-    return (
-      <span aria-hidden='true' className={glyphRecipe({ size, state })} data-status-glyph={state}>
-        <Icon name='close' size={iconSize} />
-      </span>
-    )
+    content = <Spinner label='Pending' size='small' />
+  } else if (state !== 'idle') {
+    content = <Icon name={state === 'completed' ? 'check' : 'close'} size={iconSize} />
   }
 
   return (
     <span aria-hidden='true' className={glyphRecipe({ size, state })} data-status-glyph={state}>
-      <span className={dotRecipe()} />
+      {content}
     </span>
   )
 }

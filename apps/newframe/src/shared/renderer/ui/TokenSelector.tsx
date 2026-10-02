@@ -1,5 +1,7 @@
+import { Button } from '@newframe/ui/button'
 import { SearchField } from '@newframe/ui/search-field'
 import { Selection, type SelectionItem } from '@newframe/ui/selection'
+import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 import React from 'react'
 
@@ -10,7 +12,6 @@ import type { NetworkLike, NetworkMetaLike, TokenSelectorItem } from './tokenSel
 
 interface TokenSelectorProps {
   ariaLabel: string
-  footer?: React.ReactNode
   imageCapability: TokenImageCapability
   items: TokenSelectorItem[]
   searchableItems?: TokenSelectorItem[]
@@ -19,6 +20,7 @@ interface TokenSelectorProps {
   onOpenChange: (open: boolean) => void
   onSelect: (id: string) => void
   open: boolean
+  pagination?: { rowsHidden: number; increment: number; onShowMore: () => void }
   selectedId: string
 }
 
@@ -28,7 +30,6 @@ export default function TokenSelector(props: TokenSelectorProps) {
 
 function TokenSelectorContent({
   ariaLabel,
-  footer,
   imageCapability,
   items,
   searchableItems = items,
@@ -37,6 +38,7 @@ function TokenSelectorContent({
   onOpenChange,
   onSelect,
   open,
+  pagination,
   selectedId
 }: TokenSelectorProps) {
   const [query, setQuery] = React.useState('')
@@ -108,7 +110,17 @@ function TokenSelectorContent({
           No tokens found
         </Text>
       }
-      footer={normalizedQuery ? undefined : footer}
+      footer={
+        !normalizedQuery && pagination && pagination.rowsHidden > 0 ? (
+          <Stack>
+            <Button onPress={pagination.onShowMore}>
+              <Text align='center' variant='supporting' tone='secondary'>
+                {`Show ${Math.min(pagination.increment, pagination.rowsHidden)} more assets`}
+              </Text>
+            </Button>
+          </Stack>
+        ) : undefined
+      }
       header={
         <SearchField
           inputRef={searchInputRef}

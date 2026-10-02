@@ -166,18 +166,11 @@ export function SendView({
                 <TokenSelector
                   ariaLabel='Select send token'
                   imageCapability={capability}
-                  footer={
-                    model.rowsHidden > 0 ? (
-                      <Stack>
-                        <Button onPress={events.onShowMoreTokens}>
-                          <Text align='center' variant='supporting' tone='secondary'>{`Show ${Math.min(
-                            SEND_TOKEN_ROWS_INCREMENT,
-                            model.rowsHidden
-                          )} more assets`}</Text>
-                        </Button>
-                      </Stack>
-                    ) : null
-                  }
+                  pagination={{
+                    increment: SEND_TOKEN_ROWS_INCREMENT,
+                    onShowMore: events.onShowMoreTokens,
+                    rowsHidden: model.rowsHidden
+                  }}
                   items={model.tokenItems}
                   searchableItems={model.searchableTokenItems}
                   networks={model.networks}
