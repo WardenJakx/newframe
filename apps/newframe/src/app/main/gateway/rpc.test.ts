@@ -61,7 +61,7 @@ it('rejects copied sources and stale or out-of-scope AI-session authority before
   expect(source.participant).toBe('local-api-client')
   expect(isRequestSource({ ...source })).toBe(false)
   await gateway(request('personal_sign'), (value) => replies.push(value), { ...source })
-  await gateway(request('wallet_getAssets'), (value) => replies.push(value), source)
+  await gateway(request('wallet_getPermissions'), (value) => replies.push(value), source)
   active = false
   await gateway(request('personal_sign'), (value) => replies.push(value), source)
   expect(executions).toBe(0)

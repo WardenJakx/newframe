@@ -651,6 +651,22 @@ export class RpcIpcHandlers extends EventEmitter {
     return false
   }
 
+  // Reads the session's authorized wallet, not the wallet selected in the UI.
+  private getAgentAssets(
+    payload: RPC.GetAssets.Request,
+    principal: AiSessionClientSource,
+    res: RPCRequestCallback
+  ) {
+    if (!this.requireActiveAgentSession(principal, payload, res)) {
+      return
+    }
+    const account = this.accounts.getFrameAccount(principal.aiSession.accountId)
+    if (!account || account.id !== principal.aiSession.accountId) {
+      return resError('Agent session is not authorized for this account', payload, res)
+    }
+    return this.getAssets(payload, account, res)
+  }
+
   sendAgentTransaction(
     payload: RPC.SendTransaction.Request,
     principal: AiSessionClientSource,
@@ -1616,15 +1632,15 @@ export class RpcIpcHandlers extends EventEmitter {
 
   private getAssets(
     payload: RPC.GetAssets.Request,
-    currentAccount: AccountHandle | null,
+    account: AccountHandle | null,
     cb: RPCCallback<RPC.GetAssets.Response>
   ) {
-    if (!currentAccount) {
+    if (!account) {
       return resError('no account selected', payload, cb)
     }
 
     try {
-      const { nativeCurrency, erc20 } = this.state.loadAssets(currentAccount.id)
+      const { nativeCurrency, erc20 } = this.state.loadAssets(account.id)
       const { id, jsonrpc } = payload
 
       return cb({ id, jsonrpc, result: { nativeCurrency, erc20 } })
@@ -1689,6 +1705,9 @@ export class RpcIpcHandlers extends EventEmitter {
       }
       if (method === 'personal_sign') {
         return this.sendAgentPersonalSign(payload, principal, res)
+      }
+      if (method === 'wallet_getAssets') {
+        return this.getAgentAssets(payload as RPC.GetAssets.Request, principal, res)
       }
       return this.sendAgentTypedData(payload as RPC.SignTypedData.Request, principal, res)
     }

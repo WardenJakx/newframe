@@ -61,4 +61,4 @@ Use `-` instead of a request or quote filename to read JSON from stdin. `--out` 
 
 ## Wallet RPC
 
-Use `bun <script-path> rpc METHOD --params JSON_OR_FILE --chain-id ID`. Agent sessions permit `eth_sendTransaction`, `personal_sign`, and `eth_signTypedData_v3` or `eth_signTypedData_v4`. RPC parameters must be a JSON array. The CLI prints `{ "result": ... }`.
+Use `bun <script-path> rpc METHOD --params JSON_OR_FILE --chain-id ID`. Agent sessions permit `eth_sendTransaction`, `personal_sign`, `eth_signTypedData_v3` or `eth_signTypedData_v4`, and `wallet_getAssets`. `wallet_getAssets` takes no params and returns the authorized wallet's native and ERC-20 balances, even when another wallet is selected in Newframe. Balances older than five minutes are returned while Newframe refreshes them in the background. RPC parameters must be a JSON array. The CLI prints `{ "result": ... }`.
