@@ -20,6 +20,7 @@ const tokenBalance = {
   displayBalance: '0'
 }
 const tokenPrice = { usd: { price: 225.35 } }
+const refreshBalances = mock()
 const nativeCurrency = () => ({
   decimals: 18,
   icon: '',
@@ -82,6 +83,7 @@ function setAccountLastUpdated(
 
 beforeEach(() => {
   timers.useFakeTimers()
+  refreshBalances.mockClear()
 
   // ensure that the balances have been updated within the range to not be considered stale
   store.setState((state) => {
@@ -104,7 +106,7 @@ describe('#loadAssets', () => {
       state.main.balances[account] = [nativeBalance]
     })
 
-    expect(loadAssets(store, account)).toEqual({
+    expect(loadAssets(store, account, refreshBalances)).toEqual({
       nativeCurrency: [
         {
           ...nativeBalance,
@@ -122,7 +124,7 @@ describe('#loadAssets', () => {
       setTokenBalance(state, tokenBalance, true)
     })
 
-    expect(loadAssets(store, account)).toEqual({
+    expect(loadAssets(store, account, refreshBalances)).toEqual({
       nativeCurrency: [],
       erc20: [
         {
@@ -149,7 +151,7 @@ describe('#loadAssets', () => {
       setToken(state, balance, balance.symbol)
     })
 
-    expect(loadAssets(store, account)).toEqual({
+    expect(loadAssets(store, account, refreshBalances)).toEqual({
       nativeCurrency: [],
       erc20: [{ ...balance, decimals: 18, name: 'UNKNOWN', tokenInfo: {} }]
     })
@@ -161,17 +163,34 @@ describe('#loadAssets', () => {
       delete state.main.networksMeta.ethereum[31337]
     })
 
-    expect(loadAssets(store, account)).toEqual({ nativeCurrency: [], erc20: [] })
+    expect(loadAssets(store, account, refreshBalances)).toEqual({ nativeCurrency: [], erc20: [] })
   })
 
-  it('throws an error if assets have not been updated in the last 5 minutes', () => {
+  it('does not refresh balances that were updated in the last 5 minutes', () => {
+    loadAssets(store, account, refreshBalances)
+
+    expect(refreshBalances).not.toHaveBeenCalled()
+  })
+
+  it('returns stale assets and refreshes balances if not updated in the last 5 minutes', () => {
     const tooOld = new Date(Date.now() - 6 * 60 * 1000)
 
     store.setState((state) => {
+      setTokenBalance(state, tokenBalance)
       setAccountLastUpdated(state, account, tooOld)
     })
 
-    expect(() => loadAssets(store, account)).toThrow(/assets not known/)
+    expect(loadAssets(store, account, refreshBalances).erc20).toHaveLength(1)
+    expect(refreshBalances).toHaveBeenCalledWith(account)
+  })
+
+  it('throws an error and refreshes balances if they have never been loaded', () => {
+    store.setState((state) => {
+      delete state.main.accounts[account]
+    })
+
+    expect(() => loadAssets(store, account, refreshBalances)).toThrow(/assets not known/)
+    expect(refreshBalances).toHaveBeenCalledWith(account)
   })
 })
 
@@ -204,7 +223,7 @@ describe('#createObserver', () => {
       state.main.balances[account] = [nativeBalance]
     })
 
-    const expected = loadAssets(store, account)
+    const expected = loadAssets(store, account, refreshBalances)
     fireObserver()
 
     expect(handler.assetsChanged).toHaveBeenCalledWith(account, expected)
@@ -252,7 +271,7 @@ describe('#createObserver', () => {
     observer()
     timers.advanceTimersByTime(400)
 
-    const expected = loadAssets(store, nextAccount)
+    const expected = loadAssets(store, nextAccount, refreshBalances)
     expect(handler.assetsChanged).toHaveBeenCalledTimes(1)
     expect(handler.assetsChanged).toHaveBeenCalledWith(nextAccount, expected)
   })

@@ -155,7 +155,7 @@ function integrationFixture({
     accounts,
     chains,
     proxy,
-    state: createProviderStatePort(f.store),
+    state: createProviderStatePort(f.store, accounts),
     store: f.store,
     reveal,
     requests: service

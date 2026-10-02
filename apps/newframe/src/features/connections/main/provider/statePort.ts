@@ -15,12 +15,15 @@ export interface ProviderStatePort {
   loadAssets(accountId: string): RPC.GetAssets.Assets
 }
 
-export function createProviderStatePort(store: CanonicalStoreApi): ProviderStatePort {
+export function createProviderStatePort(
+  store: CanonicalStoreApi,
+  balances: { refreshBalances(address: Address): void }
+): ProviderStatePort {
   return {
     createAssetsObserver: (handler) => createAssetsObserver(store, handler),
     createChainsObserver: (handler) => createChainsObserver(store, handler),
     createOriginChainObserver: (handler) => createOriginChainObserver(store, handler),
     getActiveChains: () => getActiveChains(store),
-    loadAssets: (accountId) => loadAssets(store, accountId)
+    loadAssets: (accountId) => loadAssets(store, accountId, (address) => balances.refreshBalances(address))
   }
 }

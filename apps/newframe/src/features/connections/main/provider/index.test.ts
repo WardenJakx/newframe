@@ -396,7 +396,7 @@ beforeAll(async () => {
     chains: connection as unknown as Chains,
     lookupChainIcon,
     proxy: new EventEmitter() as ProviderProxyConnection,
-    state: createProviderStatePort(store),
+    state: createProviderStatePort(store, { refreshBalances: () => {} }),
     store,
     reveal: {
       decode: decodeTransactionCalldata,
@@ -998,12 +998,9 @@ describe('#send', () => {
       )
     })
 
-    it('returns an error while scanning', async () => {
-      const yesterday = new Date()
-      yesterday.setDate(yesterday.getDate() - 1)
-
+    it('returns an error when balances have never been loaded', async () => {
       store.setState((state) => {
-        Object.assign(state.main.accounts[address], { balances: { lastUpdated: yesterday } })
+        Object.assign(state.main.accounts[address], { balances: {} })
       })
 
       const response = await sendResult({ method: 'wallet_getAssets', id: 51, jsonrpc: '2.0' })

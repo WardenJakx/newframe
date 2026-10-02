@@ -189,7 +189,7 @@ function createProductionProvider(
     chains,
     lookupChainIcon,
     proxy,
-    state: createProviderStatePort(store),
+    state: createProviderStatePort(store, accounts),
     store,
     reveal,
     requests,

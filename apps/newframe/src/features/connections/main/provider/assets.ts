@@ -77,8 +77,17 @@ function createObserver(store: CanonicalStoreApi, handler: AssetsChangedHandler)
   }
 }
 
-function loadAssets(store: CanonicalStoreApi, accountId: string) {
+function loadAssets(
+  store: CanonicalStoreApi,
+  accountId: string,
+  refreshBalances: (address: Address) => void
+) {
+  // stale balances are still served, but kick off a refresh so subsequent calls are fresh
   if (isScanning(store, accountId)) {
+    refreshBalances(accountId)
+  }
+
+  if (!createStoreApi(store).getLastUpdated(accountId)) {
     throw new Error('assets not known for account')
   }
 
