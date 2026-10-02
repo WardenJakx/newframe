@@ -85,6 +85,7 @@ const createSignTransactionMock = () =>
 const createSetTxSignedMock = () => mock((_handlerId: string, _cb: Callback<void>) => {})
 const createSetSignerMock = () => mock((_id: string, _cb: Callback<TestAccount>) => {})
 const createGetFrameAccountMock = () => mock((_id: string): TestAgentAccount | undefined => undefined)
+const refreshBalances = mock((_address: string) => {})
 const createTrackAutonomousTransactionMock = () =>
   mock((_accountId: string, _request: TransactionRequest, _hash: string) => {})
 
@@ -396,7 +397,7 @@ beforeAll(async () => {
     chains: connection as unknown as Chains,
     lookupChainIcon,
     proxy: new EventEmitter() as ProviderProxyConnection,
-    state: createProviderStatePort(store, { refreshBalances: () => {} }),
+    state: createProviderStatePort(store, { refreshBalances }),
     store,
     reveal: {
       decode: decodeTransactionCalldata,
@@ -467,6 +468,7 @@ beforeEach(() => {
   accounts.setTxSigned = createSetTxSignedMock()
   accounts.getFrameAccount = createGetFrameAccountMock()
   accounts.trackAutonomousTransaction = createTrackAutonomousTransactionMock()
+  refreshBalances.mockClear()
 })
 
 afterEach(() => {
@@ -997,6 +999,35 @@ describe('#send', () => {
         [expect.objectContaining(token)]
       )
     })
+
+    it.each([true, false])(
+      'serves and refreshes only the AI session wallet regardless of UI selection (active: %p)',
+      async (active) => {
+        const source = createAiSessionClientSource({
+          sessionId: 'assets-session',
+          accountId: address,
+          expiresAt: Date.now() + 60_000,
+          isActive: () => active
+        })
+        accounts.current.mockReturnValue({ id: '0x0000000000000000000000000000000000000001' })
+        accounts.getFrameAccount.mockImplementation((id) => (id === address ? { id: address } : undefined))
+        store.setState((state) => {
+          Object.assign(state.main.accounts[address], {
+            balances: { lastUpdated: new Date(Date.now() - 6 * 60 * 1000) }
+          })
+        })
+
+        const response = await sendResult({ method: 'wallet_getAssets' }, source)
+        if (active) {
+          expect(rpcResult<{ erc20: unknown[] }>(response).erc20).toEqual([expect.objectContaining(token)])
+          expect(refreshBalances.mock.calls).toEqual([[address]])
+        } else {
+          expect(response.result).toBeUndefined()
+          expect(response.error).toBeDefined()
+          expect(refreshBalances).not.toHaveBeenCalled()
+        }
+      }
+    )
 
     it('returns an error when balances have never been loaded', async () => {
       store.setState((state) => {

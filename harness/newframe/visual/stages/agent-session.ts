@@ -7,7 +7,7 @@ import { FLASH_USDC_ADDRESS, FLASH_WETH_ADDRESS } from '@newframe/flash/constant
 import { verifyMessage, verifyTypedData } from 'ethers'
 
 import { anvilChainId, localTradeServiceUrl, newframeRpcUrl, rootDir } from '../../core/config.ts'
-import type { VisualStage } from '../types.ts'
+import type { VisualHarnessContext, VisualStage } from '../types.ts'
 import { requireAccounts } from './helpers.ts'
 
 const recipient = '0x000000000000000000000000000000000000a11c'
@@ -100,6 +100,31 @@ async function autonomousSend(context: CliContext) {
 
 async function autonomousPersonalSign(context: CliContext, account: string, message: string) {
   return agentRpc(context, 'personal_sign', [message, account])
+}
+
+// The selected UI wallet differs from the session wallet, so the response proves session scoping.
+async function assertAgentAssets(context: VisualHarnessContext, cliContext: CliContext, account: string) {
+  const { anvil, driver } = context
+  const { harness, vitalik } = await requireAccounts(context)
+  await driver.refreshBalances()
+  await driver.setSelectedAccount(vitalik)
+  try {
+    const response = await runCli(cliContext, ['rpc', 'wallet_getAssets'])
+    const assets = response.result as { nativeCurrency?: { chainId: number; balance: string }[] } | undefined
+    const native = assets?.nativeCurrency?.find((balance) => Number(balance.chainId) === anvilChainId)
+    if (!native) {
+      context.runtime.fail('CLI wallet_getAssets omitted the session wallet Anvil ETH balance')
+    }
+    const expected = await anvil.balance(account)
+    if (BigInt(native.balance) !== expected) {
+      context.runtime.fail(
+        `CLI wallet_getAssets returned ${native.balance}, expected session wallet balance ${expected}`
+      )
+    }
+    context.runtime.evidence('agentAssetsNativeBalance', native.balance)
+  } finally {
+    await driver.setSelectedAccount(harness)
+  }
 }
 
 async function revokeSession(context: CliContext) {
@@ -197,6 +222,8 @@ export const agentSessionStage: VisualStage = {
           Object.keys(account.requests ?? {}).map((requestId) => `${accountId}:${requestId}`)
         )
       )
+
+      await assertAgentAssets(context, cliContext, credentials.account)
 
       const personalMessage = 'Newframe visual harness autonomous agent'
       const personalSignature = await autonomousPersonalSign(cliContext, credentials.account, personalMessage)

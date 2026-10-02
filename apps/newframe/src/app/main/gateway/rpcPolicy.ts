@@ -55,7 +55,7 @@ const rpcMethods: Record<string, RpcMethodPolicy> = {
   wallet_addEthereumChain: handler(walletParams, 'account'),
   wallet_switchEthereumChain: handler(walletParams, 'source'),
   wallet_getEthereumChains: handler(noParams, 'account'),
-  wallet_getAssets: handler(walletParams, 'account'),
+  wallet_getAssets: handler(walletParams, 'account', true),
   wallet_getPermissions: handler(walletParams, 'account'),
   wallet_requestPermissions: handler(walletParams, 'account'),
   wallet_watchAsset: handler(object, 'account'),
