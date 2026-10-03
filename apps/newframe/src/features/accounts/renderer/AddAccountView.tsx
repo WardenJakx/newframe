@@ -218,6 +218,49 @@ function MethodView({
   )
 }
 
+function AccountCreationFields({
+  events,
+  model,
+  onSubmit
+}: {
+  events: Pick<AddAccountViewEvents, 'onNameChange' | 'onPasswordChange'>
+  model: Pick<
+    AddAccountImportModel,
+    'name' | 'needsFramePassword' | 'password' | 'passwordLabel' | 'error' | 'status'
+  >
+  onSubmit: () => void
+}) {
+  return (
+    <>
+      <Field label='Account name' vertical>
+        <Input
+          label='Account name'
+          spellCheck={false}
+          value={model.name}
+          onValueChange={events.onNameChange}
+        />
+      </Field>
+      {model.needsFramePassword ? (
+        <Field label={model.passwordLabel} vertical>
+          <Input
+            label={model.passwordLabel}
+            spellCheck={false}
+            type='password'
+            value={model.password}
+            onValueChange={events.onPasswordChange}
+            onSubmit={onSubmit}
+          />
+        </Field>
+      ) : null}
+      <Feedback error={model.error} status={model.status} />
+      <Button appearance='primary' onPress={onSubmit} size='large' width='full'>
+        <Icon name='plus' size='small' />
+        <Text variant='action'>Create account</Text>
+      </Button>
+    </>
+  )
+}
+
 function AddAccountImportView({
   events,
   model
@@ -278,31 +321,7 @@ function AddAccountImportView({
           />
         </Field>
       ) : null}
-      <Field label='Account name' vertical>
-        <Input
-          label='Account name'
-          spellCheck={false}
-          value={model.name}
-          onValueChange={events.onNameChange}
-        />
-      </Field>
-      {model.needsFramePassword ? (
-        <Field label={model.passwordLabel} vertical>
-          <Input
-            label={model.passwordLabel}
-            spellCheck={false}
-            type='password'
-            value={model.password}
-            onValueChange={events.onPasswordChange}
-            onSubmit={events.onSubmitImport}
-          />
-        </Field>
-      ) : null}
-      <Feedback error={model.error} status={model.status} />
-      <Button appearance='primary' onPress={events.onSubmitImport} size='large' width='full'>
-        <Icon name='plus' size='small' />
-        <Text variant='action'>Create account</Text>
-      </Button>
+      <AccountCreationFields events={events} model={model} onSubmit={events.onSubmitImport} />
     </Stack>
   )
 }
@@ -531,31 +550,7 @@ function GeneratedSeedConfirmationView({
         {model.backedUp ? <Icon name='check' size='small' tone='accent' /> : null}
         <Text variant='supporting'>I saved this recovery phrase</Text>
       </ToggleButton>
-      <Field label='Account name' vertical>
-        <Input
-          label='Account name'
-          spellCheck={false}
-          value={model.name}
-          onValueChange={events.onNameChange}
-        />
-      </Field>
-      {model.needsFramePassword ? (
-        <Field label={model.passwordLabel} vertical>
-          <Input
-            label={model.passwordLabel}
-            spellCheck={false}
-            type='password'
-            value={model.password}
-            onValueChange={events.onPasswordChange}
-            onSubmit={events.onCreateGeneratedSeed}
-          />
-        </Field>
-      ) : null}
-      <Feedback error={model.error} status={model.status} />
-      <Button appearance='primary' onPress={events.onCreateGeneratedSeed} size='large' width='full'>
-        <Icon name='plus' size='small' />
-        <Text variant='action'>Create account</Text>
-      </Button>
+      <AccountCreationFields events={events} model={model} onSubmit={events.onCreateGeneratedSeed} />
     </Stack>
   )
 }

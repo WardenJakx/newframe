@@ -3,20 +3,7 @@ import type { ReactNode } from 'react'
 import { cva } from '../../../../generated/styled-system/css/cva.js'
 import { SidePanelFooter } from './SidePanel/SidePanelFooter.js'
 import { SidePanelHeader } from './SidePanel/SidePanelHeader.js'
-
-const overlayRecipe = cva({
-  base: {
-    position: 'absolute',
-    inset: 0,
-    zIndex: 'overlay',
-    display: 'flex',
-    minHeight: 0,
-    flexDirection: 'column',
-    background: 'bg.primary',
-    '& > header': { position: 'relative', zIndex: 'content', background: 'bg.primary' },
-    animation: 'overlayShow token(durations.fast) token(easings.standard) both'
-  }
-})
+import { TrayOverlayFrame } from './TrayOverlayFrame.js'
 
 const bodyRecipe = cva({
   base: {
@@ -68,9 +55,9 @@ export function TrayOverlay({
   title
 }: TrayOverlayProps) {
   return (
-    <section
-      aria-label={label}
-      className={overlayRecipe()}
+    <TrayOverlayFrame
+      label={label}
+      layout='tray'
       onKeyDown={(event) => {
         if (event.defaultPrevented || event.key !== 'Escape') {
           return
@@ -78,11 +65,10 @@ export function TrayOverlay({
         event.preventDefault()
         onClose()
       }}
-      role='dialog'
     >
       <SidePanelHeader action={action} closeLabel={closeLabel} onClose={onClose} title={title} />
       <main className={bodyRecipe({ padding, placement })}>{children}</main>
       {footer ? <SidePanelFooter appearance={footerAppearance}>{footer}</SidePanelFooter> : null}
-    </section>
+    </TrayOverlayFrame>
   )
 }

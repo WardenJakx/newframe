@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { cva } from '../styled-system/css/cva.js'
 import type { RecipeVariantProps } from '../styled-system/types/recipe.js'
 
-const surfaceRecipe = cva({
+export const surfaceRecipe = cva({
   base: { minWidth: 0 },
   variants: {
     tone: {
@@ -12,11 +12,13 @@ const surfaceRecipe = cva({
       raised: { background: 'bg.raised' },
       secondary: { background: 'bg.secondary' },
       control: { background: 'bg.control' },
+      hover: { background: 'bg.hover' },
       subtle: { background: 'border.subtle' }
     },
     padding: {
       none: { padding: 0 },
       xsmall: { padding: '2' },
+      compact: { padding: '3' },
       small: { padding: '4' },
       medium: { padding: '6' },
       large: { padding: '7' }
@@ -25,6 +27,7 @@ const surfaceRecipe = cva({
       none: { borderRadius: 0 },
       small: { borderRadius: 'small' },
       control: { borderRadius: 'control' },
+      default: { borderRadius: 'default' },
       card: { borderRadius: 'card' },
       pill: { borderRadius: 'pill' }
     },
@@ -38,7 +41,8 @@ const surfaceRecipe = cva({
     },
     elevation: {
       none: {},
-      default: { boxShadow: 'elevation-raised' }
+      default: { boxShadow: 'elevation-raised' },
+      overlay: { boxShadow: 'elevation-overlay' }
     }
   },
   defaultVariants: {

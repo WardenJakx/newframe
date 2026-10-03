@@ -4,10 +4,12 @@ import { IconButton } from '@newframe/ui/icon-button'
 import { Input } from '@newframe/ui/input'
 import { ScrollArea } from '@newframe/ui/scroll-area'
 import { Stack } from '@newframe/ui/stack'
+import { Surface, surfaceRecipe } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 import React from 'react'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
+import { cx } from '../../../../generated/styled-system/css/cx.js'
 import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
 import {
   selectOperationById,
@@ -56,10 +58,6 @@ const menuRecipe = cva({
     insetBlockStart: '100%',
     marginBlockStart: '3',
     zIndex: 'header',
-    padding: '3',
-    borderRadius: 'default',
-    background: 'bg.hover',
-    boxShadow: 'elevation-overlay',
     maxHeight: 'calc(100vh - token(sizes.panel-header) - token(spacing.7) * 2)',
     overflowY: 'auto'
   }
@@ -73,10 +71,6 @@ const profileRowRecipe = cva({
     '& > div > button[aria-pressed="true"]': { background: 'transparent' }
   },
   variants: { selected: { true: { background: 'action.primary.subtle' }, false: {} } }
-})
-
-const managementRecipe = cva({
-  base: { padding: '4' }
 })
 
 function profileValue(profile: ProfileSummary) {
@@ -468,7 +462,7 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
   }
 
   const management = (
-    <div className={managementRecipe()}>
+    <Surface border='none' padding='small' radius='none' tone='transparent'>
       <Stack gap='small'>
         {managementFields}
         {visibleError ? (
@@ -477,7 +471,7 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
           </Text>
         ) : null}
       </Stack>
-    </div>
+    </Surface>
   )
 
   return (
@@ -516,7 +510,16 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
         </Stack>
       </Button>
       {displayedOpen ? (
-        <div aria-label='Profiles' className={menuRecipe()} data-profile-menu id={menuId} role='dialog'>
+        <div
+          aria-label='Profiles'
+          className={cx(
+            menuRecipe(),
+            surfaceRecipe({ elevation: 'overlay', padding: 'compact', radius: 'default', tone: 'hover' })
+          )}
+          data-profile-menu
+          id={menuId}
+          role='dialog'
+        >
           <Stack gap='xsmall'>
             {profiles.map((profile) => {
               const selected = profile.id === currentProfile

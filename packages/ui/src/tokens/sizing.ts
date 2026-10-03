@@ -35,6 +35,7 @@ export const sizingTokens = {
   'nf-size-progress-rail': '2px',
   'nf-size-media-small': '30px',
   'nf-size-media-medium': '38px',
+  'nf-size-media-large': '64px',
   'nf-size-media-badge-small': '18px',
   'nf-size-media-badge-medium': '22px',
   'nf-size-media-art-small': '14px',

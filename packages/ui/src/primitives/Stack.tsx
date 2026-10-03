@@ -58,6 +58,7 @@ export type StackProps = RecipeVariantProps<typeof stackRecipe> & {
   decorative?: boolean
   element?: 'div' | 'section'
   label?: string
+  title?: string
 }
 
 export function Stack({
@@ -71,6 +72,7 @@ export function Stack({
   grow,
   justify,
   label,
+  title,
   wrap
 }: StackProps) {
   const Component = element
@@ -79,6 +81,7 @@ export function Stack({
       aria-hidden={decorative || undefined}
       aria-label={label}
       className={stackRecipe({ align, direction, equal, gap, grow, justify, wrap })}
+      title={title}
     >
       {children}
     </Component>

@@ -10,6 +10,7 @@ import { useEffect, useRef, type DragEventHandler, type ReactNode } from 'react'
 import { cva } from '../../../../generated/styled-system/css/cva.js'
 import { AddressAvatar } from '../../../shared/renderer/ui/AddressAvatar'
 import { SidePanelHeader } from '../../../shared/renderer/ui/SidePanel/SidePanelHeader'
+import { TrayOverlayFrame } from '../../../shared/renderer/ui/TrayOverlayFrame'
 import { accountMatchesQuery, type AccountListItem, type AccountListModel } from './accountsModel'
 
 const accountRowRecipe = cva({
@@ -33,18 +34,6 @@ const accountRowRecipe = cva({
     dropTarget: { true: { borderColor: 'border.focus', background: 'action.primary.subtle' }, false: {} }
   },
   defaultVariants: { dragging: false, dropTarget: false, selected: false }
-})
-
-const overlayRecipe = cva({
-  base: {
-    position: 'absolute',
-    inset: 0,
-    zIndex: 'overlay',
-    display: 'flex',
-    flexDirection: 'column',
-    background: 'bg.primary',
-    overflow: 'hidden'
-  }
 })
 
 export function AccountRow({
@@ -171,10 +160,8 @@ export function AccountSelectorView({
         )}
       </div>
       {open ? (
-        <div
-          role='dialog'
-          aria-label='Select account'
-          className={overlayRecipe()}
+        <TrayOverlayFrame
+          label='Select account'
           onKeyDown={(event) => {
             if (event.key === 'Escape') {
               event.stopPropagation()
@@ -212,7 +199,7 @@ export function AccountSelectorView({
               </Stack>
             </Surface>
           </ScrollArea>
-        </div>
+        </TrayOverlayFrame>
       ) : null}
     </>
   )
