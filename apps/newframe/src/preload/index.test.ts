@@ -89,9 +89,6 @@ describe('preload bridge host', () => {
     const host = await loadHost()
     const handler = mock()
     const snapshot: StateMessage = {
-      schemaVersion: 1,
-      streamId: 'stream-1',
-      revision: 0,
       state: { selectedAccountId: '0xabc' }
     }
     ipcRenderer.invoke.mockResolvedValueOnce({ ok: true })
@@ -107,9 +104,6 @@ describe('preload bridge host', () => {
     const host = await loadHost()
     const handler = mock()
     const snapshot: StateMessage = {
-      schemaVersion: 1,
-      streamId: 'stream-1',
-      revision: 0,
       state: {}
     }
     ipcRenderer.invoke.mockResolvedValue({ ok: true })

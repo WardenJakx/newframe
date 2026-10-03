@@ -4,36 +4,14 @@ import { useShallow } from 'zustand/react/shallow'
 
 import { act, render, screen } from '../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
-import type { WalletRendererState } from '../contract/projections'
-import { STATE_STREAM_SCHEMA_VERSION, type StateSnapshot, type StateUpdateBatch } from '../contract/protocol'
-import { walletChanges, walletState } from './fixtures.test-support.ts'
+import { walletState } from './fixtures.test-support.ts'
 import { useWalletSelector } from './useAppSelector'
 
 const fixture = registerTestRuntimeFixture()
 
-const snapshot = (state: Partial<WalletRendererState>): StateSnapshot<WalletRendererState> => ({
-  schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-  streamId: 'selector-tests',
-  revision: 0,
-  state: walletState(state)
-})
-
-const update = (
-  changes: Partial<WalletRendererState>,
-  baseRevision = 0
-): StateUpdateBatch<WalletRendererState> => ({
-  schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-  streamId: 'selector-tests',
-  baseRevision,
-  revision: baseRevision + 1,
-  changes: walletChanges(changes)
-})
-
 describe('useWalletSelector', () => {
   beforeEach(() => {
-    fixture.state.reset({})
-    fixture.state.beginStateConnection('wallet-ui')
-    fixture.state.applyStateMessage(snapshot({ currentAccount: 'one' }))
+    fixture.state.reset(walletState({ currentAccount: 'one' }))
   })
 
   it('reads selected values from the renderer state mirror', () => {
@@ -54,7 +32,7 @@ describe('useWalletSelector', () => {
 
     render(<CurrentAccount />)
     act(() => {
-      fixture.state.applyStateMessage(update({ currentAccount: 'two' }))
+      fixture.state.wallet.setState({ currentAccount: 'two' })
     })
 
     expect(screen.getByText('two')).toBeTruthy()
@@ -73,14 +51,14 @@ describe('useWalletSelector', () => {
     const firstSelection = selections[0]
 
     act(() => {
-      fixture.state.applyStateMessage(
-        update({ assetRates: { token: { usdRate: 1, source: 'zerion', observedAt: 1 } } })
-      )
+      fixture.state.wallet.setState({
+        assetRates: { token: { usdRate: 1, source: 'zerion', observedAt: 1 } }
+      })
     })
     expect(selections).toHaveLength(1)
 
     act(() => {
-      fixture.state.applyStateMessage(update({ currentAccount: 'three' }, 1))
+      fixture.state.wallet.setState({ currentAccount: 'three' })
     })
 
     expect(selections).toHaveLength(2)

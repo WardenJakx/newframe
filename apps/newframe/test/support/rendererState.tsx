@@ -1,30 +1,31 @@
 import type { ComponentType, PropsWithChildren } from 'react'
+import { createStore, type StoreApi } from 'zustand/vanilla'
 
-import type { RendererProjection } from '../../src/platform/state-sync/contract/projections'
+import type {
+  SideTrayRendererState,
+  WalletRendererState
+} from '../../src/platform/state-sync/contract/projections'
 import type { RendererState } from '../../src/platform/state-sync/contract/protocol'
-import {
-  createRendererStateStore,
-  type RendererStateStore
-} from '../../src/platform/state-sync/renderer/rendererStore'
 import { RendererStateProvider } from '../../src/platform/state-sync/renderer/useAppSelector'
 
 export interface RendererStateFixtureOptions {
   initialState?: RendererState
-  projection?: RendererProjection
 }
 
 let installedRendererState: RendererStateStore | undefined
 
-export function createRendererStateFixture({
-  initialState = {},
-  projection
-}: RendererStateFixtureOptions = {}) {
-  const state = createRendererStateStore(initialState)
-  if (projection) {
-    state.beginStateConnection(projection)
+// Tests seed partial projections, so both typed views share one loosely typed store.
+export function createRendererStateFixture({ initialState = {} }: RendererStateFixtureOptions = {}) {
+  const store = createStore<RendererState>()(() => initialState)
+  return {
+    wallet: store as unknown as StoreApi<WalletRendererState>,
+    sideTray: store as unknown as StoreApi<SideTrayRendererState>,
+    getState: store.getState,
+    reset: (state: RendererState = {}) => store.setState(state, true)
   }
-  return state
 }
+
+export type RendererStateStore = ReturnType<typeof createRendererStateFixture>
 
 export function createRendererStateWrapper(state: RendererStateStore): ComponentType<PropsWithChildren> {
   return function RendererStateTestWrapper({ children }: PropsWithChildren) {
