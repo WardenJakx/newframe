@@ -159,8 +159,11 @@ from the regular development RPC on port `1248`.
 The visual harness writes `summary.json` under
 `${NEWFRAME_HARNESS_OUTPUT_DIR:-/tmp/newframe-visual-harness}`. The summary records overall duration,
 per-stage duration, screenshots, contract evidence such as transaction/order/request identifiers, and
-renderer diagnostics. Unexpected renderer `console.error`, uncaught page errors, or renderer crashes fail
-the responsible stage. The source allowlist is intentionally empty by default; any future allowance must
+renderer diagnostics. Each screenshot has a sibling `<name>.aria.yml` with the page's ARIA snapshot, a
+text view of the same state that diffs cleanly and is cheaper than reading the image. Failed runs also
+write a Playwright `trace.zip` (DOM snapshots, actions, console, and network up to the failure); open it
+with `bunx playwright-core show-trace <path>/trace.zip`. Unexpected renderer `console.error`, uncaught
+page errors, or renderer crashes fail the responsible stage. The source allowlist is intentionally empty by default; any future allowance must
 use a narrow message pattern and document why the underlying browser diagnostic is understood and cannot
 reasonably be fixed.
 

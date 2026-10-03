@@ -84,6 +84,10 @@ export class VisualHarnessRuntime {
   async screenshot(page: Page, filename: string) {
     await fsp.mkdir(this.screenshotDir, { recursive: true })
     await page.screenshot({ path: path.join(this.screenshotDir, filename) })
+    await fsp.writeFile(
+      path.join(this.screenshotDir, filename.replace(/\.png$/, '.aria.yml')),
+      `${await page.ariaSnapshot()}\n`
+    )
     this.summary.screenshots.push(filename)
     const stage = this.summary.stages.findLast((candidate) => candidate.status === 'running')
     if (stage) {
@@ -167,7 +171,19 @@ export class VisualHarnessRuntime {
     )
   }
 
+  startTrace(app: ElectronApplication) {
+    return app.context().tracing.start({ screenshots: true, snapshots: true })
+  }
+
   async captureElectronFailureArtifacts(app: ElectronApplication) {
+    const tracePath = path.join(this.outputDir, 'trace.zip')
+    await withTimeout(app.context().tracing.stop({ path: tracePath }), 'failure trace', 30_000).then(
+      () => this.log(`failure trace: ${tracePath}`),
+      (err: unknown) => {
+        this.log(`could not save trace: ${err instanceof Error ? err.message : String(err)}`)
+      }
+    )
+
     await this.logElectronDiagnostics(app, `failure at stage "${this.currentStage}"`).catch(
       (err: unknown) => {
         this.log(
