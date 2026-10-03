@@ -15,6 +15,11 @@ import type { Balance } from '../../features/asset-data/domain/state/balance.js'
 import type { GasFees } from '../../features/networks/domain/state/gas.js'
 import type { NativeCurrency } from '../../features/networks/domain/state/nativeCurrency.js'
 import type { CanonicalAccountRequest } from '../../features/requests/contract/requests.js'
+import {
+  SIGNATURE_HISTORY_LIMIT,
+  SignatureHistoryItemSchema,
+  type SignatureHistoryItem
+} from '../../features/settings/domain/state/signatureHistory.js'
 import { NATIVE_CURRENCY } from '../../features/tokens/domain/constants.js'
 import { toTokenId } from '../../features/tokens/domain/index.js'
 import type { Token, TokenImage, TokenSource } from '../../features/tokens/domain/state/token.js'
@@ -865,10 +870,26 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         const main = mutableMain(draft)
         ensureProfileState(main)
         delete record(main.accounts)[id]
+        main.signatureHistory = main.signatureHistory.filter((item) => item.accountId !== id)
         main.accountOrder = main.accountOrder.filter((accountId) => accountId !== id)
         if (main.currentAccount === id) {
           selectProfileFallback(main)
         }
+      })
+    },
+
+    recordSignature: (item: SignatureHistoryItem) => {
+      const parsed = SignatureHistoryItemSchema.safeParse(item)
+      if (!parsed.success) {
+        log.warn('Ignored invalid signature history item', parsed.error.issues)
+        return
+      }
+      set((draft) => {
+        const main = mutableMain(draft)
+        main.signatureHistory = [
+          parsed.data,
+          ...main.signatureHistory.filter((current) => current.id !== parsed.data.id)
+        ].slice(0, SIGNATURE_HISTORY_LIMIT)
       })
     },
 
@@ -1520,6 +1541,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         tokenIds.forEach((id) => delete byId[id])
         catalog.accountTokenIds = {}
         main.activity = {}
+        main.signatureHistory = []
         main.orders = {}
         main.assetRates = {}
 

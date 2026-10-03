@@ -99,6 +99,7 @@ it('authorizes and validates final adjustments against canonical state before si
   const completion = Promise.withResolvers<string>()
   const approveTransactionRequest = mock((_request: TransactionRequest) => completion.promise)
   const requests = createRequestService({
+    history: { record: () => undefined },
     accounts: {
       getFrameAccount: (id: string) => (id === accountId ? account : undefined),
       setRequestPending: () =>

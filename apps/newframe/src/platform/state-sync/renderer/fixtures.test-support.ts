@@ -18,6 +18,7 @@ const baseSideTrayState: SideTrayRendererState = baseProjectionState
 
 const baseWalletState: WalletRendererState = {
   ...baseProjectionState,
+  signatureHistory: [],
   appLock: { locked: false, vaultExists: false },
   autoDiscoverTokens: false,
   autohide: false,

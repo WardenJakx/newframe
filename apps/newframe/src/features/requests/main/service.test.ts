@@ -2,7 +2,13 @@ import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
 import type { SafeTransactionPort } from '../../accounts/main/safeTransactionPort'
 import { GasFeesSource } from '../../transactions/domain'
-import type { AccessRequest, AccountRequest, AddChainRequest, TransactionRequest } from '../contract/requests'
+import type {
+  AccessRequest,
+  AccountRequest,
+  AddChainRequest,
+  SignatureRequest,
+  TransactionRequest
+} from '../contract/requests'
 import { RequestStatus, TxClassification } from '../contract/requests'
 import { createRequestService, type RequestService } from './service'
 
@@ -154,7 +160,9 @@ function fixture() {
   }
   const signerCompatibility = mock(() => ({ signer: 'ledger', tx: 'london', compatible: true }))
   const vault = { exists: mock(() => false), isUnlocked: mock(() => true) }
+  const recordSignature = mock(() => undefined)
   const service: RequestService = createRequestService({
+    history: { record: recordSignature },
     accounts: accounts as never,
     agent: { resolveAccess: mock(() => true) },
     clock: { delay: async () => undefined },
@@ -196,6 +204,7 @@ function fixture() {
     requests,
     executeSafeTransaction,
     removeUnsigned,
+    recordSignature,
     service,
     signerCompatibility,
     state,
@@ -208,6 +217,46 @@ describe('prompted request lifecycle', () => {
 
   beforeEach(() => {
     test = fixture()
+  })
+
+  it('records a successful signature once, after the result exists', () => {
+    const request: SignatureRequest = {
+      handlerId: 'sign-1',
+      type: 'sign',
+      origin: 'app.example',
+      account: accountId,
+      chainId: 1,
+      payload: { id: 8, jsonrpc: '2.0', method: 'personal_sign', params: [] },
+      data: { decodedMessage: 'hello' }
+    }
+    const respond = mock<RPCRequestCallback>()
+    test.add(request, respond)
+    expect(test.recordSignature).not.toHaveBeenCalled()
+
+    expect(test.service.respond(request.handlerId, { id: 8, jsonrpc: '2.0', result: '0x1234' })).toBe(true)
+    expect(test.recordSignature).toHaveBeenCalledTimes(1)
+    expect(test.recordSignature).toHaveBeenCalledWith(request, '0x1234')
+    expect(test.service.respond(request.handlerId, { id: 8, jsonrpc: '2.0', result: '0x1234' })).toBe(false)
+    expect(test.recordSignature).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not record rejected or failed signatures', () => {
+    const request: SignatureRequest = {
+      handlerId: 'sign-2',
+      type: 'sign',
+      origin: 'app.example',
+      account: accountId,
+      chainId: 1,
+      payload: { id: 9, jsonrpc: '2.0', method: 'personal_sign', params: [] },
+      data: { decodedMessage: 'hello' }
+    }
+    test.add(request, mock())
+    test.service.respond(request.handlerId, {
+      id: 9,
+      jsonrpc: '2.0',
+      error: { code: 4001, message: 'Rejected' }
+    })
+    expect(test.recordSignature).not.toHaveBeenCalled()
   })
 
   it.each(['locked', 'pending', 'settled', 'app-locked', 'non-prompt', 'signature'] as const)(

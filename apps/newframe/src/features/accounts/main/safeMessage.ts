@@ -1,4 +1,5 @@
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
+import log from 'electron-log'
 
 import {
   getSafeMessageHash,
@@ -13,7 +14,7 @@ import {
 } from '../../../platform/signing/signatures/digests.js'
 import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.js'
 import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.js'
-import type { SignatureRequest, SafeMessageProgress } from '../../requests/contract/requests.js'
+import type { SignatureRequest, SafeMessageProgress, TypedMessage } from '../../requests/contract/requests.js'
 import { isTypedMessageSignatureRequest } from '../../requests/domain/index.js'
 import type { SafeConfiguration } from '../domain/safe.js'
 import type FrameAccount from './Account.js'
@@ -30,6 +31,12 @@ type SafeServiceMessage = {
 }
 
 export interface SafeMessagePorts {
+  onOwnerSignature: (input: {
+    ownerId: string
+    request: SignatureRequest
+    typedMessage: TypedMessage
+    signature: string
+  }) => void
   store: CanonicalStoreReader
   accounts: {
     getFrameAccount(id: string): Pick<FrameAccount, 'getRequest' | 'patchRequest' | 'signTypedData'> | null
@@ -131,7 +138,13 @@ function abortableDelay(ms: number, signal?: AbortSignal) {
   })
 }
 
-export function createSafeMessageService({ store, accounts, client, clock }: SafeMessagePorts) {
+export function createSafeMessageService({
+  store,
+  accounts,
+  client,
+  clock,
+  onOwnerSignature
+}: SafeMessagePorts) {
   const entries = new Map<string, Entry>()
   const ownerActions = new Map<string, Promise<SafeMessageApprovalResult>>()
   let disposed = false
@@ -351,6 +364,14 @@ export function createSafeMessageService({ store, accounts, client, clock }: Saf
         throw new Error('Owner returned a signature for another account.')
       }
       entry.signatures.set(ownerKey, verified)
+      const signedRequest = requestState(entry)
+      if (signedRequest) {
+        try {
+          onOwnerSignature({ ownerId, request: signedRequest, typedMessage, signature })
+        } catch (error) {
+          log.error('Could not record Safe owner signature history', error)
+        }
+      }
       progress(entry, 'collecting')
     }
 

@@ -12,6 +12,7 @@ import { AccountSchema } from '../../../features/accounts/domain/state/account.j
 import { BalanceSchema } from '../../../features/asset-data/domain/state/balance.js'
 import { AssetRateMapSchema } from '../../../features/asset-data/domain/state/rate.js'
 import { NativeCurrencySchema } from '../../../features/networks/domain/state/nativeCurrency.js'
+import { SignatureHistorySchema } from '../../../features/settings/domain/state/signatureHistory.js'
 import { TokenCatalogSchema, TokenImageSchema } from '../../../features/tokens/domain/state/token.js'
 import { OperationCollectionSchema } from '../../operations/operation.js'
 import { AirGapPendingSummarySchema } from '../../signing/domain/airgap.js'
@@ -529,6 +530,7 @@ const WalletRendererStateSchema = z.strictObject({
   accounts: z.record(z.string(), WalletAccountSchema),
   accountOrder: MainSchema.shape.accountOrder,
   activity: WalletActivitySchema,
+  signatureHistory: SignatureHistorySchema,
   appLock: MainSchema.shape.appLock,
   autoDiscoverTokens: MainSchema.shape.autoDiscoverTokens,
   autohide: MainSchema.shape.autohide,

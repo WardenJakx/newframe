@@ -24,6 +24,11 @@ export const trayOverlaysStage: VisualStage = {
       await runtime.screenshot(tray, filename)
 
       if (label === 'Settings') {
+        await overlay.getByRole('tab', { name: 'Signature history' }).click()
+        await overlay.getByText('No signatures yet').waitFor({ state: 'visible' })
+        await runtime.screenshot(tray, '02e1-signature-history-empty.png')
+        await overlay.getByRole('tab', { name: 'General' }).click()
+
         const appSettings = overlay.getByRole('group', { name: 'App' })
         const resetSavedData = appSettings.getByRole('button', { name: 'Reset Saved Data' })
         const resetAllSettings = appSettings.getByRole('button', {

@@ -77,9 +77,13 @@ export function Settings({
   const shared = useWalletSelector(
     useShallow((state) => ({
       autoDiscoverTokens: !!state.autoDiscoverTokens,
+      accounts: state.accounts,
+      accountOrder: state.accountOrder,
       appLocked: !!state.appLock.locked,
       autohide: !!state.autohide,
       biometricUnlock: !!state.biometricUnlock,
+      currentAccount: state.currentAccount,
+      currentProfile: state.currentProfile,
       latticeAccountLimit: accountLimit(state.latticeSettings.accountLimit),
       latticeDerivation: latticeDerivation(state.latticeSettings.derivation),
       latticeEndpoint: state.latticeSettings.endpointCustom || '',
@@ -94,6 +98,7 @@ export function Settings({
       reveal: !!state.reveal,
       showLocalNameWithENS: !!state.showLocalNameWithENS,
       showTestnets: !!state.showTestnets,
+      signatureHistory: state.signatureHistory,
       summonShortcut: state.shortcuts.summon,
       trezorDerivation: trezorDerivation(state.trezor.derivation)
     }))
@@ -101,6 +106,7 @@ export function Settings({
   const [browserPrompting, setBrowserPrompting] = useState(false)
   const [submission, setSubmission] = useState<SecuritySubmission | null>(null)
   const [localSecurityError, setLocalSecurityError] = useState('')
+  const [historyAccountId, setHistoryAccountId] = useState(shared.currentAccount)
   const trackedOperation = useWalletSelector((state) =>
     submission ? selectOperationById(state, submission.operationId) : undefined
   )
@@ -243,9 +249,29 @@ export function Settings({
     }
   }
 
+  const historyAccounts = shared.accountOrder.flatMap((id) => {
+    const account = (shared.accounts as Record<string, (typeof shared.accounts)[string] | undefined>)[id]
+    return account?.profileId === shared.currentProfile
+      ? [{ id, label: account.name.trim() ? account.name : 'Account', address: account.address }]
+      : []
+  })
+  let selectedHistoryAccountId = historyAccountId
+  if (!historyAccounts.some((account) => account.id === selectedHistoryAccountId)) {
+    selectedHistoryAccountId = shared.currentAccount
+  }
+  if (!historyAccounts.some((account) => account.id === selectedHistoryAccountId)) {
+    selectedHistoryAccountId = historyAccounts.length > 0 ? historyAccounts[0].id : ''
+  }
+
   return (
     <SettingsView
       drafts={drafts}
+      history={{
+        accounts: historyAccounts,
+        selectedAccountId: selectedHistoryAccountId,
+        onSelectAccount: setHistoryAccountId,
+        signatures: shared.signatureHistory
+      }}
       onBack={onBack}
       onBiometricUnlockChange={(enabled) => void setBiometricUnlock(enabled)}
       onLock={() => void lockWallet()}

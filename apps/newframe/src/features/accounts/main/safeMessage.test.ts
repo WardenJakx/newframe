@@ -129,7 +129,9 @@ function fixture(options: { threshold?: number; ownerCount?: number; version?: S
     throw new Error('service unavailable')
   })
   const validateMessage = mock(async () => true)
+  const onOwnerSignature = mock<SafeMessagePorts['onOwnerSignature']>(() => undefined)
   const service = createSafeMessageService({
+    onOwnerSignature,
     store: {
       getState: () => state,
       subscribe: () => () => undefined
@@ -150,6 +152,7 @@ function fixture(options: { threshold?: number; ownerCount?: number; version?: S
     subscribeOwnerDisposed: () => () => undefined
   } as const
   return {
+    onOwnerSignature,
     service,
     request,
     owners,
@@ -243,6 +246,11 @@ it('signs one selected owner per approval, deduplicates it, and completes at loc
     expect(result.signature).toMatch(/^0x/)
   }
   expect(test.signCounts).toEqual([1, 1])
+  expect(test.onOwnerSignature).toHaveBeenCalledTimes(2)
+  expect(test.onOwnerSignature.mock.calls.map(([input]) => input.ownerId)).toEqual([
+    test.owners[0].address.toLowerCase(),
+    test.owners[1].address.toLowerCase()
+  ])
   expect(test.request.safeMessageProgress).toMatchObject({ status: 'complete', threshold: 2 })
 })
 

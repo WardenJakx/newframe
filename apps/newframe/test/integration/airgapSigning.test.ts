@@ -54,6 +54,7 @@ function integrationFixture({
     getL1GasCost: async () => 0n
   }
   const service = createRequestService({
+    history: { record: () => undefined },
     accounts: {
       get: (id) => accounts.get(id),
       getFrameAccount: (id) => accounts.getFrameAccount(id),
