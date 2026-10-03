@@ -32,6 +32,7 @@ it('adapts a WebSocket message to the shared request contract', async () => {
       captured.push(request)
     },
     windows: { toggleTray: () => undefined },
+    extensionAccess: {} as never,
     createServer: () => server,
     createConnectionId: () => 'socket-connection',
     openReadyState: 1
@@ -83,6 +84,7 @@ it('adapts a WebSocket message to the shared request contract', async () => {
       origin: 'app.example',
       participant: 'website',
       websiteOrigin: 'https://app.example',
+      extensionId: 'extension-id',
       capabilities: []
     },
     updateOrigin: {
@@ -107,6 +109,7 @@ it('closes an oversized WebSocket message before dispatch', () => {
       dispatched = true
     },
     windows: { toggleTray: () => undefined },
+    extensionAccess: {} as never,
     createServer: () => server,
     openReadyState: 1
   })

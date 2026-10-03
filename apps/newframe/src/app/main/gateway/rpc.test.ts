@@ -70,11 +70,18 @@ it('rejects copied sources and stale or out-of-scope AI-session authority before
 
 it('does not let relayed websites inherit extension controls or internal account access', async () => {
   let toggles = 0
-  const gateway = createExtensionGateway({
-    toggleTray: () => {
-      toggles++
+  const gateway = createExtensionGateway(
+    {
+      toggleTray: () => {
+        toggles++
+      }
+    },
+    {
+      accounts: () => ({ accounts: [], selected: '' }),
+      select: () => undefined as never,
+      request: async () => undefined as never
     }
-  })
+  )
   const website = createLocalApiSource({
     participant: 'website',
     websiteOrigin: 'https://example.com',
@@ -85,6 +92,7 @@ it('does not let relayed websites inherit extension controls or internal account
   })
   const extension = createLocalApiSource({
     participant: 'companion-extension',
+    extensionId: 'extension-id',
     origin: 'newframe-extension',
     transport: 'websocket',
     connectionId: 'shared-socket',

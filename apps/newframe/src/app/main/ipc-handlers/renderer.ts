@@ -522,6 +522,13 @@ export function createOperationRegistry(services: OperationServices) {
     'extension.respond': defineAcknowledgedCommand('extension.respond', ({ extensionId, approved }) =>
       platform.respondToExtension(extensionId, approved)
     ),
+    'extension.access-open': defineAcknowledgedCommand('extension.access-open', ({ extensionId }) =>
+      platform.openExtensionAccess(extensionId)
+    ),
+    'extension.access-respond': defineAcknowledgedCommand(
+      'extension.access-respond',
+      ({ extensionId, grant }) => platform.respondToExtensionAccess(extensionId, grant)
+    ),
     'updater.respond': defineAcknowledgedCommand('updater.respond', ({ action }) =>
       platform.respondToUpdater(action)
     ),

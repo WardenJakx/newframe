@@ -48,6 +48,10 @@ export function Settings({ tab, mmAppear }: { tab?: chrome.tabs.Tab; mmAppear: b
           void toggleMetaMaskSetting(tab.id).catch(console.error)
         }
       }}
+      onSelectAccount={(address) =>
+        void chrome.runtime.sendMessage({ tab, method: 'frame_select_account', params: [address] })
+      }
+      onRequestAccounts={() => void chrome.runtime.sendMessage({ tab, method: 'frame_request_accounts' })}
       onSelectChain={(chainId) => {
         const chain = settings.availableChains.find((candidate) => String(candidate.chainId) === chainId)
         if (!tab || !chain || chain.connected === false) {

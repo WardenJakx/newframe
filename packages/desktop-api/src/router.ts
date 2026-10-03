@@ -2,9 +2,11 @@ import { initTRPC, TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
 import {
+  AddressSchema,
   AgentConnectSchema,
   AgentCredentialsSchema,
   ChainSchema,
+  ExtensionAccountsSchema,
   HashSchema,
   HexSchema,
   OriginStatusSchema,
@@ -116,6 +118,22 @@ export const desktopRouter = t.router({
       .output(output(z.string()))
       .mutation(({ ctx, input }) =>
         ctx.rpc({ ...input, method: 'frame_requestExtensionConnection', params: [] })
+      ),
+    accounts: p
+      .input(RoutingSchema)
+      .output(output(ExtensionAccountsSchema))
+      .query(({ ctx, input }) => ctx.rpc({ ...input, method: 'frame_getExtensionAccounts', params: [] })),
+    selectAccount: p
+      .input(RoutingSchema.extend({ address: AddressSchema }))
+      .output(output(ExtensionAccountsSchema))
+      .mutation(({ ctx, input: { address, ...route } }) =>
+        ctx.rpc({ ...route, method: 'frame_selectExtensionAccount', params: [address] })
+      ),
+    requestAccounts: p
+      .input(RoutingSchema)
+      .output(output(ExtensionAccountsSchema))
+      .mutation(({ ctx, input }) =>
+        ctx.rpc({ ...input, method: 'frame_requestExtensionAccounts', params: [] })
       ),
     summon: p
       .input(RoutingSchema)

@@ -12,6 +12,7 @@ import packageFile from '../../../../package.json' with { type: 'json' }
 import { hasAddress } from '../../../features/accounts/domain/index.js'
 import { safeDecodedSchema } from '../../../features/accounts/domain/safe.js'
 import type { SafeTransactionPort } from '../../../features/accounts/main/safeTransactionPort.js'
+import { activeExtensionAccountId } from '../../../features/connections/domain/extensionAccess.js'
 import type { OriginsService } from '../../../features/connections/main/origins.js'
 import type { AccountRequestPort } from '../../../features/connections/main/provider/accountRequestPort.js'
 import {
@@ -153,6 +154,8 @@ export class RpcIpcHandlers extends EventEmitter {
   readonly protectedOperations: ProtectedOperationsService
   connected = false
   private storeUnsubscribes: Array<() => void> = []
+  // The account each extension accountsChanged subscription last received.
+  private extensionAccountsSent = new Map<string, string>()
   private started = false
 
   subscriptions: { [key in ProviderSubscriptionType]: Subscription[] } = {
@@ -337,6 +340,19 @@ export class RpcIpcHandlers extends EventEmitter {
         (state) =>
           [
             state.main.currentAccount,
+            state.main.currentProfile,
+            state.main.accounts,
+            state.main.accountOrder,
+            state.main.extensionAccess,
+            state.main.permissions
+          ] as const,
+        () => this.extensionAccountsChanged(),
+        { equalityFn: shallow }
+      ),
+      this.store.subscribe(
+        (state) =>
+          [
+            state.main.currentAccount,
             state.main.accounts,
             state.main.balances,
             state.main.networksMeta.ethereum,
@@ -384,10 +400,45 @@ export class RpcIpcHandlers extends EventEmitter {
     const address = accounts[0]
 
     this.subscriptions.accountsChanged
-      .filter((subscription) =>
-        hasSubscriptionPermission(SubscriptionType.ACCOUNTS, address, subscription, this.store)
+      .filter(
+        (subscription) =>
+          !subscription.extensionId &&
+          hasSubscriptionPermission(SubscriptionType.ACCOUNTS, address, subscription, this.store)
       )
       .forEach((subscription) => this.sendSubscriptionData(subscription.id, accounts))
+  }
+
+  /** Extension subscriptions observe the extension's account, which can differ from the app's. */
+  private extensionAccounts(subscription: Subscription) {
+    const main = this.store.getState().main
+    const accountId = subscription.extensionId ? activeExtensionAccountId(main, subscription.extensionId) : ''
+    const address = accountId ? main.accounts[accountId].address.toLowerCase() : ''
+    return address && hasSubscriptionPermission(SubscriptionType.ACCOUNTS, address, subscription, this.store)
+      ? address
+      : ''
+  }
+
+  private extensionAccountsChanged() {
+    this.subscriptions.accountsChanged.forEach((subscription) => {
+      if (!subscription.extensionId) {
+        return
+      }
+      const address = this.extensionAccounts(subscription)
+      if (this.extensionAccountsSent.get(subscription.id) !== address) {
+        this.extensionAccountsSent.set(subscription.id, address)
+        this.sendSubscriptionData(subscription.id, address ? [address] : [])
+      }
+    })
+  }
+
+  /** The account a request acts as: the extension's account for extension sources, else the app's. */
+  private accountFor(principal?: RequestSource) {
+    const extensionId = principal?.kind === 'rpc' ? principal.extensionId : undefined
+    if (!extensionId) {
+      return this.accounts.current()
+    }
+    const accountId = activeExtensionAccountId(this.store.getState().main, extensionId)
+    return accountId ? (this.accounts.getFrameAccount(accountId) ?? null) : null
   }
 
   assetsChanged(address: string, assets: RPC.GetAssets.Assets) {
@@ -1253,12 +1304,17 @@ export class RpcIpcHandlers extends EventEmitter {
     const subId = addHexPrefix(crypto.randomBytes(16).toString('hex'))
     const subscriptionType = payload.params[0] as ProviderSubscriptionType
 
-    this.subscriptions[subscriptionType].push({
+    const subscription: Subscription = {
       id: subId,
       originId: payload._origin,
       capabilities:
-        principal && (principal.kind === 'rpc' || principal.kind === 'main') ? principal.capabilities : []
-    })
+        principal && (principal.kind === 'rpc' || principal.kind === 'main') ? principal.capabilities : [],
+      ...(principal?.kind === 'rpc' && principal.extensionId ? { extensionId: principal.extensionId } : {})
+    }
+    this.subscriptions[subscriptionType].push(subscription)
+    if (subscriptionType === 'accountsChanged' && subscription.extensionId) {
+      this.extensionAccountsSent.set(subId, this.extensionAccounts(subscription))
+    }
 
     return subId
   }
@@ -1267,6 +1323,7 @@ export class RpcIpcHandlers extends EventEmitter {
     return Object.keys(this.subscriptions).some((type) => {
       const subscriptionType = type as ProviderSubscriptionType
       const index = this.subscriptions[subscriptionType].findIndex((sub) => sub.id === id)
+      this.extensionAccountsSent.delete(id)
 
       return index > -1 && this.subscriptions[subscriptionType].splice(index, 1)
     })
@@ -1276,10 +1333,10 @@ export class RpcIpcHandlers extends EventEmitter {
     res({ id: payload.id, jsonrpc: '2.0', result: `Newframe/v${packageFile.version}` })
   }
 
-  private getOriginConnection(payload: RPCRequestPayload) {
+  private getOriginConnection(payload: RPCRequestPayload, principal?: RequestSource) {
     const originId = payload._origin
     const origin = this.origin(originId)
-    const currentAccount = this.accounts.current()
+    const currentAccount = this.accountFor(principal)
     const rawAddress = currentAccount?.address ?? currentAccount?.id ?? ''
     const address = rawAddress ? rawAddress.toLowerCase() : ''
     const permissionAddresses = Array.from(
@@ -1330,7 +1387,7 @@ export class RpcIpcHandlers extends EventEmitter {
   }
 
   private getOriginStatus(payload: RPCRequestPayload, res: RPCSuccessCallback, principal?: RequestSource) {
-    const { originId, originName, address, connected, chainId } = this.getOriginConnection(payload)
+    const { originId, originName, address, connected, chainId } = this.getOriginConnection(payload, principal)
     const selectedAddress = hasSourceCapability(principal, 'wallet:internal-state') ? address : ''
 
     res({
@@ -1347,9 +1404,9 @@ export class RpcIpcHandlers extends EventEmitter {
     })
   }
 
-  private disconnectOrigin(payload: RPCRequestPayload, res: RPCSuccessCallback) {
+  private disconnectOrigin(payload: RPCRequestPayload, res: RPCSuccessCallback, principal?: RequestSource) {
     const { originId, originName, address, permissionAddress, permissionId, chainId } =
-      this.getOriginConnection(payload)
+      this.getOriginConnection(payload, principal)
 
     if (permissionAddress && permissionId) {
       this.store.getState().revokePermission(permissionAddress, permissionId)
@@ -1729,7 +1786,7 @@ export class RpcIpcHandlers extends EventEmitter {
       return this.getOriginStatus(payload, res, principal)
     }
     if (method === 'frame_disconnectOrigin') {
-      return this.disconnectOrigin(payload, res)
+      return this.disconnectOrigin(payload, res, principal)
     }
 
     const targetChain = this.parseTargetChain(payload)
@@ -1743,7 +1800,7 @@ export class RpcIpcHandlers extends EventEmitter {
       res({
         id: payload.id,
         jsonrpc: payload.jsonrpc,
-        result: this.accounts.getSelectedAddresses().map((a) => a.toLowerCase())
+        result: (this.accountFor(principal)?.getSelectedAddresses() ?? []).map((a) => a.toLowerCase())
       })
     }
 
@@ -1838,7 +1895,7 @@ export class RpcIpcHandlers extends EventEmitter {
       return this.getChains(payload, res)
     }
     if (method === 'wallet_getAssets') {
-      return this.getAssets(payload as RPC.GetAssets.Request, this.accounts.current(), res)
+      return this.getAssets(payload as RPC.GetAssets.Request, this.accountFor(principal), res)
     }
 
     // Connection dependent methods need to pass targetChain

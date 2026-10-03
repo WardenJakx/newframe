@@ -35,6 +35,8 @@ export type LocalApiSource = RequestSourceBrand & {
   readonly kind: 'rpc'
   readonly participant: 'local-api-client' | 'website' | 'companion-extension'
   readonly websiteOrigin?: string
+  /** Set for the extension's own requests and website requests it relays. */
+  readonly extensionId?: string
   readonly transport: 'http' | 'websocket'
   readonly connectionId: string
   readonly origin: string
@@ -146,6 +148,7 @@ export function createNewframeInternalSource(context: AuthorizationContext): New
 export function createLocalApiSource(input: {
   participant?: LocalApiSource['participant']
   websiteOrigin?: string
+  extensionId?: string
   transport: LocalApiSource['transport']
   connectionId: string
   origin: string
@@ -156,6 +159,7 @@ export function createLocalApiSource(input: {
     kind: 'rpc' as const,
     participant: input.participant ?? 'local-api-client',
     ...(input.websiteOrigin ? { websiteOrigin: input.websiteOrigin } : {}),
+    ...(input.extensionId ? { extensionId: input.extensionId } : {}),
     transport: input.transport,
     connectionId: input.connectionId,
     origin: input.origin,

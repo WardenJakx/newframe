@@ -63,7 +63,18 @@ describe('platform service', () => {
     expect(service.respondToExtension('other-extension', true)).toBeFalse()
     expect(service.respondToExtension('extension-a', true)).toBeTrue()
     expect(store.getState().main.knownExtensions['extension-a']).toBeTrue()
+    expect(store.getState().view).toMatchObject({
+      notify: 'extensionAccess',
+      notifyData: { id: 'extension-a' }
+    })
+    expect(service.respondToExtensionAccess('other-extension', { all: true, accountIds: [] })).toBeFalse()
+    expect(service.respondToExtensionAccess('extension-a', { all: true, accountIds: [] })).toBeTrue()
+    expect(store.getState().main.extensionAccess['extension-a']).toMatchObject({ all: true })
     expect(store.getState().view).toMatchObject({ notify: '', notifyData: {} })
+    expect(service.openExtensionAccess('unknown-extension')).toBeFalse()
+    expect(service.openExtensionAccess('extension-a')).toBeTrue()
+    expect(service.respondToExtensionAccess('extension-a')).toBeTrue()
+    expect(store.getState().main.extensionAccess['extension-a']).toMatchObject({ all: true })
     store.getState().notify('extensionConnect', { id: 'extension-b' })
     expect(service.respondToExtension('extension-b', false)).toBeTrue()
     expect(store.getState().main.knownExtensions['extension-b']).toBeFalse()

@@ -15,6 +15,7 @@ import type WebSocket from 'ws'
 
 import { createExtensionGateway } from '../../app/main/gateway/extension.js'
 import { embeddedImageSource } from '../../features/asset-data/domain/image/index.js'
+import type { ExtensionAccessService } from '../../features/connections/main/extensionAccess.js'
 import {
   parseOrigin,
   parseRequestChainId,
@@ -90,6 +91,7 @@ export interface WebSocketRpcTransportDependencies {
   origins: OriginsService
   requestHandler: RpcRequestHandler
   windows: { toggleTray(): unknown }
+  extensionAccess: Pick<ExtensionAccessService, 'accounts' | 'select' | 'request'>
   createServer: (server: Server) => WebSocketServerPort
   openReadyState: number
   timers?: ApiTimerPort
@@ -121,12 +123,13 @@ export function createWebSocketRpcTransport({
   origins,
   requestHandler,
   windows,
+  extensionAccess,
   createServer,
   openReadyState,
   timers = systemTimers,
   createConnectionId = uuid
 }: WebSocketRpcTransportDependencies): WebSocketRpcTransport {
-  const extensionGateway = createExtensionGateway(windows)
+  const extensionGateway = createExtensionGateway(windows, extensionAccess)
   const subs: Record<string, Subscription> = {}
   const sessionMonitor = createOriginSessionMonitor({ store, timers })
   const socketDisposers = new Map<FrameWebSocket, () => void>()
@@ -232,6 +235,7 @@ export function createWebSocketRpcTransport({
             transport: 'websocket',
             participant,
             ...(proxiedExtensionRequest ? { websiteOrigin: requestOrigin } : {}),
+            ...(socket.frameExtension ? { extensionId: socket.frameExtension.id } : {}),
             connectionId: socket.id,
             origin,
             capabilities:

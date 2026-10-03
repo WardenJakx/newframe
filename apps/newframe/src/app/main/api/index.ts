@@ -8,6 +8,7 @@ import WebSocket, { WebSocketServer } from 'ws'
 
 import type { Accounts } from '../../../features/accounts/main/index.js'
 import type { AgentService } from '../../../features/agent-access/main/index.js'
+import { createExtensionAccessService } from '../../../features/connections/main/extensionAccess.js'
 import {
   parseOrigin,
   parseRequestChainId,
@@ -52,6 +53,7 @@ export function createProductionApiServer(
     origins,
     requestHandler,
     windows,
+    extensionAccess: createExtensionAccessService(canonicalStore),
     createServer: (server) => new WebSocketServer({ server, maxPayload: MAX_RPC_REQUEST_BYTES }),
     openReadyState: WebSocket.OPEN
   })

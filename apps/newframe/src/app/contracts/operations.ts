@@ -1056,6 +1056,23 @@ const ExtensionRespondCommandSchema = z.strictObject({
   approved: z.boolean()
 })
 
+const ExtensionAccessOpenCommandSchema = z.strictObject({
+  type: z.literal('extension.access-open'),
+  extensionId: z.string().trim().min(1).max(4_096)
+})
+
+const ExtensionAccessRespondCommandSchema = z.strictObject({
+  type: z.literal('extension.access-respond'),
+  extensionId: z.string().trim().min(1).max(4_096),
+  // Omitted when the human dismisses the prompt without changing access.
+  grant: z
+    .strictObject({
+      all: z.boolean(),
+      accountIds: z.array(z.string().min(1).max(256)).max(1_000)
+    })
+    .optional()
+})
+
 const UpdaterRespondCommandSchema = z.strictObject({
   type: z.literal('updater.respond'),
   action: z.enum(['restart', 'install', 'later', 'skip', 'dismiss-ready'])
@@ -1151,6 +1168,8 @@ export const commandContracts = defineOperationContracts({
   'explorer.open': acknowledged(ExplorerOpenCommandSchema),
   'external.open': acknowledged(ExternalOpenCommandSchema),
   'extension.respond': acknowledged(ExtensionRespondCommandSchema),
+  'extension.access-open': acknowledged(ExtensionAccessOpenCommandSchema),
+  'extension.access-respond': acknowledged(ExtensionAccessRespondCommandSchema),
   'flash.order-cancel': acknowledged(FlashOrderCancelCommandSchema),
   'home.command-consume': acknowledged(HomeCommandConsumeCommandSchema),
   'network.activation-set': acknowledged(NetworkActivationSetCommandSchema),

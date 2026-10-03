@@ -13,6 +13,7 @@ export type Subscription = {
   id: string
   originId: string
   capabilities: readonly TrustedCapability[]
+  extensionId?: string
 }
 
 export function hasSubscriptionPermission(
