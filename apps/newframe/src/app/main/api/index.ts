@@ -54,7 +54,12 @@ export function createProductionApiServer(
     requestHandler,
     windows,
     extensionAccess: createExtensionAccessService(canonicalStore),
-    createServer: (server) => new WebSocketServer({ server, maxPayload: MAX_RPC_REQUEST_BYTES }),
+    createServer: (server) =>
+      new WebSocketServer({
+        server,
+        maxPayload: MAX_RPC_REQUEST_BYTES,
+        verifyClient: ({ req }: { req: http.IncomingMessage }) => origins.admitsConnection(req, 'websocket')
+      }),
     openReadyState: WebSocket.OPEN
   })
 
@@ -99,6 +104,11 @@ export function createProductionApiServer(
       return httpTransport.started
     },
     handler: ((req, res) => {
+      if (!origins.admitsConnection(req, 'http')) {
+        res.writeHead(403, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'Websites must connect through the Newframe extension' }))
+        return
+      }
       if (new URL(req.url ?? '/', 'http://127.0.0.1').pathname.startsWith('/trpc/')) {
         res.setHeader('Cache-Control', 'no-store')
         trpcHandler(req, res)

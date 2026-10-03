@@ -12,7 +12,9 @@ owns its local services, compiled application, harness state, assertions, eviden
 
 1. Start Newframe and any chain or service required by the selected scenario.
 2. Confirm the Newframe RPC endpoint is available at `127.0.0.1:1248`.
-3. Expect to approve wallet requests in the tray unless the scenario says otherwise.
+3. Expect to approve wallet requests in the tray unless the scenario says otherwise. Website
+   scenarios connect through the harness extension (`core/extension.ts`), so the first run also asks
+   you to approve the extension and choose the accounts it may use.
 4. Use a disposable development profile. Several scenarios mutate wallet or chain state.
 
 Run a scenario from the repository root:

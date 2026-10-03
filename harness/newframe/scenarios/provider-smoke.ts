@@ -1,8 +1,10 @@
 import { BrowserProvider, hexlify, isAddress, toUtf8Bytes } from 'ethers'
 
-import createFrameProvider from '../../../apps/newframe/src/features/connections/main/provider/connection.ts'
+import { HarnessExtension } from '../core/extension.ts'
 
-let frame: ReturnType<typeof createFrameProvider>
+const NEWFRAME_URL = 'http://127.0.0.1:1248'
+
+let extension: HarnessExtension
 let provider: BrowserProvider
 
 function requireString(value: unknown, label: string) {
@@ -20,25 +22,8 @@ function requireAddress(value: unknown, label: string) {
   return address
 }
 
-const waitForFrameConnect = () =>
-  new Promise<void>((resolve, reject) => {
-    const timeout = setTimeout(
-      () => reject(new Error('Timed out waiting for Frame provider connection')),
-      10_000
-    )
-
-    frame.once('connect', () => {
-      clearTimeout(timeout)
-      resolve()
-    })
-    frame.once('error', (err: Error) => {
-      clearTimeout(timeout)
-      reject(err)
-    })
-  })
-
 async function main() {
-  frame = createFrameProvider('frame', { origin: 'frame.test' })
+  extension = await HarnessExtension.connect(NEWFRAME_URL)
   const getFirstSigner = async () => {
     const signer: Awaited<ReturnType<BrowserProvider['listAccounts']>>[number] | undefined = (
       await provider.listAccounts()
@@ -89,11 +74,7 @@ async function main() {
   }
 
   try {
-    await waitForFrameConnect()
-    provider = new BrowserProvider({
-      request: ({ method, params }: { method: string; params?: readonly unknown[] }) =>
-        frame.request({ method, params })
-    })
+    provider = new BrowserProvider(extension.eip1193('https://frame.test'))
     await provider.send('eth_accounts', [])
 
     const signer = await getFirstSigner()
@@ -108,7 +89,7 @@ async function main() {
     await signPersonal()
     await signEth()
   } finally {
-    frame.close()
+    extension.close()
   }
 }
 

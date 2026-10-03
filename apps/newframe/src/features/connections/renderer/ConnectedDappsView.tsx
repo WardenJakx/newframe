@@ -32,7 +32,8 @@ export function ConnectedDappsView({
   onBack,
   onClear,
   onClearAll,
-  onManageExtension
+  onManageExtension,
+  onRemoveExtension
 }: {
   dapps: ConnectedDappRow[]
   extensions: ConnectedExtensionRow[]
@@ -40,6 +41,7 @@ export function ConnectedDappsView({
   onClear: (originId: string) => void
   onClearAll: () => void
   onManageExtension: (extensionId: string) => void
+  onRemoveExtension: (extensionId: string) => void
 }) {
   const action = dapps.length ? (
     <IconButton
@@ -82,6 +84,15 @@ export function ConnectedDappsView({
                   >
                     <Text variant='caption'>Manage</Text>
                   </Button>
+                  <IconButton
+                    appearance='control'
+                    icon='trash'
+                    label='Remove extension'
+                    onPress={() => onRemoveExtension(extension.id)}
+                    size='small'
+                    title='Remove extension'
+                    tone='danger'
+                  />
                 </Stack>
               </Surface>
             ))}

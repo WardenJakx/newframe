@@ -1,4 +1,5 @@
 import { anvilChainId } from '../../core/config.ts'
+import { harnessExtensionId } from '../../core/extension.ts'
 import { harnessOrigin } from '../driver.ts'
 import type { VisualStage } from '../types.ts'
 
@@ -48,6 +49,10 @@ export const resetStateStage: VisualStage = {
       }
     }
 
+    if (state.main?.knownExtensions?.[harnessExtensionId] !== undefined) {
+      await driver.executeCommand(driver.tray, { type: 'extension.forget', extensionId: harnessExtensionId })
+    }
+
     if (state.main?.networks?.ethereum?.[String(anvilChainId)]) {
       await driver.executeCommand(driver.tray, { type: 'network.remove', chainId: anvilChainId })
     }
@@ -56,7 +61,11 @@ export const resetStateStage: VisualStage = {
       (candidate) => {
         const networks = (candidate.main?.networks?.ethereum ?? {}) as Record<string, unknown>
         const orders = candidate.main?.orders ?? {}
-        return !networks[String(anvilChainId)] && Object.keys(orders).length === 0
+        return (
+          !networks[String(anvilChainId)] &&
+          Object.keys(orders).length === 0 &&
+          candidate.main?.knownExtensions?.[harnessExtensionId] === undefined
+        )
       },
       5_000,
       'Harness-owned state did not reset'

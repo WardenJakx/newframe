@@ -163,6 +163,16 @@ export function createPlatformService(ports: PlatformServicePorts) {
       return true
     },
 
+    /** The extension must ask to connect again, and its account access is cleared. */
+    forgetExtension(extensionId: string) {
+      const state = ports.store.getState()
+      if (!Object.hasOwn(state.main.knownExtensions, extensionId)) {
+        return false
+      }
+      state.trustExtension(extensionId, undefined)
+      return true
+    },
+
     openExtensionAccess(extensionId: string) {
       const state = ports.store.getState()
       if (state.main.knownExtensions[extensionId] !== true) {

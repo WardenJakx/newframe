@@ -1,4 +1,6 @@
-import provider from '../../../apps/newframe/src/features/connections/main/provider/connection.ts'
+import { HarnessExtension } from '../core/extension.ts'
+
+const NEWFRAME_URL = 'http://127.0.0.1:1248'
 
 type EthereumChain = {
   chainId: number
@@ -33,17 +35,10 @@ function requireChainId(value: unknown, label: string) {
 }
 
 async function main() {
-  const frame = provider('frame', { origin: 'frame.test' })
+  const extension = await HarnessExtension.connect(NEWFRAME_URL)
+  const frame = extension.eip1193('https://frame.test')
 
   try {
-    await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Timed out connecting to Newframe')), 10_000)
-      frame.once('connect', () => {
-        clearTimeout(timeout)
-        resolve()
-      })
-      frame.once('error', reject)
-    })
     await frame.request({ method: 'eth_accounts', params: [] })
 
     const [chainsResult, currentChainIdResult] = await Promise.all([
@@ -79,20 +74,20 @@ async function main() {
         )
       }
 
-      frame.on('chainChanged', (updatedChainId) => {
-        checkChain(updatedChainId).then(resolve, reject)
-      })
-
       frame
-        .request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: targetChain.chainId }]
+        .on('chainChanged', (updatedChainId) => {
+          checkChain(updatedChainId).then(resolve, reject)
         })
+        .then(() =>
+          frame.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: `0x${targetChain.chainId.toString(16)}` }]
+          })
+        )
         .catch(reject)
     })
   } finally {
-    frame.removeAllListeners('chainChanged')
-    frame.close()
+    extension.close()
   }
 }
 

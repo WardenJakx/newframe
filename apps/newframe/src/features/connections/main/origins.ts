@@ -116,6 +116,17 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
       development: dependencies.development()
     })
 
+  /**
+   * Browser code always sends a serialized Origin ("scheme://host" or "null"), and websites must
+   * reach Newframe through the extension, so the only browser connection admitted is the
+   * extension's WebSocket. Local tools and workers may label themselves with a scheme-less origin.
+   */
+  const admitsConnection = (req: IncomingMessage, transport: 'http' | 'websocket') => {
+    const origin = req.headers.origin
+    const fromBrowser = origin === 'null' || Boolean(origin?.includes('://'))
+    return !fromBrowser || (transport === 'websocket' && Boolean(parseFrameExtension(req)))
+  }
+
   const requestExtensionPermission = (extension: FrameExtension) => {
     const activeCheck = activeExtensionChecks.get(extension.id)
     if (activeCheck) {
@@ -252,7 +263,7 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
     )
   }
 
-  return { isKnownExtension, hasAccountAccessGrant, parseFrameExtension, updateOrigin }
+  return { admitsConnection, isKnownExtension, hasAccountAccessGrant, parseFrameExtension, updateOrigin }
 }
 
 export const parseOrigin = parseOriginName

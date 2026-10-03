@@ -110,7 +110,7 @@ _Avoid_: Action approval, extension approval, website permission
 ## Boundaries and operations
 
 **Entry point authorization layer**:
-The desktop's transport-facing boundary for an incoming request. It admits the connection or sender, carries source evidence such as a browser-derived website origin into main, and passes the request to the Gateway; it does not decide whether the requested operation is allowed.
+The desktop's transport-facing boundary for an incoming request. It admits the connection or sender, carries source evidence such as a browser-derived website origin into main, and passes the request to the Gateway; it does not decide whether the requested operation is allowed. It refuses browser pages that call the local API directly; the only browser connection it admits is the extension's.
 _Avoid_: Gateway
 
 **Gateway**:

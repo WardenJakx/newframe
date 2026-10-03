@@ -1,6 +1,7 @@
-import { FetchRequest, JsonRpcProvider, toQuantity } from 'ethers'
+import { toQuantity } from 'ethers'
 
 import { anvilChainId, anvilRpcUrl, newframeRpcUrl } from '../../core/config.ts'
+import { HarnessExtension, harnessExtensionId } from '../../core/extension.ts'
 import { TaskService } from '../../core/task-service.ts'
 import { sleep } from '../../core/utils.ts'
 import { waitForAnvil } from '../../services/anvil.ts'
@@ -10,27 +11,9 @@ import { requireAccounts } from './helpers.ts'
 
 const harnessOriginUrl = process.env.NEWFRAME_ORIGIN ?? 'http://newframe-contracts.local'
 
-function createProvider(url: string, signal: AbortSignal, chainId?: number) {
-  const request = new FetchRequest(url)
-  request.setHeader('Origin', harnessOriginUrl)
-  const provider = new JsonRpcProvider(request, chainId, {
-    batchMaxCount: 1,
-    pollingInterval: 250,
-    ...(chainId ? { staticNetwork: true } : {})
-  })
-  const stop = () => provider.destroy()
-  signal.addEventListener('abort', stop, { once: true })
+type WebsiteProvider = ReturnType<HarnessExtension['website']>
 
-  return {
-    provider,
-    close() {
-      signal.removeEventListener('abort', stop)
-      provider.destroy()
-    }
-  }
-}
-
-async function hasNewframeAnvilChain(provider: JsonRpcProvider, signal: AbortSignal) {
+async function hasNewframeAnvilChain(provider: WebsiteProvider, signal: AbortSignal) {
   try {
     return Number(await provider.send('eth_chainId', [])) === anvilChainId
   } catch (error) {
@@ -43,16 +26,21 @@ async function hasNewframeAnvilChain(provider: JsonRpcProvider, signal: AbortSig
 
 async function ensureNewframeAnvilChain(signal: AbortSignal) {
   await waitForAnvil()
-  const base = createProvider(newframeRpcUrl, signal)
-  const target = createProvider(`${newframeRpcUrl}?chainId=${anvilChainId}`, signal, anvilChainId)
+  // The first request asks Newframe to approve the extension; connecting the website then asks
+  // which accounts the extension may use before Newframe asks for website access.
+  const extension = await HarnessExtension.connect(newframeRpcUrl)
+  const stop = () => extension.close()
+  signal.addEventListener('abort', stop, { once: true })
+  const base = extension.website(harnessOriginUrl)
+  const target = extension.website(harnessOriginUrl, anvilChainId)
 
   try {
-    await base.provider.send('eth_chainId', [])
-    if (await hasNewframeAnvilChain(target.provider, signal)) {
+    await base.send('eth_requestAccounts', [])
+    if (await hasNewframeAnvilChain(target, signal)) {
       return
     }
 
-    await base.provider.send('wallet_addEthereumChain', [
+    await base.send('wallet_addEthereumChain', [
       {
         blockExplorerUrls: [],
         chainId: toQuantity(anvilChainId),
@@ -64,7 +52,7 @@ async function ensureNewframeAnvilChain(signal: AbortSignal) {
 
     const started = Date.now()
     while (Date.now() - started < 60_000) {
-      if (await hasNewframeAnvilChain(target.provider, signal)) {
+      if (await hasNewframeAnvilChain(target, signal)) {
         return
       }
       await sleep(500)
@@ -72,8 +60,10 @@ async function ensureNewframeAnvilChain(signal: AbortSignal) {
 
     throw new Error(`Newframe did not connect to Anvil chain ${anvilChainId}`)
   } finally {
-    target.close()
-    base.close()
+    signal.removeEventListener('abort', stop)
+    target.destroy()
+    base.destroy()
+    extension.close()
   }
 }
 
@@ -87,6 +77,18 @@ export const networkOnboardingStage: VisualStage = {
     const { driver, runtime, services, tray } = context
     const { harness } = await requireAccounts(context)
     const ensureChain = await services.start(createEnsureNewframeAnvilChainService())
+
+    await driver.approveExtensionConnection('06-extension-connect-request.png')
+    await driver.shareExtensionAccounts([harness.address], '06-extension-account-access.png')
+    const extensionState = await driver.waitForState(
+      (state) => Boolean(state.main?.extensionAccess?.[harnessExtensionId]?.accounts?.includes(harness.id)),
+      5_000,
+      'The harness account was not shared with the harness extension'
+    )
+    runtime.evidence(
+      'extensionSharedAccounts',
+      extensionState.main?.extensionAccess?.[harnessExtensionId]?.accounts?.length ?? 0
+    )
 
     const accessRequest = await driver
       .waitForCurrentRequest('access', new Set(), 20_000)

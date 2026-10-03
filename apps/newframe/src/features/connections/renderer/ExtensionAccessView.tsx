@@ -75,7 +75,7 @@ export function ExtensionAccessView({
                   appearance={selected ? 'subtle' : 'row'}
                   disabled={all}
                   key={account.id}
-                  label={`Share ${account.name}`}
+                  label={`Share ${account.name} (${account.address})`}
                   onPress={() => toggle(account.id)}
                   pressed={selected}
                   size='small'

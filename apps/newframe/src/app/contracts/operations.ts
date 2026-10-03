@@ -1056,6 +1056,11 @@ const ExtensionRespondCommandSchema = z.strictObject({
   approved: z.boolean()
 })
 
+const ExtensionForgetCommandSchema = z.strictObject({
+  type: z.literal('extension.forget'),
+  extensionId: z.string().trim().min(1).max(4_096)
+})
+
 const ExtensionAccessOpenCommandSchema = z.strictObject({
   type: z.literal('extension.access-open'),
   extensionId: z.string().trim().min(1).max(4_096)
@@ -1168,6 +1173,7 @@ export const commandContracts = defineOperationContracts({
   'explorer.open': acknowledged(ExplorerOpenCommandSchema),
   'external.open': acknowledged(ExternalOpenCommandSchema),
   'extension.respond': acknowledged(ExtensionRespondCommandSchema),
+  'extension.forget': acknowledged(ExtensionForgetCommandSchema),
   'extension.access-open': acknowledged(ExtensionAccessOpenCommandSchema),
   'extension.access-respond': acknowledged(ExtensionAccessRespondCommandSchema),
   'flash.order-cancel': acknowledged(FlashOrderCancelCommandSchema),

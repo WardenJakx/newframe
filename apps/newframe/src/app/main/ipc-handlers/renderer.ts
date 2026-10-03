@@ -522,6 +522,9 @@ export function createOperationRegistry(services: OperationServices) {
     'extension.respond': defineAcknowledgedCommand('extension.respond', ({ extensionId, approved }) =>
       platform.respondToExtension(extensionId, approved)
     ),
+    'extension.forget': defineAcknowledgedCommand('extension.forget', ({ extensionId }) =>
+      platform.forgetExtension(extensionId)
+    ),
     'extension.access-open': defineAcknowledgedCommand('extension.access-open', ({ extensionId }) =>
       platform.openExtensionAccess(extensionId)
     ),

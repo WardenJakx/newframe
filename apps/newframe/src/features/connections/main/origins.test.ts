@@ -291,6 +291,27 @@ describe('extension trust service', () => {
     })
   })
 
+  it('admits browser origins only as the extension WebSocket', () => {
+    const harness = createOriginHarness()
+    const request = (origin: string | undefined, url = '/') =>
+      ({ headers: origin === undefined ? {} : { origin }, url }) as never
+    const extension = request('chrome-extension://extension-id', '/?identity=newframe-extension')
+    const extensionTrpc = request('chrome-extension://extension-id', '/trpc?identity=newframe-extension')
+
+    expect([
+      harness.service.admitsConnection(request(undefined), 'http'),
+      harness.service.admitsConnection(request(undefined), 'websocket'),
+      harness.service.admitsConnection(request('newframe-internal'), 'http'),
+      harness.service.admitsConnection(extension, 'websocket'),
+      harness.service.admitsConnection(extensionTrpc, 'websocket'),
+      harness.service.admitsConnection(extension, 'http'),
+      harness.service.admitsConnection(request('https://app.example'), 'websocket'),
+      harness.service.admitsConnection(request('https://app.example'), 'http'),
+      harness.service.admitsConnection(request('chrome-extension://other-extension'), 'websocket'),
+      harness.service.admitsConnection(request('null'), 'websocket')
+    ]).toEqual([true, true, true, true, true, false, false, false, false, false])
+  })
+
   it('allows Safari and honors cached Chrome and Firefox decisions', async () => {
     const harness = createOriginHarness()
     harness.setKnownExtension('trusted-chrome', true)

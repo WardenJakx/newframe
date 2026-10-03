@@ -11,7 +11,7 @@ export function ConnectedDapps({
   capability,
   onBack
 }: {
-  capability: Pick<ConnectionsCapability, 'clearPermission' | 'openExtensionAccess'>
+  capability: Pick<ConnectionsCapability, 'clearPermission' | 'forgetExtension' | 'openExtensionAccess'>
   onBack: () => void
 }) {
   const { accountId, accountOrder, extensionAccess, knownExtensions, permissions } = useWalletSelector(
@@ -51,6 +51,7 @@ export function ConnectedDapps({
       onClear={(originId) => void capability.clearPermission({ accountId, originId })}
       onClearAll={() => void capability.clearPermission({ accountId })}
       onManageExtension={(extensionId) => void capability.openExtensionAccess({ extensionId })}
+      onRemoveExtension={(extensionId) => void capability.forgetExtension({ extensionId })}
     />
   )
 }

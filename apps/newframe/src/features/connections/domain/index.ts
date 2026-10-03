@@ -78,7 +78,7 @@ export function parseExtensionIdentity({
   requestUrl?: string
   development: boolean
 }): FrameExtension | undefined {
-  const query = new URLSearchParams(requestUrl.replace('/', ''))
+  const query = new URL(requestUrl || '/', 'http://127.0.0.1').searchParams
   const hasExtensionIdentity = extensionIdentities.includes(query.get('identity') ?? '')
   const chromeExtensionId = trustedChromeExtensionIds.find(
     (id) => origin === `${extensionPrefixes.chrome}://${id}`

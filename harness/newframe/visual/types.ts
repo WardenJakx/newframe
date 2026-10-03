@@ -145,6 +145,8 @@ export type AppState = {
     activity?: Record<string, AppActivity>
     balances?: Record<string, AppBalance[]>
     currentAccount?: string
+    extensionAccess?: Record<string, { all?: boolean; accounts?: string[] }>
+    knownExtensions?: Record<string, boolean>
     networks?: { ethereum?: Record<string, AppNetwork> }
     orders?: Record<string, FlashOrder>
     origins?: Record<string, AppOrigin>
