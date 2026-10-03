@@ -37,7 +37,7 @@ export async function revealAssetDetailsButton(page: Page, symbol: string) {
     exact: true
   })
 
-  if (await assetDetails.isVisible({ timeout: 500 }).catch(() => false)) {
+  if (await assetDetails.isVisible().catch(() => false)) {
     return assetDetails
   }
 
@@ -47,13 +47,13 @@ export async function revealAssetDetailsButton(page: Page, symbol: string) {
   ]
 
   for (const group of hiddenGroups) {
-    if (!(await group.isVisible({ timeout: 500 }).catch(() => false))) {
+    if (!(await group.isVisible().catch(() => false))) {
       continue
     }
     if ((await group.getAttribute('aria-expanded')) !== 'true') {
       await group.click()
     }
-    if (await assetDetails.isVisible({ timeout: 500 }).catch(() => false)) {
+    if (await assetDetails.isVisible().catch(() => false)) {
       break
     }
   }

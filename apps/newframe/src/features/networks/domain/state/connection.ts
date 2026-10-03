@@ -22,4 +22,4 @@ export const ConnectionSchema = z
     network: z.string().optional(),
     type: z.string().optional()
   })
-  .passthrough()
+  .loose()

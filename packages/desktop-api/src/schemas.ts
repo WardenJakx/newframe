@@ -23,7 +23,7 @@ export const SessionSchema = z.object({
   sessionId: z.string().min(1),
   sessionToken: z.string().min(1),
   account: AddressSchema,
-  expiresAt: z.number().finite()
+  expiresAt: z.number()
 })
 export const AgentCredentialsSchema = SessionSchema.extend({ descriptor: AgentDescriptorSchema })
 export const RoutingSchema = z.object({

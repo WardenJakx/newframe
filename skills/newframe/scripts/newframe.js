@@ -6166,7 +6166,7 @@ var SessionSchema = object({
   sessionId: string2().min(1),
   sessionToken: string2().min(1),
   account: AddressSchema,
-  expiresAt: number2().finite()
+  expiresAt: number2()
 });
 var AgentCredentialsSchema = SessionSchema.extend({ descriptor: AgentDescriptorSchema });
 var RoutingSchema = object({

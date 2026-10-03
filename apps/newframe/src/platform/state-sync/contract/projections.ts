@@ -518,7 +518,7 @@ const WalletProfileSummarySchema = z.strictObject({
   cachedValue: z.discriminatedUnion('state', [
     z.strictObject({ state: z.literal('missing') }),
     z.strictObject({ state: z.literal('unpriced') }),
-    z.strictObject({ state: z.literal('priced'), value: z.number().finite().nonnegative() })
+    z.strictObject({ state: z.literal('priced'), value: z.number().nonnegative() })
   ])
 })
 

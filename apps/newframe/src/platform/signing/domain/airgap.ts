@@ -36,6 +36,6 @@ export const AirGapRequestReferenceSchema = z.strictObject({
 export type AirGapRequestReference = z.infer<typeof AirGapRequestReferenceSchema>
 
 export const AirGapPendingSummarySchema = AirGapRequestReferenceSchema.omit({ signerId: true }).extend({
-  progress: z.number().finite().min(0).max(1)
+  progress: z.number().min(0).max(1)
 })
 export type AirGapPendingSummary = z.infer<typeof AirGapPendingSummarySchema>

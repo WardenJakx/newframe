@@ -7,6 +7,6 @@ const CoreBalanceSchema = z.object({
   displayBalance: z.string()
 })
 
-export const BalanceSchema = CoreBalanceSchema.merge(TokenIdSchema)
+export const BalanceSchema = CoreBalanceSchema.extend(TokenIdSchema.shape)
 
 export type Balance = z.infer<typeof BalanceSchema>

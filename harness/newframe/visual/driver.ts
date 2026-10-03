@@ -425,7 +425,7 @@ export class NewframeDriver {
   async selectNetwork(name: string) {
     const dialog = this.tray.getByRole('dialog', { name: 'Networks' })
 
-    if (!(await dialog.isVisible({ timeout: 500 }).catch(() => false))) {
+    if (!(await dialog.isVisible().catch(() => false))) {
       await this.tray.getByRole('button', { name: 'Network filter' }).click()
       await dialog.waitFor({ state: 'visible' })
     }
@@ -503,7 +503,7 @@ export class NewframeDriver {
 
   async maybeProceedWarning(filename: string) {
     const proceed = this.tray.getByText('Proceed', { exact: true }).last()
-    if (!(await proceed.isVisible({ timeout: 750 }).catch(() => false))) {
+    if (!(await proceed.isVisible().catch(() => false))) {
       return false
     }
 
@@ -541,7 +541,7 @@ export class NewframeDriver {
   async clearPanelAndOverlays() {
     for (let attempt = 0; attempt < 10; attempt += 1) {
       const accountBack = this.tray.locator('.accountViewBack').first()
-      if (!(await accountBack.isVisible({ timeout: 250 }).catch(() => false))) {
+      if (!(await accountBack.isVisible().catch(() => false))) {
         break
       }
       await accountBack.click()
@@ -550,7 +550,7 @@ export class NewframeDriver {
 
     for (let attempt = 0; attempt < 3; attempt += 1) {
       const backToPositions = this.tray.getByRole('button', { name: 'Back to positions' })
-      if (!(await backToPositions.isVisible({ timeout: 500 }).catch(() => false))) {
+      if (!(await backToPositions.isVisible().catch(() => false))) {
         break
       }
       await backToPositions.click()
@@ -559,7 +559,7 @@ export class NewframeDriver {
 
     const positionsTab = this.tray.getByRole('tab', { name: 'Positions', exact: true })
     if (
-      (await positionsTab.isVisible({ timeout: 500 }).catch(() => false)) &&
+      (await positionsTab.isVisible().catch(() => false)) &&
       (await positionsTab.getAttribute('aria-selected')) !== 'true'
     ) {
       await positionsTab.click()
@@ -690,7 +690,7 @@ export class NewframeDriver {
 
   async ensureTradeSellSide(tradePage: Page) {
     const switchToSell = tradePage.getByRole('button', { name: /Switch to SELL/i })
-    if (await switchToSell.isVisible({ timeout: 1_000 }).catch(() => false)) {
+    if (await switchToSell.isVisible().catch(() => false)) {
       await switchToSell.click()
     }
     await tradePage.getByLabel('WETH amount', { exact: true }).waitFor({ state: 'visible', timeout: 5_000 })

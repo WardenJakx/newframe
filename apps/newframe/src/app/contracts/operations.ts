@@ -212,8 +212,8 @@ const SideTrayCloseCommandSchema = z.strictObject({ type: z.literal('sidetray.cl
 
 const RendererContextMenuCommandSchema = z.strictObject({
   type: z.literal('renderer.context-menu'),
-  x: z.number().finite().nonnegative().max(100_000),
-  y: z.number().finite().nonnegative().max(100_000)
+  x: z.number().nonnegative().max(100_000),
+  y: z.number().nonnegative().max(100_000)
 })
 export type RendererContextMenuCommand = z.infer<typeof RendererContextMenuCommandSchema>
 
