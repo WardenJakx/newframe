@@ -165,3 +165,27 @@ export function decideOriginAuthorization({
   }
   return providerPermission ? 'allow' : 'deny'
 }
+
+const isAddressValue = (value: unknown): value is string =>
+  typeof value === 'string' && /^0x[0-9a-f]{40}$/i.test(value)
+
+/**
+ * The account a signing request names, located the way its handler reads it.
+ * Undefined when the request names none and acts as the selected account.
+ */
+export function requestedAccount(method: string, params: unknown): string | undefined {
+  const values: readonly unknown[] = Array.isArray(params) ? params : []
+  const [first, second] = values
+  if (method === 'eth_sendTransaction') {
+    const from = first && typeof first === 'object' ? (first as { from?: unknown }).from : undefined
+    return typeof from === 'string' && from ? from : undefined
+  }
+  if (method === 'personal_sign') {
+    const account = isAddressValue(first) && !isAddressValue(second) ? first : second
+    return typeof account === 'string' ? account : undefined
+  }
+  if (method.startsWith('eth_signTypedData')) {
+    const account = isAddressValue(second) && !isAddressValue(first) ? second : first
+    return typeof account === 'string' ? account : undefined
+  }
+}

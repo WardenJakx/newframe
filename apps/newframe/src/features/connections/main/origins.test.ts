@@ -574,6 +574,38 @@ describe('extension account authorization', () => {
     expect(harness.selections).toEqual([extensionAddress])
   })
 
+  it('rejects signing requests naming another account before switching or prompting', async () => {
+    const other = '0x0000000000000000000000000000000000000b0b'
+    const signingRequests = [
+      requestPayload({ method: 'eth_sendTransaction', params: [{ from: other }], _origin: originId }),
+      requestPayload({ method: 'personal_sign', params: ['0x68656c6c6f', other], _origin: originId }),
+      requestPayload({ method: 'eth_signTypedData_v4', params: [other, '{}'], _origin: originId })
+    ]
+    const harness = createOriginHarness()
+    harness.setOrigin(originId, { name: 'test.frame.eth' })
+    harness.setExtensionAccount(extensionAddress)
+    harness.setPermission('test.frame.eth', true, extensionAddress)
+    harness.setPermission('test.frame.eth', true, address)
+
+    for (const source of [relayed, principal]) {
+      for (const payload of signingRequests) {
+        expect(await harness.service.hasAccountAccessGrant(payload, source)).toBe(false)
+      }
+    }
+    expect(harness.selections).toEqual([])
+    expect(harness.routedRequests).toEqual([])
+
+    const ownAccount = await harness.service.hasAccountAccessGrant(
+      requestPayload({
+        method: 'personal_sign',
+        params: [extensionAddress, '0x68656c6c6f'],
+        _origin: originId
+      }),
+      relayed
+    )
+    expect(ownAccount).toBe(true)
+  })
+
   it('ignores a website grant for the app account the extension may not see', async () => {
     const harness = createOriginHarness()
     harness.setOrigin(originId, { name: 'test.frame.eth' })

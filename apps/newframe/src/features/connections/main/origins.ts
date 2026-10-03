@@ -16,6 +16,7 @@ import {
   parseExtensionIdentity,
   parseOriginName,
   projectOriginUpdate,
+  requestedAccount,
   type FrameExtension
 } from '../domain/index.js'
 import { createExtensionAccessService } from './extensionAccess.js'
@@ -204,6 +205,12 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
     if (!currentAccount && extensionId && payload.method === 'eth_requestAccounts') {
       await dependencies.extensions.request(extensionId)
       currentAccount = actingAccount()
+    }
+    // A source may only act as its own account. Rejecting here, with the ordinary denial, keeps
+    // requests naming another account from switching the app or revealing that account exists.
+    const namedAccount = requestedAccount(payload.method, payload.params)
+    if (namedAccount && namedAccount.toLowerCase() !== currentAccount?.address.toLowerCase()) {
+      return false
     }
     const permission = currentAccount
       ? dependencies.store.getPermission(currentAccount.address, originName)
