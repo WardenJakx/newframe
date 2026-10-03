@@ -1,5 +1,6 @@
 import { expect, it } from 'bun:test'
 
+import type { RPCRequestPayload, RPCResponsePayload } from '../../../shared/domain/rpc.js'
 import { createExtensionGateway } from './extension'
 import {
   createAiSessionClientSource,

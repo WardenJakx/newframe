@@ -5,6 +5,7 @@ import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import { signerFixture, transaction, vectors } from '../../../../../test/integration/fixtures/airgap.js'
 import { TypedDataV4Schema } from '../../../../app/contracts/operations.js'
 import type { TypedMessage } from '../../../../features/requests/contract/requests.js'
+import type { Callback } from '../../../../shared/domain/async.js'
 
 function parseTypedData(value: string): TypedMessage<SignTypedDataVersion.V4>['data'] {
   return TypedDataV4Schema.parse(

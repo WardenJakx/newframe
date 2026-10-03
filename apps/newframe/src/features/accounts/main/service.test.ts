@@ -62,7 +62,7 @@ describe('account mutation service', () => {
         get: (id: string) => store.getState().main.accounts[id],
         remove,
         rename
-      } as never,
+      },
       addressChainUsage,
       selectAccount,
       signers: { get: () => ({ id: 'seed-1', type: 'seed' }), remove: removeSigner },

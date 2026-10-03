@@ -9,6 +9,13 @@ import {
 } from '../../../app/main/gateway/requestSource'
 import { createRendererAuthorizationRegistry } from '../../../platform/ipc/main/authorization'
 import type { SigningApprovalContext, SignerRequestContext } from '../../../platform/signing/signers/Signer'
+import type { Callback } from '../../../shared/domain/async.js'
+import type {
+  EVMError,
+  RPCRequestCallback,
+  RPCRequestPayload,
+  RPCResponsePayload
+} from '../../../shared/domain/rpc.js'
 import type { AccountRequest, CanonicalAccountRequest, TypedMessage } from '../../requests/contract/requests'
 import { RequestMode, RequestStatus } from '../../requests/contract/requests'
 import { ApprovalType } from '../../requests/domain/approval'

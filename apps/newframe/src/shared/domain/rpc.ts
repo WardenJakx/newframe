@@ -1,14 +1,19 @@
-type RPCResponsePayload = JSONRPCSuccessResponsePayload & JSONRPCErrorResponsePayload
+import type { NativeCurrency as ChainNativeCurrency } from '../../features/networks/domain/state/nativeCurrency.js'
+import type {
+  LegacyTypedData,
+  TransactionReceipt,
+  TypedData
+} from '../../features/requests/contract/requests.js'
+import type { Address } from './address.js'
 
-type RPCCallback<T extends RPCResponsePayload> = (res: T) => void
-type RPCErrorCallback = RPCCallback<JSONRPCErrorResponsePayload>
-type RPCSuccessCallback = RPCCallback<JSONRPCSuccessResponsePayload>
-type RPCRequestCallback = RPCCallback<RPCResponsePayload>
+export type RPCResponsePayload = JSONRPCSuccessResponsePayload & JSONRPCErrorResponsePayload
 
-type Address = string // 20 hex bytes, 0x-prefixed
-type Caip2ChainId = string // format: "<namespace>:<chainId>", ex: "eip155:1"
+export type RPCCallback<T extends RPCResponsePayload> = (res: T) => void
+export type RPCErrorCallback = RPCCallback<JSONRPCErrorResponsePayload>
+export type RPCSuccessCallback = RPCCallback<JSONRPCSuccessResponsePayload>
+export type RPCRequestCallback = RPCCallback<RPCResponsePayload>
 
-interface RPCId {
+export interface RPCId {
   id: string | number
   jsonrpc: '2.0'
 }
@@ -17,18 +22,7 @@ interface InternalPayload {
   _origin: string
 }
 
-type Caip27JsonRpcRequestPayload = {
-  chainId: Caip2ChainId
-  session: string
-  request: JSONRPCRequestPayload
-}
-
-interface Caip27JsonRpcRequest extends RPCId, InternalPayload {
-  method: 'caip_request'
-  params: Caip27JsonRpcRequestPayload
-}
-
-interface JSONRPCRequestPayload extends RPCId {
+export interface JSONRPCRequestPayload extends RPCId {
   params: readonly unknown[]
   method: string
   chainId?: string
@@ -42,14 +36,14 @@ interface JSONRPCErrorResponsePayload extends RPCId {
   error?: EVMError
 }
 
-interface EVMError {
+export interface EVMError {
   message: string
   code?: number
 }
 
-type RPCRequestPayload = JSONRPCRequestPayload & InternalPayload
+export type RPCRequestPayload = JSONRPCRequestPayload & InternalPayload
 
-declare namespace RPC {
+export declare namespace RPC {
   namespace SignTypedData {
     interface Request extends Omit<RPCRequestPayload, 'method' | 'params'> {
       method: 'eth_signTypedData' | 'eth_signTypedData_v1' | 'eth_signTypedData_v3' | 'eth_signTypedData_v4'
@@ -69,7 +63,7 @@ declare namespace RPC {
 
   namespace GetTransactionReceipt {
     interface Response extends Omit<RPCResponsePayload, 'result'> {
-      result?: import('../../features/requests/contract/requests.js').TransactionReceipt & {
+      result?: TransactionReceipt & {
         status?: string
       }
     }
@@ -86,7 +80,7 @@ declare namespace RPC {
     }
 
     interface NativeCurrency extends Balance {
-      currencyInfo: Currency
+      currencyInfo: ChainNativeCurrency
     }
 
     interface Erc20 extends Balance {
@@ -189,7 +183,7 @@ declare namespace RPC {
   namespace Subscribe {
     interface Request extends Omit<RPCRequestPayload, 'method'> {
       method: 'eth_subscribe'
-      params: SubscriptionType[]
+      params: string[]
     }
   }
 

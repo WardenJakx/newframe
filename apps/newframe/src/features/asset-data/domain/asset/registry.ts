@@ -1,3 +1,4 @@
+import type { Address } from '../../../../shared/domain/address.js'
 import { TokenSchema } from '../../../tokens/domain/state/token.js'
 
 type AssetLabel = 'native' | 'stablecoin' | 'token'

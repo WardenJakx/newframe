@@ -1,5 +1,6 @@
 import { expect, it } from 'bun:test'
 
+import type { JSONRPCRequestPayload } from '../../../shared/domain/rpc.js'
 import { createProviderProxyConnection } from '../../connections/main/provider/proxy'
 import { createRevealService } from './reveal'
 

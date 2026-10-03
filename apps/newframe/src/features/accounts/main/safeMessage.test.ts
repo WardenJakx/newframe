@@ -4,6 +4,7 @@ import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import { Wallet } from 'ethers'
 
 import { getOriginalMessageDigest } from '../../../platform/signing/signatures/digests'
+import type { Callback } from '../../../shared/domain/async.js'
 import type { SignatureRequest, TypedMessage } from '../../requests/contract/requests'
 import { createSafeMessageService, type SafeMessagePorts } from './safeMessage'
 

@@ -1,4 +1,5 @@
 import type { Balance, Token } from '../../../platform/state-store/state/index.js'
+import type { Address } from '../../../shared/domain/address.js'
 import type { AssetRateInput, AssetRateSource } from '../../asset-data/domain/state/rate.js'
 
 export interface PortfolioRefreshOptions {

@@ -1,6 +1,7 @@
 import log from 'electron-log'
 import { FunctionFragment, Interface, hexlify } from 'ethers'
 
+import type { Address } from '../../../shared/domain/address.js'
 import { fetchFunctionSelectorSignatures, getLocalFunctionSelectorSignatures } from './selectors.js'
 import { fetchEtherscanContract } from './sources/etherscan.js'
 import { fetchSourcifyContract } from './sources/sourcify.js'

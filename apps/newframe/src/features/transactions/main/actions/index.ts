@@ -1,3 +1,4 @@
+import type { Address } from '../../../../shared/domain/address.js'
 import type { AccountRequest } from '../../../accounts/main/index.js'
 import type { ActionType as EnsActions } from './ens.js'
 import type { ActionType as Erc20Actions } from './erc20.js'

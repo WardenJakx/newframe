@@ -2,6 +2,7 @@ import { Interface } from 'ethers'
 import type { JsonFragment, Fragment } from 'ethers'
 
 import type { DecodableContract } from '../../../../../features/transactions/main/actions/index.js'
+import type { Address } from '../../../../../shared/domain/address.js'
 import { registrar as registrarAbi, registrarController as registrarControllerAbi } from './abi.js'
 
 // TODO: fix typing on contract types

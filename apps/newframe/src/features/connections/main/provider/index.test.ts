@@ -29,7 +29,14 @@ import type { DecodedCallData } from '../../../../platform/chain-rpc/contracts'
 import { Type as SignerType } from '../../../../platform/signing/domain'
 import type { SigningApprovalContext, SigningUiContext } from '../../../../platform/signing/signers/Signer'
 import type { Chain as StoredChain, Gas, Permission } from '../../../../platform/state-store/state'
+import type { Callback } from '../../../../shared/domain/async.js'
 import { gweiToHex } from '../../../../shared/domain/hex'
+import type {
+  JSONRPCRequestPayload,
+  RPCRequestCallback,
+  RPCRequestPayload,
+  RPCResponsePayload
+} from '../../../../shared/domain/rpc.js'
 import { AccountSchema } from '../../../accounts/domain/state/account'
 import type { SafeTransactionPort } from '../../../accounts/main/safeTransactionPort'
 import type { Origin } from '../../../connections/domain/state/origin'

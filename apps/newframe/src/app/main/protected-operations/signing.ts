@@ -11,6 +11,7 @@ import type {
   SignerRequestContext
 } from '../../../platform/signing/signers/Signer/index.js'
 import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.js'
+import type { Callback } from '../../../shared/domain/async.js'
 
 /** Account-scoped signer execution, owned by the protected operations service. */
 export class ProtectedAccountSigning {

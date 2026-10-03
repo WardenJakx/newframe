@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, expect, it, mock } from 'bun:test'
 import { EventEmitter } from 'events'
 
+import type { Callback } from '../../../shared/domain/async.js'
 import store from '../../state-store'
 import createCanonicalStore from '../../state-store/createCanonicalStore'
 import type Signer from './Signer'

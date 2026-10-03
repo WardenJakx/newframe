@@ -1,3 +1,5 @@
+import type { JSONRPCRequestPayload } from '../../../shared/domain/rpc.js'
+
 const protocolRegex = /^(?:ws|http)s?:\/\//
 const hexChainIdRegex = /^0x[0-9a-f]+$/i
 const decimalChainIdRegex = /^[0-9]+$/

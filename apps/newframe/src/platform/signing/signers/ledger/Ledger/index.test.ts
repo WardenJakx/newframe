@@ -15,6 +15,7 @@ import log from 'electron-log'
 
 import type { TypedMessage } from '../../../../../features/requests/contract/requests'
 import { GasFeesSource, type TransactionData } from '../../../../../features/transactions/domain'
+import type { Callback } from '../../../../../shared/domain/async.js'
 import { callbackResult } from '../../callback.test-support.ts'
 import { Derivation } from '../../Signer/derive'
 import type LedgerSigner from './index'

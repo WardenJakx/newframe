@@ -1,4 +1,6 @@
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
+import type { Address } from '../../../../shared/domain/address.js'
+import type { RPC } from '../../../../shared/domain/rpc.js'
 import { createObserver as createAssetsObserver, loadAssets } from './assets.js'
 import { createChainsObserver, createOriginChainObserver, getActiveChains } from './chains.js'
 

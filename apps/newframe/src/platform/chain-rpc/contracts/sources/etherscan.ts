@@ -1,5 +1,6 @@
 import log from 'electron-log'
 
+import type { Address } from '../../../../shared/domain/address.js'
 import { fetchWithTimeout } from '../../network/fetchWithTimeout.js'
 import type { ContractSource } from '../index.js'
 

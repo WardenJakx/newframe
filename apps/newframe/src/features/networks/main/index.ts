@@ -10,6 +10,7 @@ import { shallow } from 'zustand/vanilla/shallow'
 
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
 import type { GasFees } from '../../../platform/state-store/state/index.js'
+import type { EVMError, JSONRPCRequestPayload, RPCRequestCallback } from '../../../shared/domain/rpc.js'
 import {
   createJsonRpcProvider,
   listenForProviderClose,

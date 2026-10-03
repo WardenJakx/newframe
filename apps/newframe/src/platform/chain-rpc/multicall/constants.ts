@@ -1,4 +1,5 @@
 import type { Eip1193Provider } from '../../../features/connections/main/provider/connection.js'
+import type { Address } from '../../../shared/domain/address.js'
 
 export type CallResult<T> = { success: boolean; returnValues: T[] }
 type PostProcessor<R, T> = (val: R) => T

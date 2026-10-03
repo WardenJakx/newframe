@@ -6,6 +6,9 @@ import { Type as SignerType, getSignerType } from '../../../platform/signing/dom
 import { getErc7730TypedDataDisplay } from '../../../platform/signing/signatures/erc7730.js'
 import type { SignerSummary } from '../../../platform/signing/signers/Signer/index.js'
 import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.js'
+import type { Address } from '../../../shared/domain/address.js'
+import type { Callback } from '../../../shared/domain/async.js'
+import type { EVMError, RPCErrorCallback, RPCResponsePayload } from '../../../shared/domain/rpc.js'
 import type { NameResolutionService } from '../../name-resolution/main/nameResolution.js'
 import { RequestMode } from '../../requests/contract/requests.js'
 import type {
@@ -22,6 +25,7 @@ import type { PromptedRequestLifecyclePort } from '../../requests/main/service.j
 import type { Action } from '../../transactions/main/actions/index.js'
 import type { RevealService } from '../../transactions/main/reveal.js'
 import type { TransactionSimulationPort } from '../../transactions/main/simulationPort.js'
+import type { Account } from '../domain/state/account.js'
 import type { Accounts } from './index.js'
 import type { AccountChainRpcPort } from './providerPort.js'
 import type { AccountsRuntime } from './runtime.js'
@@ -141,7 +145,7 @@ class FrameAccount {
     if (!account) {
       throw new Error(`Account ${this.id} is not in canonical state`)
     }
-    return account as unknown as Account
+    return account
   }
 
   private canonicalAccount(id: string): CanonicalStore['main']['accounts'][string] | undefined {

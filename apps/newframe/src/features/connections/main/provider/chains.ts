@@ -2,6 +2,8 @@ import { isDeepStrictEqual } from 'util'
 
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
 import type { Chain, ChainMetadata, Origin } from '../../../../platform/state-store/state/index.js'
+import type { Address } from '../../../../shared/domain/address.js'
+import type { RPC } from '../../../../shared/domain/rpc.js'
 import { persistedImageSource } from '../../../asset-data/domain/image/index.js'
 import { getColor } from '../../../networks/domain/chain/colors.js'
 type CanonicalStoreApi = CanonicalStoreReader

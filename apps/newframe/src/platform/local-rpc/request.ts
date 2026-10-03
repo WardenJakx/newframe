@@ -6,6 +6,7 @@ import {
   type RequestSource
 } from '../../app/main/gateway/requestSource.js'
 import type { OriginsService } from '../../features/connections/main/origins.js'
+import type { JSONRPCRequestPayload, RPCRequestPayload, RPCResponsePayload } from '../../shared/domain/rpc.js'
 
 export interface RpcProviderSendPort {
   send(

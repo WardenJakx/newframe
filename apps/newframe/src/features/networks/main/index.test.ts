@@ -6,6 +6,7 @@ import log from 'electron-log'
 
 import { gweiToHex } from '../../../../test/support/util'
 import store from '../../../platform/state-store'
+import type { RPCRequestPayload } from '../../../shared/domain/rpc.js'
 
 log.transports.console.level = false
 

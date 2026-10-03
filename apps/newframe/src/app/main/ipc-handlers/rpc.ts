@@ -70,7 +70,18 @@ import { getCalldataDigest, getEip712Digests } from '../../../platform/signing/s
 import * as sigParser from '../../../platform/signing/signatures/index.js'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
 import type { Permission } from '../../../platform/state-store/state/index.js'
+import type { Callback } from '../../../shared/domain/async.js'
 import { isNonZeroHex } from '../../../shared/domain/hex.js'
+import type {
+  EVMError,
+  JSONRPCRequestPayload,
+  RPC,
+  RPCCallback,
+  RPCRequestCallback,
+  RPCRequestPayload,
+  RPCResponsePayload,
+  RPCSuccessCallback
+} from '../../../shared/domain/rpc.js'
 import { capitalize } from '../../../shared/domain/text.js'
 import {
   createMainProcessSource,

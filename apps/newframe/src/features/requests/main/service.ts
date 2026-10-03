@@ -13,6 +13,7 @@ import {
 import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.js'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
 import type { Chain } from '../../../platform/state-store/state/index.js'
+import type { EVMError, RPCRequestCallback, RPCResponsePayload } from '../../../shared/domain/rpc.js'
 import { toBigInt } from '../../../shared/domain/units.js'
 import type { Accounts } from '../../accounts/main/index.js'
 import type { SafeMessageApprovalResult } from '../../accounts/main/safeMessage.js'

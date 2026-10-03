@@ -1,3 +1,4 @@
+import type { Callback } from '../../../shared/domain/async.js'
 import type { BiometricUnlockPayload } from '../../secrets/biometrics.js'
 import type canonicalStore from '../../state-store/index.js'
 import type { SignerAdapter } from './adapters.js'

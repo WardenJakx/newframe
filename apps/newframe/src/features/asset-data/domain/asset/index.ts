@@ -1,3 +1,4 @@
+import type { Address } from '../../../../shared/domain/address.js'
 import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.js'
 import type { AssetRateMap, AssetRateReference, ResolvedAssetRate } from '../state/rate.js'
 import { CURATED_ASSETS, type CuratedAsset } from './registry.js'

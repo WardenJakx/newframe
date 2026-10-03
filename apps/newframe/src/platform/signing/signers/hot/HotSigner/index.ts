@@ -11,6 +11,7 @@ import log from 'electron-log'
 
 import type { TypedMessage } from '../../../../../features/requests/contract/requests.js'
 import type { TransactionData } from '../../../../../features/transactions/domain/index.js'
+import type { Callback } from '../../../../../shared/domain/async.js'
 import Signer from '../../Signer/index.js'
 
 export type VaultAccess = { getKey(): string | null }

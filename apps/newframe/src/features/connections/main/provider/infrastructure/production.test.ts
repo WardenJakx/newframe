@@ -1,6 +1,8 @@
 import { describe, expect, it, mock } from 'bun:test'
 
 import { createNewframeInternalSource } from '../../../../../app/main/gateway/requestSource'
+import type { Callback } from '../../../../../shared/domain/async.js'
+import type { RPCRequestPayload, RPCResponsePayload } from '../../../../../shared/domain/rpc.js'
 import { GasFeesSource } from '../../../../transactions/domain'
 import {
   createNamedAccountTransactionAdapter,

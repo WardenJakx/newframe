@@ -3,6 +3,7 @@ import type { StoreApi } from 'zustand/vanilla'
 
 import type { CanonicalStore } from '../../../../../platform/state-store/actions.js'
 import type { Balance, Chain, ChainMetadata, Token } from '../../../../../platform/state-store/state/index.js'
+import type { Address } from '../../../../../shared/domain/address.js'
 import { NATIVE_CURRENCY } from '../../../../tokens/domain/constants.js'
 import { customTokens, tokensForAccount } from '../../../../tokens/domain/index.js'
 import { createBalanceSummaries, isLowValueTokenBalance, toTokenId } from '../../../domain/balance/index.js'

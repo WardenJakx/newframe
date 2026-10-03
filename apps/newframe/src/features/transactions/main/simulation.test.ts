@@ -3,7 +3,14 @@ import { describe, expect, it, mock } from 'bun:test'
 import { Interface } from 'ethers'
 
 import createCanonicalStore from '../../../platform/state-store/createCanonicalStore'
+import type { Callback } from '../../../shared/domain/async.js'
 import { erc20Interface } from '../../../shared/domain/evm'
+import type {
+  EVMError,
+  RPCRequestCallback,
+  RPCRequestPayload,
+  RPCResponsePayload
+} from '../../../shared/domain/rpc.js'
 import { TxClassification, type TransactionRequest } from '../../requests/contract/requests'
 import { GasFeesSource, type TransactionEffect } from '../domain'
 import {

@@ -1,4 +1,6 @@
 import type { RequestSource } from '../../../app/main/gateway/requestSource.js'
+import type { Callback } from '../../../shared/domain/async.js'
+import type { RPCRequestCallback, RPCRequestPayload, RPCResponsePayload } from '../../../shared/domain/rpc.js'
 import type { TransactionData } from '../../transactions/domain/index.js'
 
 export interface AccountChainRpcPort {

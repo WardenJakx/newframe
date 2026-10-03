@@ -10,7 +10,16 @@ import { getSignerType } from '../../../platform/signing/domain/index.js'
 import type { SigningApprovalContext } from '../../../platform/signing/signers/Signer/index.js'
 import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.js'
 import type { ActivityRecord, Token } from '../../../platform/state-store/state/index.js'
+import type { Address } from '../../../shared/domain/address.js'
+import type { Callback } from '../../../shared/domain/async.js'
 import { weiIntToEthInt, hexToInt } from '../../../shared/domain/hex.js'
+import type {
+  EVMError,
+  RPC,
+  RPCRequestCallback,
+  RPCRequestPayload,
+  RPCResponsePayload
+} from '../../../shared/domain/rpc.js'
 import { resolveAssetRate } from '../../asset-data/domain/asset/index.js'
 import type { DataScanner } from '../../asset-data/main/externalData/index.js'
 import type { NameResolutionService } from '../../name-resolution/main/nameResolution.js'
@@ -50,6 +59,7 @@ import type { ActionType } from '../../transactions/main/actions/index.js'
 import type { RevealService } from '../../transactions/main/reveal.js'
 import type { TransactionSimulationPort } from '../../transactions/main/simulationPort.js'
 import { accountNS } from '../domain/index.js'
+import type { Account } from '../domain/state/account.js'
 import FrameAccount from './Account.js'
 import type { AccountChainRpcPort } from './providerPort.js'
 import type { AccountsRuntime } from './runtime.js'

@@ -1,3 +1,4 @@
+import type { RPCRequestPayload } from '../../../../shared/domain/rpc.js'
 import mapCaipRequest from './methods/caipRequest.js'
 import mapWalletRequest from './methods/walletRequest.js'
 

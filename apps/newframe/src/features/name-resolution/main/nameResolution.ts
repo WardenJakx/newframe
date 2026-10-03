@@ -4,6 +4,7 @@ import { GNS_CONTRACT, gnsAbi, isGwei, normalizeName } from '@donnoh/gns-utils'
 import { Interface, ZeroAddress, dnsEncode, ensNormalize, getAddress, isAddress, namehash } from 'ethers'
 import type { Result } from 'ethers'
 
+import type { RPC } from '../../../shared/domain/rpc.js'
 import { createProxyProvider } from '../../connections/main/provider/connection.js'
 import type { ProviderProxyConnection } from '../../connections/main/provider/proxy.js'
 

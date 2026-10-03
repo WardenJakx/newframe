@@ -1,4 +1,5 @@
 import type { ExtensionAccessService } from '../../../features/connections/main/extensionAccess.js'
+import type { RPCRequestPayload, RPCResponsePayload } from '../../../shared/domain/rpc.js'
 import { dispatchGatewayOperation } from './dispatch.js'
 import { isRequestSource, hasSourceCapability, type LocalApiSource } from './requestSource.js'
 import { rpcMethodPolicy } from './rpcPolicy.js'

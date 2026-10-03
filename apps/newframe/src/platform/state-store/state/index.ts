@@ -69,6 +69,11 @@ export const CanonicalStateSchema = z
 
 type StatusNotification = z.infer<typeof StatusNotificationSchema>
 
+export interface Frame {
+  id: string
+  route?: string
+}
+
 // TODO: remove pieces of this as they're added to the main state definition
 type M = Main & {
   shortcuts: Main['shortcuts'] & { altSlash?: boolean }
