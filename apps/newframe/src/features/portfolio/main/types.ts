@@ -1,15 +1,11 @@
 import type { Balance, Token } from '../../../platform/state-store/state/index.js'
-import type { AssetRateInput } from '../../asset-data/domain/state/rate.js'
+import type { AssetRateInput, AssetRateSource } from '../../asset-data/domain/state/rate.js'
 
 export interface PortfolioRefreshOptions {
   sync?: boolean
 }
 
 export interface PortfolioSnapshot {
-  totalValue: number
-  absoluteChange1d: number
-  percentChange1d: number
-  chainValues: Record<number, number>
   tokens: Token[]
   balances: Balance[]
   assetRates: AssetRateInput[]
@@ -20,6 +16,7 @@ export interface PortfolioChainImage {
 }
 
 export interface PortfolioProvider {
+  readonly rateSource: AssetRateSource
   getWalletPortfolio: (
     address: Address,
     chainIds: number[],

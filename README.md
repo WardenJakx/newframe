@@ -84,7 +84,7 @@ Shared UI builds happen inside the app commands. Package-level compile, bundle, 
 
 Load `apps/newframe-extension/dist` as an unpacked extension in Chrome, Brave, or another Chromium-based browser. For Firefox, load `apps/newframe-extension/dist/manifest.json` as a temporary add-on from `about:debugging#/runtime/this-firefox`.
 
-To enable wallet portfolio discovery, add a Zerion API key in Newframe settings and enable token auto-discovery.
+To enable wallet portfolio discovery, enable token auto-discovery with Flash in Newframe settings, or add a Zerion API key and enable it with Zerion. Only one provider is active at a time.
 
 ### Development checks
 

@@ -545,6 +545,7 @@ export function projectWalletState(
     origins: main.origins,
     permissions: main.permissions,
     portfolioApiKeyConfigured: main.portfolioApiKey.trim().length > 0,
+    portfolioProvider: main.portfolioProvider,
     profiles: projectWalletProfiles(main),
     assetRates: main.assetRates,
     reveal: main.reveal,

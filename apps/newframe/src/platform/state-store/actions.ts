@@ -7,7 +7,8 @@ import {
   DEFAULT_PROFILE_NAME,
   getProfileAccountIds,
   type ActivityRecord,
-  type OrderRecord
+  type OrderRecord,
+  type PortfolioProviderId
 } from '../../app/contracts/state/main.js'
 import { accountNS, isDefaultAccountName } from '../../features/accounts/domain/index.js'
 import type { Account } from '../../features/accounts/domain/state/account.js'
@@ -385,11 +386,23 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
-    setAutoDiscoverTokens: (value: boolean) => {
+    // Only one portfolio provider is active at a time: enabling one replaces the
+    // other, and disabling only applies to the provider that is currently active.
+    setAutoDiscoverTokens: (value: boolean, provider: PortfolioProviderId) => {
       set((draft) => {
         const main = mutableMain(draft)
-        main.autoDiscoverTokens =
-          Boolean(value) && typeof main.portfolioApiKey === 'string' && main.portfolioApiKey.trim().length > 0
+        if (!value) {
+          if (main.portfolioProvider === provider) {
+            main.autoDiscoverTokens = false
+          }
+          return
+        }
+
+        if (provider === 'zerion' && main.portfolioApiKey.trim().length === 0) {
+          return
+        }
+        main.portfolioProvider = provider
+        main.autoDiscoverTokens = true
       })
     },
 
@@ -399,7 +412,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       set((draft) => {
         const main = mutableMain(draft)
         main.portfolioApiKey = apiKey
-        if (!apiKey) {
+        if (!apiKey && main.portfolioProvider === 'zerion') {
           main.autoDiscoverTokens = false
         }
       })

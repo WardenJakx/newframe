@@ -22,21 +22,6 @@ interface ZerionProviderOptions {
 
 type ZerionChainMap = Record<number, string>
 
-interface ZerionPortfolioResponse {
-  data?: {
-    attributes?: {
-      positions_distribution_by_chain?: Record<string, number>
-      total?: {
-        positions?: number
-      }
-      changes?: {
-        absolute_1d?: number
-        percent_1d?: number
-      }
-    }
-  }
-}
-
 let sharedRequestPolicy: ProviderRequestPolicy | undefined
 
 function getSharedRequestPolicy(fetchImpl: Fetch) {
@@ -424,35 +409,8 @@ function extractAssetRates(
   return rates
 }
 
-function mapChainValues(
-  distribution: Record<string, number> = {},
-  zerionChainIds: string[],
-  zerionToFrameChainIds: Record<string, number>
-) {
-  const allowedChains = new Set(zerionChainIds)
-
-  return Object.entries(distribution).reduce(
-    (values, [zerionChainId, value]) => {
-      if (!allowedChains.has(zerionChainId)) {
-        return values
-      }
-
-      const chainId = zerionToFrameChainIds[zerionChainId]
-      if (chainId) {
-        values[chainId] = value
-      }
-      return values
-    },
-    {} as Record<number, number>
-  )
-}
-
 function emptyPortfolioSnapshot(): PortfolioSnapshot {
   return {
-    totalValue: 0,
-    absoluteChange1d: 0,
-    percentChange1d: 0,
-    chainValues: {},
     tokens: [],
     balances: [],
     assetRates: []
@@ -460,6 +418,7 @@ function emptyPortfolioSnapshot(): PortfolioSnapshot {
 }
 
 export default class ZerionPortfolioProvider implements PortfolioProvider {
+  readonly rateSource = 'zerion'
   private readonly apiKey: string
   private readonly baseUrl: string
   private readonly requestPolicy: ProviderRequestPolicy
@@ -494,21 +453,9 @@ export default class ZerionPortfolioProvider implements PortfolioProvider {
       return emptyPortfolioSnapshot()
     }
 
-    const portfolio = await this.fetchPortfolio(address, options)
     const positions = await this.fetchPositions(address, zerionChainIds, options)
 
-    const attributes = portfolio.data?.attributes ?? {}
-    const changes = attributes.changes ?? {}
-
     return {
-      totalValue: attributes.total?.positions ?? 0,
-      absoluteChange1d: changes.absolute_1d ?? 0,
-      percentChange1d: changes.percent_1d ?? 0,
-      chainValues: mapChainValues(
-        attributes.positions_distribution_by_chain,
-        zerionChainIds,
-        zerionToFrameChainIds
-      ),
       tokens: extractTokens(positions, zerionChainIds, zerionToFrameChainIds),
       balances: extractBalances(positions, zerionChainIds, zerionToFrameChainIds),
       assetRates: extractAssetRates(positions, zerionChainIds, zerionToFrameChainIds)
@@ -525,14 +472,6 @@ export default class ZerionPortfolioProvider implements PortfolioProvider {
     const imageUrl = chain.data?.attributes?.icon?.url
 
     return imageUrl ? { url: imageUrl } : undefined
-  }
-
-  private async fetchPortfolio(address: Address, options: PortfolioRefreshOptions) {
-    return this.request<ZerionPortfolioResponse>(`/wallets/${address}/portfolio`, {
-      currency: 'usd',
-      'filter[positions]': 'only_simple',
-      sync: options.sync ? 'true' : 'false'
-    })
   }
 
   private async fetchPositions(address: Address, chainIds: string[], options: PortfolioRefreshOptions) {

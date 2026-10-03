@@ -6443,6 +6443,20 @@ var FlashCancelOrderResponseSchema = union([
   looseObject({ order: FlashWireOrderSchema.optional() }),
   _null3().transform(() => ({ order: undefined }))
 ]);
+var FlashTokenBalanceSchema = looseObject({
+  chain: string2(),
+  address: string2(),
+  symbol: string2(),
+  tokenDecimals: number2().int().nonnegative(),
+  balance: string2(),
+  notional: string2(),
+  priceChange24h: string2().nullable(),
+  imageUrl: string2(),
+  isNative: boolean2()
+});
+var FlashBalancesResponseSchema = looseObject({
+  balances: array(FlashTokenBalanceSchema)
+});
 var FlashWebSocketFrameSchema = union([
   object({
     channel: literal("subscriptions"),
@@ -6961,6 +6975,10 @@ var GetOrderFunction = _function({
   input: [AddressSchema2, OrderIdSchema],
   output: FlashGetOrderResponseSchema
 });
+var BalancesFunction = _function({
+  input: [AddressSchema2],
+  output: FlashBalancesResponseSchema
+});
 var CancelOrderFunction = _function({
   input: tuple([OrderIdSchema, SignatureSchema]).rest(string2().min(1)),
   output: FlashCancelOrderResponseSchema
@@ -7049,6 +7067,9 @@ function createFlashApi(options = {}) {
     getOrder: GetOrderFunction.implementAsync(async (accountAddress, orderId) => {
       const query = new URLSearchParams({ funderAddress: accountAddress });
       return FlashGetOrderResponseSchema.parse(await request(`/orders/${encodeURIComponent(orderId)}?${query}`));
+    }),
+    balances: BalancesFunction.implementAsync(async (address) => {
+      return FlashBalancesResponseSchema.parse(await request(`/balances/${encodeURIComponent(address)}`));
     }),
     cancelOrder: CancelOrderFunction.implementAsync(async (orderId, userSignature, ...messages) => {
       return FlashCancelOrderResponseSchema.parse(await request(`/orders/${encodeURIComponent(orderId)}/cancel`, {

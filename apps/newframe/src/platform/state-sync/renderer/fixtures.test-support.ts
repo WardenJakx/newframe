@@ -43,6 +43,7 @@ const baseWalletState: WalletRendererState = {
   origins: {},
   permissions: {},
   portfolioApiKeyConfigured: false,
+  portfolioProvider: 'zerion',
   profiles: [
     {
       id: 'default-profile',

@@ -19,6 +19,7 @@ describe('#getTokenDiscoveryProvider', () => {
   it('does not construct a provider without an API key', () => {
     store.setState((state) => {
       state.main.autoDiscoverTokens = true
+      state.main.portfolioProvider = 'zerion'
       state.main.portfolioApiKey = ''
     })
 
@@ -28,14 +29,24 @@ describe('#getTokenDiscoveryProvider', () => {
   it('returns the configured provider only when discovery is enabled with a key', () => {
     store.setState((state) => {
       state.main.autoDiscoverTokens = true
+      state.main.portfolioProvider = 'zerion'
       state.main.portfolioApiKey = ' zk_test '
     })
 
     const access = getTokenDiscoveryProvider(store)
 
-    expect(access.ok).toBe(true)
-    if (access.ok) {
-      expect(access.provider).toBeDefined()
-    }
+    expect(access.ok && access.provider.rateSource).toBe('zerion')
+  })
+
+  it('returns the Flash provider without an API key', () => {
+    store.setState((state) => {
+      state.main.autoDiscoverTokens = true
+      state.main.portfolioProvider = 'flash'
+      state.main.portfolioApiKey = ''
+    })
+
+    const access = getTokenDiscoveryProvider(store)
+
+    expect(access.ok && access.provider.rateSource).toBe('flash')
   })
 })

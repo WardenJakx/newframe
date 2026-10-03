@@ -154,7 +154,7 @@ Install the [Newframe skill](../../skills/README.md) for Codex or Claude Code. I
 
 ### Enable portfolio discovery
 
-To enable wallet portfolio discovery, add a Zerion API key in Newframe settings and enable token auto-discovery.
+To enable wallet portfolio discovery, enable token auto-discovery with Flash in Newframe settings, or add a Zerion API key and enable it with Zerion. Only one provider is active at a time.
 
 ## Architecture boundaries
 

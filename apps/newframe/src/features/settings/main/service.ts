@@ -71,7 +71,7 @@ export function createSettingsService(
         if (command.apiKey !== undefined) {
           state.setPortfolioApiKey(command.apiKey)
         }
-        return state.setAutoDiscoverTokens(command.value)
+        return state.setAutoDiscoverTokens(command.value, command.provider)
       case 'trezor-derivation':
         return state.setTrezorDerivation(command.value)
       case 'ledger-derivation':

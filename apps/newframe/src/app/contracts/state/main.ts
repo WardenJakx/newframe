@@ -38,6 +38,9 @@ const AppLockSchema = z.object({
   vaultExists: z.boolean()
 })
 
+export const PortfolioProviderIdSchema = z.enum(['zerion', 'flash'])
+export type PortfolioProviderId = z.infer<typeof PortfolioProviderIdSchema>
+
 // these are individual keys on the main state object
 const PreferencesSchema = {
   launch: z.boolean().default(false).describe('Launch Newframe on system start'),
@@ -48,6 +51,9 @@ const PreferencesSchema = {
     .boolean()
     .default(false)
     .describe('Automatically discover tokens through portfolio providers'),
+  portfolioProvider: PortfolioProviderIdSchema.default('zerion').describe(
+    'Portfolio provider used for token auto-discovery'
+  ),
   portfolioApiKey: z.string().default('').describe('Zerion API key for portfolio providers'),
   showTestnets: z.boolean().default(false).describe('Show testnet networks in the wallet UI'),
   menubarGasPrice: z.boolean().default(false).describe('Show gas price in menu bar'),

@@ -91,6 +91,7 @@ export function Settings({
       networks: state.networks.ethereum,
       platform: state.platform || '',
       portfolioApiKeyConfigured: !!state.portfolioApiKeyConfigured,
+      portfolioProvider: state.portfolioProvider,
       reveal: !!state.reveal,
       showLocalNameWithENS: !!state.showLocalNameWithENS,
       showTestnets: !!state.showTestnets,
