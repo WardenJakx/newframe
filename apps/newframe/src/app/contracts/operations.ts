@@ -412,6 +412,47 @@ const TokenLookupResultSchema = z.discriminatedUnion('ok', [
 ])
 
 const BoundedPasswordSchema = z.string().max(1_024)
+const RabbyPayloadSchema = z.string().min(1).max(2_000_000)
+const RabbyPreviewQuerySchema = z.strictObject({
+  type: z.literal('rabby.preview'),
+  data: RabbyPayloadSchema,
+  password: BoundedPasswordSchema.min(1)
+})
+export type RabbyPreviewQuery = z.infer<typeof RabbyPreviewQuerySchema>
+const RabbyImportCommandSchema = z.strictObject({
+  type: z.literal('rabby.import'),
+  operationId: OperationIdSchema,
+  data: RabbyPayloadSchema,
+  password: BoundedPasswordSchema.min(1),
+  newframePassword: BoundedPasswordSchema.optional()
+})
+export type RabbyImportCommand = z.infer<typeof RabbyImportCommandSchema>
+const RabbyPreviewResultSchema = z.discriminatedUnion('ok', [
+  z.strictObject({
+    ok: z.literal(true),
+    accounts: z
+      .array(
+        z.strictObject({
+          address: AddressSchema,
+          name: z.string().max(128),
+          kind: z.enum(['mnemonic', 'private-key', 'watch', 'safe', 'hardware']),
+          chainIds: z.array(ChainIdSchema).max(100).optional(),
+          duplicate: z.boolean(),
+          warning: z.string().max(256).optional()
+        })
+      )
+      .max(1000),
+    importCount: z.number().int().nonnegative().max(1000),
+    skipCount: z.number().int().nonnegative().max(1000),
+    unsupportedMetadata: z.array(z.string().max(128)).max(10)
+  }),
+  z.strictObject({
+    ok: z.literal(false),
+    error: z.enum(['invalid_query', 'unauthorized', 'import_failed']),
+    message: ErrorMessageSchema
+  })
+])
+export type RabbyPreviewResult = z.infer<typeof RabbyPreviewResultSchema>
 const BoundedNameSchema = z.string().trim().max(128)
 const HttpUrlSchema = z.url({ protocol: /^https?:$/ }).max(4_096)
 const KeystoreSchema = z
@@ -1167,6 +1208,7 @@ export const commandContracts = defineOperationContracts({
   'profile.delete': acknowledged(ProfileDeleteCommandSchema),
   'profile.update': acknowledged(ProfileUpdateCommandSchema),
   'profile.select': acknowledged(ProfileSelectCommandSchema),
+  'rabby.import': acknowledged(RabbyImportCommandSchema),
   'request.approve': acknowledged(RequestApproveCommandSchema),
   'request.warning-confirm': acknowledged(RequestWarningConfirmCommandSchema),
   'request.access-resolve': acknowledged(AccessRequestResolveCommandSchema),
@@ -1215,6 +1257,7 @@ export const queryContracts = defineOperationContracts({
     result: ProfileMovableAccountsResultSchema
   },
   'security.status': { input: SecurityStatusQuerySchema, result: SecurityStatusResultSchema },
+  'rabby.preview': { input: RabbyPreviewQuerySchema, result: RabbyPreviewResultSchema },
   'seed.generate': { input: SeedGenerateQuerySchema, result: SeedGenerateResultSchema },
   'safe.discover': {
     input: SafeDiscoverQuerySchema,

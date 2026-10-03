@@ -7,13 +7,18 @@
     "typecheck": "tsc --project tsconfig.json"
   },
   "dependencies": {
+    "@metamask/browser-passworder": "6.0.0",
     "@newframe/desktop-api": "workspace:*",
     "@newframe/flash": "workspace:*",
+    "@ngraveio/bc-ur": "1.1.6",
     "ethers": "6.16.0",
+    "fflate": "0.8.2",
+    "qrcode": "^1.5.4",
     "@safe-global/safe-smart-account": "1.5.0"
   },
   "devDependencies": {
     "@types/node": "24",
+    "@types/qrcode": "^1.5.6",
     "typescript": "7.0.2"
   }
 }

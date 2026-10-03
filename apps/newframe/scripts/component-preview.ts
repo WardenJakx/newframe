@@ -6,6 +6,8 @@ import { parseArgs } from 'node:util'
 
 import { chromium, type Browser, type Page } from 'playwright-core'
 
+import { browserPolyfills } from './browser-polyfills'
+
 const appDir = resolve(import.meta.dir, '..')
 const usage = `Usage: bun run newframe preview:component /absolute/fixture.tsx
   [--screenshot /absolute/output.png] [--check /absolute/check.ts]
@@ -127,6 +129,7 @@ createRoot(document.getElementById('preview')).render(<Preview />)
       minify: true,
       define: { global: 'globalThis', 'process.env.NODE_ENV': JSON.stringify('production') },
       plugins: [
+        browserPolyfills,
         {
           name: 'preview-imports',
           setup(build) {

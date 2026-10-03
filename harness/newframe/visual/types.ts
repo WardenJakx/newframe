@@ -3,6 +3,7 @@ import type { ElectronApplication, Page } from 'playwright-core'
 import type { SafeDeployment } from '../../../apps/newframe/src/features/accounts/domain/safe.ts'
 import type { WalletStatusNotification } from '../../../apps/newframe/src/platform/state-sync/contract/projections.ts'
 import type { HarnessRuntime } from '../core/service.ts'
+import type { RabbyEmulator } from '../services/rabby-emulator.ts'
 import type { SafeSeedManifest } from '../services/safe-contracts.ts'
 import type { AnvilClient } from './anvil-client.ts'
 import type { NewframeDriver } from './driver.ts'
@@ -106,6 +107,9 @@ export type CurrentRequest = AppRequest & {
 }
 
 export type AppAccount = AccountInfo & {
+  profileId?: string
+  lastSignerType?: string
+  rabbySource?: { type: string; derivationPath?: string }
   signer?: string
   safe?: Record<string, SafeDeployment>
   agentEnabled?: boolean
@@ -145,6 +149,8 @@ export type AppState = {
     activity?: Record<string, AppActivity>
     balances?: Record<string, AppBalance[]>
     currentAccount?: string
+    currentProfile?: string
+    profiles?: Record<string, { id: string; name: string }>
     networks?: { ethereum?: Record<string, AppNetwork> }
     orders?: Record<string, FlashOrder>
     origins?: Record<string, AppOrigin>
@@ -173,6 +179,7 @@ export type HarnessAccounts = {
 export type VisualHarnessContext = {
   anvil: AnvilClient
   safeSeed: SafeSeedManifest
+  rabby: RabbyEmulator
   app: ElectronApplication
   driver: NewframeDriver
   runtime: VisualHarnessRuntime

@@ -64,6 +64,15 @@ export function createAccountsCapabilityFake() {
       ): Promise<CapabilityResult<AccountsCapability['discoverSafeNetworks']>> => []
     ),
     importSigner: acknowledged<Parameters<AccountsCapability['importSigner']>[0]>(),
+    previewRabby: mock(
+      async (
+        _input: Parameters<AccountsCapability['previewRabby']>[0]
+      ): Promise<CapabilityResult<AccountsCapability['previewRabby']>> => ({
+        ok: false,
+        error: 'import_failed'
+      })
+    ),
+    importRabby: acknowledged<Parameters<AccountsCapability['importRabby']>[0]>(),
     startSignerSession: acknowledged<Parameters<AccountsCapability['startSignerSession']>[0]>(),
     finishSignerSession: acknowledged<Parameters<AccountsCapability['finishSignerSession']>[0]>(),
     refreshSigner: acknowledged<Parameters<AccountsCapability['refreshSigner']>[0]>(),

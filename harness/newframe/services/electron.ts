@@ -6,12 +6,19 @@ import type { HarnessService } from '../core/service.ts'
 import { assertPortFree, sleep } from '../core/utils.ts'
 
 type ElectronLaunchSettings = {
+  cameraFile?: string
   remoteDebugging?: boolean
   visualHarness?: boolean
 }
 
 export function electronLaunchSettings(options: ElectronLaunchSettings = {}) {
   const args = ['./compiled/src/main/bootstrap.js']
+  if (options.cameraFile) {
+    args.unshift(
+      '--use-fake-device-for-media-stream',
+      `--use-file-for-fake-video-capture=${options.cameraFile}`
+    )
+  }
   if (options.remoteDebugging) {
     args.unshift(`--remote-debugging-port=${ports.cdp}`)
   }
@@ -58,10 +65,12 @@ export class ElectronApplicationService implements HarnessService<ElectronApplic
   private readonly launcher: Electron
   private stopping = false
   private readonly timeoutMs: number
+  private readonly cameraFile?: string
 
-  constructor(launcher: Electron, timeoutMs: number) {
+  constructor(launcher: Electron, timeoutMs: number, cameraFile?: string) {
     this.launcher = launcher
     this.timeoutMs = timeoutMs
+    this.cameraFile = cameraFile
   }
 
   async start() {
@@ -71,7 +80,7 @@ export class ElectronApplicationService implements HarnessService<ElectronApplic
 
     await assertPortFree(ports.visualRpc, 'Newframe visual RPC')
 
-    const settings = electronLaunchSettings({ visualHarness: true })
+    const settings = electronLaunchSettings({ visualHarness: true, cameraFile: this.cameraFile })
     const app = await this.launcher.launch({
       ...settings,
       colorScheme: 'no-preference',

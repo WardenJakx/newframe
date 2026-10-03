@@ -634,6 +634,38 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
+    importRabbySnapshot: (profileId: string, name: string, accounts: Account[]) => {
+      if (!accounts.length || !profileId || !name.trim()) {
+        throw new Error('Invalid wallet import')
+      }
+      const current = get().main
+      const ids = accounts.map((account) => account.id)
+      if (
+        Object.hasOwn(current.profiles, profileId) ||
+        new Set(ids).size !== ids.length ||
+        accounts.some(
+          (account) =>
+            account.id !== account.address.toLowerCase() ||
+            account.profileId !== profileId ||
+            Object.values(current.accounts).some((existing) => existing.address.toLowerCase() === account.id)
+        )
+      ) {
+        throw new Error('Wallet import conflicts with existing accounts')
+      }
+      set((draft) => {
+        const main = draft.main
+        main.profiles[profileId] = { id: profileId, name }
+        main.profileOrder.push(profileId)
+        for (const account of accounts) {
+          main.accounts[account.id] = account
+          main.accountOrder.push(account.id)
+          main.accountsMeta[uuidv5(account.id, accountNS)] = { name: account.name, lastUpdated: Date.now() }
+        }
+        main.currentProfile = profileId
+        main.currentAccount = accounts[0].id
+      })
+    },
+
     selectProfile: (id: string) => {
       if (!id) {
         return

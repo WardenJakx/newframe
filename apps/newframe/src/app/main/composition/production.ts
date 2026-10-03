@@ -20,6 +20,10 @@ import {
   createDeferredAccountChainRpcPort,
   type AccountChainRpcPort
 } from '../../../features/accounts/main/providerPort.js'
+import {
+  createRabbyImportService,
+  type RabbyImportService
+} from '../../../features/accounts/main/rabby/service.js'
 import type { AccountsRuntime } from '../../../features/accounts/main/runtime.js'
 import { createSafeService, type SafeService } from '../../../features/accounts/main/safe.js'
 import { createSafeMessageService } from '../../../features/accounts/main/safeMessage.js'
@@ -105,6 +109,8 @@ import { createOperationService } from '../../../platform/operations/service.js'
 import type { PersistenceLifecycle } from '../../../platform/persistence/ports.js'
 import { createSafeClient, safeServiceNetworks } from '../../../platform/safe/client.js'
 import { createSafeSimulationRpc } from '../../../platform/safe/simulation.js'
+import type { HotSignerImport } from '../../../platform/signing/domain/hotImport.js'
+import type Signer from '../../../platform/signing/signers/Signer/index.js'
 import type store from '../../../platform/state-store/index.js'
 import { projectRendererState } from '../../../platform/state-sync/main/projections.js'
 import { createMainProcessSource } from '../gateway/requestSource.js'
@@ -146,6 +152,7 @@ export interface ProductionMainAppDependencies {
   securityService: SecurityService
   accountOnboardingService: AccountOnboardingService
   airgapService: AirGapService
+  rabbyService: RabbyImportService
   sendService: SendService
   tradeService: TradeService
 }
@@ -163,6 +170,13 @@ export interface ProductionCapabilityAdapters {
   portfolio: PortfolioServiceAdapters
   security: Omit<SecurityServicePorts, 'operations' | 'store'> & { dispose?(): void }
   accountOnboarding: Pick<AccountOnboardingPorts, 'hardware' | 'keystore' | 'secrets' | 'signers'> & {
+    rabby?: {
+      importSigners<T>(
+        inputs: HotSignerImport[],
+        password: string | undefined,
+        commit: (signers: Signer[]) => T
+      ): T
+    }
     protectedOperations: { exportSecret(address: string): Promise<{ type: string; value: string }> }
     dispose(): void
   }
@@ -341,6 +355,19 @@ export function createProductionCapabilities(
     })
   })
   const safeMessageService = createSafeMessageService({ store, accounts, client: safeClient })
+  const rabbyService = createRabbyImportService({
+    store,
+    operations: operationService,
+    configuration: (chainId, address) => safeClient.configuration(chainId, address),
+    importSigners(inputs, password, commit) {
+      if (!adapters.accountOnboarding.rabby) {
+        throw new Error('Wallet import is unavailable')
+      }
+      return adapters.accountOnboarding.rabby.importSigners(inputs, password, commit)
+    },
+    flush: () => adapters.accounts.persistence.flush(),
+    accountsChanged: (addresses) => provider.accountsChanged(addresses)
+  })
   const disconnectSafeMessages = safeMessages.connect(safeMessageService)
   const safeService = createSafeService({
     accounts,
@@ -451,6 +478,7 @@ export function createProductionCapabilities(
     accountCapabilities,
     infrastructureCallbacks: {
       dispose() {
+        rabbyService.dispose()
         airgapService.dispose()
         disconnectSafeMessages()
         safeMessageService.dispose()
@@ -483,7 +511,8 @@ export function createProductionCapabilities(
     portfolioService,
     securityService,
     accountOnboardingService,
-    airgapService
+    airgapService,
+    rabbyService
   }
 }
 
@@ -509,11 +538,13 @@ function createProductionOperationServices(
   accountOnboardingService: AccountOnboardingService,
   sendService: SendService,
   tradeService: TradeService,
-  airgapService: AirGapService
+  airgapService: AirGapService,
+  rabbyService: RabbyImportService
 ): OperationServices {
   return {
     accounts,
     airgap: airgapService,
+    rabby: rabbyService,
     accountMutations: accountService,
     agent: agentService,
     networks: networkService,
@@ -566,7 +597,8 @@ export function createProductionMainApp({
   accountOnboardingService,
   sendService,
   tradeService,
-  airgapService
+  airgapService,
+  rabbyService
 }: ProductionMainAppDependencies): MainApp {
   const operationDispatcher = createOperationDispatcher(
     createProductionOperationServices(
@@ -591,7 +623,8 @@ export function createProductionMainApp({
       accountOnboardingService,
       sendService,
       tradeService,
-      airgapService
+      airgapService,
+      rabbyService
     )
   )
   const stateStream = createStateStream({

@@ -30,6 +30,7 @@ export type RendererOperationContext = AuthorizationContext & {
 }
 
 export interface OperationServices {
+  rabby?: import('../../../features/accounts/main/rabby/service.js').RabbyImportService
   protectedOperations: Pick<
     import('../protected-operations/service.js').ProtectedOperationsService,
     'exportPrivateKey'
@@ -270,6 +271,10 @@ export function createOperationRegistry(services: OperationServices) {
   }
 
   const commandRegistry = {
+    'rabby.import': defineOwnedCommand(
+      'rabby.import',
+      (command, context) => services.rabby?.import(command, operationOwner(context)) ?? false
+    ),
     'account.create': defineOwnedCommand('account.create', (command, context) =>
       command.source === 'safe'
         ? safes.import(command, operationOwner(context))
@@ -631,6 +636,17 @@ export function createOperationRegistry(services: OperationServices) {
   } satisfies Record<keyof CommandMap, OperationDefinition>
 
   const queryRegistry = {
+    'rabby.preview': defineQuery('rabby.preview', {
+      roles: ['wallet-ui'],
+      entrypoints: ['tray'],
+      handle: (query) =>
+        services.rabby?.preview(query) ?? {
+          ok: false,
+          error: 'import_failed',
+          message: 'Rabby import is unavailable.'
+        },
+      failure: { ok: false, error: 'import_failed', message: 'Could not read the Rabby export.' }
+    }),
     'signer.session-frames': defineQuery('signer.session-frames', {
       roles: ['wallet-ui'],
       entrypoints: ['tray'],

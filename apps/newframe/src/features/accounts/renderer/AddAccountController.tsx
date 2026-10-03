@@ -24,6 +24,7 @@ import {
   type AddAccountOption
 } from './AddAccountView'
 import { AirGapPairing } from './airgap/AirGapPairing'
+import { RabbyImport } from './rabby/RabbyImport'
 import { useHardwareSessionController } from './useHardwareSession'
 
 const addOptions: Record<'root' | 'import' | 'hardware', AddAccountOption[]> = {
@@ -31,6 +32,7 @@ const addOptions: Record<'root' | 'import' | 'hardware', AddAccountOption[]> = {
     { id: 'createSeed', title: 'Create recovery phrase', icon: 'flame' },
     { id: 'storedSeed', title: 'Add from stored recovery phrases', icon: 'flame' },
     { id: 'import', title: 'Import phrase or private key', icon: 'accounts' },
+    { id: 'rabby', title: 'Import from Rabby', icon: 'qr' },
     { id: 'hardware', title: 'Connect a hardware wallet', icon: 'device' },
     { id: 'watch', title: 'Watch an address', icon: 'eye' },
     { id: 'safe', title: 'Safe', icon: 'safe' }
@@ -139,8 +141,11 @@ export function AddAccountController({
     setSafeImports({})
     setSafeSelected([])
     setSafeNetworks([])
-    dispatch({ type: 'flow.reset' })
-  }, [shared.currentProfile])
+    // Rabby import selects its new profile before showing the completion screen.
+    if (state.addAccountCategory !== 'rabby') {
+      dispatch({ type: 'flow.reset' })
+    }
+  }, [shared.currentProfile, state.addAccountCategory])
   const safeScope = [shared.currentProfile, state.addAccountCategory, state.addAccountInput].join(':')
   const safeChainIds = Object.keys(shared.networks).join(',')
   safeDraft.current = safeScope
@@ -1311,6 +1316,18 @@ export function AddAccountController({
       dispatch({ type: 'hardware.signer-selected', signerId } as const),
     onSubmitImport: () => void createInlineAccount(),
     onTypeSelect: chooseInlineAddType
+  }
+
+  if (state.addAccountCategory === 'rabby') {
+    return (
+      <RabbyImport
+        capability={capability}
+        camera={camera}
+        vault={state.addVaultState}
+        onBack={backInlineAdd}
+        onClose={onClose}
+      />
+    )
   }
 
   return (
