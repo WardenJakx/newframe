@@ -20,14 +20,6 @@ const navigationRecipe = cva({
   }
 })
 
-const chainIconRecipe = cva({
-  base: {
-    display: 'grid',
-    placeItems: 'center',
-    '& img': { borderRadius: '50%', objectFit: 'cover' }
-  }
-})
-
 const networkDotsRecipe = cva({
   base: { display: 'grid', gridTemplateColumns: 'repeat(2, 5px)', gap: '1' }
 })
@@ -65,11 +57,7 @@ export function HomeNavigationView({
         shape='pill'
         size='small'
       >
-        {selectedChain ? (
-          <span className={chainIconRecipe()}>{selectedChain.icon}</span>
-        ) : (
-          <span className={networkDotsRecipe()}>{enabledChainDots}</span>
-        )}
+        {selectedChain ? selectedChain.icon : <span className={networkDotsRecipe()}>{enabledChainDots}</span>}
         <Text display='inline' variant='supporting'>
           {selectedChain?.name ?? 'All Networks'}
         </Text>

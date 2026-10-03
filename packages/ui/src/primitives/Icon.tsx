@@ -155,6 +155,7 @@ const iconRecipe = cva({
       false: { visibility: 'hidden' }
     },
     size: {
+      fill: { width: '100%', height: '100%' },
       small: { width: 'icon-small', height: 'icon-small' },
       medium: { width: 'icon-medium', height: 'icon-medium' },
       large: { width: 'icon-large', height: 'icon-large' }

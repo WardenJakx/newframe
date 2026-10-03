@@ -1,29 +1,11 @@
 import { Icon } from '@newframe/ui/icon'
+import { MediaIcon } from '@newframe/ui/media-icon'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 import { useState } from 'react'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
-
-const chainIconRecipe = cva({
-  base: {
-    width: '64px',
-    height: '64px',
-    display: 'grid',
-    flex: 'none',
-    placeItems: 'center',
-    overflow: 'hidden',
-    borderWidth: 'strong',
-    borderStyle: 'solid',
-    borderColor: 'border.strong',
-    borderRadius: '50%',
-    background: 'bg.control',
-    color: 'action.primary',
-    '& img': { width: '100%', height: '100%', objectFit: 'cover' },
-    '& > span': { width: '13', height: '13' }
-  }
-})
 
 const parameterRecipe = cva({
   base: {
@@ -66,17 +48,18 @@ function displayChainId(value: number | string) {
 function ChainIdentity({ chain, description }: { chain: AddChainDetailsModel; description: string }) {
   const [failedIcon, setFailedIcon] = useState('')
   const name = chain.name ?? 'Unknown chain'
-  const showIcon = chain.icon && failedIcon !== chain.icon
 
   return (
     <Stack align='center' gap='small'>
-      <span className={chainIconRecipe()}>
-        {showIcon ? (
-          <img alt='' onError={() => setFailedIcon(chain.icon ?? '')} src={chain.icon} />
-        ) : (
-          <Icon name='ethereum' />
-        )}
-      </span>
+      <MediaIcon
+        border='strong'
+        onLoadError={() => setFailedIcon(chain.icon ?? '')}
+        size='large'
+        source={failedIcon !== chain.icon ? chain.icon : undefined}
+        tone='accent'
+      >
+        <Icon name='ethereum' />
+      </MediaIcon>
       <Stack align='center' gap='xsmall'>
         <Text align='center' as='h2' variant='heading'>
           {name}

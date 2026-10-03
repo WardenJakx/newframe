@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 
+import { cx } from '../styled-system/css/cx.js'
 import { sva } from '../styled-system/css/sva.js'
 import { Button } from './Button.js'
 import { Icon } from './Icon.js'
+import { surfaceRecipe } from './Surface.js'
 
 const selectionRecipe = sva({
   slots: ['root', 'chevron', 'menu', 'header', 'list', 'empty', 'footer'],
@@ -17,11 +19,7 @@ const selectionRecipe = sva({
     },
     menu: {
       position: 'absolute',
-      zIndex: 'header',
-      padding: '4',
-      borderRadius: 'default',
-      background: 'bg.hover',
-      boxShadow: 'elevation-overlay'
+      zIndex: 'header'
     },
     header: { marginBlockEnd: '2' },
     list: { maxHeight: 'scroll-list', overflowY: 'auto' },
@@ -284,7 +282,12 @@ export function Selection({
         </span>
       </Button>
       {open && canOpen ? (
-        <div className={styles.menu}>
+        <div
+          className={cx(
+            styles.menu,
+            surfaceRecipe({ elevation: 'overlay', padding: 'small', radius: 'default', tone: 'hover' })
+          )}
+        >
           {header ? <div className={styles.header}>{header}</div> : null}
           <div aria-label={label} className={styles.list} id={listboxId} role='listbox'>
             {menuContent}

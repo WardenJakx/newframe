@@ -3,6 +3,7 @@ import { Disclosure } from '@newframe/ui/disclosure'
 import { Icon } from '@newframe/ui/icon'
 import { Image } from '@newframe/ui/image'
 import { Inline } from '@newframe/ui/inline'
+import { MediaIcon } from '@newframe/ui/media-icon'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
@@ -127,20 +128,6 @@ const chainBadgeRecipe = cva({
   }
 })
 
-const chainIconRecipe = cva({
-  base: {
-    width: 'icon-small',
-    height: 'icon-small',
-    display: 'grid',
-    flexShrink: 0,
-    placeItems: 'center',
-    overflow: 'hidden',
-    borderRadius: 'pill',
-    color: 'action.primary',
-    '& img': { width: '100%', height: '100%', objectFit: 'cover' }
-  }
-})
-
 const controlsRecipe = cva({ base: { marginBlockStart: 'auto', paddingBlockStart: '4' } })
 
 const sectionRecipe = cva({ base: { overflow: 'hidden' } })
@@ -156,7 +143,7 @@ const sectionHeaderRecipe = cva({
 })
 
 const effectRecipe = sva({
-  slots: ['root', 'icon', 'meta', 'amount'],
+  slots: ['root', 'meta', 'amount'],
   base: {
     root: {
       minHeight: 'field',
@@ -167,18 +154,6 @@ const effectRecipe = sva({
       padding: '4 5',
       borderRadius: 'small',
       background: 'bg.raised'
-    },
-    icon: {
-      width: 'icon-button-small',
-      height: 'icon-button-small',
-      display: 'grid',
-      placeItems: 'center',
-      overflow: 'hidden',
-      borderWidth: 'thin',
-      borderStyle: 'solid',
-      borderColor: 'border.subtle',
-      borderRadius: 'pill',
-      background: 'bg.control'
     },
     meta: { minWidth: 0 },
     amount: {
@@ -222,7 +197,6 @@ function AssetIcon({
   const icon = effect.logoURI ?? (effect.kind === 'native' ? persistedImageSource(nativeCurrency.image) : '')
   const iconSource = imageSource(icon)
   const symbol = (effect.symbol || '?').trim() || '?'
-  const styles = effectRecipe({ direction: 'neutral' })
   let iconContent: ReactNode = (
     <Text align='center' truncate variant='microCode'>
       {symbol}
@@ -237,13 +211,10 @@ function AssetIcon({
   useTokenImageHydration(imageCapability, effect.tokenId, !!iconSource, hydrationTarget)
 
   return (
-    <span
-      className={styles.icon}
-      data-effect-icon-direction='neutral'
-      data-testid='asset-icon'
-      ref={hydrationTarget}
-    >
-      {iconContent}
+    <span data-effect-icon-direction='neutral' data-testid='asset-icon' ref={hydrationTarget}>
+      <MediaIcon border='subtle' size='asset'>
+        {iconContent}
+      </MediaIcon>
     </span>
   )
 }
@@ -333,9 +304,9 @@ function TransactionEffects({
               <Text shrink={false} tone='secondary' variant='caption'>
                 on
               </Text>
-              <span className={chainIconRecipe()}>
-                {chainIcon ? <Image alt='' source={chainIcon} /> : <Icon name='ethereum' size='small' />}
-              </span>
+              <MediaIcon size='inline' source={chainIcon} surface='transparent' tone='accent'>
+                <Icon name='ethereum' size='small' />
+              </MediaIcon>
               <Text truncate variant='caption'>
                 {networkName}
               </Text>

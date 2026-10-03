@@ -1,5 +1,6 @@
 import { Button } from '@newframe/ui/button'
 import { Inline } from '@newframe/ui/inline'
+import { MediaIcon } from '@newframe/ui/media-icon'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
@@ -7,23 +8,6 @@ import type { ReactNode } from 'react'
 
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
 import StatusGlyph from '../../../../shared/renderer/ui/StatusGlyph'
-
-const iconRecipe = cva({
-  base: {
-    display: 'grid',
-    width: 'icon-button-medium',
-    height: 'icon-button-medium',
-    flex: 'none',
-    placeItems: 'center',
-    overflow: 'hidden',
-    borderWidth: 'thin',
-    borderStyle: 'solid',
-    borderColor: 'border',
-    borderRadius: 'pill',
-    background: 'bg.control',
-    color: 'action.primary'
-  }
-})
 
 const contentRecipe = cva({ base: { width: '100%', minWidth: 0 } })
 
@@ -58,7 +42,11 @@ export function RequestCard({
     <div className={contentRecipe()}>
       <Stack gap='small'>
         <Inline align='center' gap='small'>
-          {icon ? <span className={iconRecipe()}>{icon}</span> : null}
+          {icon ? (
+            <MediaIcon border='default' size='control' tone='accent'>
+              {icon}
+            </MediaIcon>
+          ) : null}
           <Stack gap='xsmall' grow>
             <Text variant='label' truncate>
               {title}

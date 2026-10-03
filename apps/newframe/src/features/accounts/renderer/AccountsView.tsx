@@ -8,29 +8,19 @@ import { SearchField } from '@newframe/ui/search-field'
 import { Selection, type SelectionItem } from '@newframe/ui/selection'
 import { Spinner } from '@newframe/ui/spinner'
 import { Stack } from '@newframe/ui/stack'
-import { Surface } from '@newframe/ui/surface'
+import { Surface, surfaceRecipe } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 import type { DragEvent, ReactNode, RefObject } from 'react'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
+import { cx } from '../../../../generated/styled-system/css/cx.js'
 import { HeaderBar } from '../../../shared/renderer/ui/HeaderBar'
 import { SidePanelHeader } from '../../../shared/renderer/ui/SidePanel/SidePanelHeader'
+import { TrayOverlayFrame } from '../../../shared/renderer/ui/TrayOverlayFrame'
 import AccountRenameInput from './AccountRenameInput'
 import { AccountRow } from './AccountSelectorView'
 import type { AccountListItem, AccountListModel } from './accountsModel'
 import type { AccountsState } from './accountsReducer'
-
-const overlayRecipe = cva({
-  base: {
-    position: 'absolute',
-    inset: 0,
-    zIndex: 'overlay',
-    display: 'flex',
-    flexDirection: 'column',
-    overflow: 'hidden',
-    background: 'bg.primary'
-  }
-})
 
 const headerRecipe = cva({
   base: { position: 'relative', zIndex: 'header' }
@@ -57,11 +47,7 @@ const actionsMenuRecipe = cva({
     insetInlineEnd: '4',
     insetBlockStart: 'token(sizes.list-row)',
     zIndex: 'header',
-    width: 'selection-trigger',
-    padding: '2',
-    borderRadius: 'default',
-    background: 'bg.hover',
-    boxShadow: 'elevation-overlay'
+    width: 'selection-trigger'
   }
 })
 
@@ -230,7 +216,13 @@ function AccountActions({
     )
   }
   return (
-    <div className={actionsMenuRecipe()} onClick={(event) => event.stopPropagation()}>
+    <div
+      className={cx(
+        actionsMenuRecipe(),
+        surfaceRecipe({ elevation: 'overlay', padding: 'xsmall', radius: 'default', tone: 'hover' })
+      )}
+      onClick={(event) => event.stopPropagation()}
+    >
       <Stack gap='xsmall'>
         <Button appearance='row' onPress={events.onRenameOpen} size='small' width='full'>
           <Text variant='caption'>Rename account</Text>
@@ -298,7 +290,7 @@ export function AccountsView(props: AccountsViewProps) {
     ? model.items.find((item) => item.id === exportedAccountId)
     : undefined
   return (
-    <div aria-label='Accounts' className={overlayRecipe()} role='dialog'>
+    <TrayOverlayFrame label='Accounts'>
       {state.panel.kind !== 'export' ? (
         <div className={headerRecipe()}>
           <HeaderBar>
@@ -462,6 +454,6 @@ export function AccountsView(props: AccountsViewProps) {
           </ScrollArea>
         </>
       ) : null}
-    </div>
+    </TrayOverlayFrame>
   )
 }

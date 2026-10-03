@@ -2,7 +2,6 @@ import { FLASH_NATIVE_ETH_TOKEN_ADDRESS } from '@newframe/flash/constants'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 
-import { cva } from '../../../../../../generated/styled-system/css/cva.js'
 import type { TokenImageCapability } from '../../../../../shared/renderer/capabilities'
 import ChainTokenIcon from '../../../../../shared/renderer/ui/ChainTokenIcon'
 import { persistedImageSource } from '../../../../asset-data/domain/image'
@@ -10,21 +9,6 @@ import { tokenForId, tokenImageSource } from '../../../../tokens/domain'
 import { NATIVE_CURRENCY } from '../../../../tokens/domain/constants'
 import { orderAssetName, orderAssetSymbol } from './orderModel'
 import type { OrderAsset, OrderNetworkMap, OrderNetworkMetadataMap, OrderTokenCatalog } from './orderTypes'
-
-const assetPositionRecipe = cva({
-  base: {
-    display: 'flex',
-    minWidth: 0,
-    flexDirection: 'column',
-    gap: '2'
-  },
-  variants: {
-    align: {
-      start: { alignItems: 'flex-start' },
-      end: { alignItems: 'flex-end' }
-    }
-  }
-})
 
 function orderAssetIdentity(asset?: OrderAsset) {
   const chainId = Number(asset?.chainId ?? 0)
@@ -124,7 +108,7 @@ export function OrderAssetPosition({
   const amountLabel = amount && amount !== '—' ? `${amount} ${symbol}` : '—'
 
   return (
-    <div className={assetPositionRecipe({ align })} title={orderAssetName(asset)}>
+    <Stack align={align} gap='xsmall' title={orderAssetName(asset)}>
       <Stack align='center' direction='row' gap='xsmall'>
         <OrderAssetIcon
           asset={asset}
@@ -144,6 +128,6 @@ export function OrderAssetPosition({
       <Text align={align} tone='muted' variant='caption' truncate>
         {notional ?? '—'}
       </Text>
-    </div>
+    </Stack>
   )
 }

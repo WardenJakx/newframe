@@ -1,6 +1,7 @@
 import { Button } from '@newframe/ui/button'
 import { IconButton } from '@newframe/ui/icon-button'
 import { Input } from '@newframe/ui/input'
+import { MediaIcon } from '@newframe/ui/media-icon'
 import { SearchField } from '@newframe/ui/search-field'
 import { Spacer } from '@newframe/ui/spacer'
 import { Stack } from '@newframe/ui/stack'
@@ -23,21 +24,6 @@ const networkRecipe = cva({
     }
   },
   defaultVariants: { selected: false }
-})
-
-const networkIconRecipe = cva({
-  base: {
-    display: 'grid',
-    width: 'media-small',
-    height: 'media-small',
-    flexShrink: 0,
-    placeItems: 'center',
-    overflow: 'hidden',
-    borderRadius: '50%',
-    background: 'bg.control',
-    pointerEvents: 'none',
-    '& img': { width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }
-  }
 })
 
 const networkActionsRecipe = cva({
@@ -103,7 +89,7 @@ export function NetworksView(props: NetworksViewProps) {
               selected={selected}
               width='full'
             >
-              <span className={networkIconRecipe()}>{chain.icon}</span>
+              <MediaIcon>{chain.icon}</MediaIcon>
               <Text truncate variant='label'>
                 {chain.name}
               </Text>

@@ -2,6 +2,7 @@ import { Button } from '@newframe/ui/button'
 import { Icon, type IconName } from '@newframe/ui/icon'
 import { IconButton } from '@newframe/ui/icon-button'
 import { Inline } from '@newframe/ui/inline'
+import { MediaIcon } from '@newframe/ui/media-icon'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 
@@ -22,19 +23,6 @@ const identityControlRecipe = cva({
     borderRadius: 'pill',
     background: 'bg.raised',
     _hover: { background: 'bg.hover' }
-  }
-})
-
-const identityIconRecipe = cva({
-  base: {
-    display: 'grid',
-    width: 'identity-icon',
-    height: 'identity-icon',
-    flex: 'none',
-    placeItems: 'center',
-    borderRadius: 'pill',
-    color: 'action.primary',
-    background: 'bg.control'
   }
 })
 
@@ -82,9 +70,9 @@ export function IdentityControl({
           {address ? (
             <AddressAvatar address={address} accountType={accountType} />
           ) : (
-            <span className={identityIconRecipe()}>
+            <MediaIcon size='identity' tone='accent'>
               <Icon name={icon} size='medium' />
-            </span>
+            </MediaIcon>
           )}
           <Stack gap='none' grow>
             <Text variant='body' truncate>

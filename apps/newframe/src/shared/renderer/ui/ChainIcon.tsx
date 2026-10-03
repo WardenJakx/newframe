@@ -1,5 +1,6 @@
 import { Icon } from '@newframe/ui/icon'
-import type { CSSProperties } from 'react'
+import { Image } from '@newframe/ui/image'
+import { StatusDot } from '@newframe/ui/status-dot'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
 import { persistedImageSource } from '../../../features/asset-data/domain/image'
@@ -12,17 +13,9 @@ const chainIconRecipe = cva({
     flexShrink: 0,
     placeItems: 'center',
     borderRadius: '50%',
-    color: 'var(--chain-icon-color)',
-    '& img': { width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' },
-    '& > span': { width: '100%', height: '100%' },
-    '& svg': { width: '100%', height: '100%' }
+    overflow: 'hidden'
   },
   variants: {
-    kind: {
-      art: {},
-      dot: { background: 'var(--chain-icon-color)' },
-      glyph: {}
-    },
     size: {
       compact: { width: 'status-dot-small', height: 'status-dot-small' },
       small: { width: 'icon-small', height: 'icon-small' },
@@ -30,7 +23,7 @@ const chainIconRecipe = cva({
       large: { width: 'icon-large', height: 'icon-large' }
     }
   },
-  defaultVariants: { kind: 'art', size: 'medium' }
+  defaultVariants: { size: 'medium' }
 })
 
 export interface ChainIconProps {
@@ -45,8 +38,8 @@ export function ChainIcon({ chainId, networks, networksMeta, size = 'medium' }: 
   const icon = persistedImageSource(metadata?.image)
   if (icon) {
     return (
-      <span className={chainIconRecipe({ kind: 'art', size })}>
-        <img alt='' src={icon} />
+      <span className={chainIconRecipe({ size })}>
+        <Image alt='' source={icon} />
       </span>
     )
   }
@@ -54,16 +47,15 @@ export function ChainIcon({ chainId, networks, networksMeta, size = 'medium' }: 
   const name = String(networks[chainId]?.name ?? '').toLowerCase()
   if (['mainnet', 'görli', 'goerli', 'sepolia', 'ropsten', 'rinkeby', 'kovan'].includes(name)) {
     return (
-      <span className={chainIconRecipe({ kind: 'glyph', size })}>
-        <Icon name='ethereum' />
+      <span className={chainIconRecipe({ size })}>
+        <Icon name='ethereum' size='fill' />
       </span>
     )
   }
 
   return (
-    <span
-      className={chainIconRecipe({ kind: 'dot', size })}
-      style={{ '--chain-icon-color': chainColorValue(metadata?.primaryColor) } as CSSProperties}
-    />
+    <span className={chainIconRecipe({ size })}>
+      <StatusDot color={chainColorValue(metadata?.primaryColor)} size='fill' />
+    </span>
   )
 }
