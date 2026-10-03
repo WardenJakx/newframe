@@ -1,5 +1,7 @@
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
 import type { Balance, NativeCurrency, Token } from '../../../../platform/state-store/state/index.js'
+import type { Address } from '../../../../shared/domain/address.js'
+import type { RPC } from '../../../../shared/domain/rpc.js'
 import { resolveAssetRate } from '../../../asset-data/domain/asset/index.js'
 import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.js'
 import { toTokenId } from '../../../tokens/domain/index.js'

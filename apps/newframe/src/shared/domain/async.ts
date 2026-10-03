@@ -1,3 +1,5 @@
+export type Callback<T> = (err: Error | null, result?: T) => void
+
 export type Debounced<TArgs extends unknown[]> = ((...args: TArgs) => void) & {
   cancel(): void
 }

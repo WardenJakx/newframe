@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
+import type { RPCRequestPayload } from '../../../../shared/domain/rpc.js'
 import { mapRequest as mapRequestTyped } from './index'
 
 // Real function under test, exercised with deliberately loose payload fixtures.

@@ -29,6 +29,8 @@ import type {
   SigningUiContext
 } from '../../../platform/signing/signers/Signer/index.js'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
+import type { Callback } from '../../../shared/domain/async.js'
+import type { RPCRequestCallback, RPCRequestPayload } from '../../../shared/domain/rpc.js'
 import { isAiSessionActive, type AiSessionClientSource } from '../gateway/requestSource.js'
 import { exportProtectedPrivateKey } from './secrets.js'
 type AccountHandle = NonNullable<ReturnType<AccountRequestPort['getFrameAccount']>>

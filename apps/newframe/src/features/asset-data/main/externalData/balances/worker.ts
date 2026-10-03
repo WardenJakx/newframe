@@ -10,6 +10,7 @@ const runtimeEnvironment = nodeEnv === '' ? 'development' : (nodeEnv ?? 'develop
 log.transports.file.level = ['development', 'test'].includes(runtimeEnvironment) ? false : 'verbose'
 
 import type { Token } from '../../../../../platform/state-store/state/index.js'
+import type { Address } from '../../../../../shared/domain/address.js'
 import type { BalanceLoader } from './scan.js'
 import balancesLoader from './scan.js'
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
+import type { RPC } from '../../../shared/domain/rpc.js'
 import {
   getPaidTransactionFee,
   getTransactionEffects,

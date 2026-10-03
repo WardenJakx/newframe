@@ -3,6 +3,7 @@ import log from 'electron-log'
 
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
 import type { Token } from '../../../../platform/state-store/state/index.js'
+import type { Address } from '../../../../shared/domain/address.js'
 import { debounce } from '../../../../shared/domain/async.js'
 import { arraysMatch } from '../../../../shared/domain/collections.js'
 import { customTokens, tokensForAccount } from '../../../tokens/domain/index.js'

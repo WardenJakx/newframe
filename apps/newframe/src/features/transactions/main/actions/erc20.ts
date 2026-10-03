@@ -1,10 +1,11 @@
+import type { Address } from '../../../../shared/domain/address.js'
 import type { Identity } from '../../../requests/contract/requests.js'
 import type { Action } from './index.js'
 
 export type ActionType = 'erc20:approve' | 'erc20:revoke' | 'erc20:transfer'
 
 type Erc20Spend = {
-  amount: HexAmount
+  amount: string
   decimals: number
   name: string
   symbol: string

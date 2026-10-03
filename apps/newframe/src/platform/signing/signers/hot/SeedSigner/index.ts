@@ -2,6 +2,7 @@ import { stripHexPrefix } from '@ethereumjs/util'
 import { HDKey } from '@scure/bip32'
 import { computeAddress, Mnemonic } from 'ethers'
 
+import type { Callback } from '../../../../../shared/domain/async.js'
 import HotSigner, { type VaultAccess } from '../HotSigner/index.js'
 import { openSecret, sealSecret, type EncryptedSecret } from '../secret.js'
 

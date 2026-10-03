@@ -1,5 +1,7 @@
 import { WalletRpcError } from '@newframe/desktop-api/router'
 
+import type { RPCRequestCallback } from '../../shared/domain/rpc.js'
+
 /** Adapt the gateway callback once, at the native tRPC boundary. */
 export function rpcCall(send: (respond: RPCRequestCallback) => unknown): Promise<unknown> {
   return new Promise((resolve, reject) => {

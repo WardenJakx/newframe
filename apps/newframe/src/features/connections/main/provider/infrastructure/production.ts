@@ -3,6 +3,8 @@ import type { RpcIpcHandlers } from '../../../../../app/main/ipc-handlers/rpc.js
 import type { ProtectedOperationsService } from '../../../../../app/main/protected-operations/service.js'
 import { createOneResultCallbackBoundary } from '../../../../../platform/callbacks/oneResult.js'
 import type { SigningUiContext } from '../../../../../platform/signing/signers/Signer/index.js'
+import type { Callback } from '../../../../../shared/domain/async.js'
+import type { RPCRequestPayload, RPCResponsePayload } from '../../../../../shared/domain/rpc.js'
 import type {
   AccountRequest,
   SignTypedDataRequest,

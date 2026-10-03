@@ -13,7 +13,7 @@
     "typeRoots": ["./node_modules/@types", "./src/types"]
   },
   "include": [
-    "./src/types/frame/index.d.ts",
+    "./src/types/**/*.d.ts",
     "./src/app/contracts/**/*.ts",
     "./src/features/**/contract/**/*.ts",
     "./src/features/**/domain/**/*.ts",

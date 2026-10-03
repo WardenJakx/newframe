@@ -16,6 +16,7 @@ import {
 } from '../../../platform/safe/integrity.js'
 import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.js'
 import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.js'
+import type { RPC } from '../../../shared/domain/rpc.js'
 import type { TransactionApprovalAdjustments } from '../../transactions/domain/approval.js'
 import { GasFeesSource, type TransactionData } from '../../transactions/domain/index.js'
 import {

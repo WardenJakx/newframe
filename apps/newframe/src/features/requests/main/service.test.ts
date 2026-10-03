@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
+import type { EVMError, RPCRequestCallback, RPCResponsePayload } from '../../../shared/domain/rpc.js'
 import type { SafeTransactionPort } from '../../accounts/main/safeTransactionPort'
 import { GasFeesSource } from '../../transactions/domain'
 import type { AccessRequest, AccountRequest, AddChainRequest, TransactionRequest } from '../contract/requests'

@@ -4,6 +4,7 @@ import { EventEmitter } from 'events'
 import { GNS_CONTRACT, gnsAbi } from '@donnoh/gns-utils'
 import { Interface, ZeroAddress, getAddress } from 'ethers'
 
+import type { RPCRequestPayload } from '../../../shared/domain/rpc.js'
 import { createProviderProxyConnection } from '../../connections/main/provider/proxy'
 import {
   createNameResolutionService,

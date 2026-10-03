@@ -7,6 +7,7 @@ import log from 'electron-log'
 import { Mnemonic, randomBytes } from 'ethers'
 import { z } from 'zod'
 
+import type { Callback } from '../../../../shared/domain/async.js'
 import type Signer from '../Signer/index.js'
 import type { VaultAccess } from './HotSigner/index.js'
 import RingSigner from './RingSigner/index.js'

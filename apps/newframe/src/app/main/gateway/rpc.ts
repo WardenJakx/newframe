@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import type { OriginsService } from '../../../features/connections/main/origins.js'
 import { mapRequest } from '../../../features/connections/main/requests/index.js'
+import type { RPCRequestCallback, RPCRequestPayload } from '../../../shared/domain/rpc.js'
 import { dispatchGatewayOperation } from './dispatch.js'
 import { isAiSessionActive, isRequestSource, type RequestSource } from './requestSource.js'
 import { rpcMethodPolicy } from './rpcPolicy.js'

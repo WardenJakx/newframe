@@ -22,6 +22,7 @@ import {
   type FrameExtension,
   type OriginsService
 } from '../../features/connections/main/origins.js'
+import type { JSONRPCRequestPayload, RPC, RPCResponsePayload } from '../../shared/domain/rpc.js'
 import {
   createOriginSessionMonitor,
   type ApiTimerPort,

@@ -11,6 +11,7 @@ import {
 import type { TypedMessage } from '../../../../features/requests/contract/requests.js'
 import type { TransactionData } from '../../../../features/transactions/domain/index.js'
 import { sign, createUnsignedTransaction } from '../../../../features/transactions/main/index.js'
+import type { Callback } from '../../../../shared/domain/async.js'
 import type { OperationOwner } from '../../../operations/types.js'
 import {
   AirGapPublicAccountSchema,

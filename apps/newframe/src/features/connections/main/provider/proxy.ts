@@ -2,6 +2,8 @@ import { EventEmitter } from 'events'
 
 import { v5 as uuid } from 'uuid'
 
+import type { JSONRPCRequestPayload } from '../../../../shared/domain/rpc.js'
+
 const internalOriginId = uuid('newframe-internal', uuid.DNS)
 
 export class ProviderProxyConnection extends EventEmitter {

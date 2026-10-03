@@ -6,6 +6,15 @@ import { isHexString } from 'ethers'
 import { accountAccessMethods } from '../../../../app/main/gateway/rpcPolicy.js'
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
 import { getAddress } from '../../../../shared/domain/address.js'
+import type { Callback } from '../../../../shared/domain/async.js'
+import type {
+  EVMError,
+  JSONRPCRequestPayload,
+  RPC,
+  RPCErrorCallback,
+  RPCId,
+  RPCRequestCallback
+} from '../../../../shared/domain/rpc.js'
 import type { TransactionRequest } from '../../../requests/contract/requests.js'
 import type { TransactionData } from '../../../transactions/domain/index.js'
 import { usesBaseFee, GasFeesSource } from '../../../transactions/domain/index.js'

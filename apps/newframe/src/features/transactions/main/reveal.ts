@@ -12,6 +12,12 @@ import {
   fetchContract,
   type DecodedCallData
 } from '../../../platform/chain-rpc/contracts/index.js'
+import type { Callback } from '../../../shared/domain/async.js'
+import type {
+  JSONRPCRequestPayload,
+  RPCRequestPayload,
+  RPCResponsePayload
+} from '../../../shared/domain/rpc.js'
 import type { TransactionRequest } from '../../accounts/main/index.js'
 import { createProxyProvider } from '../../connections/main/provider/connection.js'
 import type { ProviderProxyConnection } from '../../connections/main/provider/proxy.js'

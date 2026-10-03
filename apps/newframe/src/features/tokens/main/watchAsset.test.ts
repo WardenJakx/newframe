@@ -3,6 +3,8 @@ import { expect, it } from 'bun:test'
 import { Interface, getAddress } from 'ethers'
 
 import Erc20Contract from '../../../platform/chain-rpc/contracts/erc20'
+import type { Callback } from '../../../shared/domain/async.js'
+import type { RPCRequestPayload, RPCResponsePayload } from '../../../shared/domain/rpc.js'
 import { resolveWatchAsset } from './watchAsset'
 
 const address = getAddress('0xbfa641051ba0a0ad1b0acf549a89536a0d76472e')

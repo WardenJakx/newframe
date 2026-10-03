@@ -22,6 +22,12 @@ import { createOperationService } from '../../src/platform/operations/service.js
 import { createSafeClient } from '../../src/platform/safe/client.js'
 import { getSafeTypedMessage, verifySafeHash } from '../../src/platform/safe/integrity.js'
 import type { AirGapPublicAccount } from '../../src/platform/signing/domain/airgap.js'
+import type { Callback } from '../../src/shared/domain/async.js'
+import type {
+  RPCRequestCallback,
+  RPCRequestPayload,
+  RPCResponsePayload
+} from '../../src/shared/domain/rpc.js'
 import { signerFixture, transaction, uiContext, vectors } from './fixtures/airgap.js'
 
 function integrationFixture({

@@ -4,6 +4,12 @@ import { EventEmitter } from 'events'
 import { createDesktopCaller } from '@newframe/desktop-api/router'
 
 import { createRpcGateway } from '../../../app/main/gateway/rpc'
+import type {
+  EVMError,
+  RPCRequestCallback,
+  RPCRequestPayload,
+  RPCResponsePayload
+} from '../../../shared/domain/rpc.js'
 import type { AccountRequest } from '../../requests/contract/requests'
 import { createAgentService } from './index'
 

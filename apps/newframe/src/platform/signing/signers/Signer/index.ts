@@ -5,6 +5,7 @@ import log from 'electron-log'
 
 import type { TypedMessage } from '../../../../features/requests/contract/requests.js'
 import type { TransactionData } from '../../../../features/transactions/domain/index.js'
+import type { Callback } from '../../../../shared/domain/async.js'
 import type { OperationOwner } from '../../../operations/types.js'
 import crypt from '../../crypt.js'
 import type { AirGapPendingSummary } from '../../domain/airgap.js'

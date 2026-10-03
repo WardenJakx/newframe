@@ -26,6 +26,13 @@ import {
   type RequestSource
 } from '../../../app/main/gateway/requestSource'
 import store from '../../../platform/state-store'
+import type { Callback } from '../../../shared/domain/async.js'
+import type {
+  EVMError,
+  RPCRequestCallback,
+  RPCRequestPayload,
+  RPCResponsePayload
+} from '../../../shared/domain/rpc.js'
 import {
   RequestMode,
   RequestStatus,
