@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { AccountMetadataSchema, AccountSchema } from '../../../features/accounts/domain/state/account.js'
 import { BalanceSchema } from '../../../features/asset-data/domain/state/balance.js'
 import { AssetRateMapSchema } from '../../../features/asset-data/domain/state/rate.js'
+import { ExtensionAccessSchema } from '../../../features/connections/domain/state/extensionAccess.js'
 import { OriginSchema } from '../../../features/connections/domain/state/origin.js'
 import { PermissionSchema } from '../../../features/connections/domain/state/permission.js'
 import { ChainMetadataSchema, ChainSchema } from '../../../features/networks/domain/state/chain.js'
@@ -185,6 +186,7 @@ export const MainSchema = z
     }),
     origins: z.record(z.string().describe('Origin Id'), OriginSchema),
     knownExtensions: z.record(z.string(), z.boolean()),
+    extensionAccess: z.record(z.string().describe('Extension Id'), ExtensionAccessSchema).default({}),
     permissions: z.record(
       z.string().describe('Address'),
       z.record(z.string().describe('Origin Id'), PermissionSchema)

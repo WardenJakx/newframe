@@ -1,5 +1,5 @@
 /* globals chrome */
-import type { AvailableChain } from '@newframe/desktop-api/schemas'
+import type { AvailableChain, ExtensionAccounts } from '@newframe/desktop-api/schemas'
 
 import FrameBackgroundProvider, {
   RawFrameConnection,
@@ -179,6 +179,25 @@ function setOriginStatus(origin: string, siteConnected: boolean, currentAddress 
   frameStateStore.setState({ activeOrigin: origin, siteConnected, currentAddress })
 }
 
+function setExtensionAccounts(extensionAccounts: ExtensionAccounts) {
+  frameStateStore.setState({ extensionAccounts })
+}
+
+const noExtensionAccounts: ExtensionAccounts = { accounts: [], selected: '' }
+
+async function refreshExtensionAccounts() {
+  if (!provider?.isConnected()) {
+    setExtensionAccounts(noExtensionAccounts)
+    return
+  }
+  try {
+    setExtensionAccounts(await provider.client.extension.accounts.query({}))
+  } catch (e) {
+    console.error('Error fetching extension accounts', e)
+    setExtensionAccounts(noExtensionAccounts)
+  }
+}
+
 function setIcon(path: string) {
   chrome.action.setIcon({ path }).catch(console.error)
 }
@@ -313,6 +332,7 @@ function initProvider(requestApproval = false) {
     })
     setConnectionStatus('connected')
     fetchAvailableChains().catch(console.error)
+    refreshExtensionAccounts().catch(console.error)
     refreshActiveOriginStatus().catch(console.error)
 
     setIcon('icons/icon96good.png')
@@ -322,6 +342,7 @@ function initProvider(requestApproval = false) {
   provider.on('disconnect', () => {
     setConnectionStatus('desktop-unavailable')
     setOriginStatus(frameStateStore.getState().activeOrigin, false, '')
+    setExtensionAccounts(noExtensionAccounts)
 
     setIcon('icons/icon96moon.png')
     sendEvent('close').catch(console.error)
@@ -334,6 +355,7 @@ function initProvider(requestApproval = false) {
   })
 
   provider.on('accountsChanged', () => {
+    refreshExtensionAccounts().catch(console.error)
     refreshActiveOriginStatus().catch(console.error)
   })
 
@@ -513,6 +535,29 @@ function addStateListeners() {
         return
       }
 
+      await Promise.all([refreshExtensionAccounts(), refreshActiveOriginStatus(tab)])
+      return
+    }
+
+    const fromSettings = !sender.tab && sender.url === chrome.runtime.getURL('settings.html')
+
+    if (payload.method === 'frame_select_account') {
+      const [address] = params
+      if (!fromSettings || typeof address !== 'string' || !provider?.isConnected()) {
+        return
+      }
+
+      setExtensionAccounts(await provider.client.extension.selectAccount.mutate({ address }))
+      await refreshActiveOriginStatus(tab)
+      return
+    }
+
+    if (payload.method === 'frame_request_accounts') {
+      if (!fromSettings || !provider?.isConnected()) {
+        return
+      }
+
+      setExtensionAccounts(await provider.client.extension.requestAccounts.mutate({}))
       await refreshActiveOriginStatus(tab)
       return
     }

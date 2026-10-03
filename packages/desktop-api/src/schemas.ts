@@ -43,6 +43,12 @@ export const OriginStatusSchema = z.object({
   selectedAddress: z.string().optional(),
   chainId: z.string().optional()
 })
+export const ExtensionAccountsSchema = z.object({
+  accounts: z.array(z.object({ address: AddressSchema, name: z.string() })),
+  selected: z.union([AddressSchema, z.literal('')]),
+  /** Present when every account in the current profile is shared with the extension. */
+  all: z.literal(true).optional()
+})
 export const ChainSchema = z.looseObject({
   chainId: z.union([z.number(), z.string()]),
   name: z.string().optional(),
@@ -75,6 +81,7 @@ export type AgentCredentials = z.infer<typeof AgentCredentialsSchema>
 export type Session = z.infer<typeof SessionSchema>
 export type AvailableChain = z.infer<typeof ChainSchema>
 export type OriginStatus = z.infer<typeof OriginStatusSchema>
+export type ExtensionAccounts = z.infer<typeof ExtensionAccountsSchema>
 export type WalletEvent = z.infer<typeof WalletEventSchema>
 export type ProviderEvent = z.infer<typeof ProviderEventSchema>
 

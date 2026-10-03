@@ -63,6 +63,9 @@ const rpcMethods: Record<string, RpcMethodPolicy> = {
   frame_disconnectOrigin: handler(noParams, 'source'),
   frame_summon: { params: noParams, permission: 'source', route: 'extension' },
   frame_requestExtensionConnection: { params: noParams, permission: 'source', route: 'extension' },
+  frame_getExtensionAccounts: { params: noParams, permission: 'source', route: 'extension' },
+  frame_selectExtensionAccount: { params: z.tuple([address]), permission: 'source', route: 'extension' },
+  frame_requestExtensionAccounts: { params: noParams, permission: 'source', route: 'extension' },
   eth_pollSubscriptions: {
     params: z.tuple([z.string(), z.literal('immediate').optional()]),
     permission: 'source',

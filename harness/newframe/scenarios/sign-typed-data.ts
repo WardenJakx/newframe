@@ -1,6 +1,8 @@
 import { BrowserProvider, TypedDataEncoder, verifyTypedData } from 'ethers'
 
-import createFrameProvider from '../../../apps/newframe/src/features/connections/main/provider/connection.ts'
+import { HarnessExtension } from '../core/extension.ts'
+
+const NEWFRAME_URL = 'http://127.0.0.1:1248'
 
 const TYPED_DATA = {
   types: {
@@ -45,7 +47,7 @@ const TYPED_TYPES = {
   Mail: TYPED_DATA.types.Mail
 }
 
-let frame: ReturnType<typeof createFrameProvider>
+let extension: HarnessExtension
 let provider: BrowserProvider
 
 function requireString(value: unknown, label: string) {
@@ -62,35 +64,10 @@ function requireFirstAddress(value: unknown) {
   return value[0]
 }
 
-const waitForFrameConnect = () =>
-  new Promise<void>((resolve, reject) => {
-    if (frame.connected) {
-      return resolve()
-    }
-
-    const timeout = setTimeout(
-      () => reject(new Error('Timed out waiting for Frame provider connection')),
-      10_000
-    )
-
-    frame.once('connect', () => {
-      clearTimeout(timeout)
-      resolve()
-    })
-    frame.once('error', (err: Error) => {
-      clearTimeout(timeout)
-      reject(err)
-    })
-  })
-
 async function main() {
-  frame = createFrameProvider('frame', { origin: 'eip8213.test', interval: 500 })
+  extension = await HarnessExtension.connect(NEWFRAME_URL)
   try {
-    await waitForFrameConnect()
-    provider = new BrowserProvider({
-      request: ({ method, params }: { method: string; params?: readonly unknown[] }) =>
-        frame.request({ method, params })
-    })
+    provider = new BrowserProvider(extension.eip1193('https://eip8213.test'))
 
     const address = requireFirstAddress(await provider.send('eth_requestAccounts', []))
     const expectedDigest = TypedDataEncoder.hash(TYPED_DATA.domain, TYPED_TYPES, TYPED_DATA.message)
@@ -106,7 +83,7 @@ async function main() {
       throw new Error(`Signature recovered ${recovered}; expected ${address}`)
     }
   } finally {
-    frame.close()
+    extension.close()
   }
 }
 

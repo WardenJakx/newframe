@@ -1,5 +1,6 @@
 import type { IncomingMessage } from 'http'
 
+import log from 'electron-log'
 import { v5 as uuidv5 } from 'uuid'
 
 import { hasSourceCapability, type LocalApiSource } from '../../../app/main/gateway/requestSource.js'
@@ -8,14 +9,17 @@ import type { Permission } from '../../../platform/state-store/state/index.js'
 import type { Accounts } from '../../accounts/main/index.js'
 import type { AccessRequest } from '../../requests/contract/requests.js'
 import type { PromptedRequestContinuationPort } from '../../requests/main/service.js'
+import { activeExtensionAccountId } from '../domain/extensionAccess.js'
 import {
   chainIdFromRequest,
   decideOriginAuthorization,
   parseExtensionIdentity,
   parseOriginName,
   projectOriginUpdate,
+  requestedAccount,
   type FrameExtension
 } from '../domain/index.js'
+import { createExtensionAccessService } from './extensionAccess.js'
 
 export type { FrameExtension } from '../domain/index.js'
 
@@ -38,12 +42,34 @@ interface OriginStorePort {
 
 interface AccountAccessPort {
   current(): { address: Address } | null | undefined
+  /** Makes the account the app's selection so its prompts appear for the human. */
+  select(address: Address): void
   routeRequest(principal: LocalApiSource, request: AccessRequest): void
 }
+
+interface ExtensionAccountPort {
+  /** The account the extension acts as in the current profile. */
+  account(extensionId: string): { address: Address } | null | undefined
+  /** Asks the human which accounts the extension may see. */
+  request(extensionId: string): Promise<unknown>
+}
+
+// Methods that create a prompt for the acting account.
+const accountActionMethods = new Set([
+  'eth_sendTransaction',
+  'personal_sign',
+  'eth_signTypedData',
+  'eth_signTypedData_v1',
+  'eth_signTypedData_v3',
+  'eth_signTypedData_v4',
+  'wallet_addEthereumChain',
+  'wallet_watchAsset'
+])
 
 export interface OriginsServiceDependencies {
   store: OriginStorePort
   accounts: AccountAccessPort
+  extensions: ExtensionAccountPort
   requests: OriginRequestContinuationPort
   hasInternalStateCapability(principal: LocalApiSource): boolean
   development(): boolean
@@ -89,6 +115,17 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
       requestUrl: req.url,
       development: dependencies.development()
     })
+
+  /**
+   * Browser code always sends a serialized Origin ("scheme://host" or "null"), and websites must
+   * reach Newframe through the extension, so the only browser connection admitted is the
+   * extension's WebSocket. Local tools and workers may label themselves with a scheme-less origin.
+   */
+  const admitsConnection = (req: IncomingMessage, transport: 'http' | 'websocket') => {
+    const origin = req.headers.origin
+    const fromBrowser = origin === 'null' || Boolean(origin?.includes('://'))
+    return !fromBrowser || (transport === 'websocket' && Boolean(parseFrameExtension(req)))
+  }
 
   const requestExtensionPermission = (extension: FrameExtension) => {
     const activeCheck = activeExtensionChecks.get(extension.id)
@@ -171,7 +208,21 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
 
   const hasAccountAccessGrant = async (payload: RPCRequestPayload, principal: LocalApiSource) => {
     const originName = dependencies.store.getOrigin(payload._origin)?.name ?? 'Unknown'
-    const currentAccount = dependencies.accounts.current()
+    // Websites relayed by the extension act as the extension's account, not the app's selection.
+    const extensionId = principal.participant === 'website' ? principal.extensionId : undefined
+    const actingAccount = () =>
+      extensionId ? dependencies.extensions.account(extensionId) : dependencies.accounts.current()
+    let currentAccount = actingAccount()
+    if (!currentAccount && extensionId && payload.method === 'eth_requestAccounts') {
+      await dependencies.extensions.request(extensionId)
+      currentAccount = actingAccount()
+    }
+    // A source may only act as its own account. Rejecting here, with the ordinary denial, keeps
+    // requests naming another account from switching the app or revealing that account exists.
+    const namedAccount = requestedAccount(payload.method, payload.params)
+    if (namedAccount && namedAccount.toLowerCase() !== currentAccount?.address.toLowerCase()) {
+      return false
+    }
     const permission = currentAccount
       ? dependencies.store.getPermission(currentAccount.address, originName)
       : undefined
@@ -184,12 +235,18 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
     })
 
     if (decision === 'allow') {
+      if (extensionId && currentAccount && accountActionMethods.has(payload.method)) {
+        dependencies.accounts.select(currentAccount.address)
+      }
       return true
     }
     if (decision === 'deny' || !currentAccount) {
       return false
     }
 
+    if (extensionId) {
+      dependencies.accounts.select(currentAccount.address)
+    }
     const grantedAddress = await requestPermission(currentAccount.address, payload, principal).catch(
       () => undefined
     )
@@ -197,7 +254,7 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
       return false
     }
     const requiredAddress = ['eth_requestAccounts', 'eth_accounts'].includes(payload.method)
-      ? dependencies.accounts.current()?.address
+      ? actingAccount()?.address
       : currentAccount.address
     return Boolean(
       requiredAddress &&
@@ -206,7 +263,7 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
     )
   }
 
-  return { isKnownExtension, hasAccountAccessGrant, parseFrameExtension, updateOrigin }
+  return { admitsConnection, isKnownExtension, hasAccountAccessGrant, parseFrameExtension, updateOrigin }
 }
 
 export const parseOrigin = parseOriginName
@@ -247,9 +304,29 @@ export function createProductionOriginsService(
     notifyExtension: (extension) => store.getState().notify('extensionConnect', extension)
   }
 
+  const extensionAccess = createExtensionAccessService(store)
   return createOriginsService({
     store: productionStore,
-    accounts,
+    accounts: {
+      current: () => accounts.current(),
+      select: (address) => {
+        if (accounts.current()?.address !== address) {
+          accounts.setSigner(address.toLowerCase(), (error) => {
+            if (error) {
+              log.error('Could not select the extension account', error)
+            }
+          })
+        }
+      },
+      routeRequest: (principal, request) => accounts.routeRequest(principal, request)
+    },
+    extensions: {
+      account: (extensionId) => {
+        const accountId = activeExtensionAccountId(store.getState().main, extensionId)
+        return accountId ? accounts.get(accountId) : undefined
+      },
+      request: (extensionId) => extensionAccess.request(extensionId)
+    },
     requests,
     hasInternalStateCapability: (principal) => hasSourceCapability(principal, 'wallet:internal-state'),
     development: () => process.env.NODE_ENV === 'development'

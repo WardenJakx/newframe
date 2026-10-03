@@ -51,6 +51,10 @@ function createOriginHarness() {
   const continuations = new Map<string, RPCRequestCallback>()
   const switchedOriginChains: Array<{ id: string; chainId: number }> = []
   let currentAccount: { address: Address } | undefined = { address }
+  let extensionAccount: { address: Address } | undefined
+  const selections: Address[] = []
+  const extensionAccessRequests: string[] = []
+  let onExtensionAccessRequest = () => {}
   let development = false
   let routeHandler:
     | ((request: AccessRequest, complete: (grantedAddress?: Address) => void) => void)
@@ -90,6 +94,10 @@ function createOriginHarness() {
     },
     accounts: {
       current: () => currentAccount,
+      select: (selected) => {
+        selections.push(selected)
+        currentAccount = { address: selected }
+      },
       routeRequest: (receivedPrincipal, request) => {
         routedRequests.push({
           principal: receivedPrincipal,
@@ -105,6 +113,13 @@ function createOriginHarness() {
           })
         }
         routeHandler?.(request, complete)
+      }
+    },
+    extensions: {
+      account: () => extensionAccount,
+      request: async (extensionId) => {
+        extensionAccessRequests.push(extensionId)
+        onExtensionAccessRequest()
       }
     },
     requests: {
@@ -124,6 +139,14 @@ function createOriginHarness() {
     notifications,
     routedRequests,
     switchedOriginChains,
+    selections,
+    extensionAccessRequests,
+    setExtensionAccount(next?: Address) {
+      extensionAccount = next ? { address: next } : undefined
+    },
+    onExtensionAccessRequest(handler: () => void) {
+      onExtensionAccessRequest = handler
+    },
     respond(requestId: string, response: RPCResponsePayload) {
       const continuation = continuations.get(requestId)
       continuations.delete(requestId)
@@ -266,6 +289,27 @@ describe('extension trust service', () => {
       browser: 'safari',
       id: 'newframe-dev'
     })
+  })
+
+  it('admits browser origins only as the extension WebSocket', () => {
+    const harness = createOriginHarness()
+    const request = (origin: string | undefined, url = '/') =>
+      ({ headers: origin === undefined ? {} : { origin }, url }) as never
+    const extension = request('chrome-extension://extension-id', '/?identity=newframe-extension')
+    const extensionTrpc = request('chrome-extension://extension-id', '/trpc?identity=newframe-extension')
+
+    expect([
+      harness.service.admitsConnection(request(undefined), 'http'),
+      harness.service.admitsConnection(request(undefined), 'websocket'),
+      harness.service.admitsConnection(request('newframe-internal'), 'http'),
+      harness.service.admitsConnection(extension, 'websocket'),
+      harness.service.admitsConnection(extensionTrpc, 'websocket'),
+      harness.service.admitsConnection(extension, 'http'),
+      harness.service.admitsConnection(request('https://app.example'), 'websocket'),
+      harness.service.admitsConnection(request('https://app.example'), 'http'),
+      harness.service.admitsConnection(request('chrome-extension://other-extension'), 'websocket'),
+      harness.service.admitsConnection(request('null'), 'websocket')
+    ]).toEqual([true, true, true, true, true, false, false, false, false, false])
   })
 
   it('allows Safari and honors cached Chrome and Firefox decisions', async () => {
@@ -520,3 +564,101 @@ it.each([false, true])(
     expect(result).resolves.toBe(false)
   }
 )
+
+describe('extension account authorization', () => {
+  const originId = uuidv5('test.frame.eth', uuidv5.DNS)
+  const extensionAddress = '0x0000000000000000000000000000000000000e47'
+  const relayed = createLocalApiSource({
+    participant: 'website',
+    websiteOrigin: 'https://test.frame.eth',
+    extensionId: 'extension-id',
+    transport: 'websocket',
+    connectionId: 'extension-socket',
+    origin: 'test.frame.eth'
+  })
+
+  it('acts as the extension account and selects it in the app before an account action', async () => {
+    const harness = createOriginHarness()
+    harness.setOrigin(originId, { name: 'test.frame.eth' })
+    harness.setExtensionAccount(extensionAddress)
+    harness.setPermission('test.frame.eth', true, extensionAddress)
+
+    const lookup = await harness.service.hasAccountAccessGrant(requestPayload({ _origin: originId }), relayed)
+    expect(lookup).toBe(true)
+    expect(harness.selections).toEqual([])
+
+    const sign = await harness.service.hasAccountAccessGrant(
+      requestPayload({ method: 'personal_sign', _origin: originId }),
+      relayed
+    )
+    expect(sign).toBe(true)
+    expect(harness.selections).toEqual([extensionAddress])
+  })
+
+  it('rejects signing requests naming another account before switching or prompting', async () => {
+    const other = '0x0000000000000000000000000000000000000b0b'
+    const signingRequests = [
+      requestPayload({ method: 'eth_sendTransaction', params: [{ from: other }], _origin: originId }),
+      requestPayload({ method: 'personal_sign', params: ['0x68656c6c6f', other], _origin: originId }),
+      requestPayload({ method: 'eth_signTypedData_v4', params: [other, '{}'], _origin: originId })
+    ]
+    const harness = createOriginHarness()
+    harness.setOrigin(originId, { name: 'test.frame.eth' })
+    harness.setExtensionAccount(extensionAddress)
+    harness.setPermission('test.frame.eth', true, extensionAddress)
+    harness.setPermission('test.frame.eth', true, address)
+
+    for (const source of [relayed, principal]) {
+      for (const payload of signingRequests) {
+        expect(await harness.service.hasAccountAccessGrant(payload, source)).toBe(false)
+      }
+    }
+    expect(harness.selections).toEqual([])
+    expect(harness.routedRequests).toEqual([])
+
+    const ownAccount = await harness.service.hasAccountAccessGrant(
+      requestPayload({
+        method: 'personal_sign',
+        params: [extensionAddress, '0x68656c6c6f'],
+        _origin: originId
+      }),
+      relayed
+    )
+    expect(ownAccount).toBe(true)
+  })
+
+  it('ignores a website grant for the app account the extension may not see', async () => {
+    const harness = createOriginHarness()
+    harness.setOrigin(originId, { name: 'test.frame.eth' })
+    harness.setPermission('test.frame.eth', true)
+
+    const result = await harness.service.hasAccountAccessGrant(
+      requestPayload({ method: 'personal_sign', _origin: originId }),
+      relayed
+    )
+
+    expect(result).toBe(false)
+    expect(harness.extensionAccessRequests).toEqual([])
+    expect(harness.selections).toEqual([])
+  })
+
+  it('asks for extension account access when connecting without a visible account', async () => {
+    const harness = createOriginHarness()
+    harness.setOrigin(originId, { name: 'test.frame.eth' })
+    harness.onExtensionAccessRequest(() => harness.setExtensionAccount(extensionAddress))
+    harness.onRoute((_request, complete) => {
+      harness.setPermission('test.frame.eth', true, extensionAddress)
+      complete()
+    })
+
+    const result = await harness.service.hasAccountAccessGrant(
+      requestPayload({ method: 'eth_requestAccounts', _origin: originId }),
+      relayed
+    )
+
+    expect(result).toBe(true)
+    expect(harness.extensionAccessRequests).toEqual(['extension-id'])
+    expect(harness.selections).toEqual([extensionAddress])
+    expect(harness.routedRequests.map(({ request }) => request.account)).toEqual([extensionAddress])
+  })
+})

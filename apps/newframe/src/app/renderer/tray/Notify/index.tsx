@@ -10,6 +10,7 @@ import { useShallow } from 'zustand/react/shallow'
 import type { AccountsCapability } from '../../../../features/accounts/renderer/accountsCapability'
 import { AirGapSigning } from '../../../../features/accounts/renderer/airgap/AirGapSigning'
 import SignerRecovery from '../../../../features/accounts/renderer/onboarding/SignerRecovery'
+import ExtensionAccessNotification from '../../../../features/connections/renderer/ExtensionAccess'
 import ExtensionConnectNotification from '../../../../features/connections/renderer/ExtensionConnect'
 import type { TransactionRequest } from '../../../../features/requests/contract/requests'
 import type {
@@ -240,6 +241,10 @@ const selectNotificationState = (state: TrayRendererState) => ({
     state.view.notify === 'extensionConnect' && isNotificationData(state.view.notifyData)
       ? state.view.notifyData
       : undefined,
+  extensionAccessId:
+    state.view.notify === 'extensionAccess' && isNotificationData(state.view.notifyData)
+      ? state.view.notifyData.id
+      : undefined,
   mute: state.mute,
   networks: state.networks,
   networksMeta: state.networksMeta,
@@ -268,6 +273,9 @@ export default function Notification({
       return null
     }
     return <ExtensionConnectNotification browser={browser} capability={connectionsCapability} id={id} />
+  }
+  if (typeof state.extensionAccessId === 'string') {
+    return <ExtensionAccessNotification capability={connectionsCapability} id={state.extensionAccessId} />
   }
 
   const props: NotificationProps = {

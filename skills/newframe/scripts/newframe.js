@@ -6186,6 +6186,11 @@ var OriginStatusSchema = object({
   selectedAddress: string2().optional(),
   chainId: string2().optional()
 });
+var ExtensionAccountsSchema = object({
+  accounts: array(object({ address: AddressSchema, name: string2() })),
+  selected: union([AddressSchema, literal("")]),
+  all: literal(true).optional()
+});
 var ChainSchema = looseObject({
   chainId: union([number2(), string2()]),
   name: string2().optional(),

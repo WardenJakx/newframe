@@ -13,6 +13,11 @@ import {
 import { accountNS, isDefaultAccountName } from '../../features/accounts/domain/index.js'
 import type { Account } from '../../features/accounts/domain/state/account.js'
 import type { Balance } from '../../features/asset-data/domain/state/balance.js'
+import {
+  canExtensionSee,
+  grantExtensionAccess,
+  visibleExtensionAccountIds
+} from '../../features/connections/domain/extensionAccess.js'
 import type { GasFees } from '../../features/networks/domain/state/gas.js'
 import type { NativeCurrency } from '../../features/networks/domain/state/nativeCurrency.js'
 import type { CanonicalAccountRequest } from '../../features/requests/contract/requests.js'
@@ -737,6 +742,12 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         }
         main.currentProfile = profileId
         main.currentAccount = selectedAccount.id
+        // Extensions follow explicit selections of accounts they may see.
+        Object.values(main.extensionAccess).forEach((access) => {
+          if (canExtensionSee(access, selectedAccount.id!)) {
+            access.selected[profileId] = selectedAccount.id!
+          }
+        })
         state.selected.minimized = false
         state.selected.open = true
       })
@@ -1347,6 +1358,30 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         } else {
           extensions[extensionId] = trusted
         }
+        if (trusted !== true) {
+          delete record(mutableMain(draft).extensionAccess)[extensionId]
+        }
+      })
+    },
+
+    setExtensionAccess: (extensionId: string, all: boolean, accountIds: readonly string[]) => {
+      set((draft) => {
+        const main = mutableMain(draft)
+        if (main.knownExtensions[extensionId] !== true) {
+          return
+        }
+        main.extensionAccess[extensionId] = grantExtensionAccess(main, extensionId, all, accountIds)
+      })
+    },
+
+    selectExtensionAccount: (extensionId: string, accountId: string) => {
+      set((draft) => {
+        const main = mutableMain(draft)
+        if (!visibleExtensionAccountIds(main, extensionId).includes(accountId)) {
+          return
+        }
+        // Visible accounts imply a stored grant.
+        main.extensionAccess[extensionId].selected[main.currentProfile] = accountId
       })
     },
 

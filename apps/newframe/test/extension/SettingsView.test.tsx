@@ -15,6 +15,8 @@ function props(overrides: Partial<SettingsViewProps> = {}): SettingsViewProps {
     onDisconnect: mock(() => {}),
     onToggleMetaMask: mock(() => {}),
     onSelectChain: mock(() => {}),
+    onSelectAccount: mock(() => {}),
+    onRequestAccounts: mock(() => {}),
     ...overrides
   }
 }
@@ -79,5 +81,47 @@ describe('SettingsView', () => {
     expect(initial.onSummon).toHaveBeenCalledTimes(1)
     expect(initial.onDisconnect).toHaveBeenCalledTimes(1)
     expect(initial.onToggleMetaMask).toHaveBeenCalledTimes(1)
+  })
+
+  it('selects among shared accounts and requests more unless every profile account is shared', () => {
+    const [first, second] = [
+      '0x0000000000000000000000000000000000000001',
+      '0x0000000000000000000000000000000000000002'
+    ]
+    const connected = (extensionAccounts: SettingsViewProps['settings']['extensionAccounts']) =>
+      props({ settings: { ...frameStateStore.getState(), connectionStatus: 'connected', extensionAccounts } })
+
+    const empty = connected({ accounts: [], selected: '' })
+    const { rerender } = render(<SettingsView {...empty} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Request account access' }))
+    expect(empty.onRequestAccounts).toHaveBeenCalledTimes(1)
+
+    const scoped = connected({
+      accounts: [
+        { address: first, name: 'Main' },
+        { address: second, name: 'Savings' }
+      ],
+      selected: first
+    })
+    rerender(<SettingsView {...scoped} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }))
+    fireEvent.click(screen.getByRole('option', { name: /Savings/ }))
+    expect(scoped.onSelectAccount).toHaveBeenCalledWith(second)
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Request more accounts' }))
+    expect(scoped.onRequestAccounts).toHaveBeenCalledTimes(1)
+
+    rerender(
+      <SettingsView
+        {...scoped}
+        settings={{
+          ...scoped.settings,
+          extensionAccounts: { ...scoped.settings.extensionAccounts, all: true }
+        }}
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }))
+    expect(screen.getByText('All accounts in this profile are shared')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Request more accounts' })).toBeNull()
   })
 })

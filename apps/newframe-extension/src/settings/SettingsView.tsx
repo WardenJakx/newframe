@@ -9,6 +9,7 @@ import { Text } from '@newframe/ui/text'
 import { ToggleButton } from '@newframe/ui/toggle-button'
 
 import type { FrameState } from '../frameState'
+import { AccountSelector } from './AccountSelector'
 import { frameConnectionPresentation, siteConnectionPresentation } from './connectionPresentation'
 import { NetworkSelector } from './NetworkSelector'
 import { SettingsMessage } from './SettingsMessage'
@@ -25,6 +26,8 @@ export interface SettingsViewProps {
   onDisconnect: () => void
   onToggleMetaMask: () => void
   onSelectChain: (chainId: string) => void
+  onSelectAccount: (address: string) => void
+  onRequestAccounts: () => void
 }
 
 function DesktopConnection({
@@ -131,6 +134,52 @@ function SiteConnection({
   )
 }
 
+function AccountAccess({
+  settings,
+  onSelectAccount,
+  onRequestAccounts
+}: Pick<SettingsViewProps, 'settings' | 'onSelectAccount' | 'onRequestAccounts'>) {
+  const { extensionAccounts } = settings
+
+  if (extensionAccounts.accounts.length === 0) {
+    return (
+      <Surface border='subtle' padding='small' radius='card' tone='card'>
+        <Stack gap='small'>
+          <Stack gap='xsmall'>
+            <Text variant='label'>No accounts shared</Text>
+            <Text tone='muted' variant='caption'>
+              Choose which accounts in this Newframe profile the extension can use.
+            </Text>
+          </Stack>
+          <Button appearance='primary' onPress={onRequestAccounts} width='full'>
+            Request account access
+          </Button>
+        </Stack>
+      </Surface>
+    )
+  }
+
+  return (
+    <Surface border='subtle' padding='small' radius='card' tone='card'>
+      <Inline align='start' gap='small' justify='between'>
+        <Stack gap='none' grow>
+          <Text variant='label'>Account</Text>
+          <Text tone='muted' variant='caption'>
+            {extensionAccounts.all
+              ? 'All profile accounts'
+              : `${extensionAccounts.accounts.length} shared ${extensionAccounts.accounts.length === 1 ? 'account' : 'accounts'}`}
+          </Text>
+        </Stack>
+        <AccountSelector
+          extensionAccounts={extensionAccounts}
+          onRequestAccounts={onRequestAccounts}
+          onSelect={onSelectAccount}
+        />
+      </Inline>
+    </Surface>
+  )
+}
+
 function ChainSelect({ settings, onSelectChain }: Pick<SettingsViewProps, 'settings' | 'onSelectChain'>) {
   const { availableChains, currentChain } = settings
 
@@ -192,6 +241,7 @@ function MainPanel(props: SettingsViewProps) {
 
   return (
     <Stack gap='small'>
+      <AccountAccess {...props} />
       <Surface border='subtle' elevation='default' padding='small' radius='card' tone='card'>
         <Inline align='start' gap='small' justify='between'>
           <SiteConnection {...props} origin={origin} />

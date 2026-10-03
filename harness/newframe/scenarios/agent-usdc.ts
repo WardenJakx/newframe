@@ -29,7 +29,7 @@ function requireString(value: unknown, label: string) {
   return value
 }
 
-const desktop = createDesktopClient(NEWFRAME_RPC_URL, { headers: () => ({ origin: 'agent-usdc.e2e' }) })
+const desktop = createDesktopClient(NEWFRAME_RPC_URL)
 const agentClient = (credentials: AgentCredentials) =>
   createDesktopClient(NEWFRAME_RPC_URL, {
     headers: () => ({

@@ -39,7 +39,7 @@ export function onTrayRendererReady(webContents: Pick<WebContents, 'off' | 'once
 
 /** @public Used by the dynamic-import lifecycle tests. */
 export function revealExtensionApproval(notification: unknown, reveal: () => void) {
-  if (notification === 'extensionConnect') {
+  if (notification === 'extensionConnect' || notification === 'extensionAccess') {
     reveal()
   }
 }

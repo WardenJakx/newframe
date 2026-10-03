@@ -193,6 +193,32 @@ export class NewframeDriver {
     })
   }
 
+  /** Approves the harness extension's connection request after capturing it. */
+  async approveExtensionConnection(screenshot: string) {
+    const dialog = this.tray.getByRole('dialog', { name: 'Extension connection request' })
+    await dialog.waitFor({ state: 'visible', timeout: 20_000 })
+    await this.screenshot(this.tray, screenshot)
+    await dialog.getByRole('button', { name: 'Accept' }).click()
+    await dialog.waitFor({ state: 'hidden' })
+  }
+
+  /** Shares the given accounts in the open extension account access prompt and saves it. */
+  async shareExtensionAccounts(addresses: string[], screenshot: string) {
+    const dialog = this.tray.getByRole('dialog', { name: 'Extension account access' })
+    await dialog.waitFor({ state: 'visible', timeout: 20_000 })
+    for (const address of addresses) {
+      // Account names repeat across a profile; the address identifies the row.
+      const row = dialog.getByRole('button', { name: new RegExp(`\\(${address}\\)$`, 'i') })
+      await row.scrollIntoViewIfNeeded()
+      if ((await row.getAttribute('aria-pressed')) !== 'true') {
+        await row.click()
+      }
+    }
+    await this.screenshot(this.tray, screenshot)
+    await dialog.getByRole('button', { name: 'Save' }).click()
+    await dialog.waitFor({ state: 'hidden' })
+  }
+
   openAddChainReview(request: CurrentRequest) {
     return this.executeCommand(this.tray, {
       type: 'request.add-chain-review',

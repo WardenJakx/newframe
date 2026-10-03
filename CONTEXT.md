@@ -79,6 +79,10 @@ _Avoid_: Relayed website request
 The human's permission for the extension to connect to Newframe. It is separate from website permission and operation approval.
 _Avoid_: Website approval
 
+**Extension account access**:
+The accounts the human shares with the extension, kept by the app: either every account in the active profile or a chosen set that persists across profiles. The extension sees only shared accounts in the active profile, acts as its own selected account, and the app switches to that account before prompting for its operations.
+_Avoid_: Extension approval, account access grant
+
 **Account access grant**:
 The human's permission for an identified request source to access a selected wallet account. It does not approve a signing operation.
 _Avoid_: Trusted website, signing approval
@@ -106,7 +110,7 @@ _Avoid_: Action approval, extension approval, website permission
 ## Boundaries and operations
 
 **Entry point authorization layer**:
-The desktop's transport-facing boundary for an incoming request. It admits the connection or sender, carries source evidence such as a browser-derived website origin into main, and passes the request to the Gateway; it does not decide whether the requested operation is allowed.
+The desktop's transport-facing boundary for an incoming request. It admits the connection or sender, carries source evidence such as a browser-derived website origin into main, and passes the request to the Gateway; it does not decide whether the requested operation is allowed. It refuses browser pages that call the local API directly; the only browser connection it admits is the extension's.
 _Avoid_: Gateway
 
 **Gateway**:

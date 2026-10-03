@@ -136,6 +136,7 @@ const mainState: M = {
   trezor: { derivation: Derivation.standard },
   origins: {},
   knownExtensions: {},
+  extensionAccess: {},
   accounts: {},
   profiles: { [DEFAULT_PROFILE_ID]: { id: DEFAULT_PROFILE_ID, name: DEFAULT_PROFILE_NAME } },
   profileOrder: [DEFAULT_PROFILE_ID],

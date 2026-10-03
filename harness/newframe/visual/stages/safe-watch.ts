@@ -1,17 +1,10 @@
 import { isDeepStrictEqual } from 'node:util'
 
-import {
-  Contract,
-  FetchRequest,
-  JsonRpcProvider,
-  formatUnits,
-  getBytes,
-  hashMessage,
-  hexlify,
-  toUtf8Bytes
-} from 'ethers'
+import type { ExtensionAccounts } from '@newframe/desktop-api/schemas'
+import { Contract, JsonRpcProvider, formatUnits, getBytes, hashMessage, hexlify, toUtf8Bytes } from 'ethers'
 
 import { anvilChainId, anvilRpcUrl, newframeRpcUrl, harnessAccountAddress } from '../../core/config.ts'
+import { HarnessExtension } from '../../core/extension.ts'
 import { harnessOrigin } from '../driver.ts'
 import type { AppState, VisualStage } from '../types.ts'
 
@@ -219,13 +212,24 @@ export const safeWatchStage: VisualStage = {
         .getByRole('button', { name: 'Back', exact: true })
         .click()
 
-      const rpcRequest = new FetchRequest(`${newframeRpcUrl}?chainId=${anvilChainId}`)
-      rpcRequest.setHeader('Origin', `http://${harnessOrigin}`)
-      const dappProvider = new JsonRpcProvider(rpcRequest, anvilChainId, {
-        batchMaxCount: 1,
-        pollingInterval: 250,
-        staticNetwork: true
-      })
+      // The extension only sees the harness account, so it asks for more accounts to use the Safe.
+      const extension = await HarnessExtension.connect(newframeRpcUrl)
+      const sharedAccounts = extension.request<ExtensionAccounts>('frame_requestExtensionAccounts')
+      void sharedAccounts.catch(() => undefined)
+      await driver.shareExtensionAccounts([safeSeed.safe], '08f1-extension-request-more-accounts.png')
+      const { accounts: extensionAccounts } = await sharedAccounts
+      if (!extensionAccounts.some((account) => account.address.toLowerCase() === id)) {
+        runtime.fail('Sharing the Safe did not disclose it to the extension')
+      }
+      const extensionSelection = await extension.request<ExtensionAccounts>('frame_selectExtensionAccount', [
+        safeSeed.safe
+      ])
+      if (extensionSelection.selected.toLowerCase() !== id) {
+        runtime.fail('The extension did not select the shared Safe')
+      }
+      runtime.evidence('extensionSharedAccounts', extensionAccounts.length)
+      runtime.evidence('extensionSelectedSafe', true)
+      const dappProvider = extension.website(`http://${harnessOrigin}`, anvilChainId)
       const chainProvider = new JsonRpcProvider(anvilRpcUrl, anvilChainId, {
         batchMaxCount: 1,
         staticNetwork: true
@@ -496,6 +500,7 @@ export const safeWatchStage: VisualStage = {
         runtime.evidence('safeExecutionNotificationLifecycle', 'pending -> completed')
       } finally {
         dappProvider.destroy()
+        extension.close()
         chainProvider.destroy()
       }
 

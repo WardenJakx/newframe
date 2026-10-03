@@ -23,7 +23,9 @@ const baseWalletState: WalletRendererState = {
   autohide: false,
   biometricUnlock: false,
   currentProfile: 'default-profile',
+  extensionAccess: {},
   instanceId: 'renderer-fixture',
+  knownExtensions: {},
   latticeSettings: {
     accountLimit: 5,
     derivation: 'standard',

@@ -1,8 +1,12 @@
+import type { ExtensionAccessService } from '../../../features/connections/main/extensionAccess.js'
 import { dispatchGatewayOperation } from './dispatch.js'
 import { isRequestSource, hasSourceCapability, type LocalApiSource } from './requestSource.js'
 import { rpcMethodPolicy } from './rpcPolicy.js'
 
-export function createExtensionGateway(windows: { toggleTray(): unknown }) {
+export function createExtensionGateway(
+  windows: { toggleTray(): unknown },
+  extensionAccess: Pick<ExtensionAccessService, 'accounts' | 'select' | 'request'>
+) {
   return async ({
     payload,
     chainId,
@@ -37,11 +41,22 @@ export function createExtensionGateway(windows: { toggleTray(): unknown }) {
         authorize: (input: RPCRequestPayload, admitted: LocalApiSource) =>
           isRequestSource(admitted) &&
           admitted.participant === 'companion-extension' &&
+          Boolean(admitted.extensionId) &&
           (!input.method.startsWith('frame_') || hasSourceCapability(admitted, 'wallet:internal-state')),
-        handle(input: RPCRequestPayload) {
+        handle(input: RPCRequestPayload, admitted: LocalApiSource) {
           if (input.method === 'frame_summon') {
             windows.toggleTray()
             return null
+          }
+          const extensionId = admitted.extensionId ?? ''
+          if (input.method === 'frame_getExtensionAccounts') {
+            return extensionAccess.accounts(extensionId)
+          }
+          if (input.method === 'frame_selectExtensionAccount') {
+            return extensionAccess.select(extensionId, String(input.params[0]))
+          }
+          if (input.method === 'frame_requestExtensionAccounts') {
+            return extensionAccess.request(extensionId)
           }
           return input.method === 'net_version' ? parseInt(chainId, 16) : chainId
         }

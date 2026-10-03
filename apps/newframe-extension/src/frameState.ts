@@ -1,4 +1,4 @@
-import type { AvailableChain } from '@newframe/desktop-api/schemas'
+import type { AvailableChain, ExtensionAccounts } from '@newframe/desktop-api/schemas'
 import { createStore } from 'zustand/vanilla'
 
 export type ConnectionStatus =
@@ -14,6 +14,8 @@ export interface FrameState {
   activeOrigin: string
   siteConnected: boolean
   currentAddress: string
+  /** Accounts the app shares with the extension in its current profile. */
+  extensionAccounts: ExtensionAccounts
 }
 
 export const frameStateStore = createStore<FrameState>()(() => ({
@@ -22,5 +24,6 @@ export const frameStateStore = createStore<FrameState>()(() => ({
   currentChain: '',
   activeOrigin: '',
   siteConnected: false,
-  currentAddress: ''
+  currentAddress: '',
+  extensionAccounts: { accounts: [], selected: '' }
 }))

@@ -1,16 +1,10 @@
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 
-import {
-  Contract,
-  FetchRequest,
-  Interface,
-  JsonRpcProvider,
-  type InterfaceAbi,
-  type TransactionResponse
-} from 'ethers'
+import { Contract, Interface, type InterfaceAbi, type TransactionResponse } from 'ethers'
 
 import { anvilChainId, contractsDir, harnessAccountAddress, newframeRpcUrl } from '../../core/config.ts'
+import { HarnessExtension } from '../../core/extension.ts'
 import { TaskService } from '../../core/task-service.ts'
 import type { VisualStage } from '../types.ts'
 import { requireAccounts } from './helpers.ts'
@@ -65,14 +59,9 @@ async function runUsdcIntegration(signal: AbortSignal) {
     artifactInterface('MockUSDC.sol/MockUSDC.json'),
     artifactInterface('TestContract.sol/TestContract.json')
   ])
-  const request = new FetchRequest(`${newframeRpcUrl}?chainId=${anvilChainId}`)
-  request.setHeader('Origin', harnessOriginUrl)
-  const provider = new JsonRpcProvider(request, anvilChainId, {
-    batchMaxCount: 1,
-    pollingInterval: 250,
-    staticNetwork: true
-  })
-  const stop = () => provider.destroy()
+  const extension = await HarnessExtension.connect(newframeRpcUrl)
+  const provider = extension.website(harnessOriginUrl, anvilChainId)
+  const stop = () => extension.close()
   signal.addEventListener('abort', stop, { once: true })
 
   try {
@@ -91,6 +80,7 @@ async function runUsdcIntegration(signal: AbortSignal) {
   } finally {
     signal.removeEventListener('abort', stop)
     provider.destroy()
+    extension.close()
   }
 }
 

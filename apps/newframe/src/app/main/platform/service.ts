@@ -26,6 +26,7 @@ type PlatformState = Pick<
   | 'toggleSignerCompatibilityWarning'
   | 'tray'
   | 'trustExtension'
+  | 'setExtensionAccess'
   | 'updateBadge'
   | 'view'
 >
@@ -157,6 +158,40 @@ export function createPlatformService(ports: PlatformServicePorts) {
       }
 
       state.trustExtension(extensionId, approved)
+      // An approved extension sees no accounts until the human chooses some.
+      state.notify(approved ? 'extensionAccess' : '', approved ? { id: extensionId } : {})
+      return true
+    },
+
+    /** The extension must ask to connect again, and its account access is cleared. */
+    forgetExtension(extensionId: string) {
+      const state = ports.store.getState()
+      if (!Object.hasOwn(state.main.knownExtensions, extensionId)) {
+        return false
+      }
+      state.trustExtension(extensionId, undefined)
+      return true
+    },
+
+    openExtensionAccess(extensionId: string) {
+      const state = ports.store.getState()
+      if (state.main.knownExtensions[extensionId] !== true) {
+        return false
+      }
+      state.notify('extensionAccess', { id: extensionId })
+      return true
+    },
+
+    respondToExtensionAccess(extensionId: string, grant?: { all: boolean; accountIds: string[] }) {
+      const state = ports.store.getState()
+      const pending = state.view.notifyData as { id?: string }
+      if (state.view.notify !== 'extensionAccess' || pending.id !== extensionId) {
+        return false
+      }
+
+      if (grant) {
+        state.setExtensionAccess(extensionId, grant.all, grant.accountIds)
+      }
       state.notify('', {})
       return true
     },
