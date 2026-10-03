@@ -156,6 +156,18 @@ The visual harness imports Anvil's third default account as its signer when need
 serves the visual app RPC on port `1249` by default (`NEWFRAME_HARNESS_RPC_PORT` overrides it), separate
 from the regular development RPC on port `1248`.
 
+The Rabby import stage uses an external Mobile Sync emulator under `services/rabby-emulator.ts`.
+It generates new demo mnemonic accounts with selected derivation paths, private keys, watch addresses,
+all four supported hardware keyring formats, and the local deployed Safe. It includes the existing
+harness account to test skipping duplicates. The emulator encrypts the vault with Rabby's passworder
+version, compresses the envelope, and generates animated BC-UR QR pixels at Rabby's 100 ms interval.
+Chromium receives those pixels through a temporary Y4M fake-camera file. Newframe runs its production
+camera decoder and complete import flow, without injected QR strings or decoded state.
+The stage captures scan progress, incorrect-password recovery, account review, the imported profile,
+and a repeated import that creates no accounts or profile. Emulator camera files are deleted at cleanup.
+The wire format follows [Rabby Extension's Mobile Sync encoder](https://github.com/RabbyHub/Rabby/blob/2306007134259e22c6a95c9481e024596b4db7bb/src/ui/utils/SyncToMobile/EncodeQRCode.tsx)
+and [Rabby Mobile's receiver](https://github.com/RabbyHub/rabby-mobile/blob/793cb6fc29fd06f6f3860028b136b750a7a2e37e/apps/mobile/src/screens/Scanner/ScannerScreen.tsx).
+
 The visual harness writes `summary.json` under
 `${NEWFRAME_HARNESS_OUTPUT_DIR:-/tmp/newframe-visual-harness}`. The summary records overall duration,
 per-stage duration, screenshots, contract evidence such as transaction/order/request identifiers, and

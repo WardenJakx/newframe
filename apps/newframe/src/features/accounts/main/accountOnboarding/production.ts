@@ -6,6 +6,7 @@ import {
   type OneResultCallback
 } from '../../../../platform/callbacks/oneResult.js'
 import { openFileDialog } from '../../../../platform/desktop/windows/dialog.js'
+import type { HotSignerImport } from '../../../../platform/signing/domain/hotImport.js'
 import type Signer from '../../../../platform/signing/signers/Signer/index.js'
 import { randomLetters } from '../../../../shared/domain/text.js'
 import type { AccountOnboardingPorts, OnboardingSigner } from './service.js'
@@ -36,6 +37,11 @@ export interface ProductionAccountOnboardingExternal {
     newPhrase(callback: OneResultCallback<string>): void
     reload(id: string): void
     remove(id: string): void
+    importHotSigners?<T>(
+      inputs: HotSignerImport[],
+      password: string | undefined,
+      commit: (signers: Signer[]) => T
+    ): T
   }
   store: {
     getState(): {
@@ -54,9 +60,24 @@ export function createProductionAccountOnboardingAdapters(
 ): Pick<AccountOnboardingPorts, 'hardware' | 'keystore' | 'secrets' | 'signers'> & {
   dispose(): void
   protectedOperations: { exportSecret(address: string): Promise<{ type: string; value: string }> }
+  rabby: {
+    importSigners<T>(
+      inputs: HotSignerImport[],
+      password: string | undefined,
+      commit: (signers: Signer[]) => T
+    ): T
+  }
 } {
   const callbacks = createOneResultCallbackBoundary()
   return {
+    rabby: {
+      importSigners(inputs, password, commit) {
+        if (!external.signers.importHotSigners) {
+          throw new Error('Wallet import is unavailable')
+        }
+        return external.signers.importHotSigners(inputs, password, commit)
+      }
+    },
     dispose: () => callbacks.dispose(),
     hardware: {
       configureLattice(deviceId, deviceName) {

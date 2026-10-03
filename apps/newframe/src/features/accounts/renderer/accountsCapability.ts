@@ -35,6 +35,8 @@ export interface AccountsCapability extends ClipboardCapability {
   createAccount(input: CommandInput<'account.create'>): Promise<CommandResult>
   discoverSafeNetworks(address: string, chainId: number): Promise<QueryResultMap['safe.discover']>
   importSigner(input: CommandInput<'signer.import'>): Promise<CommandResult>
+  previewRabby(input: Omit<QueryMap['rabby.preview'], 'type'>): Promise<QueryResultMap['rabby.preview']>
+  importRabby(input: CommandInput<'rabby.import'>): Promise<CommandResult>
 
   startSignerSession(input: CommandInput<'signer.session-start'>): Promise<CommandResult>
   finishSignerSession(input: CommandInput<'signer.session-finish'>): Promise<CommandResult>
@@ -78,6 +80,8 @@ export function createAccountsCapability(host: AccountsHost): AccountsCapability
       return result
     },
     importSigner: (input) => host.executeCommand({ type: 'signer.import', ...input }),
+    previewRabby: (input) => host.executeQuery({ type: 'rabby.preview', ...input }),
+    importRabby: (input) => host.executeCommand({ type: 'rabby.import', ...input }),
 
     startSignerSession: (input) => host.executeCommand({ type: 'signer.session-start', ...input }),
     finishSignerSession: (input) => host.executeCommand({ type: 'signer.session-finish', ...input }),

@@ -19,6 +19,9 @@ export const AccountSchema = z
     status: z.string(),
     signer: z.string(),
     signerStatus: z.string().optional(),
+    rabbySource: z
+      .strictObject({ type: z.string().max(128), derivationPath: z.string().max(256).optional() })
+      .optional(),
     safe: z.record(z.string().regex(/^[1-9][0-9]*$/), SafeDeploymentSchema).optional(),
     agentEnabled: z.boolean().optional(),
     requests: z.record(z.string(), z.unknown()),

@@ -1,9 +1,13 @@
 import type { BiometricUnlockPayload } from '../../secrets/biometrics.js'
 import type canonicalStore from '../../state-store/index.js'
+import type { HotSignerImport } from '../domain/hotImport.js'
 import type { SignerAdapter } from './adapters.js'
 import AirGapAdapter from './airgap/adapter.js'
 import HotSigner from './hot/HotSigner/index.js'
+import { prepareImportedHotSigners, persistImportedHotSigners } from './hot/import.js'
 import hot from './hot/index.js'
+import RingSigner from './hot/RingSigner/index.js'
+import SeedSigner from './hot/SeedSigner/index.js'
 import LatticeAdapter from './lattice/adapter.js'
 import LedgerAdapter from './ledger/adapter.js'
 import type Signer from './Signer/index.js'
@@ -42,6 +46,7 @@ export interface SignersDependencies {
     summary(): { exists: boolean; unlocked: boolean }
     unlock(password: string): string
     unlockWithKey(vaultKey: string): string
+    discardCreated?(vaultKey: string): void
   }
 }
 
@@ -58,7 +63,8 @@ export class Signers {
     private readonly loadHotSigners: (
       signers: Signers,
       vault: SignersDependencies['vault']
-    ) => void = hot.load
+    ) => void = hot.load,
+    private readonly persistImportedSigners: typeof persistImportedHotSigners = persistImportedHotSigners
   ) {
     registeredAdapters.forEach((adapter) => this.addAdapter(adapter))
   }
@@ -232,6 +238,51 @@ export class Signers {
 
   createFromPrivateKey(privateKey: string, password: string, cb: Callback<Signer>) {
     hot.createFromPrivateKey(this.dependencies.vault, this, privateKey, password, this.afterCreate(cb))
+  }
+
+  importHotSigners<T>(
+    inputs: HotSignerImport[],
+    password: string | undefined,
+    commit: (signers: Signer[]) => T
+  ): T {
+    const previousMain = this.dependencies.store.getState().main
+    const hadVault = this.dependencies.vault.exists()
+    const wasUnlocked = this.dependencies.vault.isUnlocked()
+    let key: string | undefined
+    const added: Signer[] = []
+    try {
+      key = inputs.length ? this.dependencies.vault.acquireKey(password) : undefined
+      const records = key ? prepareImportedHotSigners(inputs, key) : []
+      const signers = records.map(
+        (record) =>
+          this.get(record.id) ??
+          (record.type === 'seed'
+            ? new SeedSigner(record, this.dependencies.vault)
+            : new RingSigner(record, this.dependencies.vault))
+      )
+      const fresh = records.filter((record) => !this.exists(record.id))
+      return this.persistImportedSigners(fresh, () => {
+        for (const signer of signers) {
+          if (!this.exists(signer.id)) {
+            added.push(signer)
+            this.attach(signer)
+          }
+        }
+        this.publishAppLockState()
+        return commit(signers)
+      })
+    } catch (error) {
+      for (const signer of added) {
+        this.detach(signer.id, false)?.close()
+      }
+      if (!hadVault && key) {
+        this.dependencies.vault.discardCreated?.(key)
+      } else if (!wasUnlocked) {
+        this.dependencies.vault.lock()
+      }
+      this.dependencies.store.setState({ main: previousMain })
+      throw error
+    }
   }
 
   createFromKeystore(keystore: Keystore, keystorePassword: string, password: string, cb: Callback<Signer>) {

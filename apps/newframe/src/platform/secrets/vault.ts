@@ -149,6 +149,13 @@ class Vault {
     log.info('Vault locked')
   }
 
+  discardCreated(vaultKeyHex: string) {
+    if (this.exists() && this.read().keyHash === hashKey(Buffer.from(vaultKeyHex, 'hex'))) {
+      fs.rmSync(VAULT_PATH)
+      this.key = null
+    }
+  }
+
   // Returns the vault key, creating or unlocking the vault with the given
   // password as needed
   acquireKey(password?: string) {

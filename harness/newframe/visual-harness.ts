@@ -12,6 +12,7 @@ import { createSeedAnvilService } from './services/contracts.ts'
 import { ElectronApplicationService } from './services/electron.ts'
 import { createLocalSafeService } from './services/local-safe.ts'
 import { createLocalTradeService } from './services/local-trade.ts'
+import { RabbyEmulatorService, type RabbyEmulator } from './services/rabby-emulator.ts'
 import type { SafeSeedManifest } from './services/safe-contracts.ts'
 import { AnvilClient } from './visual/anvil-client.ts'
 import { NewframeDriver, waitForElectronPage } from './visual/driver.ts'
@@ -66,14 +67,16 @@ async function bootstrap(services: HarnessRuntime, visual: VisualHarnessRuntime)
   visual.currentStage = 'local Flash service'
   visual.log('local Flash service')
   await services.watch(services.start(createLocalTradeService()))
-  return safeSeed
+  const rabby = await services.start(new RabbyEmulatorService(visual.outputDir, safeSeed))
+  return { safeSeed, rabby }
 }
 
 async function createContext(
   app: ElectronApplication,
   services: HarnessRuntime,
   runtime: VisualHarnessRuntime,
-  safeSeed: SafeSeedManifest
+  safeSeed: SafeSeedManifest,
+  rabby: RabbyEmulator
 ): Promise<VisualHarnessContext> {
   runtime.currentStage = 'wait for tray renderer'
   runtime.log('wait for tray renderer')
@@ -83,6 +86,7 @@ async function createContext(
   return {
     anvil,
     safeSeed,
+    rabby,
     app,
     driver: new NewframeDriver(app, tray, runtime, anvil),
     runtime,
@@ -98,14 +102,16 @@ export async function runVisualHarness() {
   let app: ElectronApplication | undefined
 
   try {
-    const safeSeed = await bootstrap(services, visual)
+    const { safeSeed, rabby } = await bootstrap(services, visual)
 
     visual.currentStage = 'launch electron'
     visual.log('launch electron')
-    app = await services.watch(services.start(new ElectronApplicationService(electron, visual.uiTimeoutMs)))
+    app = await services.watch(
+      services.start(new ElectronApplicationService(electron, visual.uiTimeoutMs, rabby.cameraFile))
+    )
     visual.monitorElectron(app)
 
-    const context = await services.watch(createContext(app, services, visual, safeSeed))
+    const context = await services.watch(createContext(app, services, visual, safeSeed, rabby))
     visual.assertNoUnexpectedRendererErrors()
     for (const stage of visualStages) {
       await services.watch(visual.runStage(context, stage))

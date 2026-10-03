@@ -7,15 +7,23 @@ import { openSecret, sealSecret, type EncryptedSecret } from '../secret.js'
 
 class SeedSigner extends HotSigner {
   encryptedSeed?: EncryptedSecret
+  derivationPaths?: string[]
 
   constructor(
     signer:
-      | { id?: string; addresses?: string[]; network?: string; encryptedSeed?: EncryptedSecret }
+      | {
+          id?: string
+          addresses?: string[]
+          network?: string
+          encryptedSeed?: EncryptedSecret
+          derivationPaths?: string[]
+        }
       | undefined,
     vault: VaultAccess
   ) {
     super(signer, vault)
     this.encryptedSeed = signer?.encryptedSeed
+    this.derivationPaths = signer?.derivationPaths
     this.type = 'seed'
     this.model = 'phrase'
   }
@@ -63,7 +71,10 @@ class SeedSigner extends HotSigner {
   }
 
   protected override persistedSecret() {
-    return { encryptedSeed: this.encryptedSeed }
+    return {
+      encryptedSeed: this.encryptedSeed,
+      ...(this.derivationPaths ? { derivationPaths: this.derivationPaths } : {})
+    }
   }
 
   protected override openPrivateKey(index: number, vaultKeyHex: string) {
@@ -75,7 +86,11 @@ class SeedSigner extends HotSigner {
     let child: HDKey | undefined
     try {
       root = HDKey.fromMasterSeed(seed)
-      child = root.derive(`m/44'/60'/0'/0/${index}`)
+      const derivationPath = this.derivationPaths?.[index] ?? `m/44'/60'/0'/0/${index}`
+      if (this.derivationPaths && !this.derivationPaths[index]) {
+        throw new Error('Account derivation not found')
+      }
+      child = root.derive(derivationPath)
       const privateKey = child.privateKey
       if (!privateKey) {
         throw new Error('Private key not found')

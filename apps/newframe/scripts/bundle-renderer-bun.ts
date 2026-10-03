@@ -1,6 +1,8 @@
 import { copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from 'fs/promises'
 import { dirname, join, relative, resolve } from 'path'
 
+import { browserPolyfills } from './browser-polyfills'
+
 type Renderer = {
   entrypoint: string
   name: string
@@ -91,6 +93,7 @@ async function buildRenderer(renderer: Renderer) {
     target: 'browser',
     reactCompiler: true,
     minify: true,
+    plugins: [browserPolyfills],
     define: {
       global: 'globalThis',
       'process.env.NODE_ENV': JSON.stringify('production')

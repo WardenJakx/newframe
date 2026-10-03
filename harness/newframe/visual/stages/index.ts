@@ -6,6 +6,7 @@ import { harnessAccountStage } from './harness-account.ts'
 import { harnessSignerStage } from './harness-signer.ts'
 import { lockScreenStage } from './lock-screen.ts'
 import { networkOnboardingStage } from './network-onboarding.ts'
+import { rabbyImportStage } from './rabby-import.ts'
 import { resetStateStage } from './reset-state.ts'
 import { safeWatchStage } from './safe-watch.ts'
 import { sendStage } from './send.ts'
@@ -32,6 +33,7 @@ export const visualStages: VisualStage[] = [
   vitalikPositionsStage,
   harnessAccountStage,
   networkOnboardingStage,
+  rabbyImportStage,
   safeWatchStage,
   anvilPositionsStage,
   tradeTicketStage,

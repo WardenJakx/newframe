@@ -5,12 +5,14 @@ import { stripHexPrefix } from '@ethereumjs/util'
 import { app } from 'electron'
 import log from 'electron-log'
 import { Mnemonic, randomBytes } from 'ethers'
-import { z } from 'zod'
 
 import type Signer from '../Signer/index.js'
 import type { VaultAccess } from './HotSigner/index.js'
 import RingSigner from './RingSigner/index.js'
 import SeedSigner from './SeedSigner/index.js'
+import { StoredHotSignerSchema } from './stored.js'
+
+export { StoredHotSignerSchema } from './stored.js'
 
 type VaultPort = VaultAccess & { acquireKey(password?: string): string }
 type SignerCollection = { add(signer: Signer): void; exists(id: string): boolean }
@@ -20,36 +22,6 @@ const USER_DATA = electronApp
   ? electronApp.getPath('userData')
   : path.resolve(import.meta.dirname, '../.userData')
 const SIGNERS_PATH = path.resolve(USER_DATA, 'signers')
-
-const encryptedSecretSchema = (ciphertextBytes: number) =>
-  z.strictObject({
-    algorithm: z.literal('aes-256-gcm'),
-    iv: z.string().regex(/^[0-9a-fA-F]{24}$/),
-    authTag: z.string().regex(/^[0-9a-fA-F]{32}$/),
-    ciphertext: z.string().regex(new RegExp(`^[0-9a-fA-F]{${ciphertextBytes * 2}}$`))
-  })
-
-const StoredSignerBase = {
-  version: z.literal(1),
-  id: z.string().min(1),
-  addresses: z.array(z.string().min(1)),
-  network: z.string().optional()
-}
-
-export const StoredHotSignerSchema = z.discriminatedUnion('type', [
-  z.strictObject({
-    ...StoredSignerBase,
-    type: z.literal('seed'),
-    encryptedSeed: encryptedSecretSchema(64)
-  }),
-  z.strictObject({
-    ...StoredSignerBase,
-    type: z.literal('ring'),
-    encryptedKeys: z.array(encryptedSecretSchema(32))
-  })
-])
-
-export type StoredHotSigner = z.infer<typeof StoredHotSignerSchema>
 
 export const newPhrase = (cb: Callback<string>) => {
   cb(null, Mnemonic.fromEntropy(randomBytes(16)).phrase)
@@ -180,7 +152,10 @@ export const load = (signers: SignerCollection, vault: VaultAccess) => {
 
       const record = parsed.data
       if (
-        (record.type === 'seed' && record.addresses.length !== 100) ||
+        (record.type === 'seed' &&
+          (record.derivationPaths
+            ? record.addresses.length !== record.derivationPaths.length
+            : record.addresses.length !== 100)) ||
         (record.type === 'ring' && record.addresses.length !== record.encryptedKeys.length)
       ) {
         log.warn(`Skipping malformed hot signer record: ${file}`)
