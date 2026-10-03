@@ -31,7 +31,6 @@ type TestProjectedState = ProjectedRecord & {
 type TestStateMessage = {
   changes: Partial<TestProjectedState>
   state: TestProjectedState
-  streamId: string
 }
 
 const authorizeRenderer = mock(
@@ -209,8 +208,7 @@ describe('renderer state stream', () => {
 
     const [channel, snapshot] = sender.send.mock.calls[0]
     expect(channel).toBe(StateMessageChannel)
-    expect(snapshot).toMatchObject({ revision: 0, state: { currentAccount: '' } })
-    expect(typeof snapshot.streamId).toBe('string')
+    expect(snapshot).toMatchObject({ state: { currentAccount: '' } })
     expect(snapshot.state).not.toHaveProperty('main')
     expect(snapshot.state).not.toHaveProperty('lattice')
     expect(snapshot.state).not.toHaveProperty('futureCredential')
@@ -267,7 +265,6 @@ describe('renderer state stream', () => {
 
     expect(sender.send).toHaveBeenCalledTimes(2)
     const update = sender.send.mock.calls[1][1]
-    expect(update).toMatchObject({ baseRevision: 0, revision: 1 })
     expect(Object.keys(update.changes)).toEqual(['assetRates'])
     expect(update.changes.assetRates).toEqual({
       token: { usdRate: 1, source: 'zerion', observedAt: 1 }
@@ -356,7 +353,7 @@ describe('renderer state stream', () => {
     expect(sender.send).toHaveBeenCalledTimes(1)
   })
 
-  it('invalidates a stream when a changed projection cannot be validated', () => {
+  it('withholds changes that cannot be validated until the projection is valid again', () => {
     const { event, sender } = renderer()
     authorizeRenderer.mockReturnValue(authorization('wallet-ui', sender.id))
     expect(connectState(event)).toEqual({ ok: true })
@@ -364,16 +361,14 @@ describe('renderer state stream', () => {
     const state = store.getState()
     store.setState({ main: { ...state.main, launch: 'invalid' as unknown as boolean } })
 
-    expect(sender.send).toHaveBeenCalledTimes(2)
-    expect(sender.send.mock.calls[1][1]).toMatchObject({
-      streamId: sender.send.mock.calls[0][1].streamId,
-      type: 'stream-invalidated'
-    })
-
     store.getState().setAssetRates({
       token: { usdRate: 2, source: 'zerion', observedAt: 2 }
     })
+    expect(sender.send).toHaveBeenCalledTimes(1)
+
+    store.setState({ main: { ...store.getState().main, launch: state.main.launch } })
     expect(sender.send).toHaveBeenCalledTimes(2)
+    expect(Object.keys(sender.send.mock.calls[1][1].changes)).toEqual(['assetRates'])
   })
 
   it('gives the bundled Send/Trade side tray a least-privilege projection', () => {
@@ -490,8 +485,6 @@ describe('renderer state stream', () => {
     })
     expect(sender.send).toHaveBeenCalledTimes(2)
     expect(sender.send.mock.calls[1][1]).toMatchObject({
-      baseRevision: 0,
-      revision: 1,
       changes: { assetRates: { token: { usdRate: 1, source: 'zerion', observedAt: 1 } } }
     })
   })
@@ -537,8 +530,6 @@ describe('renderer state stream', () => {
 
     expect(first.sender.send.mock.calls).toHaveLength(2)
     expect(first.sender.send.mock.calls[1][1]).toMatchObject({
-      baseRevision: 0,
-      revision: 1,
       changes: { operations: { 'first-operation': { status: 'succeeded' } } }
     })
     expect(second.sender.send.mock.calls).toHaveLength(1)

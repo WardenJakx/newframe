@@ -8,23 +8,23 @@ import '../../../generated/styled-system/styles.css'
 import { createSendCapability } from '../../features/transactions/send/renderer/sendService'
 import { createTradeCapability } from '../../features/transactions/trade/renderer/tradeService'
 import link from '../../platform/ipc/renderer/link'
+import type { SideTrayRendererState } from '../../platform/state-sync/contract/projections'
 import { connectRendererState } from '../../platform/state-sync/renderer/connectState'
-import { createRendererStateStore } from '../../platform/state-sync/renderer/rendererStore'
 import { RendererStateProvider } from '../../platform/state-sync/renderer/useAppSelector'
 
 document.addEventListener('dragover', (e) => e.preventDefault())
 document.addEventListener('drop', (e) => e.preventDefault())
 
 async function start() {
-  const state = createRendererStateStore()
-  const disconnect = await connectRendererState('sidetray', state, link)
+  const { state, disconnect } = await connectRendererState<SideTrayRendererState>(link)
+  const stores = { sideTray: state }
   const send = createSendCapability(link)
   const trade = createTradeCapability(link)
   window.addEventListener('beforeunload', () => void disconnect(), { once: true })
   const root = createRoot(document.getElementById('sidetray') as HTMLElement)
   root.render(
     <UIRoot>
-      <RendererStateProvider state={state}>
+      <RendererStateProvider state={stores}>
         <App send={send} trade={trade} />
       </RendererStateProvider>
     </UIRoot>

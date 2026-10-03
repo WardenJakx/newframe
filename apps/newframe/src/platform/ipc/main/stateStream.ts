@@ -1,5 +1,3 @@
-import { randomUUID } from 'crypto'
-
 import type { IpcMainInvokeEvent, WebContents } from 'electron'
 import log from 'electron-log'
 
@@ -9,15 +7,11 @@ import {
   projectionStateSchemas
 } from '../../state-sync/contract/projections.js'
 import {
-  STATE_STREAM_SCHEMA_VERSION,
   StateConnectChannel,
   StateDisconnectChannel,
   StateMessageChannel,
-  StateMessageSchema,
   type RendererState,
-  type StateMessage,
-  type StateSnapshot,
-  type StateUpdateBatch
+  type StateMessage
 } from '../../state-sync/contract/protocol.js'
 import type { RendererAuthorizationRegistry, RendererRole } from './authorization.js'
 
@@ -25,7 +19,6 @@ export interface StateStreamDependencies {
   store: CanonicalStoreReader
   authorizeRenderer: RendererAuthorizationRegistry['authorizeRenderer']
   projectRendererState: typeof import('../../state-sync/main/projections.js').projectRendererState
-  createStreamId?: () => string
 }
 
 interface StateStreamIpcPort {
@@ -47,8 +40,6 @@ export interface StateStream {
 type Connection = {
   role: RendererRole
   windowInstanceId: string
-  streamId: string
-  revision: number
   projection: RendererState
   webContents: WebContents
 }
@@ -96,8 +87,7 @@ function changedTopLevelSlices(previous: RendererState, current: RendererState) 
 export function createStateStream({
   store,
   authorizeRenderer,
-  projectRendererState,
-  createStreamId = randomUUID
+  projectRendererState
 }: StateStreamDependencies): StateStream {
   const connections = new Map<number, Connection>()
   let unregisterHandlers: (() => void) | undefined
@@ -109,19 +99,13 @@ export function createStateStream({
     })
 
   const send = (connection: Connection, message: StateMessage) => {
-    const parsed = StateMessageSchema.safeParse(message)
-    if (!parsed.success) {
-      log.error('Refused to send an invalid renderer state message', parsed.error.issues)
-      return false
-    }
-
     if (connection.webContents.isDestroyed()) {
       connections.delete(connection.webContents.id)
       return false
     }
 
     try {
-      connection.webContents.send(StateMessageChannel, parsed.data)
+      connection.webContents.send(StateMessageChannel, message)
       return true
     } catch (error) {
       connections.delete(connection.webContents.id)
@@ -152,8 +136,6 @@ export function createStateStream({
     const connection: Connection = {
       role: context.clientType,
       windowInstanceId: context.windowInstanceId,
-      streamId: createStreamId(),
-      revision: 0,
       projection,
       webContents: event.sender
     }
@@ -164,14 +146,7 @@ export function createStateStream({
       }
     })
 
-    const snapshot: StateSnapshot = {
-      schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-      streamId: connection.streamId,
-      revision: connection.revision,
-      state: snapshotState
-    }
-
-    if (!send(connection, snapshot)) {
+    if (!send(connection, { state: snapshotState })) {
       return { ok: false, error: 'state_unavailable' } as const
     }
 
@@ -197,28 +172,9 @@ export function createStateStream({
         continue
       }
       const changes = validatedChanges(connection.role, rawChanges)
-      if (!changes) {
-        send(connection, {
-          schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-          streamId: connection.streamId,
-          type: 'stream-invalidated'
-        })
-        connections.delete(connection.webContents.id)
-        continue
-      }
-
-      const revision = connection.revision + 1
-      const update: StateUpdateBatch = {
-        schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-        streamId: connection.streamId,
-        baseRevision: connection.revision,
-        revision,
-        changes
-      }
-
-      if (send(connection, update)) {
+      // Invalid changes stay pending: the next publish retries them against the last sent projection.
+      if (changes && send(connection, { changes })) {
         connection.projection = projection
-        connection.revision = revision
       }
     }
   }
