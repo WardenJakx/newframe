@@ -7,6 +7,7 @@ import type {
   RequestStatus,
   SafeExecutionMetadata,
   SafeTransactionProgress,
+  SigningCapability,
   TxClassification
 } from '../../../contract/requests'
 
@@ -38,6 +39,9 @@ export type RequestItemRequestView = Pick<
 
 export type SignRequestView = RequestViewBase<'sign'> & {
   data: { decodedMessage: string }
+  chainId?: number
+  requestOrigin?: string
+  signingCapability?: Pick<SigningCapability, 'type'>
 }
 
 export type TypedDataRequestView = RequestViewBase<'signTypedData'> & {

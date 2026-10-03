@@ -8,6 +8,7 @@ import FrameBackgroundProvider, {
   type JsonRpcResponse
 } from './frameConnection'
 import { frameStateStore, type ConnectionStatus } from './frameState'
+import { requestOriginFromSender } from './requestOrigin'
 
 type Provider = FrameBackgroundProvider
 
@@ -107,7 +108,6 @@ const originFromUrl = (url?: string) => {
   const path = url.split('/')
   return `${path[0]}//${path[2]}`
 }
-const getOrigin = (sender: { url?: string } = {}) => originFromUrl(sender.url)
 const isInjectedUrl = (url = '') => /^(https?|file):\/\//.test(url)
 
 const subType = (pendingPayload: PendingRequest) => {
@@ -588,7 +588,7 @@ function addStateListeners() {
     }
 
     const id = provider.nextId++
-    const origin = getOrigin(tab ?? sender)
+    const origin = requestOriginFromSender(sender)
     if (!origin) {
       return console.error('No origin found for sender')
     }
@@ -680,7 +680,7 @@ async function addTabListeners() {
     activeTabId = tabId
 
     const tab = await chrome.tabs.get(tabId)
-    const tabOrigin = getOrigin()
+    const tabOrigin = originFromUrl(tab.url)
     if (tabOrigin.startsWith('http') || tabOrigin.startsWith('file')) {
       chrome.tabs
         .sendMessage(tabId, { type: 'embedded:action', action: { type: 'getChainId' } })

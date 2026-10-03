@@ -60,7 +60,8 @@ it('adapts an HTTP exchange to the shared request contract', async () => {
     identity: {
       transport: 'http',
       connectionId: 'http-connection',
-      origin: 'app.example'
+      origin: 'app.example',
+      websiteOrigin: 'https://app.example'
     },
     session: { refresh: 'before-validation' }
   })

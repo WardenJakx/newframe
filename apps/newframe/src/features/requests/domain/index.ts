@@ -6,6 +6,8 @@ import type {
   TransactionRequest
 } from '../contract/requests.js'
 
+export { inspectSiweMessage } from './siwe.js'
+
 export const isCancelableRequest = (status: string): boolean => {
   return !['sent', 'sending', 'verifying', 'confirming', 'confirmed', 'error', 'declined'].includes(status)
 }

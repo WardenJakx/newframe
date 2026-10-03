@@ -117,6 +117,8 @@ function fixture() {
   }
   const approval = Promise.withResolvers<string>()
   const approveTransactionRequest = mock(() => approval.promise)
+  const approveSign = mock(async () => '0xsignature')
+  const approveSafeMessage = mock(async () => ({ status: 'pending' as const }))
   const approveSafeTransaction = mock((..._args: Parameters<SafeTransactionPort['approve']>) => true)
   const executeSafeTransaction = mock(
     async (..._args: Parameters<SafeTransactionPort['execute']>) => `0x${'b'.repeat(64)}`
@@ -160,7 +162,7 @@ function fixture() {
     clock: { delay: async () => undefined },
     network: { rpcMatchesChain: mock(async () => true) },
     provider: {
-      approveSign: mock(),
+      approveSign,
       approveSignTypedData: mock(),
       approveTransactionRequest
     },
@@ -174,6 +176,7 @@ function fixture() {
       execute: executeSafeTransaction,
       status: mock() as never
     },
+    safeMessages: { approve: approveSafeMessage },
     store: { getState: () => state } as never,
     transactionPolicy: { signerCompatibility },
     vault
@@ -193,6 +196,8 @@ function fixture() {
     approval,
     approveSafeTransaction,
     approveTransactionRequest,
+    approveSign,
+    approveSafeMessage,
     requests,
     executeSafeTransaction,
     removeUnsigned,
@@ -208,6 +213,70 @@ describe('prompted request lifecycle', () => {
 
   beforeEach(() => {
     test = fixture()
+  })
+
+  it.each(['direct', 'Safe'] as const)('rejects a bypassed SIWE approval before %s signing', (kind) => {
+    Object.assign(test.state.main, { currentProfile: 'profile', appLock: { locked: false } })
+    Object.assign(test.state.main.accounts[accountId], {
+      profileId: 'profile',
+      signer: signerId,
+      lastSignerType: 'ledger',
+      name: 'Signer',
+      created: 'account:1'
+    })
+    if (kind === 'Safe') {
+      Object.assign(test.state.main.accounts[accountId], {
+        safe: {
+          '1': {
+            chainId: 1,
+            address: accountId,
+            configuration: { owners: [otherAccountId], threshold: 1, version: '1.4.1', nonce: '0' }
+          }
+        }
+      })
+      Object.assign(test.state.main.accounts[otherAccountId], {
+        profileId: 'profile',
+        signer: 'owner-signer',
+        lastSignerType: 'ledger',
+        name: 'Owner',
+        created: 'owner:1'
+      })
+      Object.assign(test.state.main.signers, {
+        'owner-signer': { id: 'owner-signer', type: 'ledger', status: 'ok', addresses: [otherAccountId] }
+      })
+    }
+    const rawMessage = `example.test wants you to sign in with your Ethereum account:\n${accountId}\n\nSign in.\n\nURI: https://example.test/login\nVersion: 1\nChain ID: 1\nNonce: abcdefgh\nIssued At: 2026-10-03T12:00:00Z`
+    const base = transactionRequest('siwe')
+    const request = {
+      ...base,
+      type: 'sign' as const,
+      chainId: 1,
+      data: { decodedMessage: 'hello' },
+      payload: { ...base.payload, method: 'personal_sign', params: [accountId, rawMessage] }
+    }
+    request.authorization!.principal = {
+      kind: 'rpc',
+      transport: 'http',
+      connectionId: 'connection',
+      origin: 'example.test',
+      websiteOrigin: 'https://attacker.test'
+    }
+    request.authorization!.intent = { requestType: 'sign', account: accountId, method: 'personal_sign' }
+    const respond = mock((_response: RPCResponsePayload) => {})
+    test.add(request, respond)
+
+    expect(
+      test.service.approve(
+        request.handlerId,
+        {} as never,
+        undefined,
+        kind === 'Safe' ? otherAccountId : undefined
+      )
+    ).toBeTrue()
+    expect(respond).toHaveBeenCalledTimes(1)
+    expect(respond.mock.calls[0][0]).toMatchObject({ error: { code: 4001 } })
+    expect(test.approveSign).not.toHaveBeenCalled()
+    expect(test.approveSafeMessage).not.toHaveBeenCalled()
   })
 
   it.each(['locked', 'pending', 'settled', 'app-locked', 'non-prompt', 'signature'] as const)(

@@ -231,7 +231,9 @@ export function createWebSocketRpcTransport({
           identity: {
             transport: 'websocket',
             participant,
-            ...(proxiedExtensionRequest ? { websiteOrigin: requestOrigin } : {}),
+            ...(requestOrigin && (!socket.frameExtension || proxiedExtensionRequest)
+              ? { websiteOrigin: requestOrigin }
+              : {}),
             connectionId: socket.id,
             origin,
             capabilities:

@@ -191,6 +191,84 @@ it('accepts a service aggregate only after message identity and EIP-1271 validat
   expect(test.signCounts).toEqual([0, 0])
 })
 
+it.each([
+  ['origin', 'https://attacker.test', safe, 1],
+  ['address', 'https://example.test', '0x2222222222222222222222222222222222222222', 1],
+  ['chain', 'https://example.test', safe, 5]
+] as const)(
+  'blocks a SIWE %s mismatch before Safe coordination or owner signing',
+  async (_kind, websiteOrigin, address, chainId) => {
+    const test = fixture({ ownerCount: 1, threshold: 1 })
+    const rawMessage = `example.test wants you to sign in with your Ethereum account:\n${address}\n\nSign in.\n\nURI: https://example.test/login\nVersion: 1\nChain ID: ${chainId}\nNonce: abcdefgh\nIssued At: 2026-10-03T12:00:00Z`
+    test.request.payload.params = [safe, rawMessage]
+    test.request.authorization = {
+      actionId: 'action',
+      decision: 'prompt',
+      decidedAt: 1,
+      principal: {
+        kind: 'rpc',
+        transport: 'websocket',
+        connectionId: 'connection',
+        origin: 'example.test',
+        websiteOrigin
+      },
+      intent: { requestType: 'sign', account: safe, method: 'personal_sign' }
+    }
+
+    await test.service.approve(test.request, test.owners[0].address, test.context).then(
+      () => {
+        throw new Error('Expected SIWE approval to be rejected')
+      },
+      (error: unknown) => expect(error).toMatchObject({ code: 4001 })
+    )
+    expect(test.signCounts).toEqual([0])
+    expect(test.getMessage).not.toHaveBeenCalled()
+    expect(test.createMessage).not.toHaveBeenCalled()
+  }
+)
+
+it.each(['active', 'origin-changed'] as const)(
+  'checks the Safe SIWE address and origin throughout coordination: %s',
+  async (scenario) => {
+    const test = fixture({ ownerCount: 1, threshold: 1 })
+    const rawMessage = `example.test wants you to sign in with your Ethereum account:\n${safe}\n\nSign in.\n\nURI: https://example.test/login\nVersion: 1\nChain ID: 1\nNonce: abcdefgh\nIssued At: 2026-10-03T12:00:00Z`
+    test.request.payload.params = [safe, rawMessage]
+    test.request.authorization = {
+      actionId: 'action',
+      decision: 'prompt',
+      decidedAt: 1,
+      principal: {
+        kind: 'rpc',
+        transport: 'websocket',
+        connectionId: 'connection',
+        origin: 'example.test',
+        websiteOrigin: 'https://example.test'
+      },
+      intent: { requestType: 'sign', account: safe, method: 'personal_sign' }
+    }
+
+    const pending = test.service.approve(test.request, test.owners[0].address, test.context)
+    if (scenario === 'origin-changed') {
+      const principal = test.request.authorization.principal
+      if (principal.kind !== 'rpc') {
+        throw new Error('Expected RPC origin authority')
+      }
+      principal.websiteOrigin = 'https://attacker.test'
+      await pending.then(
+        () => {
+          throw new Error('Expected changed origin to invalidate SIWE approval')
+        },
+        (error: unknown) =>
+          expect(error).toMatchObject({ message: 'Safe message approval is no longer active.' })
+      )
+      expect(test.signCounts).toEqual([0])
+    } else {
+      expect(await pending).toMatchObject({ status: 'complete' })
+      expect(test.signCounts).toEqual([1])
+    }
+  }
+)
+
 it('does not complete from an invalid service prepared signature', async () => {
   const test = fixture()
   test.validateMessage.mockImplementation(async () => false)

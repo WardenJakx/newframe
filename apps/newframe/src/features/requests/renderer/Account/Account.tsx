@@ -356,7 +356,11 @@ function AccountBody(props: AccountBodyProps) {
             req={request}
             originName={origins[request.origin]?.name || request.origin}
             favicon={persistedImageSource(origins[request.origin]?.image)}
-            signingAddress={signingAccount?.address ?? request.account}
+            signingAddress={
+              signingAccount?.safe?.[String(request.chainId)]?.address ??
+              signingAccount?.address ??
+              request.account
+            }
           />
         )
       }

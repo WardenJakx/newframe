@@ -80,7 +80,8 @@ describe('wallet action authority', () => {
     const principal = createLocalApiSource({
       transport: 'websocket',
       connectionId: 'socket-1',
-      origin: 'app.example'
+      origin: 'app.example',
+      websiteOrigin: 'https://app.example:8443'
     })
 
     expect(authorizeGatewayOperation(principal, request())).toMatchObject({
@@ -91,7 +92,8 @@ describe('wallet action authority', () => {
           kind: 'rpc',
           transport: 'websocket',
           connectionId: 'socket-1',
-          origin: 'app.example'
+          origin: 'app.example',
+          websiteOrigin: 'https://app.example:8443'
         }
       }
     })
