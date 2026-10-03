@@ -8,6 +8,7 @@ import FrameBackgroundProvider, {
   type JsonRpcResponse
 } from './frameConnection'
 import { frameStateStore, type ConnectionStatus } from './frameState'
+import { isRecord, messageSource, originFromUrl, tabFromMessage, type TabLike } from './messageSource'
 
 type Provider = FrameBackgroundProvider
 
@@ -68,46 +69,20 @@ interface DappPayload {
 
 interface ExtensionPayload {
   id?: number
-  location?: unknown
+  chainId?: unknown
   method: string
   params?: unknown[]
-  src?: string
-  tab?: chrome.tabs.Tab
+  tab?: unknown
 }
-
-interface TabLike {
-  id?: number
-  url?: string
-}
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === 'object' && !Array.isArray(value)
 
 const isDappPayload = (value: unknown): value is DappPayload => isRecord(value)
 const isExtensionPayload = (value: unknown): value is ExtensionPayload =>
   isRecord(value) && typeof value.method === 'string'
 
-function tabFromMessage(value: unknown): TabLike | undefined {
-  if (!isRecord(value)) {
-    return undefined
-  }
-  const id = typeof value.id === 'number' ? value.id : undefined
-  const url = typeof value.url === 'string' ? value.url : undefined
-  return id === undefined && url === undefined ? undefined : { id, url }
-}
-
 const subs: Record<string, Subscription> = {}
 const pending: Record<string, PendingRequest> = {}
 
 // helper functions
-const originFromUrl = (url?: string) => {
-  if (!url) {
-    return ''
-  }
-  const path = url.split('/')
-  return `${path[0]}//${path[2]}`
-}
-const getOrigin = (sender: { url?: string } = {}) => originFromUrl(sender.url)
 const isInjectedUrl = (url = '') => /^(https?|file):\/\//.test(url)
 
 const subType = (pendingPayload: PendingRequest) => {
@@ -437,68 +412,82 @@ function destroyProvider() {
 }
 
 function addStateListeners() {
-  function setMediaBlob(blobUrl: string, location: unknown, message?: string) {
-    const mediaWindow = window as Window & {
-      __setMediaBlob__?(blobUrl: string, location: unknown, message?: string): void
-    }
-    mediaWindow.__setMediaBlob__!(blobUrl, location, message)
-  }
-
   async function handleMessage(extensionPayload: unknown, sender: chrome.runtime.MessageSender) {
     await connectionReady
     if (!isExtensionPayload(extensionPayload)) {
       return
     }
-    const { tab, ...payload } = extensionPayload
+    const { tab: payloadTab, ...payload } = extensionPayload
     const { method, params = [] } = payload
+    const source = messageSource(sender, payloadTab, chrome.runtime.getURL('settings.html'))
 
-    console.debug('Message received from tab', { tab, payload })
+    console.debug('Message received', { source, payload })
 
-    if (payload.method === 'embedded_action_res') {
+    if (source.kind === 'settings') {
+      return handleSettingsMessage(payload, source.tab)
+    }
+    if (source.kind !== 'page') {
+      return
+    }
+
+    if (method === 'embedded_action_res') {
       const [action, res] = params
       if (
+        source.tabId === activeTabId &&
+        source.frameId === 0 &&
         isRecord(action) &&
         action.type === 'getChainId' &&
         isRecord(res) &&
         typeof res.chainId === 'string'
       ) {
-        return setCurrentChain(res.chainId)
+        setCurrentChain(res.chainId)
       }
-    } else if (payload.method === 'media_blob') {
-      const location = payload.location
-      const tabId = sender.tab?.id
-
-      if (typeof payload.src !== 'string' || tabId === undefined) {
-        return
-      }
-
-      try {
-        const res = await fetch(payload.src)
-        const blob = await res.blob()
-        const blobURL = URL.createObjectURL(blob)
-
-        chrome.scripting
-          .executeScript({
-            target: { tabId },
-            func: setMediaBlob,
-            args: [blobURL, location]
-          })
-          .catch(console.error)
-      } catch (e) {
-        chrome.scripting
-          .executeScript({
-            target: { tabId },
-            func: setMediaBlob,
-            args: ['', location, (e as Error).message]
-          })
-          .catch(console.error)
-      }
+      return
     }
 
-    if (payload.method === 'frame_retry_connection') {
-      if (sender.tab || sender.url !== chrome.runtime.getURL('settings.html')) {
-        return
-      }
+    if (!provider?.isConnected() || !dappConnection) {
+      const rejected = frameStateStore.getState().connectionStatus === 'extension-approval-rejected'
+      await chrome.tabs.sendMessage(source.tabId, {
+        type: 'eth:payload',
+        id: payload.id,
+        jsonrpc: '2.0',
+        error: rejected
+          ? { code: 4001, message: 'Connection declined. Click Retry connection in Newframe Companion.' }
+          : { code: 4900, message: 'Not connected' }
+      })
+      return
+    }
+
+    if (typeof payload.id !== 'number') {
+      return
+    }
+    const id = provider.nextId++
+    pending[id] = {
+      tabId: source.tabId,
+      payloadId: payload.id,
+      method,
+      params,
+      origin: source.origin
+    }
+
+    // forward only request content from the page; identity comes from the sender
+    const load: JsonRpcPayload = {
+      jsonrpc: '2.0',
+      id,
+      method,
+      params,
+      chainId: typeof payload.chainId === 'string' ? payload.chainId : undefined,
+      __frameOrigin: source.origin,
+      __frameFavicon: source.favIconUrl
+    }
+
+    dappConnection.send(load)
+  }
+
+  async function handleSettingsMessage(payload: Omit<ExtensionPayload, 'tab'>, tab?: TabLike) {
+    const { method, params = [] } = payload
+
+    if (method === 'frame_retry_connection') {
       if (retrying || frameStateStore.getState().connectionStatus === 'connected') {
         return
       }
@@ -521,29 +510,19 @@ function addStateListeners() {
       return
     }
 
-    if (payload.method === 'frame_disconnect_current_site') {
-      if (sender.tab) {
-        return
-      }
-
+    if (method === 'frame_disconnect_current_site') {
       await disconnectActiveOrigin(tab)
       return
     }
 
-    if (payload.method === 'frame_refresh_origin_status') {
-      if (sender.tab) {
-        return
-      }
-
+    if (method === 'frame_refresh_origin_status') {
       await Promise.all([refreshExtensionAccounts(), refreshActiveOriginStatus(tab)])
       return
     }
 
-    const fromSettings = !sender.tab && sender.url === chrome.runtime.getURL('settings.html')
-
-    if (payload.method === 'frame_select_account') {
+    if (method === 'frame_select_account') {
       const [address] = params
-      if (!fromSettings || typeof address !== 'string' || !provider?.isConnected()) {
+      if (typeof address !== 'string' || !provider?.isConnected()) {
         return
       }
 
@@ -552,8 +531,8 @@ function addStateListeners() {
       return
     }
 
-    if (payload.method === 'frame_request_accounts') {
-      if (!fromSettings || !provider?.isConnected()) {
+    if (method === 'frame_request_accounts') {
+      if (!provider?.isConnected()) {
         return
       }
 
@@ -562,34 +541,29 @@ function addStateListeners() {
       return
     }
 
-    if (payload.method === 'frame_refresh_chains') {
-      if (sender.tab) {
-        return
-      }
-
+    if (method === 'frame_refresh_chains') {
       await fetchAvailableChains()
       return
     }
 
-    if (
-      payload.method === 'wallet_switchEthereumChain' &&
-      !sender.tab &&
-      sender.url === chrome.runtime.getURL('settings.html')
-    ) {
-      const requestedTab = tabFromMessage(tab)
+    if (method === 'frame_summon') {
+      return provider?.client.extension.summon.mutate({})
+    }
+
+    if (method === 'wallet_switchEthereumChain') {
       const activeTabs: unknown = await chrome.tabs.query({ active: true, currentWindow: true })
       const activeTab = Array.isArray(activeTabs) ? tabFromMessage(activeTabs[0]) : undefined
       const [switchParams] = params
       const chainId = isRecord(switchParams) ? switchParams.chainId : undefined
-      const origin = originFromUrl(requestedTab?.url)
+      const origin = originFromUrl(tab?.url)
       const activeOrigin = originFromUrl(activeTab?.url)
       const parsedChainId =
         typeof chainId === 'string' && /^0x[0-9a-f]+$/i.test(chainId) ? BigInt(chainId) : 0n
 
       if (
-        requestedTab?.id === undefined ||
-        activeTab?.id !== requestedTab.id ||
-        !isInjectedUrl(requestedTab.url ?? '') ||
+        tab?.id === undefined ||
+        activeTab?.id !== tab.id ||
+        !isInjectedUrl(tab.url ?? '') ||
         !isInjectedUrl(activeTab.url ?? '') ||
         !origin ||
         activeOrigin !== origin ||
@@ -608,57 +582,7 @@ function addStateListeners() {
         __extensionConnecting: true
       })
       await refreshActiveOriginStatus(activeTab)
-      return
     }
-
-    if (payload.method === 'frame_summon') {
-      return provider?.client.extension.summon.mutate({})
-    }
-
-    if (!provider?.isConnected() || !dappConnection) {
-      const tabId = sender.tab?.id ?? tab?.id
-      if (tabId === undefined) {
-        return
-      }
-      const rejected = frameStateStore.getState().connectionStatus === 'extension-approval-rejected'
-      await chrome.tabs.sendMessage(tabId, {
-        type: 'eth:payload',
-        id: payload.id,
-        jsonrpc: '2.0',
-        error: rejected
-          ? { code: 4001, message: 'Connection declined. Click Retry connection in Newframe Companion.' }
-          : { code: 4900, message: 'Not connected' }
-      })
-      return
-    }
-
-    const id = provider.nextId++
-    const origin = getOrigin(tab ?? sender)
-    if (!origin) {
-      return console.error('No origin found for sender')
-    }
-    const tabId = sender.tab?.id ?? tab?.id
-    if (tabId === undefined || typeof payload.id !== 'number') {
-      return
-    }
-    pending[id] = {
-      tabId,
-      payloadId: payload.id,
-      method,
-      params,
-      origin
-    }
-
-    const load: JsonRpcPayload & { __frameFavicon?: string } = {
-      ...payload,
-      jsonrpc: '2.0',
-      id,
-      __frameOrigin: origin,
-      __frameFavicon: sender.tab?.favIconUrl,
-      __extensionConnecting: undefined
-    }
-
-    dappConnection.send(load)
   }
 
   chrome.runtime.onMessage.addListener((extensionPayload, sender) => {
@@ -725,7 +649,7 @@ async function addTabListeners() {
     activeTabId = tabId
 
     const tab = await chrome.tabs.get(tabId)
-    const tabOrigin = getOrigin()
+    const tabOrigin = originFromUrl(tab.url)
     if (tabOrigin.startsWith('http') || tabOrigin.startsWith('file')) {
       chrome.tabs
         .sendMessage(tabId, { type: 'embedded:action', action: { type: 'getChainId' } })
