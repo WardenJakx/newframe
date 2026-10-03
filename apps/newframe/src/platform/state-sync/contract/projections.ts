@@ -240,6 +240,7 @@ export const WalletRequestSchema = z
     ]),
     handlerId: z.string(),
     origin: z.string().optional(),
+    requestOrigin: z.string().optional(),
     payload: z.unknown().optional(),
     account: z.string().optional(),
     chainId: z.number().int().positive().optional(),

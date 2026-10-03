@@ -196,7 +196,8 @@ export function createHttpRpcTransport({
         identity: {
           transport: 'http',
           connectionId: createConnectionId(),
-          origin
+          origin,
+          ...(req.headers.origin ? { websiteOrigin: req.headers.origin } : {})
         },
         session: { monitor: sessionMonitor, refresh: 'before-validation' },
         acceptsProviderResponse: () => !res.writableEnded,

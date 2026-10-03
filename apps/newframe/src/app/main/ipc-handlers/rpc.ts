@@ -51,6 +51,7 @@ import type {
   TypedMessage
 } from '../../../features/requests/contract/requests.js'
 import { ApprovalType } from '../../../features/requests/domain/approval.js'
+import { inspectSiweMessage } from '../../../features/requests/domain/siwe.js'
 import type { PromptedRequestContinuationPort } from '../../../features/requests/main/service.js'
 import { toTokenId } from '../../../features/tokens/domain/index.js'
 import type { Token } from '../../../features/tokens/domain/state/token.js'
@@ -1085,6 +1086,24 @@ export class RpcIpcHandlers extends EventEmitter {
       return resError('Sign request is not from currently selected account', payload, res)
     }
 
+    let signingChainId = chainId ?? this.parseTargetChain(payload)?.id ?? 1
+    const safeDeployments = this.accounts.get(currentAccount.id)?.safe
+    if (safeDeployments) {
+      const inspection = inspectSiweMessage(decodeMessage(encodePersonalSignMessage(message)), undefined, {
+        isContractAccount: true
+      })
+      if (inspection.kind === 'siwe') {
+        if (!Number.isSafeInteger(inspection.parsed.chainId) || inspection.parsed.chainId <= 0) {
+          return resError(
+            { code: 4001, message: 'The sign-in chain is not supported for this Safe.' },
+            payload,
+            res
+          )
+        }
+        signingChainId = inspection.parsed.chainId
+      }
+    }
+
     const handlerId = this.requests.create(res)
 
     const req = {
@@ -1092,7 +1111,7 @@ export class RpcIpcHandlers extends EventEmitter {
       type: 'sign',
       payload,
       account: currentAccount.getAccounts()[0],
-      chainId: chainId ?? this.parseTargetChain(payload)?.id ?? 1,
+      chainId: signingChainId,
       origin: payload._origin,
       data: {
         decodedMessage: decodeMessage(message)

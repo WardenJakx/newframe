@@ -8,7 +8,8 @@ import {
   feeTotalOverMax,
   getSignedAddress,
   resError,
-  encodePersonalSignMessage
+  encodePersonalSignMessage,
+  decodeMessage
 } from '../../../features/connections/main/provider/helpers.js'
 import type { Chain, Chains } from '../../../features/networks/main/index.js'
 import type {
@@ -18,6 +19,8 @@ import type {
   TypedMessage
 } from '../../../features/requests/contract/requests.js'
 import { isSignatureRequest } from '../../../features/requests/domain/index.js'
+import { inspectSiweMessage } from '../../../features/requests/domain/siwe.js'
+import { siweSigningBlock } from '../../../features/requests/main/siweSigning.js'
 import {
   applyTransactionAdjustments,
   type TransactionApprovalAdjustments
@@ -177,6 +180,10 @@ export class ProtectedOperationsService {
   approveSign(req: AccountRequest, cb: Callback<string>, context?: SigningUiContext) {
     const [addressValue, rawMessageValue] = arrayValue(req.payload.params)
     const address = typeof addressValue === 'string' ? addressValue : ''
+    const blockedReason = siweSigningBlock(req, { signingAddress: address })
+    if (blockedReason) {
+      return cb(Object.assign(new Error(blockedReason), { code: 4001 }))
+    }
     const rawMessage = typeof rawMessageValue === 'string' ? rawMessageValue : ''
     const message = encodePersonalSignMessage(rawMessage)
 
@@ -469,6 +476,12 @@ export class ProtectedOperationsService {
     principal: AiSessionClientSource,
     respond: RPCRequestCallback
   ) {
+    const inspection = inspectSiweMessage(decodeMessage(message), undefined, {
+      signingAddress: principal.aiSession.accountId
+    })
+    if (inspection.kind === 'siwe' && inspection.blockedReason) {
+      return resError({ code: 4001, message: inspection.blockedReason }, normalizedPayload, respond)
+    }
     const account = this.aiSessionAccount(
       principal,
       arrayValue(normalizedPayload.params)[0],

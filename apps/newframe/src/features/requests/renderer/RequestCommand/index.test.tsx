@@ -3,7 +3,7 @@ import { beforeEach, expect, it, mock } from 'bun:test'
 import { act, fireEvent, render, screen } from '../../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
 import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support'
-import type { SigningCandidate } from '../../contract/requests'
+import type { SignatureRequest, SigningCandidate } from '../../contract/requests'
 import {
   createRequestRendererCapabilitiesFake as createRequestPortsFake,
   type RequestRendererCapabilitiesFake
@@ -149,6 +149,81 @@ it('uses the projected signature capability instead of a direct account signer a
   render(<RequestCommand {...createProps(false, req, false)} />)
 
   expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Sign' }).disabled).toBe(false)
+})
+
+function signInRequest(origin = 'https://example.test'): Extract<SignatureRequest, { type: 'sign' }> {
+  const address = '0x0000000000000000000000000000000000000001'
+  const decodedMessage = `example.test wants you to sign in with your Ethereum account:
+${address}
+
+Sign in to manage your account.
+
+URI: https://example.test/login
+Version: 1
+Chain ID: 1
+Nonce: abcdefgh
+Issued At: 2026-10-03T12:00:00Z`
+  return {
+    type: 'sign',
+    handlerId: 'sign-in-request',
+    account: address,
+    chainId: 1,
+    origin: 'origin-1',
+    requestOrigin: origin,
+    payload: { id: 1, jsonrpc: '2.0', method: 'personal_sign', params: [address, decodedMessage] },
+    data: { decodedMessage },
+    authorization: {
+      actionId: 'action-1',
+      decision: 'prompt',
+      decidedAt: 1,
+      principal: {
+        kind: 'rpc',
+        transport: 'websocket',
+        connectionId: 'connection-1',
+        origin,
+        websiteOrigin: origin
+      },
+      intent: { requestType: 'sign', account: address, method: 'personal_sign' }
+    },
+    signingCapability: { type: 'direct', status: 'ready', candidates: [] }
+  }
+}
+
+it.each(['direct', 'safe'] as const)(
+  'blocks origin mismatches before %s signature approval',
+  async (type) => {
+    const req = signInRequest('https://attacker.test')
+    if (type === 'safe') {
+      req.signingCapability = {
+        type: 'safe',
+        status: 'ready',
+        chainId: 1,
+        configured: true,
+        threshold: 1,
+        coordination: 'service',
+        candidates: [safeOwner(1)]
+      }
+    }
+    const { user } = render(<RequestCommand {...createProps(false, req)} />)
+    const sign = screen.getByRole<HTMLButtonElement>('button', { name: 'Sign-in blocked' })
+    expect(sign.disabled).toBe(true)
+    await user.click(sign)
+    expect(capabilities.review.approve).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Decline' }))
+    expect(capabilities.review.reject).toHaveBeenCalledWith({ requestId: req.handlerId })
+  }
+)
+
+it('allows a matching SIWE request and blocks an address mismatch', async () => {
+  const req = signInRequest()
+  const props = createProps(false, req)
+  const { user, rerender } = render(<RequestCommand {...props} />)
+  const sign = screen.getByRole<HTMLButtonElement>('button', { name: 'Sign' })
+  expect(sign.disabled).toBe(false)
+  await user.click(sign)
+  expect(capabilities.review.approve).toHaveBeenCalledWith({ requestId: req.handlerId })
+  rerender(<RequestCommand {...props} signingAddress='0x0000000000000000000000000000000000000002' />)
+  expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Sign-in blocked' }).disabled).toBe(true)
 })
 
 const safeOwner = (index: number, status: 'ready' | 'unavailable' = 'ready') => ({

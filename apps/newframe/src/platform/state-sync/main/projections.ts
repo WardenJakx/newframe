@@ -402,6 +402,10 @@ function projectWalletAccounts(main: CanonicalMain) {
           }
           requests[requestId] = {
             ...request,
+            requestOrigin:
+              request.type === 'sign' && request.authorization?.principal.kind === 'rpc'
+                ? request.authorization.principal.websiteOrigin
+                : undefined,
             signingCapability: deriveSigningCapability(
               request,
               profileAccounts,

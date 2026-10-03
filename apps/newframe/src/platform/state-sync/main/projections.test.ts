@@ -4,7 +4,7 @@ import { Wallet } from 'ethers'
 
 import { DEFAULT_PROFILE_ID } from '../../../app/contracts/state/main'
 import type { SafeDeployment } from '../../../features/accounts/domain/safe'
-import { TxClassification } from '../../../features/requests/contract/requests'
+import { TxClassification, type SignatureRequest } from '../../../features/requests/contract/requests'
 import { GasFeesSource } from '../../../features/transactions/domain'
 import createInitialState from '../../state-store/state'
 import { projectionStateSchemas } from '../contract/projections'
@@ -49,6 +49,49 @@ const signer = (id: string, type: string, status = 'ok') => ({
   addresses: [ownerAddress],
   appVersion: { major: 1, minor: 0, patch: 0 }
 })
+
+it.each(['https://browser.test', undefined])(
+  'projects only the canonical website origin for SIWE review: %s',
+  (websiteOrigin) => {
+    const state = createInitialState()
+    const request: Extract<SignatureRequest, { type: 'sign' }> = {
+      type: 'sign',
+      handlerId: 'sign-in-request',
+      account: safeAddress,
+      origin: 'display-name.test',
+      requestOrigin: 'https://spoofed.test',
+      chainId: 1,
+      data: { decodedMessage: 'hello' },
+      payload: { id: 1, jsonrpc: '2.0', method: 'personal_sign', params: [safeAddress, 'hello'] },
+      authorization: {
+        actionId: 'action-1',
+        decision: 'prompt',
+        decidedAt: 1,
+        principal: {
+          kind: 'rpc',
+          transport: 'websocket',
+          connectionId: 'connection-1',
+          origin: 'display-name.test',
+          ...(websiteOrigin ? { websiteOrigin } : {})
+        },
+        intent: { requestType: 'sign', account: safeAddress, method: 'personal_sign' }
+      }
+    }
+    state.main.accounts = {
+      [safeAddress]: {
+        ...account(safeAddress, DEFAULT_PROFILE_ID),
+        requests: { [request.handlerId]: request }
+      }
+    }
+    state.main.accountOrder = [safeAddress]
+    const projected = projectionStateSchemas['wallet-ui'].parse(
+      JSON.parse(JSON.stringify(projectWalletState(state)))
+    ).accounts[safeAddress].requests[request.handlerId]
+    expect(projected.requestOrigin).toBe(websiteOrigin)
+    expect(projected).not.toHaveProperty('authorization')
+    expect(request.requestOrigin).toBe('https://spoofed.test')
+  }
+)
 
 function safeTransactionState(deployment: SafeDeployment, safeTxHash: string) {
   const state = createInitialState()

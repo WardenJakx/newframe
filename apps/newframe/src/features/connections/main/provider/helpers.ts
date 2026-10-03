@@ -23,8 +23,7 @@ export function decodeMessage(rawMessage: string) {
     return buff.length === 32 || !isUtf8(buff) ? rawMessage : buff.toString('utf8')
   }
 
-  // replace all multiple line returns with just one to prevent excess space in message
-  return rawMessage.replaceAll(/[\n\r]+/g, '\n')
+  return rawMessage
 }
 
 export function checkExistingNonceGas(

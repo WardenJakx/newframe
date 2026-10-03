@@ -124,3 +124,41 @@ it('closes an oversized WebSocket message before dispatch', () => {
   expect(closeCode).toBe(1009)
   expect(dispatched).toBe(false)
 })
+
+it('keeps the direct WebSocket origin and ignores untrusted companion origin metadata', async () => {
+  let captured: RpcRequestDescription | undefined
+  const server = new FakeWebSocketServer()
+  const transport = createWebSocketRpcTransport({
+    provider: new FakeProvider(),
+    store: { endOriginSession: () => undefined },
+    origins: { parseFrameExtension: () => undefined } as never,
+    requestHandler: async (request) => {
+      captured = request
+    },
+    windows: { toggleTray: () => undefined },
+    createServer: () => server,
+    openReadyState: 1
+  })
+  const socket = Object.assign(new EventEmitter(), { readyState: 1, send: () => undefined })
+  transport.start({} as never)
+  server.emit('connection', socket, { headers: { origin: 'http://localhost:3000' }, url: '/' })
+  socket.emit(
+    'message',
+    Buffer.from(
+      JSON.stringify({
+        id: 1,
+        jsonrpc: '2.0',
+        method: 'personal_sign',
+        params: [],
+        __frameOrigin: 'https://spoofed.example'
+      })
+    )
+  )
+  await Bun.sleep(0)
+
+  expect(captured?.identity).toMatchObject({
+    origin: 'localhost:3000',
+    websiteOrigin: 'http://localhost:3000'
+  })
+  transport.dispose()
+})

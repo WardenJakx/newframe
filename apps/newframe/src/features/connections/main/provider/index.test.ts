@@ -1412,6 +1412,54 @@ describe('#send', () => {
       const params = [message, '0xa4581bfe76201f3aa147cce8e360140582260441']
       expect((await sendResult({ method: 'personal_sign', params })).error).toBeTruthy()
     })
+
+    it.each(['plaintext', 'hex'] as const)(
+      'uses the SIWE chain for a Safe and preserves the %s message bytes',
+      async (format) => {
+        accounts.get.mockImplementation((addr) =>
+          addr === address
+            ? {
+                id: address,
+                address,
+                lastSignerType: 'safe',
+                safe: { '1': { address }, '5': { address } }
+              }
+            : undefined
+        )
+        const rawMessage = `frame.test wants you to sign in with your Ethereum account:\n${address}\n\nSign in.\n\nURI: https://frame.test/login\nVersion: 1\nChain ID: 5\nNonce: abcdefgh\nIssued At: 2026-10-03T12:00:00Z`
+        const requestedMessage =
+          format === 'hex' ? addHexPrefix(Buffer.from(rawMessage).toString('hex')) : rawMessage
+        await send({ method: 'personal_sign', params: [requestedMessage, address] })
+
+        expect(accountRequests[0]).toMatchObject({
+          type: 'sign',
+          chainId: 5,
+          data: { decodedMessage: rawMessage },
+          payload: { params: [address, requestedMessage] }
+        })
+      }
+    )
+
+    it('rejects an unrepresentable SIWE Safe chain before allocating a signing request', async () => {
+      accounts.get.mockImplementation((addr) =>
+        addr === address
+          ? {
+              id: address,
+              address,
+              lastSignerType: 'safe',
+              safe: { '1': { address } }
+            }
+          : undefined
+      )
+      const rawMessage = `frame.test wants you to sign in with your Ethereum account:\n${address}\n\nSign in.\n\nURI: https://frame.test/login\nVersion: 1\nChain ID: 9007199254740993\nNonce: abcdefgh\nIssued At: 2026-10-03T12:00:00Z`
+      const response = await sendResult({ method: 'personal_sign', params: [rawMessage, address] })
+      expect(responseError(response)).toEqual({
+        code: 4001,
+        message: 'The sign-in chain is not supported for this Safe.'
+      })
+      expect(accountRequests).toHaveLength(0)
+      expect(requestContinuations.callbacks.size).toBe(0)
+    })
   })
 
   describe('#eth_signTypedData', () => {

@@ -15,6 +15,7 @@ import type { SigningUiContext } from '../../../platform/signing/signers/Signer/
 import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.js'
 import type { SignatureRequest, SafeMessageProgress } from '../../requests/contract/requests.js'
 import { isTypedMessageSignatureRequest } from '../../requests/domain/index.js'
+import { siweSigningBlock } from '../../requests/main/siweSigning.js'
 import type { SafeConfiguration } from '../domain/safe.js'
 import type FrameAccount from './Account.js'
 import { deriveSigningCandidate } from './signingCapability.js'
@@ -144,8 +145,23 @@ export function createSafeMessageService({ store, accounts, client, clock }: Saf
   const requestState = (entry: Entry) =>
     accountState(entry.accountId)?.requests[entry.requestId] as SignatureRequest | undefined
 
-  const active = (entry: Entry) =>
-    !disposed && !entry.controller.signal.aborted && !entry.settled && Boolean(requestState(entry))
+  const active = (entry: Entry) => {
+    const request = requestState(entry)
+    return (
+      !disposed &&
+      !entry.controller.signal.aborted &&
+      !entry.settled &&
+      Boolean(
+        request &&
+        messageKey(originalMessage(request)) === entry.originalKey &&
+        !siweSigningBlock(request, {
+          signingAddress: entry.safeAddress,
+          isContractAccount: true,
+          chainId: entry.chainId
+        })
+      )
+    )
+  }
 
   const patchProgress = (entry: Entry, progress: SafeMessageProgress) => {
     accounts.getFrameAccount(entry.accountId)?.patchRequest<SignatureRequest>(entry.requestId, (request) => {
@@ -174,11 +190,17 @@ export function createSafeMessageService({ store, accounts, client, clock }: Saf
   }
 
   const freshConfiguration = async (entry: Entry) => {
+    if (!active(entry)) {
+      throw new Error('Safe message approval is no longer active.')
+    }
     const configuration = await client.configuration(
       entry.chainId,
       entry.safeAddress,
       entry.controller.signal
     )
+    if (!active(entry)) {
+      throw new Error('Safe message approval is no longer active.')
+    }
     if (configurationFingerprint(configuration) !== entry.fingerprint) {
       cancel(entry, 'Safe owners, threshold, or version changed. Review the request again.')
       throw new Error('Safe owners, threshold, or version changed. Review the request again.')
@@ -235,6 +257,9 @@ export function createSafeMessageService({ store, accounts, client, clock }: Saf
   }
 
   const complete = (entry: Entry, signature: string): SafeMessageApprovalResult => {
+    if (!active(entry)) {
+      throw new Error('Safe message approval is no longer active.')
+    }
     entry.settled = true
     progress(entry, 'complete')
     return { status: 'complete', signature }
@@ -441,6 +466,15 @@ export function createSafeMessageService({ store, accounts, client, clock }: Saf
     ): Promise<SafeMessageApprovalResult> {
       if (disposed) {
         throw new Error('Safe message service is disposed.')
+      }
+      const deployment = accountState(request.account)?.safe?.[String(request.chainId)]
+      const blockedReason = siweSigningBlock(request, {
+        signingAddress: deployment?.address ?? request.account,
+        isContractAccount: true,
+        chainId: request.chainId
+      })
+      if (blockedReason) {
+        throw Object.assign(new Error(blockedReason), { code: 4001 })
       }
       let entry = entries.get(request.handlerId)
       entry ??= await createEntry(request)

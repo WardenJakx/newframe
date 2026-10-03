@@ -115,7 +115,8 @@ function summarizeRequestSource(principal: RequestSource): RequestAuthorization[
       kind: 'rpc',
       transport: principal.transport,
       connectionId: principal.connectionId,
-      origin: principal.origin
+      origin: principal.origin,
+      ...(principal.websiteOrigin ? { websiteOrigin: principal.websiteOrigin } : {})
     }
   }
 

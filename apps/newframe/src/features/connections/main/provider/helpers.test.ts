@@ -44,6 +44,13 @@ describe('#decodeMessage', () => {
   it('leaves invalid UTF-8 hex messages encoded', () => {
     expect(decodeMessage('0xc328')).toBe('0xc328')
   })
+
+  it('preserves the original plaintext and hex line breaks for SIWE parsing', () => {
+    const message =
+      'example.test wants you to sign in with your Ethereum account:\naddress\n\nstatement\n\nURI: https://example.test'
+    expect(decodeMessage(message)).toBe(message)
+    expect(decodeMessage(encodePersonalSignMessage(message))).toBe(message)
+  })
 })
 
 describe('#encodePersonalSignMessage', () => {

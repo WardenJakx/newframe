@@ -39,6 +39,7 @@ import type {
 import { ReplacementType } from '../contract/requests.js'
 import type { ApprovalType } from '../domain/approval.js'
 import { isSignatureRequest, isTransactionRequest, isTypedMessageSignatureRequest } from '../domain/index.js'
+import { siweSigningBlock } from './siweSigning.js'
 
 const FEE_WARNING_THRESHOLD_USD = 50
 
@@ -367,6 +368,20 @@ export function createRequestService(ports: RequestServicePorts) {
     const key = approvalKey(request.handlerId, selectedId)
     if (approvalsInFlight.has(key)) {
       return true
+    }
+
+    if (isSignatureRequest(request) && request.type === 'sign') {
+      const signingAccount = ports.accounts.get(request.account)
+      const safe = signingAccount?.safe?.[String(request.chainId)]
+      const blockedReason = siweSigningBlock(request, {
+        signingAddress: safe?.address ?? signingAccount?.address ?? request.account,
+        isContractAccount: Boolean(signingAccount?.safe),
+        ...(safe ? { chainId: safe.chainId } : {})
+      })
+      if (blockedReason) {
+        failApproval(request, { code: 4001, message: blockedReason }, key)
+        return true
+      }
     }
 
     if (isTransactionRequest(request) && request.safeTxHash) {

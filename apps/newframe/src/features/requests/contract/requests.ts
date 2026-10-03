@@ -119,6 +119,8 @@ type RequestPrincipal =
       transport: 'http' | 'websocket'
       connectionId: string
       origin: string
+      /** Full origin from the transport or the companion's browser-provided sender identity. */
+      websiteOrigin?: string
     }
   | {
       kind: 'agent'
@@ -315,6 +317,8 @@ interface SignatureRequestFields {
 }
 
 interface SignRequest extends AccountRequest<'sign'>, SignatureRequestFields {
+  /** Renderer-only origin projected from the canonical transport authorization. */
+  requestOrigin?: string
   data: {
     decodedMessage: string
   }

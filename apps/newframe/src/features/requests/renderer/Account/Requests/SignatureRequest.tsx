@@ -1,10 +1,10 @@
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
-import { ParsedMessage } from '@spruceid/siwe-parser'
 import { useMemo } from 'react'
 
 import { cva } from '../../../../../../generated/styled-system/css/cva.js'
+import { inspectSiweMessage } from '../../../domain'
 import { RequestOrigin } from '../../ui/RequestOrigin'
 import type { SignRequestView } from './requestViewTypes'
 
@@ -26,27 +26,6 @@ function Message({ text }: { text: string }) {
   )
 }
 
-function parseSignInMessage(message: string) {
-  try {
-    return new ParsedMessage(message)
-  } catch {
-    return undefined
-  }
-}
-
-// Stored requester names may omit the transport scheme. Compare authority only;
-// this does not establish a verified origin or infer the request's scheme.
-function authority(value: string) {
-  try {
-    const url = new URL(value.includes('://') ? value : `https://${value}`)
-    return url.username || url.password || url.pathname !== '/' || url.search || url.hash
-      ? undefined
-      : url.host
-  } catch {
-    return undefined
-  }
-}
-
 type MessageToSignProps = {
   req: SignRequestView
   originName?: string
@@ -61,10 +40,14 @@ export default function MessageToSign({
   signingAddress = req.account
 }: MessageToSignProps) {
   const message = req.data.decodedMessage
-  const signIn = useMemo(() => parseSignInMessage(message), [message])
+  const requestOrigin = req.requestOrigin
+  const isContractAccount = req.signingCapability?.type === 'safe'
+  const inspection = useMemo(
+    () => inspectSiweMessage(message, requestOrigin, { signingAddress, isContractAccount }),
+    [message, requestOrigin, signingAddress, isContractAccount]
+  )
+  const signIn = inspection.kind === 'siwe' ? inspection.parsed : undefined
   const requester = originName ?? req.origin
-  const requesterAuthority = authority(requester)
-  const domainMismatch = signIn && (!requesterAuthority || requesterAuthority !== authority(signIn.domain))
   const addressMismatch = signIn && signingAddress.toLowerCase() !== signIn.address.toLowerCase()
 
   if (!signIn) {
@@ -72,9 +55,9 @@ export default function MessageToSign({
       <Surface padding='large' tone='transparent'>
         <Stack gap='medium'>
           <RequestOrigin originName={requester} favicon={favicon} description='wants you to sign a message' />
-          {message.includes('wants you to sign in with your Ethereum account') ? (
+          {inspection.kind === 'invalid' ? (
             <Text tone='danger' variant='supporting'>
-              This message resembles a sign-in request but has an invalid format. Review the full message.
+              {inspection.warning}
             </Text>
           ) : null}
           <Message text={message} />
@@ -85,7 +68,7 @@ export default function MessageToSign({
 
   const metadata = [
     ['Version', signIn.version],
-    ['Chain ID', String(signIn.chainId)],
+    ['Chain ID', message.match(/^Chain ID: (\d+)$/m)?.[1]],
     ['Nonce', signIn.nonce],
     ['Issued at', signIn.issuedAt],
     ['Expiration time', signIn.expirationTime],
@@ -118,14 +101,27 @@ export default function MessageToSign({
           <Stack gap='medium'>
             <Stack gap='xsmall'>
               <Text tone='secondary' variant='overline'>
+                Request origin
+              </Text>
+              <div aria-label='Request origin' className={valueRecipe()}>
+                <Text variant='code'>{requestOrigin ?? 'Unavailable'}</Text>
+              </div>
+            </Stack>
+            <Stack gap='xsmall'>
+              <Text tone='secondary' variant='overline'>
                 Sign-in domain
               </Text>
               <div className={valueRecipe()}>
                 <Text variant='label'>
-                  {signIn.scheme ? `${signIn.scheme}://` : ''}
+                  {`${signIn.scheme ?? 'https'}://`}
                   {signIn.domain}
                 </Text>
               </div>
+              {!signIn.scheme ? (
+                <Text tone='secondary' variant='supporting'>
+                  HTTPS assumed because no scheme was provided.
+                </Text>
+              ) : null}
             </Stack>
             <Stack gap='xsmall'>
               <Text tone='secondary' variant='overline'>
@@ -135,11 +131,20 @@ export default function MessageToSign({
                 <Text variant='code'>{signIn.uri}</Text>
               </div>
             </Stack>
-            {domainMismatch ? (
-              <Text tone='danger' variant='supporting'>
-                The sign-in domain does not match the requesting site. Check both before signing.
-              </Text>
+            {inspection.kind === 'siwe' && inspection.blockedReason ? (
+              <div role='alert'>
+                <Text tone='danger' variant='supporting'>
+                  {inspection.blockedReason}
+                </Text>
+              </div>
             ) : null}
+            {inspection.kind === 'siwe'
+              ? inspection.warnings.map((warning) => (
+                  <Text key={warning} tone='accent' variant='supporting'>
+                    {warning}
+                  </Text>
+                ))
+              : null}
             {signIn.statement ? <Text variant='body'>{signIn.statement}</Text> : null}
             {resources?.length ? (
               <Stack gap='small'>

@@ -18,7 +18,7 @@ import type {
   SigningCapability,
   TransactionRequest
 } from '../../contract/requests'
-import { isCancelableRequest, isSignatureRequest } from '../../domain'
+import { inspectSiweMessage, isCancelableRequest, isSignatureRequest } from '../../domain'
 import { useAccountIdentity } from '../Account/Requests/state'
 import type { RequestRendererCapabilities, RequestReviewCapability } from '../requestCapabilities'
 import { useRequestView, type RequestViewStep } from '../requestView'
@@ -48,6 +48,7 @@ export type RequestCommandRequest = {
   signingCapability?: SigningCapability
   safeMessageProgress?: SafeMessageProgress
   safeTxHash?: string
+  data?: unknown
 }
 
 export interface RequestCommandProps {
@@ -57,6 +58,7 @@ export interface RequestCommandProps {
   capabilities: Pick<RequestRendererCapabilities, 'external' | 'review' | 'transaction'>
   notify: RequestCommandNotifier
   req: RequestCommandRequest
+  signingAddress?: string
   shared: RequestCommandSharedState
 }
 
@@ -394,6 +396,29 @@ export function RequestCommand(props: RequestCommandProps) {
 
   function signatureCommand(req: SignatureRequest) {
     const capability = req.signingCapability
+    const requestOrigin = req.type === 'sign' ? req.requestOrigin : undefined
+    const signingAddress =
+      props.signingAddress ??
+      (capability?.type === 'direct' ? capability.candidates[0]?.address : undefined) ??
+      req.account
+    const data = props.req.data
+    const decodedMessage =
+      data && typeof data === 'object' && 'decodedMessage' in data ? data.decodedMessage : undefined
+    const inspection =
+      req.type === 'sign' && typeof decodedMessage === 'string'
+        ? inspectSiweMessage(decodedMessage, requestOrigin, {
+            signingAddress,
+            isContractAccount: capability?.type === 'safe'
+          })
+        : undefined
+    if (inspection?.kind === 'siwe' && inspection.blockedReason) {
+      return (
+        <RequestActions
+          primary={{ disabled: true, label: 'Sign-in blocked', onPress: () => {} }}
+          secondary={{ label: 'Decline', onPress: () => declineRequest(props.capabilities.review, req) }}
+        />
+      )
+    }
     if (capability?.type === 'safe') {
       const progress = req.safeMessageProgress
       const confirmed = new Set(progress?.confirmations.map((address) => address.toLowerCase()) ?? [])
@@ -596,6 +621,9 @@ export default function RequestCommandContainer(props: Omit<RequestCommandProps,
       }
       feeNoticeDismissed={feeNoticeDismissed}
       dismissFeeNotice={dismissFeeNotice}
+      signingAddress={
+        signingAccount?.safe?.[String(chainId)]?.address ?? signingAccount?.address ?? request.account
+      }
       shared={{ ...synchronized, airgapSigning, step }}
     />
   )
