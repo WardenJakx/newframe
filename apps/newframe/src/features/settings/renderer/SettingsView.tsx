@@ -37,7 +37,7 @@ export interface SettingsViewProps {
     portfolioApiKey: string
     portfolioApiKeyConfigured: boolean
     portfolioApiKeyRequired: boolean
-    toggleAutoDiscoverTokens: (enabled: boolean) => void
+    togglePortfolioProvider: (provider: WalletRendererState['portfolioProvider'], enabled: boolean) => void
   }
   onBack: () => void
   onBiometricUnlockChange: (enabled: boolean) => void
@@ -52,6 +52,7 @@ type SummonShortcut = WalletRendererState['shortcuts']['summon']
 
 interface SettingsViewModel {
   autoDiscoverTokens: boolean
+  portfolioProvider: WalletRendererState['portfolioProvider']
   autohide: boolean
   biometricUnlock: boolean
   biometricsBusy: boolean
@@ -98,6 +99,8 @@ export function SettingsView({
   settings
 }: SettingsViewProps) {
   const [resetConfirm, setResetConfirm] = useState(false)
+  const zerionEnabled = settings.autoDiscoverTokens && settings.portfolioProvider === 'zerion'
+  const flashEnabled = settings.autoDiscoverTokens && settings.portfolioProvider === 'flash'
   let portfolioApiKeyDetail = 'Add a Zerion API key to enable'
   if (drafts.portfolioApiKeyRequired) {
     portfolioApiKeyDetail = 'Enter a Zerion API key before enabling'
@@ -133,7 +136,10 @@ export function SettingsView({
     text: String(value),
     value
   }))
-  type BooleanSetting = Extract<SettingsUpdateInput, { value: boolean }>['setting']
+  type BooleanSetting = Exclude<
+    Extract<SettingsUpdateInput, { value: boolean }>['setting'],
+    'auto-discover-tokens'
+  >
   const toggleRows = [
     ['Auto-hide', settings.autohide, 'Hide Newframe on loss of focus', 'autohide'],
     ['Run on Startup', settings.launch, 'Run Newframe when your computer starts', 'launch'],
@@ -349,10 +355,16 @@ export function SettingsView({
             Tokens
           </Text>
           <SettingsToggleRow
+            detail='Fetch portfolio tokens and balances from Flash'
+            label='Auto-Discover Tokens with Flash'
+            on={flashEnabled}
+            onToggle={() => drafts.togglePortfolioProvider('flash', flashEnabled)}
+          />
+          <SettingsToggleRow
             detail={portfolioApiKeyDetail}
-            label='Auto-Discover Tokens'
-            on={settings.autoDiscoverTokens}
-            onToggle={() => drafts.toggleAutoDiscoverTokens(settings.autoDiscoverTokens)}
+            label='Auto-Discover Tokens with Zerion'
+            on={zerionEnabled}
+            onToggle={() => drafts.togglePortfolioProvider('zerion', zerionEnabled)}
           />
           <Input
             appearance='code'

@@ -549,6 +549,7 @@ const WalletRendererStateSchema = z.strictObject({
   origins: MainSchema.shape.origins,
   permissions: MainSchema.shape.permissions,
   portfolioApiKeyConfigured: z.boolean(),
+  portfolioProvider: MainSchema.shape.portfolioProvider,
   profiles: z.array(WalletProfileSummarySchema).max(1_000),
   assetRates: AssetRateMapSchema,
   reveal: MainSchema.shape.reveal,

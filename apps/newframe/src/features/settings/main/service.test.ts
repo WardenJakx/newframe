@@ -41,6 +41,7 @@ describe('settings service', () => {
     service.update({
       type: 'settings.update',
       setting: 'auto-discover-tokens',
+      provider: 'zerion',
       value: true,
       apiKey: ' portfolio-key '
     })

@@ -805,21 +805,31 @@ describe('#setPortfolioBalances', () => {
 })
 
 describe('#setAutoDiscoverTokens', () => {
-  it('persists valid enable/disable transitions and rejects enabling without an API key', () => {
+  it('keeps exactly one provider active and only requires an API key for Zerion', () => {
     const cases = [
-      { initial: true, requested: false, apiKey: 'zk_test', expected: false },
-      { initial: false, requested: true, apiKey: 'zk_test', expected: true },
-      { initial: false, requested: true, apiKey: '', expected: false }
-    ]
+      // [initial provider, initially on, requested provider, requested value, api key, expected provider, expected on]
+      ['zerion', true, 'zerion', false, 'zk_test', 'zerion', false],
+      ['zerion', false, 'zerion', true, 'zk_test', 'zerion', true],
+      ['zerion', false, 'zerion', true, '', 'zerion', false],
+      ['zerion', false, 'flash', true, '', 'flash', true],
+      ['zerion', true, 'flash', true, 'zk_test', 'flash', true],
+      ['flash', true, 'zerion', true, 'zk_test', 'zerion', true],
+      ['flash', true, 'zerion', true, '', 'flash', true],
+      ['flash', true, 'zerion', false, 'zk_test', 'flash', true],
+      ['flash', true, 'flash', false, '', 'flash', false]
+    ] as const
 
-    for (const { initial, requested, apiKey, expected } of cases) {
+    for (const [initialProvider, initial, provider, requested, apiKey, expectedProvider, expected] of cases) {
       const { actions, getState } = createActionHarness({
-        main: { autoDiscoverTokens: initial, portfolioApiKey: apiKey }
+        main: { autoDiscoverTokens: initial, portfolioApiKey: apiKey, portfolioProvider: initialProvider }
       })
 
-      actions.setAutoDiscoverTokens(requested)
+      actions.setAutoDiscoverTokens(requested, provider)
 
-      expect(getState().main.autoDiscoverTokens).toBe(expected)
+      expect([getState().main.portfolioProvider, getState().main.autoDiscoverTokens]).toEqual([
+        expectedProvider,
+        expected
+      ])
     }
   })
 })
@@ -839,6 +849,14 @@ describe('#setPortfolioApiKey', () => {
         autoDiscoverTokens
       ])
     }
+  })
+
+  it('keeps Flash discovery enabled when the Zerion key is cleared', () => {
+    const { actions, getState } = createActionHarness({
+      main: { portfolioApiKey: 'zk_test', autoDiscoverTokens: true, portfolioProvider: 'flash' }
+    })
+    actions.setPortfolioApiKey('')
+    expect(getState().main.autoDiscoverTokens).toBe(true)
   })
 })
 

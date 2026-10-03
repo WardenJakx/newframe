@@ -38,9 +38,9 @@ it('uses an already configured API key without exposing it to the renderer draft
   )
 
   expect(result.current.portfolioApiKey).toBe('')
-  act(() => result.current.toggleAutoDiscoverTokens(false))
+  act(() => result.current.togglePortfolioProvider('zerion', false))
 
-  expect(persist).toHaveBeenCalledWith({ setting: 'auto-discover-tokens', value: true })
+  expect(persist).toHaveBeenCalledWith({ setting: 'auto-discover-tokens', provider: 'zerion', value: true })
   expect(result.current.portfolioApiKeyRequired).toBe(false)
 })
 
@@ -55,16 +55,34 @@ it('requires and writes a key before enabling discovery when no key is configure
     })
   )
 
-  act(() => result.current.toggleAutoDiscoverTokens(false))
+  act(() => result.current.togglePortfolioProvider('zerion', false))
   expect(result.current.portfolioApiKeyRequired).toBe(true)
   expect(persist).not.toHaveBeenCalled()
 
   act(() => result.current.changePortfolioApiKey(' new-secret '))
-  act(() => result.current.toggleAutoDiscoverTokens(false))
+  act(() => result.current.togglePortfolioProvider('zerion', false))
 
   expect(persist).toHaveBeenCalledWith({
     setting: 'auto-discover-tokens',
+    provider: 'zerion',
     value: true,
     apiKey: 'new-secret'
   })
+})
+
+it('enables Flash discovery without an API key', () => {
+  const persist = mock()
+  const { result } = renderHook(() =>
+    useSettingsDrafts({
+      initialLatticeEndpoint: '',
+      initialLatticeEndpointMode: 'default',
+      initialPortfolioApiKeyConfigured: false,
+      persist
+    })
+  )
+
+  act(() => result.current.togglePortfolioProvider('flash', false))
+
+  expect(result.current.portfolioApiKeyRequired).toBe(false)
+  expect(persist).toHaveBeenCalledWith({ setting: 'auto-discover-tokens', provider: 'flash', value: true })
 })

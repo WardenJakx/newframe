@@ -10,6 +10,7 @@ import { flashRuntimeFromEnv } from './runtime.js'
 import { FlashQuoteSchema, type FlashRuntime } from './schemas.js'
 import { flashRawStatus, normalizeFlashStatus } from './status.js'
 import {
+  FlashBalancesResponseSchema,
   FlashCancelOrderResponseSchema,
   FlashGetOrderResponseSchema,
   FlashListOrdersResponseSchema,
@@ -45,6 +46,10 @@ const ListOrdersFunction = z.function({
 const GetOrderFunction = z.function({
   input: [AddressSchema, OrderIdSchema],
   output: FlashGetOrderResponseSchema
+})
+const BalancesFunction = z.function({
+  input: [AddressSchema],
+  output: FlashBalancesResponseSchema
 })
 const CancelOrderFunction = z.function({
   input: z.tuple([OrderIdSchema, SignatureSchema]).rest(z.string().min(1)),
@@ -174,6 +179,9 @@ export function createFlashApi(options: FlashApiOptions = {}) {
       return FlashGetOrderResponseSchema.parse(
         await request(`/orders/${encodeURIComponent(orderId)}?${query}`)
       )
+    }),
+    balances: BalancesFunction.implementAsync(async (address) => {
+      return FlashBalancesResponseSchema.parse(await request(`/balances/${encodeURIComponent(address)}`))
     }),
     cancelOrder: CancelOrderFunction.implementAsync(async (orderId, userSignature, ...messages) => {
       return FlashCancelOrderResponseSchema.parse(

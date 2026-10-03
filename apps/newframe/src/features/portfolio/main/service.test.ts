@@ -44,12 +44,9 @@ describe('portfolio refresh service', () => {
       getTokenDiscoveryProvider: () => ({
         ok: true,
         provider: {
+          rateSource: 'zerion',
           getChainImage: mock(async () => undefined),
           getWalletPortfolio: mock(async () => ({
-            totalValue: 0,
-            absoluteChange1d: 0,
-            percentChange1d: 0,
-            chainValues: {},
             tokens: [],
             balances: [],
             assetRates
@@ -90,10 +87,6 @@ describe('portfolio refresh service', () => {
       throw listError
     })
     const getWalletPortfolio = mock(async () => ({
-      totalValue: 0,
-      absoluteChange1d: 0,
-      percentChange1d: 0,
-      chainValues: {},
       tokens: [],
       balances: [],
       assetRates: []
@@ -107,6 +100,7 @@ describe('portfolio refresh service', () => {
       getTokenDiscoveryProvider: () => ({
         ok: true,
         provider: {
+          rateSource: 'zerion',
           getChainImage: mock(async () => undefined),
           getWalletPortfolio
         }

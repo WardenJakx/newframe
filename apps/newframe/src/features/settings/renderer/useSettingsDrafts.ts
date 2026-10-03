@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 
+import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
 import type { PersistSetting } from './types'
+
+type PortfolioProviderId = WalletRendererState['portfolioProvider']
 
 export function useSettingsDrafts({
   initialLatticeEndpoint,
@@ -48,9 +51,12 @@ export function useSettingsDrafts({
     persist({ setting: 'lattice-endpoint-mode', value })
   }
 
-  const toggleAutoDiscoverTokens = (enabled: boolean) => {
+  const togglePortfolioProvider = (provider: PortfolioProviderId, enabled: boolean) => {
     if (enabled) {
-      return persist({ setting: 'auto-discover-tokens', value: false })
+      return persist({ setting: 'auto-discover-tokens', provider, value: false })
+    }
+    if (provider === 'flash') {
+      return persist({ setting: 'auto-discover-tokens', provider, value: true })
     }
 
     const apiKey = portfolioApiKey.trim()
@@ -61,6 +67,7 @@ export function useSettingsDrafts({
     clearTimeout(portfolioTimer.current)
     persist({
       setting: 'auto-discover-tokens',
+      provider,
       value: true,
       ...(apiKey ? { apiKey } : {})
     })
@@ -79,6 +86,6 @@ export function useSettingsDrafts({
     portfolioApiKey,
     portfolioApiKeyConfigured: initialPortfolioApiKeyConfigured || portfolioApiKey.trim().length > 0,
     portfolioApiKeyRequired,
-    toggleAutoDiscoverTokens
+    togglePortfolioProvider
   }
 }

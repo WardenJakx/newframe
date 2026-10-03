@@ -1,4 +1,8 @@
+import { createFlashApi } from '@newframe/flash/api'
+
+import { getMainRuntime } from '../../../platform/runtime/index.js'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
+import FlashPortfolioProvider from './providers/flash.js'
 import ZerionPortfolioProvider from './providers/zerion.js'
 import type { PortfolioProvider } from './types.js'
 
@@ -13,16 +17,26 @@ export type TokenDiscoveryProviderAccess =
 export function getTokenDiscoveryProvider(
   canonicalStore: Pick<CanonicalStoreReader, 'getState'>
 ): TokenDiscoveryProviderAccess {
-  if (canonicalStore.getState().main.autoDiscoverTokens !== true) {
+  const { autoDiscoverTokens, portfolioApiKey, portfolioProvider } = canonicalStore.getState().main
+  if (autoDiscoverTokens !== true) {
     return { ok: false, error: 'token_discovery_disabled' }
   }
 
-  const configuredApiKey = canonicalStore.getState().main.portfolioApiKey
-  const apiKey = typeof configuredApiKey === 'string' ? configuredApiKey.trim() : ''
+  switch (portfolioProvider) {
+    case 'flash':
+      return {
+        ok: true,
+        provider: new FlashPortfolioProvider({
+          api: createFlashApi({ runtime: getMainRuntime() })
+        })
+      }
+    case 'zerion': {
+      const apiKey = typeof portfolioApiKey === 'string' ? portfolioApiKey.trim() : ''
+      if (!apiKey) {
+        return { ok: false, error: 'missing_api_key' }
+      }
 
-  if (!apiKey) {
-    return { ok: false, error: 'missing_api_key' }
+      return { ok: true, provider: new ZerionPortfolioProvider({ apiKey }) }
+    }
   }
-
-  return { ok: true, provider: new ZerionPortfolioProvider({ apiKey }) }
 }

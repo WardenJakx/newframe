@@ -15,6 +15,7 @@ import {
   FLASH_MIN_TWAP_DURATION_SECONDS
 } from '../../features/transactions/trade/domain/policy.js'
 import { AirGapRequestReferenceSchema } from '../../platform/signing/domain/airgap.js'
+import { PortfolioProviderIdSchema } from './state/main.js'
 
 const AddressSchema = z.string().regex(/^0x[0-9a-fA-F]{40}$/)
 const ChainIdSchema = z.number().int().positive()
@@ -824,6 +825,7 @@ const SettingsBooleanSchema = z.discriminatedUnion('setting', [
   z.strictObject({
     type: z.literal('settings.update'),
     setting: z.literal('auto-discover-tokens'),
+    provider: PortfolioProviderIdSchema,
     value: z.boolean(),
     apiKey: z.string().trim().max(512).optional()
   })

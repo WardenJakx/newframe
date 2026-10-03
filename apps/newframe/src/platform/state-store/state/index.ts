@@ -118,6 +118,7 @@ const mainState: M = {
   reveal: false,
   showLocalNameWithENS: false,
   autoDiscoverTokens: false,
+  portfolioProvider: 'zerion',
   portfolioApiKey: '',
   showTestnets: false,
   autohide: false,

@@ -85,7 +85,7 @@ export function createPortfolioService(ports: PortfolioServicePorts) {
             state.setPortfolioBalances(address, portfolio.balances)
             state.accountTokensUpdated(address)
           }
-          ports.assetRates.observe('zerion', portfolio.assetRates)
+          ports.assetRates.observe(discovery.provider.rateSource, portfolio.assetRates)
         } catch (error) {
           ports.log.warn(`Could not refresh portfolio provider balances for ${address}`, error)
         }

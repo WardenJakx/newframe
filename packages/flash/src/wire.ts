@@ -75,6 +75,24 @@ export const FlashCancelOrderResponseSchema = z.union([
   z.null().transform(() => ({ order: undefined }))
 ])
 
+const FlashTokenBalanceSchema = z.looseObject({
+  chain: z.string(),
+  address: z.string(),
+  symbol: z.string(),
+  tokenDecimals: z.number().int().nonnegative(),
+  balance: z.string(),
+  notional: z.string(),
+  priceChange24h: z.string().nullable(),
+  imageUrl: z.string(),
+  isNative: z.boolean()
+})
+
+export const FlashBalancesResponseSchema = z.looseObject({
+  balances: z.array(FlashTokenBalanceSchema)
+})
+
+export type FlashTokenBalance = z.infer<typeof FlashTokenBalanceSchema>
+
 export const FlashWebSocketFrameSchema = z.union([
   z.object({
     channel: z.literal('subscriptions'),
