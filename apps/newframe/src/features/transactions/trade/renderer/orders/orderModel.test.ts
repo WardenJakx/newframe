@@ -12,6 +12,7 @@ import {
   orderErrorMessage,
   orderJson,
   orderPairIntent,
+  orderSize,
   orderTargetNotional,
   orderStatusLabel
 } from './orderModel'
@@ -68,6 +69,14 @@ describe('orderModel', () => {
       target: '2,398.08',
       contra: '1'
     })
+  })
+
+  it('labels qty with the spent asset', () => {
+    const assets = { qty: '100', targetAsset: { symbol: 'WETH' }, contraAsset: { symbol: 'USDC' } }
+
+    expect(orderSize({ ...assets, side: 'buy' })).toBe('100 USDC')
+    expect(orderSize({ ...assets, side: 'sell' })).toBe('100 WETH')
+    expect(orderAssetAmounts({ ...assets, side: 'buy' })).toEqual({ target: '', contra: '100' })
   })
 
   it('shows target notional and only treats actual fills as filled', () => {

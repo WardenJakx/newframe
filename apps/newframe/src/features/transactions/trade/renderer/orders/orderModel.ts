@@ -89,9 +89,11 @@ export function formatOrderAmount(value: unknown) {
   return String(value)
 }
 
+// Flash `qty` is the amount spent: contra asset on buys, target asset on sells.
 export function orderSize(order: OrderModel) {
   const size = formatOrderAmount(order.qty)
-  return size ? `${size} ${orderAssetSymbol(order.targetAsset)}` : ''
+  const spentAsset = normalizeOrderSide(order.side) === 'buy' ? order.contraAsset : order.targetAsset
+  return size ? `${size} ${orderAssetSymbol(spentAsset)}` : ''
 }
 
 function firstOrderAmount(...values: unknown[]) {
@@ -101,16 +103,9 @@ function firstOrderAmount(...values: unknown[]) {
 export function orderAssetAmounts(order: OrderModel) {
   const side = normalizeOrderSide(order.side)
   const filledOutput = Number(order.filledOutputAmount) > 0 ? order.filledOutputAmount : undefined
-  const inputAmount = formatOrderAmount(
-    firstOrderAmount(order.spentAmount, side === 'sell' ? order.qty : undefined)
-  )
+  const inputAmount = formatOrderAmount(firstOrderAmount(order.spentAmount, order.qty))
   const outputAmount = formatOrderAmount(
-    firstOrderAmount(
-      filledOutput,
-      order.outputAmount,
-      order.estimatedOutputAmount,
-      side === 'buy' ? order.qty : undefined
-    )
+    firstOrderAmount(filledOutput, order.outputAmount, order.estimatedOutputAmount)
   )
 
   return {
