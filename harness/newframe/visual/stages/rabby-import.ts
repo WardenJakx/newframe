@@ -204,9 +204,17 @@ export const rabbyImportStage: VisualStage = {
       await driver.clearPanelAndOverlays()
       // The following Safe stage imports this local contract into the original profile.
       if (importedProfile && fresh.some(({ kind }) => kind === 'safe')) {
+        const safeId = context.safeSeed.safe.toLowerCase()
+        // Removing an account keeps its saved name. Restore this test contract's
+        // name before removal so the next stage does not inherit the Rabby alias.
+        await driver.executeCommand(tray, {
+          type: 'account.update',
+          accountId: safeId,
+          name: original.main?.accounts?.[safeId]?.name ?? 'Safe Account'
+        })
         await driver.executeCommand(tray, {
           type: 'account.remove',
-          address: context.safeSeed.safe.toLowerCase()
+          address: safeId
         })
       }
       if (originalProfile) {
