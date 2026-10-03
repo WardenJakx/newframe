@@ -28,7 +28,7 @@ export const ChainSchema = z
     isTestnet: z.boolean().default(false),
     explorer: z.string().default('')
   })
-  .passthrough()
+  .loose()
 
 export const ChainMetadataSchema = z
   .object({
@@ -38,7 +38,7 @@ export const ChainMetadataSchema = z
     primaryColor: ColorwayPaletteSchema.keyof(),
     nativeCurrency: NativeCurrencySchema
   })
-  .passthrough()
+  .loose()
 
 export type ChainId = z.infer<typeof ChainIdSchema>
 export type Chain = z.infer<typeof ChainSchema>

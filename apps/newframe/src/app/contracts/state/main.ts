@@ -113,7 +113,7 @@ export const ActivityRecordSchema = z
     display: z.unknown().optional(),
     metadata: z.unknown().optional()
   })
-  .passthrough()
+  .loose()
 
 const ActivitySchema = z.record(z.string().describe('Activity Id'), ActivityRecordSchema).default({})
 
@@ -125,7 +125,7 @@ const OrderAssetReferenceSchema = z
   .object({
     chainId: z.union([z.number().int().positive(), z.string().regex(/^[1-9]\d*$/)])
   })
-  .passthrough()
+  .loose()
 
 export const OrderRecordSchema = z
   .object({
@@ -161,7 +161,7 @@ export const OrderRecordSchema = z
     fillHash: z.string().nullable().optional(),
     fillTransactionHash: z.string().nullable().optional()
   })
-  .passthrough()
+  .loose()
   .refine((order) => !Object.prototype.hasOwnProperty.call(order, 'chainId'), {
     message: 'Order chain must be defined by its assets',
     path: ['chainId']
@@ -209,7 +209,7 @@ export const MainSchema = z
     updater: UpdaterPreferencesSchema,
     ...PreferencesSchema
   })
-  .passthrough()
+  .loose()
 
 export type Main = z.infer<typeof MainSchema>
 export type ActivityRecord = z.infer<typeof ActivityRecordSchema>

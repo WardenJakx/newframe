@@ -42,13 +42,13 @@ const StatusNotificationSchema = z
     target: z.unknown().optional(),
     metadata: z.unknown().optional()
   })
-  .passthrough()
+  .loose()
 
 const ViewSchema = z
   .object({
     notifications: z.record(z.string().describe('Notification Id'), StatusNotificationSchema).default({})
   })
-  .passthrough()
+  .loose()
 
 export const CanonicalStateSchema = z
   .object({
@@ -65,7 +65,7 @@ export const CanonicalStateSchema = z
     ),
     view: ViewSchema
   })
-  .passthrough()
+  .loose()
 
 type StatusNotification = z.infer<typeof StatusNotificationSchema>
 

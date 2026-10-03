@@ -1,3 +1,4 @@
+// oxlint-disable typescript/no-deprecated -- gridplus-sdk deprecates Client for external use; its functional API holds one global connection, which does not fit our per-device signers.
 import { encode } from '@ethereumjs/rlp'
 import type { TypedTransaction } from '@ethereumjs/tx'
 import { padToEven, addHexPrefix, bytesToHex, stripHexPrefix } from '@ethereumjs/util'

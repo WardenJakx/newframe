@@ -51,7 +51,7 @@ const safeHashSchema = z
   .transform((hash) => hash.toLowerCase())
 const safeSignatureSchema = z.string().regex(/^0x[0-9a-fA-F]{130}$/)
 const safeProposalLocalSchema = z.strictObject({
-  createdAt: z.number().finite().nonnegative(),
+  createdAt: z.number().nonnegative(),
   origin: z.string().max(200).optional(),
   requestId: z.string().max(256).optional(),
   confirmations: z
@@ -154,7 +154,7 @@ const safeDeploymentSchema = z.strictObject({
   configuration: safeConfigurationSchema,
   configurationBlockNumber: safeDecimalSchema.optional(),
   pending: z.array(safeProposalSchema).optional(),
-  refreshedAt: z.number().finite().nonnegative().optional(),
+  refreshedAt: z.number().nonnegative().optional(),
   error: z.string().max(2000).optional()
 })
 export type SafeConfiguration = z.infer<typeof safeConfigurationSchema>

@@ -10,7 +10,7 @@ export const sendStage: VisualStage = {
     await driver.clearPanelAndOverlays()
     const sendEthButton = tray.getByRole('button', { name: 'Send ETH' })
 
-    if (!(await sendEthButton.isVisible({ timeout: 1_000 }).catch(() => false))) {
+    if (!(await sendEthButton.isVisible().catch(() => false))) {
       await (await revealAssetDetailsButton(tray, 'ETH')).click()
       await tray.getByRole('dialog', { name: 'Asset details' }).waitFor({ state: 'visible' })
     }

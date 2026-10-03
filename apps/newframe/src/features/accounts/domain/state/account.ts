@@ -7,7 +7,7 @@ export const AccountMetadataSchema = z
     name: z.string(),
     lastUpdated: z.number().optional()
   })
-  .passthrough()
+  .loose()
 
 export const AccountSchema = z
   .object({
@@ -25,6 +25,6 @@ export const AccountSchema = z
     ensName: z.string().optional(),
     created: z.string()
   })
-  .passthrough()
+  .loose()
 
 export type Account = z.infer<typeof AccountSchema>

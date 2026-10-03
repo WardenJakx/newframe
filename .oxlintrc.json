@@ -253,7 +253,8 @@
         "typescript/only-throw-error": "error",
         "typescript/no-unnecessary-type-assertion": "error",
         "typescript/prefer-nullish-coalescing": "error",
-        "typescript/no-unnecessary-condition": "error"
+        "typescript/no-unnecessary-condition": "error",
+        "typescript/no-deprecated": "error"
       },
       "plugins": ["typescript"]
     },
@@ -311,7 +312,6 @@
         "react/purity": "error",
         "react/set-state-in-render": "error",
         "react/unsupported-syntax": "warn",
-        "typescript/no-deprecated": "error",
         "react/no-danger": "error",
         "react/no-array-index-key": "error"
       },

@@ -152,7 +152,7 @@ async function validateRemoteImageUrl(target: string) {
     return targetUrl.toString()
   }
 
-  const addresses = await lookup(hostname, { all: true, verbatim: true })
+  const addresses = await lookup(hostname, { all: true, order: 'verbatim' })
   if (!addresses.length || addresses.some(({ address }) => !isPublicIpAddress(address))) {
     throw new Error('Image URL hostname did not resolve to public addresses')
   }
