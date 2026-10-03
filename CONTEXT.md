@@ -2,21 +2,47 @@
 
 Target language for who requests Newframe operations, what authority they carry, and where Newframe decides whether an operation may proceed.
 
+## Product terms
+
+**App**:
+Newframe as a whole, the broad entity users interact with. The extension is a separate piece that connects to it.
+_Avoid_: Wallet, desktop (when meaning the whole product)
+
+**Accounts**:
+Every address type in the app: watch-only accounts, safe wallets, and the EOAs the app supports.
+_Avoid_: Wallets (as a catch-all), addresses
+
+**Signers**:
+Accounts that are not watch-only, so the app can sign messages and transactions with them.
+_Avoid_: Keys, owners
+
+**Hot wallet**:
+An EOA signer whose key is stored on the device itself: private key, mnemonic, or keystore signers.
+_Avoid_: Software wallet, local signer
+
+**Hardware wallet**:
+An EOA signer whose key stays on an offline device. Supported: Trezor, Ledger, GridPlus, and Airgap.
+_Avoid_: Cold wallet
+
+**Safe wallet**:
+A Gnosis Safe multi-signature wallet.
+_Avoid_: Multisig (as a type name), Gnosis wallet
+
 ## Participants
 
 **Human**:
 The person who controls the wallet and can approve a specific operation or delegate bounded authority.
 
 **Website**:
-A web application that requests Newframe operations through the Companion extension. A website remains untrusted after receiving account access.
+A web application that requests Newframe operations through the extension. A website remains untrusted after receiving account access.
 _Avoid_: Dapp, trusted origin
 
-**Companion extension**:
-Newframe's browser extension, which relays website requests with browser-derived website origin and can also request operations for itself. Approval to connect the extension does not approve a website's operations.
-_Avoid_: Website, caller
+**Extension**:
+The Newframe browser extension (`apps/newframe-extension`), which relays website requests with browser-derived website origin and can also request operations for itself. Approval to connect the extension does not approve a website's operations.
+_Avoid_: Companion extension, website, caller
 
 **Local API client**:
-A program connected to Newframe desktop's local HTTP or WebSocket API. This includes the Companion extension, Hardhat, Foundry, and the Newframe CLI; it is distinct from Newframe's upstream chain RPC connection.
+A program connected to Newframe desktop's local HTTP or WebSocket API. This includes the extension, Hardhat, Foundry, and the Newframe CLI; it is distinct from Newframe's upstream chain RPC connection.
 _Avoid_: Native RPC client, chain RPC client
 
 **Newframe CLI**:
@@ -34,23 +60,23 @@ _Avoid_: Renderer, external client
 ## Identity and authority
 
 **Request source**:
-The participant on whose behalf Newframe receives a request. A local API client can relay a request for another source, as the Companion extension does for a website; an AI session supplies authority, not a requester.
+The participant on whose behalf Newframe receives a request. A local API client can relay a request for another source, as the extension does for a website; an AI session supplies authority, not a requester.
 _Avoid_: HTTP client, IPC message
 
 **Website origin**:
-The browser origin of the website that initiated a request. The Companion extension obtains it from browser-provided sender context and carries it alongside the website's requested operation; the website cannot choose it in its payload.
+The browser origin of the website that initiated a request. The extension obtains it from browser-provided sender context and carries it alongside the website's requested operation; the website cannot choose it in its payload.
 _Avoid_: Extension identity, display name
 
 **Relayed website request**:
-A website request carried by the Companion extension with browser-derived website origin. The request retains Website as its source and cannot inherit extension-owned authority.
+A website request carried by the extension with browser-derived website origin. The request retains Website as its source and cannot inherit extension-owned authority.
 _Avoid_: Extension-owned operation
 
 **Extension-owned operation**:
-A gateway operation requested by the Companion extension for its own health or settings, without a website source or website origin.
+A gateway operation requested by the extension for its own health or settings, without a website source or website origin.
 _Avoid_: Relayed website request
 
 **Extension approval**:
-The human's permission for a Companion extension to connect to Newframe. It is separate from website permission and operation approval.
+The human's permission for the extension to connect to Newframe. It is separate from website permission and operation approval.
 _Avoid_: Website approval
 
 **Account access grant**:
