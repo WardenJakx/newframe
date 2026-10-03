@@ -657,6 +657,27 @@ describe('canonical persisted state contract', () => {
   })
 })
 
+it('restores an added chain with its embedded Chainlist icon', () => {
+  const store = createTestStore()
+  const icon = 'data:image/png;base64,aWNvbg=='
+  const image = { base64: 'aWNvbg==', contentHash: 'hash', mimeType: 'image/png', sourceUrl: icon }
+  store.getState().addNetwork({
+    id: 46630,
+    type: 'ethereum',
+    name: 'Robinhood Chain',
+    explorer: '',
+    symbol: 'ETH',
+    primaryRpc: 'https://rpc.example',
+    icon
+  })
+  store.getState().setNetworkImage('ethereum', 46630, icon, image)
+  const saved: unknown = JSON.parse(JSON.stringify(selectPersistedState(store.getState())))
+
+  const restored = mergePersistedState(saved, createTestStore().getState())
+
+  expect(restored.main.networksMeta.ethereum[46630]).toMatchObject({ icon, image })
+})
+
 describe('canonical persistence failure boundaries', () => {
   it('quarantines corrupt state at a clock-owned key and fails real-store hydration closed', async () => {
     const corrupt = envelope({ main: { lattice: 'not-an-object' } })

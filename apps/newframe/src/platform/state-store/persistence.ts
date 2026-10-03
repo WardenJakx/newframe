@@ -2,6 +2,7 @@ import log from 'electron-log'
 
 import { DEFAULT_PROFILE_ID, DEFAULT_PROFILE_NAME } from '../../app/contracts/state/main.js'
 import { listCuratedAssets } from '../../features/asset-data/domain/asset/index.js'
+import { embeddedImageSource } from '../../features/asset-data/domain/image/index.js'
 import { CanonicalStatePersistenceError } from '../persistence/index.js'
 import type { CanonicalStore } from './actions.js'
 import {
@@ -306,6 +307,11 @@ function httpsImageSource(value: unknown) {
   }
 }
 
+// Added chains store Chainlist icons inline, so restore embedded icons alongside https ones.
+function chainIconSource(value: unknown) {
+  return httpsImageSource(value) || embeddedImageSource(value)
+}
+
 function matchingPersistedImage(value: unknown, sourceUrl: string) {
   const image = (value ?? {}) as UnknownRecord
   return sourceUrl && image.sourceUrl === sourceUrl ? value : undefined
@@ -323,7 +329,7 @@ function mergeNetworkMetadata(current: unknown, persisted: unknown) {
     const persistedGas = unknownRecord(persistedMetadata.gas)
     const currentPrice = unknownRecord(currentGas.price)
     const persistedPrice = unknownRecord(persistedGas.price)
-    const icon = httpsImageSource(currentMetadata.icon) || httpsImageSource(persistedMetadata.icon)
+    const icon = chainIconSource(currentMetadata.icon) || chainIconSource(persistedMetadata.icon)
     const currentNativeCurrency = unknownRecord(currentMetadata.nativeCurrency)
     const persistedNativeCurrency = unknownRecord(persistedMetadata.nativeCurrency)
     const nativeCurrencyIcon =
