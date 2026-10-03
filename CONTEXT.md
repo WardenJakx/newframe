@@ -61,7 +61,7 @@ An EVM blockchain Newframe connects to, identified by its chain ID.
 _Avoid_: Chain
 
 **Selected network**:
-The one network that requests use when they do not name a network. There is a single selected network for the whole desktop app, not one per dapp.
+The one network that requests use when they do not name a network. There is a single selected network for the whole desktop app, not one per dapp. The human can change it from a tray or from the extension.
 _Avoid_: Active chain, dapp network, origin chain
 
 **Local API**:
@@ -133,7 +133,7 @@ The human's permission for the extension to connect to Newframe. It is separate 
 _Avoid_: Dapp approval, extension trust
 
 **Extension account access**:
-The accounts the human lets the extension see at all: either every account in the active profile or a chosen set that persists across profiles. It is a ceiling, not a grant: a dapp still needs its own account access grant, and can only be granted an account the extension can see. The extension has no selection of its own: it acts as the selected account when that account is shared with it, and otherwise has no account until the human selects a shared one or shares more.
+The accounts the human lets the extension see at all: either every account in the active profile or a chosen set that persists across profiles. It is a ceiling, not a grant: a dapp still needs its own account access grant, and can only be granted an account the extension can see. The extension has no selection of its own: it acts as the selected account when that account is shared with it, and otherwise has no account until the human selects a shared one or shares more. From the extension the human can change the selected account to another one shared with it.
 _Avoid_: Extension approval, account access grant
 
 **Account access grant**:
