@@ -208,7 +208,7 @@ export function createActivityRows({
   showTestnets: boolean
 }) {
   const address = accountAddress.toLowerCase()
-  return Object.values(activity)
+  const rows = Object.values(activity)
     .map(projectActivityRecord)
     .filter((record): record is ActivityViewRecord => {
       const recordAddress = String(record.account ?? record.address ?? '').toLowerCase()
@@ -216,15 +216,27 @@ export function createActivityRows({
       const chain = (networks as Partial<typeof networks>)[chainId]
       return (
         Boolean(record.id) &&
-        recordAddress === address &&
+        (recordAddress === address ||
+          record.accounts?.some((account) => account.toLowerCase() === address) === true) &&
         chain !== undefined &&
         (!chain.isTestnet || showTestnets) &&
         (selectedChainId === 0 || selectedChainId === chainId)
       )
     })
-    .sort(
-      (a, b) =>
-        timestamp(b.submittedAt, timestamp(b.updatedAt, 0)) -
-        timestamp(a.submittedAt, timestamp(a.updatedAt, 0))
-    )
+  const byTransaction = new Map<string, ActivityViewRecord>()
+  for (const record of rows) {
+    const key = `${record.chainId}:${record.hash?.toLowerCase() ?? record.id}`
+    const existing = byTransaction.get(key)
+    const recordAddress = String(record.account ?? record.address ?? '').toLowerCase()
+    // Prefer this account's balance changes when the transaction also has a shared execution row.
+    if (!existing || recordAddress === address) {
+      byTransaction.set(key, record)
+    }
+  }
+
+  return [...byTransaction.values()].sort(
+    (a, b) =>
+      timestamp(b.submittedAt, timestamp(b.updatedAt, 0)) -
+      timestamp(a.submittedAt, timestamp(a.updatedAt, 0))
+  )
 }

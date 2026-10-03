@@ -87,6 +87,7 @@ export const ActivityRecordSchema = z
     handlerId: z.string().nullable().optional(),
     address: z.string().nullable().optional(),
     account: z.string().nullable().optional(),
+    accounts: z.array(z.string()).optional(),
     chainId: ActivityNumberSchema,
     chainType: z.string().nullable().optional(),
     nonce: ActivityNumberSchema,

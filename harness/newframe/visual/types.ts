@@ -1,6 +1,7 @@
 import type { ElectronApplication, Page } from 'playwright-core'
 
 import type { SafeDeployment } from '../../../apps/newframe/src/features/accounts/domain/safe.ts'
+import type { WalletStatusNotification } from '../../../apps/newframe/src/platform/state-sync/contract/projections.ts'
 import type { HarnessRuntime } from '../core/service.ts'
 import type { SafeSeedManifest } from '../services/safe-contracts.ts'
 import type { AnvilClient } from './anvil-client.ts'
@@ -120,6 +121,9 @@ export type FlashOrder = {
 }
 
 export type AppState = {
+  view?: {
+    notifications?: Record<string, WalletStatusNotification>
+  }
   operations?: Record<
     string,
     {

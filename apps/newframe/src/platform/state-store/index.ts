@@ -26,8 +26,10 @@ if (process.env.NEWFRAME_VISUAL_HARNESS === 'true' && process.env.FRAME_PROFILE 
   Object.defineProperty(globalThis, '__NEWFRAME_VISUAL_HARNESS_GET_STATE__', {
     configurable: false,
     value: () => {
-      const { main, operations, windows } = store.getState()
-      return JSON.parse(JSON.stringify({ main, operations, windows })) as unknown
+      const { main, operations, windows, view } = store.getState()
+      return JSON.parse(
+        JSON.stringify({ main, operations, windows, view: { notifications: view.notifications } })
+      ) as unknown
     },
     writable: false
   })
