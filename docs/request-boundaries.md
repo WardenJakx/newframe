@@ -2,10 +2,29 @@
 
 The names below follow [CONTEXT.md](../CONTEXT.md). Application code lives under `apps/newframe/src`.
 
+## Architecture terms
+
+**Entry point authorization layer**:
+The desktop app's transport-facing boundary for an incoming request. It admits the connection or sender, carries source evidence such as a browser-derived dapp origin into main, and passes the request to the Gateway; it does not decide whether the requested operation is allowed. It refuses browser pages that call the local API directly; the only browser connection it admits is the extension's.
+
+**Newframe-internal request**:
+A request initiated by Newframe's own renderer. Verifying the renderer as the source is distinct from approving a specific operation as a human.
+
+**Main-process caller**:
+A Newframe feature running in desktop main that requests a gateway operation directly. It is distinct from a Newframe-internal renderer request and still subject to gateway policy.
+
+**IPC handler**:
+The main-process handler that performs an operation admitted by the Gateway. It can finish the work directly or create a pending operation for human review before calling a protected service.
+
+**Protected operations service**:
+The single main-process service for highest-sensitivity effects, including approved transaction signing or submission and private-key decryption or export; protected reads need not use it. It is a logical service inside Electron main, not a separate operating-system process.
+
+## Flow
+
 ```mermaid
 flowchart TD
   renderer[Newframe-internal renderer] --> ipc[IPC entry point]
-  website[Website via Companion extension] --> api[Local API entry point]
+  dapp[Dapp via extension] --> api[Local API entry point]
   client[Local API client] --> api
   cli[Newframe CLI with AI session credential] --> session[AI session entry point]
   ipc --> gateway[Gateway]
@@ -35,7 +54,7 @@ flowchart TD
 
 Entry points derive source evidence from their transport. Request payloads cannot mint request sources: admission requires the original object registered by a source factory. Copies and deserialized snapshots have no authority.
 
-A relayed request retains Website as its participant and carries its browser-derived website origin. It receives no extension-owned capabilities. Connecting an extension, granting account access, and approving a signing operation remain separate decisions.
+A relayed request retains the dapp as its participant and carries its browser-derived dapp origin. It receives no extension-owned capabilities. Connecting an extension, granting account access, and approving a signing operation remain separate decisions.
 
 Renderer commands and JSON-RPC requests retain their existing wire formats. They share the admission dispatcher while keeping their own contracts and policies. Main-process compositions use the RPC Gateway too. `rpcPolicy.ts` explicitly registers each supported JSON-RPC method, its parameter schema, authorization policy, destination, and AI-session eligibility. Unknown methods return `-32601` and invalid parameters return `-32602`. Wrapped `wallet_request` and `caip_request` calls are normalized before the inner method is checked; wrappers cannot bypass admission. Only registered chain methods can reach a chain node. Public chain reads can proceed without account authority; account operations require an admitted source.
 
@@ -61,7 +80,7 @@ sequenceDiagram
 
   C->>E: Request operation
   E->>E: Verify sender, connection or session credential
-  Note over E,G: Website retains website origin and receives no extension capabilities
+  Note over E,G: Dapp retains dapp origin and receives no extension capabilities
   E->>G: Request + admitted RequestSource
   G->>G: Normalize wrapper, look up method, validate input and source authority
   Note over G: Renderer role, account access grant or live AI-session method scope
@@ -102,6 +121,6 @@ Private-key export uses the renderer Gateway and protected operations service to
 
 ## Verification
 
-Gateway tests cover source copies, stale sessions, account grants, extension/website separation, unknown methods (including wrapped calls), malformed parameters, main-only simulation methods, and single callback completion. Protected AI-signing tests cover account mismatches, UI selection changes, account replacement, and revocation for messages, typed data, and transactions. Signing and key-export tests exercise authority changes during execution. Architecture checks restrict source issuance and raw signer invocation to their owners and reject operation authorization/effects in transport adapters.
+Gateway tests cover source copies, stale sessions, account grants, extension/dapp separation, unknown methods (including wrapped calls), malformed parameters, main-only simulation methods, and single callback completion. Protected AI-signing tests cover account mismatches, UI selection changes, account replacement, and revocation for messages, typed data, and transactions. Signing and key-export tests exercise authority changes during execution. Architecture checks restrict source issuance and raw signer invocation to their owners and reject operation authorization/effects in transport adapters.
 
 Run `bun run test`, `bun run typecheck`, `bun run lint`, and `bun run knip`. `bun run visual:harness:newframe` exercises the desktop against local chain and service fixtures, including prompted and AI-session operations. Its artifacts are written to `/tmp/newframe-visual-harness`.
