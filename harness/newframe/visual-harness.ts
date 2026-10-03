@@ -104,6 +104,7 @@ export async function runVisualHarness() {
     visual.log('launch electron')
     app = await services.watch(services.start(new ElectronApplicationService(electron, visual.uiTimeoutMs)))
     visual.monitorElectron(app)
+    await visual.startTrace(app)
 
     const context = await services.watch(createContext(app, services, visual, safeSeed))
     visual.assertNoUnexpectedRendererErrors()
