@@ -65,10 +65,7 @@ export function AccountSelector({ extensionAccounts, onRequestAccounts, onSelect
       menuAlign='end'
       menuWidth='wide'
       onOpenChange={setOpen}
-      onSelect={(address) => {
-        setOpen(false)
-        onSelect(address)
-      }}
+      onSelect={onSelect}
       open={open}
       placeholder={!selectedAccount}
       reserveMenuSpace
