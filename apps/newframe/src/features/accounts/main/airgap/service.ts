@@ -1,10 +1,8 @@
-import type { CommandMap, QueryResultMap } from '../../../../app/contracts/operations.ts'
+import type { AirGapPublicAccount, AirGapRequestReference } from '@newframe/schema/airgap'
+import type { CommandMap, QueryResultMap } from '@newframe/schema/tray-operations'
+
 import type { OperationService } from '../../../../platform/operations/service.ts'
 import type { OperationOwner, OperationReference } from '../../../../platform/operations/types.ts'
-import type {
-  AirGapPublicAccount,
-  AirGapRequestReference
-} from '../../../../platform/signing/domain/airgap.ts'
 import type { SigningUiContext } from '../../../../platform/signing/signers/Signer/index.ts'
 
 interface ScanAttempt {

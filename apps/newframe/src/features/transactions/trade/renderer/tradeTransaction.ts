@@ -22,15 +22,17 @@ import {
   type FlashStep,
   type FlashTradeSide
 } from '@newframe/flash/schemas'
-
-import type { FlashQuoteRequest } from '../../../../app/contracts/operations.ts'
-import { type BalanceSummary } from '../../../asset-data/domain/balance/index.ts'
-import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
 import {
   FLASH_MAX_TWAP_BUCKET_COUNT,
   FLASH_MAX_TWAP_DURATION_SECONDS,
   FLASH_MIN_TWAP_BUCKET_COUNT,
-  FLASH_MIN_TWAP_DURATION_SECONDS,
+  FLASH_MIN_TWAP_DURATION_SECONDS
+} from '@newframe/schema/trade-limits'
+import type { FlashQuoteRequest } from '@newframe/schema/tray-operations'
+
+import { type BalanceSummary } from '../../../asset-data/domain/balance/index.ts'
+import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
+import {
   cleanFlashDecimal,
   flashDurationSeconds,
   flashRequestKey,

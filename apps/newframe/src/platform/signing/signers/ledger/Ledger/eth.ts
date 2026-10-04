@@ -1,10 +1,10 @@
 import { encode } from '@ethereumjs/rlp'
 import { addHexPrefix, bytesToHex, stripHexPrefix, padToEven } from '@ethereumjs/util'
 import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util'
+import type { TypedData } from '@newframe/schema/request-records'
+import type { TransactionData } from '@newframe/schema/transactions'
 import log from 'electron-log'
 
-import type { TypedData } from '../../../../../features/requests/contract/requests.ts'
-import type { TransactionData } from '../../../../../features/transactions/domain/index.ts'
 import { sign } from '../../../../../features/transactions/main/index.ts'
 import type { Derivation } from '../../Signer/derive.ts'
 import { getDerivationPath, deriveHDAccounts } from '../../Signer/derive.ts'

@@ -1,7 +1,7 @@
+import type { OperationRecord } from '@newframe/schema/operation-records'
 import type { DragEvent } from 'react'
 import { useEffect, useReducer, useRef } from 'react'
 
-import type { OperationRecord } from '../../../platform/operations/operation.ts'
 import { type AccountsCapability, selectAccountAndClose } from './accountsCapability.ts'
 import type { AccountListItem, AccountProjection } from './accountsModel.ts'
 import { accountsReducer, createAccountsState } from './accountsReducer.ts'

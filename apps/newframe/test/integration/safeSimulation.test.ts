@@ -2,6 +2,8 @@ import { afterAll, beforeAll, expect, it } from 'bun:test'
 import { createRequire } from 'node:module'
 import { createServer } from 'node:net'
 
+import type { SafeProposal } from '@newframe/schema/safe'
+import type { TransactionEffect } from '@newframe/schema/transactions'
 import {
   Contract,
   ContractFactory,
@@ -21,10 +23,8 @@ import { createStore } from 'zustand/vanilla'
 
 import { seedSafe, type SafeSeedManifest } from '../../../../harness/newframe/services/safe-contracts.ts'
 import { createSafeHandler } from '../../scripts/local-safe/handler.ts'
-import type { SafeProposal } from '../../src/features/accounts/domain/safe.ts'
 import { createSafeService } from '../../src/features/accounts/main/safe.ts'
 import { simulateSafeProposal } from '../../src/features/accounts/main/safeSimulation.ts'
-import type { TransactionEffect } from '../../src/features/transactions/domain/index.ts'
 import {
   createTransactionSimulationProjection,
   type TraceCall

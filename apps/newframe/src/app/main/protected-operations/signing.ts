@@ -1,8 +1,8 @@
 import { isValidAddress } from '@ethereumjs/util'
+import type { TypedMessage } from '@newframe/schema/request-records'
+import type { TransactionData } from '@newframe/schema/transactions'
 
 import type { AccountsRuntime } from '../../../features/accounts/main/runtime.ts'
-import type { TypedMessage } from '../../../features/requests/contract/requests.ts'
-import type { TransactionData } from '../../../features/transactions/domain/index.ts'
 import { createOneResultCallbackBoundary } from '../../../platform/callbacks/oneResult.ts'
 import { getSignerType, isSignerReady } from '../../../platform/signing/domain/index.ts'
 import type Signer from '../../../platform/signing/signers/Signer/index.ts'

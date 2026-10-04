@@ -1,7 +1,7 @@
+import type { CommandMap, CommandResult } from '@newframe/schema/tray-operations'
 import { useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
-import type { CommandMap, CommandResult } from '../../../app/contracts/operations.ts'
 import { selectOperationById } from '../../../platform/state-sync/renderer/selectors/operation.ts'
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector.tsx'
 import type { SettingsCapability } from './settingsCapability.ts'

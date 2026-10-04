@@ -1,3 +1,15 @@
+import type { Account } from '@newframe/schema/accounts'
+import type { Address } from '@newframe/schema/address'
+import { RequestMode } from '@newframe/schema/request-records'
+import type {
+  AccessRequest,
+  AccountRequest,
+  CanonicalAccountRequest,
+  PermitSignatureRequest,
+  SignTypedDataRequest,
+  TransactionRequest
+} from '@newframe/schema/request-records'
+import type { EVMError, RPCErrorCallback, RPCResponsePayload } from '@newframe/schema/rpc'
 import log from 'electron-log'
 
 import { ProtectedAccountSigning } from '../../../app/main/protected-operations/signing.ts'
@@ -6,26 +18,14 @@ import { Type as SignerType, getSignerType } from '../../../platform/signing/dom
 import { getErc7730TypedDataDisplay } from '../../../platform/signing/signatures/erc7730.ts'
 import type { SignerSummary } from '../../../platform/signing/signers/Signer/index.ts'
 import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
-import type { Address } from '../../../shared/domain/address.ts'
 import type { Callback } from '../../../shared/domain/async.ts'
-import type { EVMError, RPCErrorCallback, RPCResponsePayload } from '../../../shared/domain/rpc.ts'
 import type { NameResolutionService } from '../../name-resolution/main/nameResolution.ts'
-import { RequestMode } from '../../requests/contract/requests.ts'
-import type {
-  AccessRequest,
-  AccountRequest,
-  CanonicalAccountRequest,
-  PermitSignatureRequest,
-  SignTypedDataRequest,
-  TransactionRequest
-} from '../../requests/contract/requests.ts'
 import type { ApprovalType } from '../../requests/domain/approval.ts'
 import { isTransactionRequest, isTypedMessageSignatureRequest } from '../../requests/domain/index.ts'
 import type { PromptedRequestLifecyclePort } from '../../requests/main/service.ts'
 import type { Action } from '../../transactions/main/actions/index.ts'
 import type { RevealService } from '../../transactions/main/reveal.ts'
 import type { TransactionSimulationPort } from '../../transactions/main/simulationPort.ts'
-import type { Account } from '../domain/state/account.ts'
 import type { Accounts } from './index.ts'
 import type { AccountChainRpcPort } from './providerPort.ts'
 import type { AccountsRuntime } from './runtime.ts'

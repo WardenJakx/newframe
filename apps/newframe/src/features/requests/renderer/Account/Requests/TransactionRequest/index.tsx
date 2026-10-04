@@ -1,3 +1,4 @@
+import type { TransactionApprovalAdjustments } from '@newframe/schema/transaction-approval'
 // New Tx
 import { useCallback } from 'react'
 
@@ -5,7 +6,6 @@ import { useWalletSelector } from '../../../../../../platform/state-sync/rendere
 import { erc20Interface } from '../../../../../../shared/domain/evm.ts'
 import { persistedImageSource } from '../../../../../asset-data/domain/image/index.ts'
 import { NATIVE_CURRENCY } from '../../../../../tokens/domain/constants.ts'
-import type { TransactionApprovalAdjustments } from '../../../../../transactions/domain/approval.ts'
 import type { TransactionFeeField } from '../../../../../transactions/domain/fees.ts'
 import type { RequestRendererCapabilities } from '../../../requestCapabilities.ts'
 import { useRequestView } from '../../../requestView.tsx'

@@ -1,4 +1,6 @@
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
+import type { SignatureRequest, SafeMessageProgress } from '@newframe/schema/request-records'
+import type { SafeConfiguration } from '@newframe/schema/safe'
 
 import {
   getSafeMessageHash,
@@ -13,9 +15,7 @@ import {
 } from '../../../platform/signing/signatures/digests.ts'
 import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.ts'
 import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
-import type { SignatureRequest, SafeMessageProgress } from '../../requests/contract/requests.ts'
 import { isTypedMessageSignatureRequest } from '../../requests/domain/index.ts'
-import type { SafeConfiguration } from '../domain/safe.ts'
 import type FrameAccount from './Account.ts'
 import { deriveSigningCandidate } from './signingCapability.ts'
 

@@ -34,4 +34,5 @@ apps/newframe-extension/.cache
 .docs/
 .env
 packages/desktop-api/dist
+packages/schema/dist
 packages/network/dist

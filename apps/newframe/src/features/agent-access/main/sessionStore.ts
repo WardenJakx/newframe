@@ -1,9 +1,6 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
 
-import type {
-  AgentDescriptor,
-  AgentCredentials as AgentSessionCredentials
-} from '@newframe/desktop-api/schemas'
+import type { AgentDescriptor, AgentCredentials as AgentSessionCredentials } from '@newframe/schema/local-api'
 
 export type AgentSession = {
   sessionId: string

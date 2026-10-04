@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto'
 
 import { createDesktopClient, isDesktopClientError } from '@newframe/desktop-api/client'
-import { SessionSchema, type Session as StoredSession } from '@newframe/desktop-api/schemas'
 import { createFlashApi, flashBaseUrl, flashCancelMessage } from '@newframe/flash/api'
 import type { FlashQuoteRequest } from '@newframe/flash/contracts'
 import {
@@ -15,6 +14,7 @@ import {
 import { getFlashAssetPairChains } from '@newframe/flash/pair'
 import type { FlashQuote } from '@newframe/flash/schemas'
 import { isFlashTerminalStatus, normalizeFlashStatus } from '@newframe/flash/status'
+import { SessionSchema, type Session as StoredSession } from '@newframe/schema/local-api'
 
 import { readSubmitProgress, saveSubmitProgress, withSubmitLock } from './journal.ts'
 import { clearSession, loadSession, saveSession, stateDirectory } from './storage.ts'

@@ -1,3 +1,4 @@
+import type { WalletRendererState } from '@newframe/schema/projections'
 import { Button } from '@newframe/ui/button'
 import { IconButton } from '@newframe/ui/icon-button'
 import { Input } from '@newframe/ui/input'
@@ -9,7 +10,6 @@ import { Text } from '@newframe/ui/text'
 import React from 'react'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections.ts'
 import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay.tsx'
 import { formatUsdRate } from '../../asset-data/domain/balance/index.ts'
 

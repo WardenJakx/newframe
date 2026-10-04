@@ -1,5 +1,6 @@
-import type { CommandResult, SendRequestCommand } from '../../../../app/contracts/operations.ts'
-import type { NewframeHost } from '../../../../platform/ipc/contract/ipc.ts'
+import type { NewframeHost } from '@newframe/schema/tray-host'
+import type { CommandResult, SendRequestCommand } from '@newframe/schema/tray-operations'
+
 import type { ClipboardCapability, TokenImageCapability } from '../../../../shared/renderer/capabilities.ts'
 
 type WithoutType<TInput> = TInput extends { type: string } ? Omit<TInput, 'type'> : never

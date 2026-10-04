@@ -165,7 +165,7 @@ To enable wallet portfolio discovery, enable token auto-discovery with Flash in 
 
 ## Architecture boundaries
 
-Newframe uses one typed operation catalog in `src/app/contracts/operations.ts`. A command expresses an
+Newframe uses one typed message catalog in `packages/schema/src/tray-operations.ts`. A command expresses an
 intent and returns only the generic `CommandResult` acknowledgement. If a renderer needs data, it
 must issue a typed query with a query-specific result, or observe canonical projected state. Do not
 add command-specific result maps, generic renderer RPC channels, or renderer-owned mirrors of

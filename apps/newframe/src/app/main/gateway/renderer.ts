@@ -1,7 +1,7 @@
+import { commandContracts, queryContracts } from '@newframe/schema/tray-operations'
 import log from 'electron-log'
 import { z } from 'zod'
 
-import { commandContracts, queryContracts } from '../../contracts/operations.ts'
 import {
   createOperationRegistry,
   type OperationServices,

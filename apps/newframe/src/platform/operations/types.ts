@@ -1,4 +1,4 @@
-import type { RendererProjection } from '../state-sync/contract/projections.ts'
+import type { RendererProjection } from '@newframe/schema/projections'
 
 // Trusted, transport-neutral renderer identity. This remains private to main;
 // renderer schemas expose only the safe operation record.

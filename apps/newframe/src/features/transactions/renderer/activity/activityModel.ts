@@ -1,6 +1,8 @@
+import { type TransactionEffect } from '@newframe/schema/transactions'
+
 import { timestamp } from '../../../../shared/domain/timestamp.ts'
 import { formatUnits, toBigInt } from '../../../../shared/domain/units.ts'
-import { getPaidTransactionFee, getTransactionEffects, type TransactionEffect } from '../../domain/index.ts'
+import { getPaidTransactionFee, getTransactionEffects } from '../../domain/index.ts'
 import {
   projectActivityRecord,
   type ActivityChainMap,

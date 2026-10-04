@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
 
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
+import type { TypedMessage } from '@newframe/schema/request-records'
 
-import type { TypedMessage } from '../../../features/requests/contract/requests.ts'
 import * as signatureParser from './index.ts'
 
 describe('#identify', () => {

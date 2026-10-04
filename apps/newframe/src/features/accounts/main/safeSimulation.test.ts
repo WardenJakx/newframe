@@ -1,8 +1,8 @@
 import { expect, it } from 'bun:test'
 
+import type { SafeConfiguration, SafeProposal } from '@newframe/schema/safe'
 import { Interface, ZeroAddress, toBeHex } from 'ethers'
 
-import type { SafeConfiguration, SafeProposal } from '../domain/safe.ts'
 import { simulateSafeProposal, type SafeSimulationPorts } from './safeSimulation.ts'
 
 const safe = '0x1111111111111111111111111111111111111111'

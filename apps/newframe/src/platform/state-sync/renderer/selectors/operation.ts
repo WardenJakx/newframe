@@ -1,5 +1,5 @@
-import type { OperationEntityRef, OperationRecord, OperationStatus } from '../../../operations/operation.ts'
-import type { WalletRendererState } from '../../contract/projections.ts'
+import type { OperationEntityRef, OperationRecord, OperationStatus } from '@newframe/schema/operation-records'
+import type { WalletRendererState } from '@newframe/schema/projections'
 
 type OperationState = Pick<WalletRendererState, 'operations'>
 

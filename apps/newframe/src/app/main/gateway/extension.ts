@@ -1,5 +1,6 @@
+import type { RPCRequestPayload, RPCResponsePayload } from '@newframe/schema/rpc'
+
 import type { ExtensionAccessService } from '../../../features/connections/main/extensionAccess.ts'
-import type { RPCRequestPayload, RPCResponsePayload } from '../../../shared/domain/rpc.ts'
 import { dispatchGatewayOperation } from './dispatch.ts'
 import { isRequestSource, hasSourceCapability, type LocalApiSource } from './requestSource.ts'
 import { rpcMethodPolicy } from './rpcPolicy.ts'

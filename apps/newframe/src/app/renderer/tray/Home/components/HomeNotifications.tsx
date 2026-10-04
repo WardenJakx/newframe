@@ -1,3 +1,4 @@
+import type { WalletRendererState } from '@newframe/schema/projections'
 import { Button } from '@newframe/ui/button'
 import { Icon } from '@newframe/ui/icon'
 import { Stack } from '@newframe/ui/stack'
@@ -5,7 +6,6 @@ import { Text } from '@newframe/ui/text'
 import { useShallow } from 'zustand/react/shallow'
 
 import { cva } from '../../../../../../generated/styled-system/css/cva.js'
-import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections.ts'
 import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector.tsx'
 import { ChainIcon } from '../../../../../shared/renderer/ui/ChainIcon.tsx'
 import StatusGlyph from '../../../../../shared/renderer/ui/StatusGlyph.tsx'

@@ -1,5 +1,4 @@
-import { isAddress } from 'ethers'
-
+import type { OperationEntityRef } from '@newframe/schema/operation-records'
 import type {
   AccountCreateCommand,
   SignerDisconnectCommand,
@@ -8,8 +7,9 @@ import type {
   SignerImportCommand,
   SignerRefreshCommand,
   SignerSessionInputCommand
-} from '../../../../app/contracts/operations.ts'
-import type { OperationEntityRef } from '../../../../platform/operations/operation.ts'
+} from '@newframe/schema/tray-operations'
+import { isAddress } from 'ethers'
+
 import type { OperationService } from '../../../../platform/operations/service.ts'
 import type { OperationOwner, OperationReference } from '../../../../platform/operations/types.ts'
 import { getSignerDisplayType } from '../../../../platform/signing/domain/index.ts'

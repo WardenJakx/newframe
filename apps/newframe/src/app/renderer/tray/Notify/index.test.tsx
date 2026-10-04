@@ -1,11 +1,12 @@
 import { expect, it } from 'bun:test'
 
+import type { NewframeHost } from '@newframe/schema/tray-host'
+
 import { act, render, screen, waitFor } from '../../../../../test/support/componentSetup.tsx'
 import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient.ts'
 import { createAccountsCapabilityFake } from '../../../../features/accounts/renderer/accountsCapability.test-support.ts'
 import { createRequestRendererCapabilities as createRequestPorts } from '../../../../features/requests/renderer/requestCapabilities.ts'
 import { createQrCameraFake } from '../../../../platform/desktop/renderer/camera.test-support.ts'
-import type { NewframeHost } from '../../../../platform/ipc/contract/ipc.ts'
 import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support.ts'
 import { createHomeCapability } from '../Home/homeCapability.ts'
 import { TrayNotificationProvider, useTrayNotification } from '../notification.tsx'

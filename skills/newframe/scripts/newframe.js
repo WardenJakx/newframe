@@ -6149,74 +6149,6 @@ var FlashCancelOrderRequestSchema = object({
 // apps/newframe-cli/src/client.ts
 import { createHash } from "crypto";
 
-// packages/desktop-api/src/schemas.ts
-var AddressSchema = string2().regex(/^0x[0-9a-f]{40}$/i);
-var HexSchema = string2().regex(/^0x[0-9a-f]*$/i);
-var HashSchema = string2().regex(/^0x[0-9a-f]{64}$/i);
-var AgentDescriptorSchema = strictObject({
-  name: string2().trim().min(1).max(128),
-  description: string2().trim().max(512).optional(),
-  url: url({ protocol: /^https?:$/ }).max(2048).optional()
-});
-var AgentConnectSchema = strictObject({
-  descriptor: AgentDescriptorSchema,
-  durationSeconds: number2().int().min(60).max(180 * 24 * 60 * 60)
-});
-var SessionSchema = object({
-  sessionId: string2().min(1),
-  sessionToken: string2().min(1),
-  account: AddressSchema,
-  expiresAt: number2()
-});
-var AgentCredentialsSchema = SessionSchema.extend({ descriptor: AgentDescriptorSchema });
-var RoutingSchema = object({
-  chainId: string2().optional(),
-  origin: string2().optional(),
-  connecting: boolean2().optional()
-});
-var RpcCallSchema = RoutingSchema.extend({
-  method: string2().min(1).max(128),
-  params: union([array(unknown()), record(string2(), unknown())]).default([])
-});
-var OriginStatusSchema = object({
-  originId: string2(),
-  origin: string2(),
-  connected: boolean2(),
-  address: string2(),
-  selectedAddress: string2().optional(),
-  chainId: string2().optional()
-});
-var ExtensionAccountsSchema = object({
-  accounts: array(object({ address: AddressSchema, name: string2() })),
-  selected: union([AddressSchema, literal("")]),
-  all: literal(true).optional()
-});
-var ChainSchema = looseObject({
-  chainId: union([number2(), string2()]),
-  name: string2().optional(),
-  connected: boolean2().optional(),
-  icon: array(looseObject({ url: string2() })).optional()
-});
-var ProviderEventSchema = _enum([
-  "networkChanged",
-  "chainChanged",
-  "chainsChanged",
-  "accountsChanged",
-  "assetsChanged"
-]);
-var WalletEventSchema = discriminatedUnion("event", [
-  object({ event: literal("chainsChanged"), value: array(ChainSchema) }),
-  object({ event: literal("accountsChanged"), value: array(string2()) }),
-  object({ event: literal("chainChanged"), value: string2() }),
-  object({ event: literal("networkChanged"), value: union([string2(), number2()]) }),
-  object({ event: literal("assetsChanged"), value: unknown() })
-]);
-var RpcErrorSchema = object({
-  code: number2().optional(),
-  message: string2(),
-  data: unknown().optional()
-});
-
 // packages/flash/dist/chains.js
 var FLASH_CHAIN_REGISTRY = [
   {
@@ -6957,7 +6889,7 @@ function isFlashTerminalStatus(status) {
 var FLASH_DEV_BASE_URL = "http://127.0.0.1:8422/v1";
 var FLASH_PROD_BASE_URL = "https://flash.definitive.fi/v1";
 var FLASH_API_KEY = "dpka_513a2bd7_57a2_46d2_927b_2a3857fe271b";
-var AddressSchema2 = string2().trim().regex(/^0x[0-9a-fA-F]{40}$/);
+var AddressSchema = string2().trim().regex(/^0x[0-9a-fA-F]{40}$/);
 var OrderIdSchema = string2().min(1);
 var SignatureSchema = string2().min(1);
 var ListOptionsSchema = object({
@@ -6973,15 +6905,15 @@ var SubmitOrderFunction = _function({
   output: FlashSubmitResponseSchema
 });
 var ListOrdersFunction = _function({
-  input: [AddressSchema2, ListOptionsSchema.default({})],
+  input: [AddressSchema, ListOptionsSchema.default({})],
   output: FlashListOrdersResponseSchema
 });
 var GetOrderFunction = _function({
-  input: [AddressSchema2, OrderIdSchema],
+  input: [AddressSchema, OrderIdSchema],
   output: FlashGetOrderResponseSchema
 });
 var BalancesFunction = _function({
-  input: [AddressSchema2],
+  input: [AddressSchema],
   output: FlashBalancesResponseSchema
 });
 var CancelOrderFunction = _function({
@@ -7171,6 +7103,74 @@ function buildFlashSubmitRequest({ accountAddress, bridgeQuoteId, flashPayload, 
     idempotencyKey
   };
 }
+
+// packages/schema/src/local-api.ts
+var AddressSchema2 = string2().regex(/^0x[0-9a-f]{40}$/i);
+var HexSchema = string2().regex(/^0x[0-9a-f]*$/i);
+var HashSchema = string2().regex(/^0x[0-9a-f]{64}$/i);
+var AgentDescriptorSchema = strictObject({
+  name: string2().trim().min(1).max(128),
+  description: string2().trim().max(512).optional(),
+  url: url({ protocol: /^https?:$/ }).max(2048).optional()
+});
+var AgentConnectSchema = strictObject({
+  descriptor: AgentDescriptorSchema,
+  durationSeconds: number2().int().min(60).max(180 * 24 * 60 * 60)
+});
+var SessionSchema = object({
+  sessionId: string2().min(1),
+  sessionToken: string2().min(1),
+  account: AddressSchema2,
+  expiresAt: number2()
+});
+var AgentCredentialsSchema = SessionSchema.extend({ descriptor: AgentDescriptorSchema });
+var RoutingSchema = object({
+  chainId: string2().optional(),
+  origin: string2().optional(),
+  connecting: boolean2().optional()
+});
+var RpcCallSchema = RoutingSchema.extend({
+  method: string2().min(1).max(128),
+  params: union([array(unknown()), record(string2(), unknown())]).default([])
+});
+var OriginStatusSchema = object({
+  originId: string2(),
+  origin: string2(),
+  connected: boolean2(),
+  address: string2(),
+  selectedAddress: string2().optional(),
+  chainId: string2().optional()
+});
+var ExtensionAccountsSchema = object({
+  accounts: array(object({ address: AddressSchema2, name: string2() })),
+  selected: union([AddressSchema2, literal("")]),
+  all: literal(true).optional()
+});
+var ChainSchema = looseObject({
+  chainId: union([number2(), string2()]),
+  name: string2().optional(),
+  connected: boolean2().optional(),
+  icon: array(looseObject({ url: string2() })).optional()
+});
+var ProviderEventSchema = _enum([
+  "networkChanged",
+  "chainChanged",
+  "chainsChanged",
+  "accountsChanged",
+  "assetsChanged"
+]);
+var WalletEventSchema = discriminatedUnion("event", [
+  object({ event: literal("chainsChanged"), value: array(ChainSchema) }),
+  object({ event: literal("accountsChanged"), value: array(string2()) }),
+  object({ event: literal("chainChanged"), value: string2() }),
+  object({ event: literal("networkChanged"), value: union([string2(), number2()]) }),
+  object({ event: literal("assetsChanged"), value: unknown() })
+]);
+var RpcErrorSchema = object({
+  code: number2().optional(),
+  message: string2(),
+  data: unknown().optional()
+});
 
 // apps/newframe-cli/src/journal.ts
 import { randomUUID as randomUUID2 } from "crypto";

@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
 
+import { RequestStatus, TxClassification } from '@newframe/schema/request-records'
+import { TransactionApprovalAdjustmentsSchema } from '@newframe/schema/transaction-approval'
 import { act, waitFor, within } from '@testing-library/react'
 
 import { fireEvent, screen, render } from '../../../../../../../test/support/componentSetup.tsx'
 import { registerTestRuntimeFixture } from '../../../../../../../test/support/rendererClient.ts'
 import { erc20Interface } from '../../../../../../shared/domain/evm.ts'
-import { TransactionApprovalAdjustmentsSchema } from '../../../../../transactions/domain/approval.ts'
-import { RequestStatus, TxClassification } from '../../../../contract/requests.ts'
 import {
   createRequestRendererCapabilitiesFake as createRequestPortsFake,
   type RequestRendererCapabilitiesFake

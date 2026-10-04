@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from 'node:util'
 
-import type { ExtensionAccounts } from '@newframe/desktop-api/schemas'
+import type { ExtensionAccounts } from '@newframe/schema/local-api'
 import { Contract, JsonRpcProvider, formatUnits, getBytes, hashMessage, hexlify, toUtf8Bytes } from 'ethers'
 
 import { anvilChainId, anvilRpcUrl, newframeRpcUrl, harnessAccountAddress } from '../../core/config.ts'

@@ -15,6 +15,23 @@ import { randomUUID } from 'node:crypto'
 
 import { addHexPrefix, intToHex } from '@ethereumjs/util'
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
+import { AccountSchema } from '@newframe/schema/accounts'
+import type { Origin } from '@newframe/schema/origins'
+import type {
+  AccountRequest,
+  AddChainRequest,
+  SignTypedDataRequest,
+  TypedMessage,
+  TransactionRequest
+} from '@newframe/schema/request-records'
+import { TxClassification } from '@newframe/schema/request-records'
+import type {
+  JSONRPCRequestPayload,
+  RPCRequestCallback,
+  RPCRequestPayload,
+  RPCResponsePayload
+} from '@newframe/schema/rpc'
+import { GasFeesSource, type TransactionData } from '@newframe/schema/transactions'
 import log from 'electron-log'
 import { Wallet, getAddress, getBytes, parseUnits, toBeHex } from 'ethers'
 import { validate as validateUUID } from 'uuid'
@@ -34,26 +51,9 @@ import type {
 import type { Chain as StoredChain, Gas, Permission } from '../../../../platform/state-store/state/index.ts'
 import type { Callback } from '../../../../shared/domain/async.ts'
 import { gweiToHex } from '../../../../shared/domain/hex.ts'
-import type {
-  JSONRPCRequestPayload,
-  RPCRequestCallback,
-  RPCRequestPayload,
-  RPCResponsePayload
-} from '../../../../shared/domain/rpc.ts'
-import { AccountSchema } from '../../../accounts/domain/state/account.ts'
 import type { SafeTransactionPort } from '../../../accounts/main/safeTransactionPort.ts'
 import chainConfig from '../../../chains/main/config.ts'
 import type { Chains } from '../../../chains/main/index.ts'
-import type { Origin } from '../../../connections/domain/state/origin.ts'
-import type {
-  AccountRequest,
-  AddChainRequest,
-  SignTypedDataRequest,
-  TypedMessage,
-  TransactionRequest
-} from '../../../requests/contract/requests.ts'
-import { TxClassification } from '../../../requests/contract/requests.ts'
-import { GasFeesSource, type TransactionData } from '../../../transactions/domain/index.ts'
 import type { AccountRequestPort } from './accountRequestPort.ts'
 import type { ProviderProxyConnection } from './proxy.ts'
 import type { Subscription } from './subscriptions.ts'

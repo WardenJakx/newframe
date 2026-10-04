@@ -1,20 +1,20 @@
 import { z } from 'zod'
 
+import { AccountSchema } from './accounts.ts'
+import { AirGapPendingSummarySchema } from './airgap.ts'
+import { AssetRateMapSchema } from './asset-rates.ts'
+import { BalanceSchema } from './balances.ts'
+import { NativeCurrencySchema } from './native-currency.ts'
+import { OperationCollectionSchema } from './operation-records.ts'
+import { SafeOwnerAccountSchema } from './safe.ts'
+import { TokenCatalogSchema, TokenImageSchema } from './tokens.ts'
 import {
   ActivityRecordSchema,
   ActivityStatusSchema,
   MainSchema,
   OrderRecordSchema,
   RuntimeSchema
-} from '../../../app/contracts/state/main.ts'
-import { SafeOwnerAccountSchema } from '../../../features/accounts/domain/safe.ts'
-import { AccountSchema } from '../../../features/accounts/domain/state/account.ts'
-import { BalanceSchema } from '../../../features/asset-data/domain/state/balance.ts'
-import { AssetRateMapSchema } from '../../../features/asset-data/domain/state/rate.ts'
-import { NativeCurrencySchema } from '../../../features/chains/domain/state/nativeCurrency.ts'
-import { TokenCatalogSchema, TokenImageSchema } from '../../../features/tokens/domain/state/token.ts'
-import { OperationCollectionSchema } from '../../operations/operation.ts'
-import { AirGapPendingSummarySchema } from '../../signing/domain/airgap.ts'
+} from './wallet-state.ts'
 
 export const RendererProjectionSchema = z.enum(['wallet-ui', 'sidetray'])
 export type RendererProjection = z.infer<typeof RendererProjectionSchema>

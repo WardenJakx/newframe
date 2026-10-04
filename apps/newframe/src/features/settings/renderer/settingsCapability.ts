@@ -1,5 +1,5 @@
-import type { CommandMap, CommandResult } from '../../../app/contracts/operations.ts'
-import type { NewframeHost } from '../../../platform/ipc/contract/ipc.ts'
+import type { NewframeHost } from '@newframe/schema/tray-host'
+import type { CommandMap, CommandResult } from '@newframe/schema/tray-operations'
 
 type WithoutType<T> = T extends { type: string } ? Omit<T, 'type'> : never
 type Input<TType extends keyof CommandMap> = WithoutType<CommandMap[TType]>

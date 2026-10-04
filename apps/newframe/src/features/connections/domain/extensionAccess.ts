@@ -1,5 +1,7 @@
-import { getProfileAccountIds, type Main } from '../../../app/contracts/state/main.ts'
-import type { ExtensionAccess } from './state/extensionAccess.ts'
+import type { ExtensionAccess } from '@newframe/schema/extension-access'
+import { type Main } from '@newframe/schema/wallet-state'
+
+import { getProfileAccountIds } from '../../accounts/domain/profiles.ts'
 
 type AccessMain = Pick<
   Main,

@@ -1,6 +1,6 @@
 import { createDesktopClient } from '@newframe/desktop-api/client'
-import type { AgentCredentials } from '@newframe/desktop-api/schemas'
 import { FLASH_ANVIL_CHAIN_ID, FLASH_USDC_ADDRESS } from '@newframe/flash/constants'
+import type { AgentCredentials } from '@newframe/schema/local-api'
 import { Interface, parseUnits } from 'ethers'
 
 const NEWFRAME_RPC_URL = 'http://127.0.0.1:1248'

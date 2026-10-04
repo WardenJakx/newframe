@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'bun:test'
 
-import {
-  DEFAULT_PROFILE_ID,
-  DEFAULT_PROFILE_NAME,
-  getProfileAccountIds
-} from '../../../app/contracts/state/main.ts'
+import { DEFAULT_PROFILE_ID, DEFAULT_PROFILE_NAME } from '@newframe/schema/wallet-state'
+
+import { getProfileAccountIds } from '../../../features/accounts/domain/profiles.ts'
 import { builtInChainIconUrl } from '../../../features/chains/domain/chain/index.ts'
 import createInitialState, { CanonicalStateSchema } from './index.ts'
 

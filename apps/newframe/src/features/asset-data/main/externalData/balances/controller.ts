@@ -3,10 +3,10 @@ import { fork } from 'child_process'
 import { EventEmitter } from 'events'
 import path from 'path'
 
+import type { Address } from '@newframe/schema/address'
 import log from 'electron-log'
 
 import type { Token } from '../../../../../platform/state-store/state/index.ts'
-import type { Address } from '../../../../../shared/domain/address.ts'
 import type { CurrencyBalance, TokenBalance } from './scan.ts'
 
 const BOOTSTRAP_TIMEOUT_SECONDS = 20

@@ -1,14 +1,14 @@
 import { afterEach, expect, it, mock } from 'bun:test'
 
+import type { RPC } from '@newframe/schema/rpc'
+import type { SafeProposal } from '@newframe/schema/safe'
+import { GasFeesSource } from '@newframe/schema/transactions'
 import { Interface, Wallet, ZeroAddress } from 'ethers'
 
 import { createTestStore } from '../../../../test/support/createTestStore.ts'
 import { createOperationService } from '../../../platform/operations/service.ts'
 import { getSafeTypedMessage, packSafeSignatures } from '../../../platform/safe/integrity.ts'
 import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.ts'
-import type { RPC } from '../../../shared/domain/rpc.ts'
-import { GasFeesSource } from '../../transactions/domain/index.ts'
-import type { SafeProposal } from '../domain/safe.ts'
 import { createSafeTransactionService, type SafeTransactionPorts } from './safeTransaction.ts'
 
 const safe = '0x1111111111111111111111111111111111111111'

@@ -1,4 +1,5 @@
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections.ts'
+import type { WalletRendererState } from '@newframe/schema/projections'
+
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector.tsx'
 import { accountDisplayType } from '../../../shared/renderer/ui/signerPresentation.ts'
 import type { AccountsCapability } from './accountsCapability.ts'

@@ -1,6 +1,7 @@
 import { expect, it, mock } from 'bun:test'
 
-import type { RPCRequestPayload } from '../../../shared/domain/rpc.ts'
+import type { RPCRequestPayload } from '@newframe/schema/rpc'
+
 import { createDeferredAccountChainRpcPort } from './providerPort.ts'
 
 const payload = {

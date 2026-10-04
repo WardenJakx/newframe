@@ -1,10 +1,6 @@
-import type {
-  CommandMap,
-  CommandResult,
-  QueryMap,
-  QueryResultMap
-} from '../../../app/contracts/operations.ts'
-import type { NewframeHost } from '../../../platform/ipc/contract/ipc.ts'
+import type { NewframeHost } from '@newframe/schema/tray-host'
+import type { CommandMap, CommandResult, QueryMap, QueryResultMap } from '@newframe/schema/tray-operations'
+
 import type { ClipboardCapability, TokenImageCapability } from '../../../shared/renderer/capabilities.ts'
 
 type CommandInput<TType extends keyof CommandMap> = Omit<CommandMap[TType], 'type'>

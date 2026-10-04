@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
 
-import { DEFAULT_PROFILE_ID } from '../../../app/contracts/state/main.ts'
+import { StateMessageChannel } from '@newframe/schema/projection-stream'
+import { DEFAULT_PROFILE_ID } from '@newframe/schema/wallet-state'
+
 import createCanonicalStore from '../../state-store/createCanonicalStore.ts'
 import createInitialState from '../../state-store/state/index.ts'
-import { StateMessageChannel } from '../../state-sync/contract/protocol.ts'
 import { projectRendererState } from '../../state-sync/main/projections.ts'
 import type { AuthorizationContext } from './authorization.ts'
 import { createStateStream, type StateStream } from './stateStream.ts'

@@ -1,7 +1,7 @@
 import { getFlashChainConfig } from '@newframe/flash/chains'
+import type { Chain, ChainMetadata } from '@newframe/schema/chains'
 
 import { MAINNET_ETH_ICON } from '../../../asset-data/domain/balance/index.ts'
-import type { Chain, ChainMetadata } from '../state/chain.ts'
 type ChainLayer = NonNullable<Chain['layer']>
 type RpcPreset = 'chainlist' | 'custom'
 type NativeIcon = 'chain' | 'eth'

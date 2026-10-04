@@ -1,3 +1,4 @@
+import type { SafeDeployment } from '@newframe/schema/safe'
 import { Button } from '@newframe/ui/button'
 import { Icon } from '@newframe/ui/icon'
 import { Stack } from '@newframe/ui/stack'
@@ -6,7 +7,6 @@ import { formatUnits } from 'ethers'
 import type { ReactNode } from 'react'
 
 import { shortAddress } from '../../../shared/renderer/ui/AddressIdentity.tsx'
-import type { SafeDeployment } from '../../accounts/domain/safe.ts'
 import { RequestCard } from './ui/RequestCard.tsx'
 import { RequestList } from './ui/RequestList.tsx'
 

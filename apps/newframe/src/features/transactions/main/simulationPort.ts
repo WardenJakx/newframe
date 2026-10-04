@@ -1,5 +1,5 @@
-import type { TransactionRequest } from '../../requests/contract/requests.ts'
-import type { TransactionSimulation } from '../domain/index.ts'
+import type { TransactionRequest } from '@newframe/schema/request-records'
+import type { TransactionSimulation } from '@newframe/schema/transactions'
 
 export interface TransactionSimulationPort {
   simulateTransactionEffects(request: TransactionRequest): Promise<TransactionSimulation>

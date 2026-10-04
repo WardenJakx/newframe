@@ -1,4 +1,4 @@
-import type { SettingsUpdateCommand } from '../../../app/contracts/operations.ts'
+import type { SettingsUpdateCommand } from '@newframe/schema/tray-operations'
 
 export type SettingsUpdateInput = SettingsUpdateCommand extends infer Command
   ? Command extends SettingsUpdateCommand

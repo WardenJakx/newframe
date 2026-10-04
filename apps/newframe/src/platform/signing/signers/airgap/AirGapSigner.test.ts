@@ -1,10 +1,10 @@
 import { expect, it } from 'bun:test'
 
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
+import type { TypedMessage } from '@newframe/schema/request-records'
+import { TypedDataV4Schema } from '@newframe/schema/tray-operations'
 
 import { signerFixture, transaction, vectors } from '../../../../../test/integration/fixtures/airgap.ts'
-import { TypedDataV4Schema } from '../../../../app/contracts/operations.ts'
-import type { TypedMessage } from '../../../../features/requests/contract/requests.ts'
 import type { Callback } from '../../../../shared/domain/async.ts'
 
 function parseTypedData(value: string): TypedMessage<SignTypedDataVersion.V4>['data'] {

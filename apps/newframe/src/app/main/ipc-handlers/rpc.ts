@@ -3,14 +3,40 @@ import EventEmitter from 'events'
 
 import { addHexPrefix, intToHex } from '@ethereumjs/util'
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
-import { JsonRpcResponseSchema } from '@newframe/desktop-api/protocol'
+import { JsonRpcResponseSchema } from '@newframe/schema/json-rpc'
+import type {
+  TransactionRequest,
+  SignTypedDataRequest,
+  AddChainRequest,
+  AddTokenRequest
+} from '@newframe/schema/request-records'
+import type {
+  EIP2612TypedData,
+  LegacyTypedData,
+  PermitSignatureRequest,
+  SignatureRequest,
+  TypedData,
+  TypedMessage
+} from '@newframe/schema/request-records'
+import type {
+  EVMError,
+  JSONRPCRequestPayload,
+  RPC,
+  RPCCallback,
+  RPCRequestCallback,
+  RPCRequestPayload,
+  RPCResponsePayload,
+  RPCSuccessCallback
+} from '@newframe/schema/rpc'
+import { safeDecodedSchema } from '@newframe/schema/safe'
+import type { Token } from '@newframe/schema/tokens'
+import type { TransactionData } from '@newframe/schema/transactions'
 import log from 'electron-log'
 import { getAddress, isAddress } from 'ethers'
 import { shallow } from 'zustand/shallow'
 
 import packageFile from '../../../../package.json' with { type: 'json' }
 import { hasAddress } from '../../../features/accounts/domain/index.ts'
-import { safeDecodedSchema } from '../../../features/accounts/domain/safe.ts'
 import type { SafeTransactionPort } from '../../../features/accounts/main/safeTransactionPort.ts'
 import type { Chains } from '../../../features/chains/main/index.ts'
 import type { Chain } from '../../../features/chains/main/index.ts'
@@ -37,26 +63,10 @@ import {
   hasSubscriptionPermission
 } from '../../../features/connections/main/provider/subscriptions.ts'
 import { getVersionFromTypedData } from '../../../features/connections/main/provider/typedData.ts'
-import type {
-  TransactionRequest,
-  SignTypedDataRequest,
-  AddChainRequest,
-  AddTokenRequest
-} from '../../../features/requests/contract/requests.ts'
-import type {
-  EIP2612TypedData,
-  LegacyTypedData,
-  PermitSignatureRequest,
-  SignatureRequest,
-  TypedData,
-  TypedMessage
-} from '../../../features/requests/contract/requests.ts'
 import { ApprovalType } from '../../../features/requests/domain/approval.ts'
 import type { PromptedRequestContinuationPort } from '../../../features/requests/main/service.ts'
 import { toTokenId } from '../../../features/tokens/domain/index.ts'
-import type { Token } from '../../../features/tokens/domain/state/token.ts'
 import { resolveWatchAsset } from '../../../features/tokens/main/watchAsset.ts'
-import type { TransactionData } from '../../../features/transactions/domain/index.ts'
 import { normalizeChainId } from '../../../features/transactions/domain/index.ts'
 import {
   populate as populateTransaction,
@@ -72,16 +82,6 @@ import type { CanonicalStoreReader } from '../../../platform/state-store/actions
 import type { Permission } from '../../../platform/state-store/state/index.ts'
 import type { Callback } from '../../../shared/domain/async.ts'
 import { isNonZeroHex } from '../../../shared/domain/hex.ts'
-import type {
-  EVMError,
-  JSONRPCRequestPayload,
-  RPC,
-  RPCCallback,
-  RPCRequestCallback,
-  RPCRequestPayload,
-  RPCResponsePayload,
-  RPCSuccessCallback
-} from '../../../shared/domain/rpc.ts'
 import { capitalize } from '../../../shared/domain/text.ts'
 import {
   createMainProcessSource,

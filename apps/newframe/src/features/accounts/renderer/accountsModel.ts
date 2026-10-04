@@ -1,4 +1,5 @@
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections.ts'
+import type { WalletRendererState } from '@newframe/schema/projections'
+
 import { shortAddress } from '../../../shared/renderer/ui/AddressIdentity.tsx'
 import { accountDisplayType, signerTypeLabel } from '../../../shared/renderer/ui/signerPresentation.ts'
 import type { createBalanceSummarySelector } from '../../asset-data/domain/balance/index.ts'

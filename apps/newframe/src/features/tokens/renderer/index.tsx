@@ -1,10 +1,10 @@
+import type { Token } from '@newframe/schema/tokens'
 import { Button } from '@newframe/ui/button'
 import { Icon } from '@newframe/ui/icon'
 import { Text } from '@newframe/ui/text'
 import { useState } from 'react'
 
 import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay.tsx'
-import type { Token } from '../domain/state/token.ts'
 import AddToken from './AddToken/index.tsx'
 import type { AddTokenNotifyData } from './AddToken/index.tsx'
 import CustomTokens from './CustomTokens/index.tsx'

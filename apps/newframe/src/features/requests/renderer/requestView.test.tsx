@@ -1,10 +1,10 @@
 import { afterEach, expect, it } from 'bun:test'
 
+import { RequestStatus } from '@newframe/schema/request-records'
+import { GasFeesSource } from '@newframe/schema/transactions'
 import { useEffect } from 'react'
 
 import { act, cleanup, render } from '../../../../test/support/componentSetup.tsx'
-import { GasFeesSource } from '../../transactions/domain/index.ts'
-import { RequestStatus } from '../contract/requests.ts'
 import { RequestViewProvider, useRequestView } from './requestView.tsx'
 
 afterEach(cleanup)

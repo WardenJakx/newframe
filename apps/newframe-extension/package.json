@@ -39,7 +39,8 @@
     "react": "19.2.7",
     "react-dom": "19.2.7",
     "zustand": "^5.0.14",
-    "@newframe/desktop-api": "workspace:*"
+    "@newframe/desktop-api": "workspace:*",
+    "@newframe/schema": "workspace:*"
   },
   "peerDependencies": {}
 }

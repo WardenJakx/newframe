@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
+import type { OperationRecord } from '@newframe/schema/operation-records'
+
 import { act, cleanup, render, screen, waitFor } from '../../../../test/support/componentSetup.tsx'
 import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient.ts'
 import { createRequestRendererCapabilitiesFake } from '../../../features/requests/renderer/requestCapabilities.test-support.ts'
 import type { SecurityCapability } from '../../../features/security/renderer/securityCapability.ts'
-import type { OperationRecord } from '../../../platform/operations/operation.ts'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
 
 const anyString = expect.any(String) as string

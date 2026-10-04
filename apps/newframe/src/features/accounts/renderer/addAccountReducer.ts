@@ -1,4 +1,5 @@
-import type { QueryResultMap } from '../../../app/contracts/operations.ts'
+import type { QueryResultMap } from '@newframe/schema/tray-operations'
+
 import { emptyAddAccountDraft } from './addAccountModel.ts'
 
 type Keystore = Extract<QueryResultMap['keystore.locate'], { ok: true }>['keystore']

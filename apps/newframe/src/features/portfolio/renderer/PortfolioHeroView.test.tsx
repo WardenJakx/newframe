@@ -1,9 +1,10 @@
 import { describe, expect, it, jest as timers } from 'bun:test'
 
+import type { OperationRecord } from '@newframe/schema/operation-records'
+import type { AppCommand } from '@newframe/schema/tray-operations'
+
 import { act, render, screen } from '../../../../test/support/componentSetup.tsx'
 import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient.ts'
-import type { AppCommand } from '../../../app/contracts/operations.ts'
-import type { OperationRecord } from '../../../platform/operations/operation.ts'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
 import { createPortfolioCapability } from './portfolioCapability.ts'
 import { formatPortfolioValue, PortfolioHero } from './PortfolioHero.tsx'

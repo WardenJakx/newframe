@@ -4,9 +4,9 @@ import { FLASH_USDC_ASSET, FLASH_WETH_ASSET, getFlashAssetsForChain } from '@new
 import { FLASH_MARKET_ORDER_TYPE } from '@newframe/flash/constants'
 import type { FlashSubmitOrderRequest } from '@newframe/flash/contracts'
 import type { FlashQuote } from '@newframe/flash/schemas'
+import type { FlashQuoteRequest, TypedDataV4 } from '@newframe/schema/tray-operations'
 
 import { createTestStore } from '../../../../../test/support/createTestStore.ts'
-import type { FlashQuoteRequest, TypedDataV4 } from '../../../../app/contracts/operations.ts'
 import type { RequestSource } from '../../../../app/main/gateway/requestSource.ts'
 import { createOperationService } from '../../../../platform/operations/service.ts'
 import { createTradeService } from './service.ts'

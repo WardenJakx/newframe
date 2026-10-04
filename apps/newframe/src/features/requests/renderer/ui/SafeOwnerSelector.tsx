@@ -1,3 +1,4 @@
+import type { SafeOwnerAccount } from '@newframe/schema/safe'
 import { Selection } from '@newframe/ui/selection'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
@@ -9,7 +10,6 @@ import {
   signerStatusText,
   signerTypeLabel
 } from '../../../../shared/renderer/ui/signerPresentation.ts'
-import type { SafeOwnerAccount } from '../../../accounts/domain/safe.ts'
 
 export function SafeOwnerSelector({
   owners,

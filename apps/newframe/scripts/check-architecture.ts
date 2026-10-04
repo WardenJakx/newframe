@@ -219,6 +219,9 @@ function layerFor(file: string): ApplicationLayer | undefined {
   if (under(path.join(applicationRoot, 'generated'))(file)) {
     return 'generated'
   }
+  if (under(path.join('packages', 'schema', 'src'))(file)) {
+    return 'contracts'
+  }
   if (under(path.join(sourceRoot, 'preload'))(file)) {
     return 'preload'
   }
@@ -241,6 +244,9 @@ function layerFor(file: string): ApplicationLayer | undefined {
 }
 
 function importedApplicationPath(file: string, specifier: string): string | undefined {
+  if (specifier.startsWith('@newframe/schema/')) {
+    return path.join('packages', 'schema', 'src', specifier.slice('@newframe/schema/'.length))
+  }
   if (specifier.startsWith('.')) {
     return path.normalize(path.join(path.dirname(file), specifier))
   }
@@ -408,19 +414,22 @@ export function checkAssetRateMutationAuthority(file: string, source: string) {
 }
 
 export function checkOperationContractAuthority(file: string, source: string) {
-  if (!productionApplication(file)) {
+  if (
+    !productionApplication(file) &&
+    !(isProductionFile(file) && under(path.join('packages', 'schema', 'src'))(file))
+  ) {
     return []
   }
 
   const violations: string[] = []
-  const canonicalCatalog = path.join('apps', 'newframe', 'src', 'app', 'contracts', 'operations.ts')
+  const canonicalCatalog = path.join('packages', 'schema', 'src', 'tray-operations.ts')
   const duplicateCatalog = source.match(
     /\b(?:command|query)(?:Contracts|Schemas|SchemaMap)\b\s*(?::[^=\n]+)?=/i
   )
 
   if (file !== canonicalCatalog && duplicateCatalog?.index !== undefined) {
     violations.push(
-      `${file}:${lineNumber(source, duplicateCatalog.index)} command and query schema catalogs must be defined in src/app/contracts/operations.ts`
+      `${file}:${lineNumber(source, duplicateCatalog.index)} command and query schema catalogs must be defined in packages/schema/src/tray-operations.ts`
     )
   }
 

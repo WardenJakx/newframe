@@ -2,6 +2,15 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, mock, spyOn } f
 import { EventEmitter } from 'events'
 
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
+import type { AccountRequest, CanonicalAccountRequest, TypedMessage } from '@newframe/schema/request-records'
+import { RequestMode, RequestStatus } from '@newframe/schema/request-records'
+import type {
+  EVMError,
+  RPCRequestCallback,
+  RPCRequestPayload,
+  RPCResponsePayload
+} from '@newframe/schema/rpc'
+import { GasFeesSource, type TransactionData } from '@newframe/schema/transactions'
 
 import {
   createNewframeInternalSource,
@@ -13,20 +22,7 @@ import type {
   SignerRequestContext
 } from '../../../platform/signing/signers/Signer/index.ts'
 import type { Callback } from '../../../shared/domain/async.ts'
-import type {
-  EVMError,
-  RPCRequestCallback,
-  RPCRequestPayload,
-  RPCResponsePayload
-} from '../../../shared/domain/rpc.ts'
-import type {
-  AccountRequest,
-  CanonicalAccountRequest,
-  TypedMessage
-} from '../../requests/contract/requests.ts'
-import { RequestMode, RequestStatus } from '../../requests/contract/requests.ts'
 import { ApprovalType } from '../../requests/domain/approval.ts'
-import { GasFeesSource, type TransactionData } from '../../transactions/domain/index.ts'
 import type { RevealService } from '../../transactions/main/reveal.ts'
 
 const revealMock = {
@@ -586,7 +582,7 @@ it.each([true, false])(
     const origin = 'selected-target-test'
     const respond = mock<RPCRequestCallback>()
     const handlerId = requestLifecycle.create(respond)
-    const request: import('../../requests/contract/requests.ts').AccessRequest = {
+    const request: import('@newframe/schema/request-records').AccessRequest = {
       type: 'access',
       handlerId,
       origin,

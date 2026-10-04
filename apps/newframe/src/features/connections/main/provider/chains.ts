@@ -1,9 +1,10 @@
 import { isDeepStrictEqual } from 'util'
 
+import type { Address } from '@newframe/schema/address'
+import type { RPC } from '@newframe/schema/rpc'
+
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
 import type { Chain, ChainMetadata, Origin } from '../../../../platform/state-store/state/index.ts'
-import type { Address } from '../../../../shared/domain/address.ts'
-import type { RPC } from '../../../../shared/domain/rpc.ts'
 import { persistedImageSource } from '../../../asset-data/domain/image/index.ts'
 import { getColor } from '../../../chains/domain/chain/colors.ts'
 type CanonicalStoreApi = CanonicalStoreReader

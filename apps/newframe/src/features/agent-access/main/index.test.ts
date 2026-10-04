@@ -2,15 +2,15 @@ import { expect, it, jest as timers, mock } from 'bun:test'
 import { EventEmitter } from 'events'
 
 import { createDesktopCaller } from '@newframe/desktop-api/router'
-
-import { createRpcGateway } from '../../../app/main/gateway/rpc.ts'
+import type { AccountRequest } from '@newframe/schema/request-records'
 import type {
   EVMError,
   RPCRequestCallback,
   RPCRequestPayload,
   RPCResponsePayload
-} from '../../../shared/domain/rpc.ts'
-import type { AccountRequest } from '../../requests/contract/requests.ts'
+} from '@newframe/schema/rpc'
+
+import { createRpcGateway } from '../../../app/main/gateway/rpc.ts'
 import { createAgentService } from './index.ts'
 
 const accountId = '0x1111111111111111111111111111111111111111'

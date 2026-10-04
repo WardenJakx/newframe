@@ -1,11 +1,11 @@
 import { afterEach, beforeAll, beforeEach, expect, it, jest as timers, mock } from 'bun:test'
 import { EventEmitter } from 'events'
 
+import type { TokenRecord } from '@newframe/schema/tokens'
 import log from 'electron-log'
 
 import store from '../../../../../platform/state-store/index.ts'
 import { NATIVE_CURRENCY } from '../../../../tokens/domain/constants.ts'
-import type { TokenRecord } from '../../../../tokens/domain/state/token.ts'
 import BalancesScanner from './index.ts'
 
 const controllerEvents = new EventEmitter()

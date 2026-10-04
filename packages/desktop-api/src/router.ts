@@ -1,6 +1,3 @@
-import { initTRPC, TRPCError } from '@trpc/server'
-import { z } from 'zod'
-
 import {
   AddressSchema,
   AgentConnectSchema,
@@ -19,7 +16,9 @@ import {
   type RpcError,
   type ProviderEvent,
   type WalletEvent
-} from './schemas.ts'
+} from '@newframe/schema/local-api'
+import { initTRPC, TRPCError } from '@trpc/server'
+import { z } from 'zod'
 
 /** Ports only: no desktop, Electron, or wallet implementation enters the client type graph. */
 export interface DesktopContext {

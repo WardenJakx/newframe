@@ -1,9 +1,10 @@
 import { expect, it, mock } from 'bun:test'
 import EventEmitter from 'events'
 
+import type { RPCRequestCallback, RPCResponsePayload } from '@newframe/schema/rpc'
+
 import { RpcIpcHandlers } from '../../../../app/main/ipc-handlers/rpc.ts'
 import createCanonicalStore from '../../../../platform/state-store/createCanonicalStore.ts'
-import type { RPCRequestCallback, RPCResponsePayload } from '../../../../shared/domain/rpc.ts'
 import type { Chains } from '../../../chains/main/index.ts'
 import type { AccountRequestPort } from './accountRequestPort.ts'
 import { createProxyProvider } from './frameProvider.ts'

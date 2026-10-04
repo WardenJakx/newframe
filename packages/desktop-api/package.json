@@ -4,21 +4,34 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./*": {
-      "types": "./src/*.ts",
-      "bun": "./src/*.ts",
-      "browser": "./src/*.ts",
-      "default": "./dist/*.js"
+    "./client": {
+      "types": "./src/client.ts",
+      "bun": "./src/client.ts",
+      "browser": "./src/client.ts",
+      "default": "./dist/client.js"
+    },
+    "./router": {
+      "types": "./src/router.ts",
+      "bun": "./src/router.ts",
+      "browser": "./src/router.ts",
+      "default": "./dist/router.js"
+    },
+    "./json-rpc": {
+      "types": "./src/json-rpc.ts",
+      "bun": "./src/json-rpc.ts",
+      "browser": "./src/json-rpc.ts",
+      "default": "./dist/json-rpc.js"
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "bun --cwd ../schema build && tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@trpc/client": "11.19.0",
     "@trpc/server": "11.19.0",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "@newframe/schema": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "24",

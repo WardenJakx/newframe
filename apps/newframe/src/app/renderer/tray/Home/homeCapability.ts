@@ -1,5 +1,5 @@
-import type { NewframeHost } from '../../../../platform/ipc/contract/ipc.ts'
-import type { CommandMap, CommandResult } from '../../../contracts/operations.ts'
+import type { NewframeHost } from '@newframe/schema/tray-host'
+import type { CommandMap, CommandResult } from '@newframe/schema/tray-operations'
 
 type Input<TType extends keyof CommandMap> = Omit<CommandMap[TType], 'type'>
 

@@ -1,17 +1,4 @@
-import { getProfileAccountIds } from '../../../app/contracts/state/main.ts'
-import { accountDisplayType } from '../../../features/accounts/domain/accountDisplayType.ts'
-import { deriveSafeExecutors, deriveSafeOwners } from '../../../features/accounts/main/safeOwners.ts'
-import {
-  deriveSigningCapability,
-  safeExecutorCandidates,
-  safeOwnerCandidates
-} from '../../../features/accounts/main/signingCapability.ts'
-import { createBalanceSummarySelector } from '../../../features/asset-data/domain/balance/index.ts'
-import type { SignatureRequest, TransactionRequest } from '../../../features/requests/contract/requests.ts'
-import { isSignatureRequest, isTransactionRequest } from '../../../features/requests/domain/index.ts'
-import { OperationRecordSchema, type OperationCollection } from '../../operations/operation.ts'
-import { verifySafeConfirmation } from '../../safe/integrity.ts'
-import type { CanonicalState } from '../../state-store/state/index.ts'
+import { OperationRecordSchema, type OperationCollection } from '@newframe/schema/operation-records'
 import {
   WalletHomeCommandSchema,
   WalletPanelNavigationEntrySchema,
@@ -21,7 +8,21 @@ import {
   type SideTrayRendererState,
   type RendererProjection,
   type WalletRendererState
-} from '../contract/projections.ts'
+} from '@newframe/schema/projections'
+import type { SignatureRequest, TransactionRequest } from '@newframe/schema/request-records'
+
+import { accountDisplayType } from '../../../features/accounts/domain/accountDisplayType.ts'
+import { getProfileAccountIds } from '../../../features/accounts/domain/profiles.ts'
+import { deriveSafeExecutors, deriveSafeOwners } from '../../../features/accounts/main/safeOwners.ts'
+import {
+  deriveSigningCapability,
+  safeExecutorCandidates,
+  safeOwnerCandidates
+} from '../../../features/accounts/main/signingCapability.ts'
+import { createBalanceSummarySelector } from '../../../features/asset-data/domain/balance/index.ts'
+import { isSignatureRequest, isTransactionRequest } from '../../../features/requests/domain/index.ts'
+import { verifySafeConfirmation } from '../../safe/integrity.ts'
+import type { CanonicalState } from '../../state-store/state/index.ts'
 
 type CanonicalMain = CanonicalState['main']
 

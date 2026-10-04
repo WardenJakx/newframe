@@ -1,9 +1,10 @@
 import { describe, expect, it, mock } from 'bun:test'
 
+import type { Account } from '@newframe/schema/accounts'
+import { DEFAULT_PROFILE_ID } from '@newframe/schema/wallet-state'
+
 import { createTestStore } from '../../../../test/support/createTestStore.ts'
-import { DEFAULT_PROFILE_ID } from '../../../app/contracts/state/main.ts'
 import { createOperationService } from '../../../platform/operations/service.ts'
-import type { Account } from '../../accounts/domain/state/account.ts'
 import { createBuiltInChains } from '../../chains/domain/chain/catalog.ts'
 import { createPortfolioService } from './service.ts'
 

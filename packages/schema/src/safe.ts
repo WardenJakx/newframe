@@ -1,8 +1,6 @@
 import { getAddress, getBytes, hashMessage, isAddress, recoverAddress } from 'ethers'
 import { z } from 'zod'
 
-export const safeAddressSchema = z.string().refine(isAddress, 'Invalid address').transform(getAddress)
-
 // Safe stores eth_sign recovery values as 31/32, EIP712 as 27/28.
 export function recoverSafeConfirmationOwner(hash: string, signature: string): string | undefined {
   if (!/^0x[0-9a-f]{64}$/i.test(hash) || !/^0x[0-9a-f]{130}$/i.test(signature)) {
@@ -20,6 +18,9 @@ export function recoverSafeConfirmationOwner(hash: string, signature: string): s
     return undefined
   }
 }
+
+export const safeAddressSchema = z.string().refine(isAddress, 'Invalid address').transform(getAddress)
+
 const safeDecimalSchema = z
   .string()
   .regex(/^(0|[1-9][0-9]*)$/)

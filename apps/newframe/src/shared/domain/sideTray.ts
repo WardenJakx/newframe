@@ -1,23 +1,16 @@
 import { FLASH_WETH_ASSET, getFlashAssetsForChain, getFlashDefaultTargetAsset } from '@newframe/flash/assets'
 import type { FlashAsset } from '@newframe/flash/schemas'
+import {
+  SIDE_TRAY_FRAME_ID,
+  type SideTrayFrame,
+  type SideTrayRoute,
+  type SideTrayRouteName
+} from '@newframe/schema/side-tray'
 
-import { hasPositiveBalance } from '../../../features/asset-data/domain/balance/index.ts'
-import { NATIVE_CURRENCY } from '../../../features/tokens/domain/constants.ts'
+import { hasPositiveBalance } from '../../features/asset-data/domain/balance/index.ts'
+import { NATIVE_CURRENCY } from '../../features/tokens/domain/constants.ts'
 
-export const SIDE_TRAY_FRAME_ID = 'sideTray'
 const SIDE_TRAY_NATIVE_ASSET_ADDRESS = NATIVE_CURRENCY
-
-export type SideTrayRouteName = 'send' | 'trade'
-
-export interface SideTrayRoute {
-  name: SideTrayRouteName
-  searchParams: URLSearchParams
-}
-
-export interface SideTrayFrame {
-  id: typeof SIDE_TRAY_FRAME_ID
-  route?: string
-}
 
 export function normalizeSideTrayFrameRequest(frame: unknown): SideTrayFrame | null {
   if (typeof frame === 'string') {

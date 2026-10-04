@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 export const MAX_RPC_REQUEST_BYTES = 1024 * 1024
 
-const JsonRpcIdSchema = z.union([z.string(), z.number()])
+export const JsonRpcIdSchema = z.union([z.string(), z.number()])
 const JsonRpcParamsSchema = z.union([z.array(z.json()), z.record(z.string(), z.json())])
 
 const requestShape = {
@@ -63,15 +63,6 @@ export const JsonRpcResponseOrNotificationSchema = z.union([
   JsonRpcResponseSchema,
   EthSubscriptionNotificationSchema
 ])
-
-export function extractJsonRpcId(value: unknown): JsonRpcId | undefined {
-  if (!value || typeof value !== 'object' || Array.isArray(value) || !('id' in value)) {
-    return
-  }
-
-  const parsed = JsonRpcIdSchema.safeParse(value.id)
-  return parsed.success ? parsed.data : undefined
-}
 
 export type JsonRpcId = z.infer<typeof JsonRpcIdSchema>
 export type HttpJsonRpcRequest = z.infer<typeof HttpJsonRpcRequestSchema>

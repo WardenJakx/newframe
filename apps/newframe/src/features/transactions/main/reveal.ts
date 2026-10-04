@@ -1,6 +1,7 @@
 // Reveal details about pending transactions
 
 import { addHexPrefix } from '@ethereumjs/util'
+import type { JSONRPCRequestPayload, RPCRequestPayload, RPCResponsePayload } from '@newframe/schema/rpc'
 import log from 'electron-log'
 
 import ensContracts from '../../../platform/chain-rpc/contracts/deployments/ens/index.ts'
@@ -13,11 +14,6 @@ import {
   type DecodedCallData
 } from '../../../platform/chain-rpc/contracts/index.ts'
 import type { Callback } from '../../../shared/domain/async.ts'
-import type {
-  JSONRPCRequestPayload,
-  RPCRequestPayload,
-  RPCResponsePayload
-} from '../../../shared/domain/rpc.ts'
 import type { TransactionRequest } from '../../accounts/main/index.ts'
 import { createProxyProvider } from '../../connections/main/provider/connection.ts'
 import type { ProviderProxyConnection } from '../../connections/main/provider/proxy.ts'

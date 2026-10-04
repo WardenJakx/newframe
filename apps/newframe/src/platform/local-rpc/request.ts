@@ -1,4 +1,5 @@
 import { isHexString } from '@ethereumjs/util'
+import type { JSONRPCRequestPayload, RPCRequestPayload, RPCResponsePayload } from '@newframe/schema/rpc'
 
 import {
   createLocalApiSource,
@@ -6,7 +7,6 @@ import {
   type RequestSource
 } from '../../app/main/gateway/requestSource.ts'
 import type { OriginsService } from '../../features/connections/main/origins.ts'
-import type { JSONRPCRequestPayload, RPCRequestPayload, RPCResponsePayload } from '../../shared/domain/rpc.ts'
 
 export interface RpcProviderSendPort {
   send(

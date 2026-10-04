@@ -1,3 +1,10 @@
+import {
+  TxClassification,
+  type SafeExecutionMetadata,
+  type SigningCandidate
+} from '@newframe/schema/request-records'
+import type { SafeDeployment, SafeProposal, SafeProposalSimulation } from '@newframe/schema/safe'
+import type { TransactionApprovalAdjustments } from '@newframe/schema/transaction-approval'
 import { Disclosure } from '@newframe/ui/disclosure'
 import { Inline } from '@newframe/ui/inline'
 import { Stack } from '@newframe/ui/stack'
@@ -6,10 +13,7 @@ import { useState, type ReactNode } from 'react'
 
 import { getCalldataDigest } from '../../../shared/domain/calldata.ts'
 import { AddressIdentity, shortAddress } from '../../../shared/renderer/ui/AddressIdentity.tsx'
-import type { SafeDeployment, SafeProposal, SafeProposalSimulation } from '../../accounts/domain/safe.ts'
-import type { TransactionApprovalAdjustments } from '../../transactions/domain/approval.ts'
 import type { TransactionFeeField } from '../../transactions/domain/fees.ts'
-import { TxClassification, type SafeExecutionMetadata, type SigningCandidate } from '../contract/requests.ts'
 import type { useAssetRate, useAddressIdentities, useTokens } from './Account/Requests/state.ts'
 import AdjustFee from './Account/Requests/TransactionRequest/AdjustFee.tsx'
 import { TxReviewView, type TxReviewData } from './Account/Requests/TransactionRequest/TxReview.tsx'

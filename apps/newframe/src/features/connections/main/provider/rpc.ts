@@ -5,7 +5,7 @@ import {
   type EthSubscriptionNotification,
   type JsonRpcError,
   type JsonRpcResponse
-} from '@newframe/desktop-api/protocol'
+} from '@newframe/schema/json-rpc'
 import type { JsonRpcApiProvider, JsonRpcPayload } from 'ethers'
 import { FetchRequest, JsonRpcProvider, WebSocketProvider } from 'ethers'
 

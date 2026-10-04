@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
 
 import { openTransportReplayer, RecordStore } from '@ledgerhq/hw-transport-mocker'
+import { GasFeesSource } from '@newframe/schema/transactions'
 import log from 'electron-log'
 
-import { GasFeesSource } from '../../../../../features/transactions/domain/index.ts'
 import { Derivation } from '../../Signer/derive.ts'
 import LedgerEthereumApp from './eth.ts'
 

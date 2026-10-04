@@ -1,8 +1,9 @@
 import { describe, expect, it, mock } from 'bun:test'
 
+import type { OperationRecord } from '@newframe/schema/operation-records'
+import { DEFAULT_PROFILE_ID } from '@newframe/schema/wallet-state'
+
 import { createTestStore } from '../../../../../test/support/createTestStore.ts'
-import { DEFAULT_PROFILE_ID } from '../../../../app/contracts/state/main.ts'
-import type { OperationRecord } from '../../../../platform/operations/operation.ts'
 import { createOperationService } from '../../../../platform/operations/service.ts'
 import type { OperationOwner } from '../../../../platform/operations/types.ts'
 import { createProfileService } from './service.ts'

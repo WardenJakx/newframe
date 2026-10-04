@@ -1,3 +1,4 @@
+import type { WalletRendererState } from '@newframe/schema/projections'
 import { Button } from '@newframe/ui/button'
 import { Group } from '@newframe/ui/group'
 import { Input } from '@newframe/ui/input'
@@ -7,7 +8,6 @@ import { Text } from '@newframe/ui/text'
 import { ToggleButton } from '@newframe/ui/toggle-button'
 import { useState } from 'react'
 
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections.ts'
 import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay.tsx'
 import KeyboardShortcutConfigurator from './KeyboardShortcutConfigurator.tsx'
 import { SettingsActionRow, SettingsSelectRow, SettingsToggleRow } from './SettingsRow.tsx'

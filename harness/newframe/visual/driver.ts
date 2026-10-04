@@ -1,11 +1,6 @@
+import type { AppCommand, AppQuery, CommandResult, ResultForQuery } from '@newframe/schema/tray-operations'
 import type { ElectronApplication, Page } from 'playwright-core'
 
-import type {
-  AppCommand,
-  AppQuery,
-  CommandResult,
-  ResultForQuery
-} from '../../../apps/newframe/src/app/contracts/operations.ts'
 import { anvilChainId, harnessAccountAddress } from '../core/config.ts'
 import { sleep, withTimeout } from '../core/utils.ts'
 import type { AnvilClient } from './anvil-client.ts'

@@ -1,7 +1,8 @@
+import type { Origin } from '@newframe/schema/origins'
+
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
 import type { ChainMetadata, TokenRecord } from '../../../../platform/state-store/state/index.ts'
 import { builtInChainIconUrl } from '../../../chains/domain/chain/index.ts'
-import type { Origin } from '../../../connections/domain/state/origin.ts'
 import type { getTokenDiscoveryProvider } from '../../../portfolio/main/index.ts'
 import { toTokenId } from '../../../tokens/domain/index.ts'
 import { embeddedImageSource } from '../../domain/image/index.ts'

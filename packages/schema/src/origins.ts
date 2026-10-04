@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
-import { ChainIdSchema } from '../../../chains/domain/state/chain.ts'
-import { TokenImageSchema } from '../../../tokens/domain/state/token.ts'
+import { ChainIdSchema } from './chains.ts'
+import { TokenImageSchema } from './tokens.ts'
 
 const SessionSchema = z.object({
   requests: z.number().gte(0),

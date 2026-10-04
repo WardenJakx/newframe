@@ -1,6 +1,7 @@
 import { mock } from 'bun:test'
 
-import type { CommandResult } from '../../../app/contracts/operations.ts'
+import type { CommandResult } from '@newframe/schema/tray-operations'
+
 import type { AccountsCapability } from './accountsCapability.ts'
 
 const acknowledged = <TInput>() => mock(async (_input: TInput): Promise<CommandResult> => ({ ok: true }))

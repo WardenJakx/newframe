@@ -1,6 +1,7 @@
 import { expect, it } from 'bun:test'
 
-import type { JSONRPCRequestPayload } from '../../../shared/domain/rpc.ts'
+import type { JSONRPCRequestPayload } from '@newframe/schema/rpc'
+
 import { createProviderProxyConnection } from '../../connections/main/provider/proxy.ts'
 import { createRevealService } from './reveal.ts'
 

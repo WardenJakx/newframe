@@ -1,5 +1,6 @@
+import type { SignatureRequest } from '@newframe/schema/request-records'
+
 import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.ts'
-import type { SignatureRequest } from '../../requests/contract/requests.ts'
 import type { SafeMessageApprovalResult } from './safeMessage.ts'
 
 export interface SafeMessageApprovalPort {

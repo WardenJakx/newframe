@@ -5,13 +5,13 @@ import {
   CompanionResponseSchema,
   type CompanionPayload as JsonRpcPayload,
   type CompanionResponse as JsonRpcResponse
-} from '@newframe/desktop-api/protocol'
+} from '@newframe/schema/json-rpc'
 export type {
   CompanionPayload as JsonRpcPayload,
   CompanionResponse as JsonRpcResponse
-} from '@newframe/desktop-api/protocol'
+} from '@newframe/schema/json-rpc'
 
-import type { ProviderEvent } from '@newframe/desktop-api/schemas'
+import type { ProviderEvent } from '@newframe/schema/local-api'
 
 export interface RawFrameConnectionOptions {
   reconnectInterval?: number

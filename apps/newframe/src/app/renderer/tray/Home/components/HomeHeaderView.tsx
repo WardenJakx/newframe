@@ -1,9 +1,9 @@
+import type { TorStatus } from '@newframe/schema/internet'
 import type { IconName } from '@newframe/ui/icon'
 import { IconButton } from '@newframe/ui/icon-button'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 
-import type { TorStatus } from '../../../../../platform/internet/contract/status.ts'
 import { shortAddress } from '../../../../../shared/renderer/ui/AddressIdentity.tsx'
 import { HeaderBar } from '../../../../../shared/renderer/ui/HeaderBar.tsx'
 import { IdentityControl } from '../../ui/IdentityControl.tsx'

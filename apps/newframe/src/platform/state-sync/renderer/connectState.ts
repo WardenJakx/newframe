@@ -1,6 +1,5 @@
+import type { RendererState, StateConnectionResult, StateMessage } from '@newframe/schema/projection-stream'
 import { createStore, type StoreApi } from 'zustand/vanilla'
-
-import type { RendererState, StateConnectionResult, StateMessage } from '../contract/protocol.ts'
 
 export interface RendererStateConnectionClient {
   connectState(handler: (message: StateMessage) => void): Promise<StateConnectionResult>

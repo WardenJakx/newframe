@@ -1,10 +1,6 @@
-import type { NativeCurrency as ChainNativeCurrency } from '../../features/chains/domain/state/nativeCurrency.ts'
-import type {
-  LegacyTypedData,
-  TransactionReceipt,
-  TypedData
-} from '../../features/requests/contract/requests.ts'
 import type { Address } from './address.ts'
+import type { NativeCurrency as ChainNativeCurrency } from './native-currency.ts'
+import type { LegacyTypedData, TransactionReceipt, TypedData } from './request-records.ts'
 
 export type RPCResponsePayload = JSONRPCSuccessResponsePayload & JSONRPCErrorResponsePayload
 

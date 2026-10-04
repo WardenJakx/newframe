@@ -1,8 +1,7 @@
+import type { SideTrayRendererState, WalletRendererState } from '@newframe/schema/projections'
 import { createContext, type ReactNode, useContext } from 'react'
 import { useStore } from 'zustand'
 import type { StoreApi } from 'zustand/vanilla'
-
-import type { SideTrayRendererState, WalletRendererState } from '../contract/projections.ts'
 
 export type WalletSelector<T> = (state: WalletRendererState) => T
 export type SideTraySelector<T> = (state: SideTrayRendererState) => T

@@ -1,9 +1,9 @@
 import type { SignTypedDataVersion } from '@metamask/eth-sig-util'
+import type { TypedMessage } from '@newframe/schema/request-records'
+import type { TransactionData } from '@newframe/schema/transactions'
 import log from 'electron-log'
 import { v5 as uuid } from 'uuid'
 
-import type { TypedMessage } from '../../../../../features/requests/contract/requests.ts'
-import type { TransactionData } from '../../../../../features/transactions/domain/index.ts'
 import { signerCompatibility, londonToLegacy } from '../../../../../features/transactions/main/index.ts'
 import type { Callback } from '../../../../../shared/domain/async.ts'
 import { Derivation, getDerivationPath } from '../../Signer/derive.ts'

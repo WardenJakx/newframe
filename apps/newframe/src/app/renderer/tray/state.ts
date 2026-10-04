@@ -1,3 +1,3 @@
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections.ts'
+import type { WalletRendererState } from '@newframe/schema/projections'
 
 export type TrayRendererState = WalletRendererState

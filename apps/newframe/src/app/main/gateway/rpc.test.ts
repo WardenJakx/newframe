@@ -1,6 +1,7 @@
 import { expect, it } from 'bun:test'
 
-import type { RPCRequestPayload, RPCResponsePayload } from '../../../shared/domain/rpc.ts'
+import type { RPCRequestPayload, RPCResponsePayload } from '@newframe/schema/rpc'
+
 import { createExtensionGateway } from './extension.ts'
 import {
   createAiSessionClientSource,

@@ -1,6 +1,7 @@
+import type { Address } from '@newframe/schema/address'
+import type { RPC } from '@newframe/schema/rpc'
+
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
-import type { Address } from '../../../../shared/domain/address.ts'
-import type { RPC } from '../../../../shared/domain/rpc.ts'
 import { createObserver as createAssetsObserver, loadAssets } from './assets.ts'
 import { createChainsObserver, createOriginChainObserver, getActiveChains } from './chains.ts'
 

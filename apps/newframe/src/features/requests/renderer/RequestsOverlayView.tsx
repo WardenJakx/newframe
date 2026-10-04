@@ -1,6 +1,6 @@
+import type { AirGapRequestReference } from '@newframe/schema/airgap'
 import { Text } from '@newframe/ui/text'
 
-import type { AirGapRequestReference } from '../../../platform/signing/domain/airgap.ts'
 import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay.tsx'
 import Requests from './Account/Requests/index.tsx'
 import type { RequestRendererCapabilities } from './requestCapabilities.ts'

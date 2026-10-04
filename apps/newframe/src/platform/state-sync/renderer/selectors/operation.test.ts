@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
-import type { OperationCollection } from '../../../operations/operation.ts'
+import type { OperationCollection } from '@newframe/schema/operation-records'
+
 import {
   createOperationByIdSelector,
   createOperationsByStatusSelector,

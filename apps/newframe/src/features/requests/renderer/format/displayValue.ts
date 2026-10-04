@@ -1,5 +1,6 @@
+import type { ResolvedAssetRate } from '@newframe/schema/asset-rates'
+
 import { formatUnits, parseUnits, toBigInt } from '../../../../shared/domain/units.ts'
-import type { ResolvedAssetRate } from '../../../asset-data/domain/state/rate.ts'
 
 const displayUnitMapping = [
   { fullName: 'million', shortName: 'M', magnitude: 6 },

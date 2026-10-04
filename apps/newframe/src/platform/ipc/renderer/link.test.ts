@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
 
-import type { NewframeHost } from '../contract/ipc.ts'
+import type { NewframeHost } from '@newframe/schema/tray-host'
+
 import link from './link.ts'
 
 const makeHost = (overrides: Partial<NewframeHost> = {}): NewframeHost => ({

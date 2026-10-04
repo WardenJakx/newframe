@@ -1,11 +1,12 @@
+import type { NewframeHost } from '@newframe/schema/tray-host'
 import type {
   CommandMap,
   CommandResult,
   QueryMap,
   ResultForQuery,
   TradeRequestCommand
-} from '../../../../app/contracts/operations.ts'
-import type { NewframeHost } from '../../../../platform/ipc/contract/ipc.ts'
+} from '@newframe/schema/tray-operations'
+
 import type { TokenImageCapability } from '../../../../shared/renderer/capabilities.ts'
 import type { MarketTradeQuoteRequest } from './tradeTransaction.ts'
 

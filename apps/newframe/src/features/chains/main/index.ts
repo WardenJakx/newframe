@@ -3,6 +3,7 @@ import EventEmitter from 'events'
 import type { Common } from '@ethereumjs/common'
 import { Hardfork } from '@ethereumjs/common'
 import { addHexPrefix } from '@ethereumjs/util'
+import type { EVMError, JSONRPCRequestPayload, RPCRequestCallback } from '@newframe/schema/rpc'
 // status = Chain Mismatch, Not Connected, Connected, Standby, Syncing
 import log from 'electron-log'
 import { shallow } from 'zustand/vanilla/shallow'
@@ -10,7 +11,6 @@ import { shallow } from 'zustand/vanilla/shallow'
 import type { InternetGate } from '../../../platform/internet/index.ts'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
 import type { GasFees } from '../../../platform/state-store/state/index.ts'
-import type { EVMError, JSONRPCRequestPayload, RPCRequestCallback } from '../../../shared/domain/rpc.ts'
 import {
   createJsonRpcProvider,
   listenForProviderClose,

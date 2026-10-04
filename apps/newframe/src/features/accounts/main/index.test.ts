@@ -12,27 +12,6 @@ import {
 } from 'bun:test'
 
 import { intToHex } from '@ethereumjs/util'
-import log from 'electron-log'
-
-import { gweiToHex } from '../../../../test/support/util.ts'
-import {
-  ActivityRecordSchema,
-  DEFAULT_PROFILE_ID,
-  type ActivityRecord
-} from '../../../app/contracts/state/main.ts'
-import {
-  createAiSessionClientSource,
-  createLocalApiSource,
-  type RequestSource
-} from '../../../app/main/gateway/requestSource.ts'
-import store from '../../../platform/state-store/index.ts'
-import type { Callback } from '../../../shared/domain/async.ts'
-import type {
-  EVMError,
-  RPCRequestCallback,
-  RPCRequestPayload,
-  RPCResponsePayload
-} from '../../../shared/domain/rpc.ts'
 import {
   RequestMode,
   RequestStatus,
@@ -40,13 +19,30 @@ import {
   type AccountRequest,
   type CanonicalAccountRequest,
   type TransactionRequest
-} from '../../requests/contract/requests.ts'
+} from '@newframe/schema/request-records'
+import type {
+  EVMError,
+  RPCRequestCallback,
+  RPCRequestPayload,
+  RPCResponsePayload
+} from '@newframe/schema/rpc'
 import {
   GasFeesSource,
-  TRANSACTION_CONFIRMATION_TARGET,
   type TransactionEffect,
   type TransactionSimulation
-} from '../../transactions/domain/index.ts'
+} from '@newframe/schema/transactions'
+import { ActivityRecordSchema, DEFAULT_PROFILE_ID, type ActivityRecord } from '@newframe/schema/wallet-state'
+import log from 'electron-log'
+
+import { gweiToHex } from '../../../../test/support/util.ts'
+import {
+  createAiSessionClientSource,
+  createLocalApiSource,
+  type RequestSource
+} from '../../../app/main/gateway/requestSource.ts'
+import store from '../../../platform/state-store/index.ts'
+import type { Callback } from '../../../shared/domain/async.ts'
+import { TRANSACTION_CONFIRMATION_TARGET } from '../../transactions/domain/index.ts'
 
 const providerMock = {
   send: mock((_payload: RPCRequestPayload, _callback: RPCRequestCallback) => {}),

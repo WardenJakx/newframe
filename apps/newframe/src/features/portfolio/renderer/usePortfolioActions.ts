@@ -1,8 +1,8 @@
 import { getFlashDefaultChainId, isFlashChainSupported } from '@newframe/flash/chains'
 import { useShallow } from 'zustand/react/shallow'
 
-import { toCanonicalAssetId } from '../../../app/contracts/sidetray/index.ts'
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector.tsx'
+import { toCanonicalAssetId } from '../../../shared/domain/sideTray.ts'
 import { hasPositiveBalance } from '../../asset-data/domain/balance/index.ts'
 import type { PortfolioCapability } from './portfolioCapability.ts'
 

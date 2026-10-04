@@ -1,4 +1,4 @@
-import type { SideTrayRendererState, WalletRendererState } from '../contract/projections.ts'
+import type { SideTrayRendererState, WalletRendererState } from '@newframe/schema/projections'
 
 const baseProjectionState = {
   accounts: {},

@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
+import type { OperationRecord } from '@newframe/schema/operation-records'
+import type { AppCommand, AppQuery } from '@newframe/schema/tray-operations'
+
 import { act, cleanup, render, screen, waitFor } from '../../../../test/support/componentSetup.tsx'
 import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient.ts'
-import type { AppCommand, AppQuery } from '../../../app/contracts/operations.ts'
-import type { OperationRecord } from '../../../platform/operations/operation.ts'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
 import { createSecurityCapability } from '../../security/renderer/securityCapability.ts'
 import type { SettingsSecurityCapability } from './Settings.tsx'

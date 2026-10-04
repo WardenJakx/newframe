@@ -1,4 +1,4 @@
-import type { AvailableChain, ExtensionAccounts } from '@newframe/desktop-api/schemas'
+import type { AvailableChain, ExtensionAccounts } from '@newframe/schema/local-api'
 import { createStore } from 'zustand/vanilla'
 
 export type ConnectionStatus =

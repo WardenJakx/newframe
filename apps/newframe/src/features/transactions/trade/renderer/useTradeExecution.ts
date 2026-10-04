@@ -1,7 +1,7 @@
+import type { OperationCollection, OperationRecord } from '@newframe/schema/operation-records'
+import type { FlashQuoteDisplay } from '@newframe/schema/tray-operations'
 import React from 'react'
 
-import type { FlashQuoteDisplay } from '../../../../app/contracts/operations.ts'
-import type { OperationCollection, OperationRecord } from '../../../../platform/operations/operation.ts'
 import {
   initialTradeExecutionState,
   tradeExecutionBlocksQuotes,

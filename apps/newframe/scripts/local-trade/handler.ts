@@ -27,6 +27,12 @@ import {
   type FlashTradeSide
 } from '@newframe/flash/schemas'
 import {
+  FLASH_MAX_TWAP_BUCKET_COUNT,
+  FLASH_MAX_TWAP_DURATION_SECONDS,
+  FLASH_MIN_TWAP_BUCKET_COUNT,
+  FLASH_MIN_TWAP_DURATION_SECONDS
+} from '@newframe/schema/trade-limits'
+import {
   Interface,
   JsonRpcProvider,
   MaxUint256,
@@ -39,10 +45,6 @@ import {
 } from 'ethers'
 
 import {
-  FLASH_MAX_TWAP_BUCKET_COUNT,
-  FLASH_MAX_TWAP_DURATION_SECONDS,
-  FLASH_MIN_TWAP_BUCKET_COUNT,
-  FLASH_MIN_TWAP_DURATION_SECONDS,
   cleanFlashDecimal,
   positiveFlashNumber
 } from '../../src/features/transactions/trade/domain/policy.ts'

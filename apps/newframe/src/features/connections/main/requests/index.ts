@@ -1,4 +1,5 @@
-import type { RPCRequestPayload } from '../../../../shared/domain/rpc.ts'
+import type { RPCRequestPayload } from '@newframe/schema/rpc'
+
 import mapCaipRequest from './methods/caipRequest.ts'
 import mapWalletRequest from './methods/walletRequest.ts'
 

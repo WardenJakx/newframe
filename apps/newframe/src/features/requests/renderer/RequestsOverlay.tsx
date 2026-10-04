@@ -1,4 +1,5 @@
-import type { AirGapRequestReference } from '../../../platform/signing/domain/airgap.ts'
+import type { AirGapRequestReference } from '@newframe/schema/airgap'
+
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector.tsx'
 import type { RequestRendererCapabilities } from './requestCapabilities.ts'
 import { RequestsOverlayView } from './RequestsOverlayView.tsx'

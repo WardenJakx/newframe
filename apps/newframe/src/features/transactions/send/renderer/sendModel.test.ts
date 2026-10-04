@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'bun:test'
 
-import type { OperationRecord } from '../../../../platform/operations/operation.ts'
-import type { SideTrayRendererState } from '../../../../platform/state-sync/contract/projections.ts'
+import type { OperationRecord } from '@newframe/schema/operation-records'
+import type { SideTrayRendererState } from '@newframe/schema/projections'
+
 import type { BalanceSummary } from '../../../asset-data/domain/balance/index.ts'
 import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
 import { filterSendRecipients, projectSendSubmission, selectSendAsset } from './sendModel.ts'

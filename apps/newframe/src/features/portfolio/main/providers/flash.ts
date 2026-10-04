@@ -1,11 +1,11 @@
 import type { createFlashApi } from '@newframe/flash/api'
 import { getFlashChainSlug } from '@newframe/flash/chains'
 import type { FlashTokenBalance } from '@newframe/flash/wire'
+import type { Address } from '@newframe/schema/address'
+import type { AssetRateInput } from '@newframe/schema/asset-rates'
 
 import type { Balance, Token } from '../../../../platform/state-store/state/index.ts'
-import type { Address } from '../../../../shared/domain/address.ts'
 import { formatUnits, parseUnits } from '../../../../shared/domain/units.ts'
-import type { AssetRateInput } from '../../../asset-data/domain/state/rate.ts'
 import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
 import type { PortfolioChainImage, PortfolioProvider, PortfolioSnapshot } from '../types.ts'
 

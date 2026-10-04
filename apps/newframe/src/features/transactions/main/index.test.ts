@@ -2,10 +2,10 @@ import { describe, expect, it, mock } from 'bun:test'
 
 import { Common, Mainnet } from '@ethereumjs/common'
 import { addHexPrefix, stripHexPrefix } from '@ethereumjs/util'
+import { TxClassification, type TransactionRequest } from '@newframe/schema/request-records'
+import { GasFeesSource, type TransactionData } from '@newframe/schema/transactions'
 
 import type { SignerSummary } from '../../../platform/signing/signers/Signer/index.ts'
-import { TxClassification, type TransactionRequest } from '../../requests/contract/requests.ts'
-import { GasFeesSource, type TransactionData } from '../domain/index.ts'
 import { maxFee, londonToLegacy, signerCompatibility, populate, sign, classifyTransaction } from './index.ts'
 
 const transaction = (overrides: Partial<TransactionData>): TransactionData => ({

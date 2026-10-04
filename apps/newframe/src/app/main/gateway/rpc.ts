@@ -1,8 +1,8 @@
+import type { RPCRequestCallback, RPCRequestPayload } from '@newframe/schema/rpc'
 import { z } from 'zod'
 
 import type { OriginsService } from '../../../features/connections/main/origins.ts'
 import { mapRequest } from '../../../features/connections/main/requests/index.ts'
-import type { RPCRequestCallback, RPCRequestPayload } from '../../../shared/domain/rpc.ts'
 import { dispatchGatewayOperation } from './dispatch.ts'
 import { isAiSessionActive, isRequestSource, type RequestSource } from './requestSource.ts'
 import { rpcMethodPolicy } from './rpcPolicy.ts'

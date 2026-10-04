@@ -17,12 +17,12 @@ import {
   type FlashAssetBalances
 } from '@newframe/flash/pair'
 import { type FlashAsset, type FlashOrderType, type FlashTradeSide } from '@newframe/flash/schemas'
+import type { FlashQuoteDisplay } from '@newframe/schema/tray-operations'
 
-import type { FlashQuoteDisplay } from '../../../../app/contracts/operations.ts'
 import {
   parseCanonicalAssetId,
   resolveFlashAssetFromRouteAssetId
-} from '../../../../app/contracts/sidetray/index.ts'
+} from '../../../../shared/domain/sideTray.ts'
 import {
   TRADE_DEFAULT_DURATION_DAYS,
   TRADE_DEFAULT_DURATION_HOURS,

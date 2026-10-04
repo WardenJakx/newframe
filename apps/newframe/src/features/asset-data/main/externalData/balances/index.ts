@@ -1,13 +1,13 @@
+import type { Address } from '@newframe/schema/address'
+import type { AssetRateMap } from '@newframe/schema/asset-rates'
 import log from 'electron-log'
 import type { StoreApi } from 'zustand/vanilla'
 
 import type { CanonicalStore } from '../../../../../platform/state-store/actions.ts'
 import type { Balance, Chain, ChainMetadata, Token } from '../../../../../platform/state-store/state/index.ts'
-import type { Address } from '../../../../../shared/domain/address.ts'
 import { NATIVE_CURRENCY } from '../../../../tokens/domain/constants.ts'
 import { customTokens, tokensForAccount } from '../../../../tokens/domain/index.ts'
 import { createBalanceSummaries, isLowValueTokenBalance, toTokenId } from '../../../domain/balance/index.ts'
-import type { AssetRateMap } from '../../../domain/state/rate.ts'
 import BalancesWorkerController from './controller.ts'
 import type { CurrencyBalance, TokenBalance } from './scan.ts'
 

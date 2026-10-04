@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'bun:test'
 
+import type { Address } from '@newframe/schema/address'
+import type { AccessRequest } from '@newframe/schema/request-records'
+import type { RPCRequestCallback, RPCRequestPayload, RPCResponsePayload } from '@newframe/schema/rpc'
 import { v5 as uuidv5 } from 'uuid'
 
 import { createLocalApiSource } from '../../../app/main/gateway/requestSource.ts'
 import type { Permission } from '../../../platform/state-store/state/index.ts'
-import type { Address } from '../../../shared/domain/address.ts'
-import type { RPCRequestCallback, RPCRequestPayload, RPCResponsePayload } from '../../../shared/domain/rpc.ts'
-import type { AccessRequest } from '../../requests/contract/requests.ts'
 import { createOriginsService, type FrameExtension, type OriginsServiceDependencies } from './origins.ts'
 
 const address = '0xDAFEA492D9c6733ae3d56b7Ed1ADB60692c98Bc5'

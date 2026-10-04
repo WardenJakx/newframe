@@ -1,6 +1,7 @@
 import { expect } from 'bun:test'
 
-import { GasFeesSource } from '../../../features/transactions/domain/index.ts'
+import { GasFeesSource } from '@newframe/schema/transactions'
+
 import type { Callback } from '../../../shared/domain/async.ts'
 import type HotSigner from './hot/HotSigner/index.ts'
 

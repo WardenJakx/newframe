@@ -1,6 +1,6 @@
+import type { RPCRequestPayload } from '@newframe/schema/rpc'
 import { z } from 'zod'
 
-import type { RPCRequestPayload } from '../../../../../shared/domain/rpc.ts'
 import { createRequestMatcher } from '../matchers.ts'
 import { chainIdMatcher, sessionMatcher } from './caipRequest.ts'
 

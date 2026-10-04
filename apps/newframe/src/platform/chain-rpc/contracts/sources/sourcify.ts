@@ -1,6 +1,6 @@
+import type { Address } from '@newframe/schema/address'
 import log from 'electron-log'
 
-import type { Address } from '../../../../shared/domain/address.ts'
 import { fetchWithTimeout } from '../../../internet/fetchWithTimeout.ts'
 import type { ContractSource } from '../index.ts'
 

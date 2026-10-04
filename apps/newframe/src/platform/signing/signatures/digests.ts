@@ -2,7 +2,7 @@ import { SignTypedDataVersion, typedSignatureHash, TypedDataUtils } from '@metam
 import { getBytes, hashMessage, hexlify, isHexString } from 'ethers'
 export { getCalldataDigest } from '../../../shared/domain/calldata.ts'
 
-import type { TypedData, TypedMessage } from '../../../features/requests/contract/requests.ts'
+import type { TypedData, TypedMessage } from '@newframe/schema/request-records'
 
 export interface Eip712Digests {
   eip712Digest: string

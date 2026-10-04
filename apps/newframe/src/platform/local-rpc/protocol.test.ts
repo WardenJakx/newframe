@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
+import { extractJsonRpcId } from '@newframe/desktop-api/json-rpc'
 import {
   EthSubscriptionNotificationSchema,
   HttpJsonRpcRequestSchema,
@@ -7,9 +8,8 @@ import {
   JsonRpcResponseOrNotificationSchema,
   JsonRpcResponseSchema,
   RoutedJsonRpcRequestSchema,
-  WebSocketJsonRpcRequestSchema,
-  extractJsonRpcId
-} from '@newframe/desktop-api/protocol'
+  WebSocketJsonRpcRequestSchema
+} from '@newframe/schema/json-rpc'
 
 describe('JSON-RPC requests', () => {
   it('parses canonical requests and defaults omitted params', () => {

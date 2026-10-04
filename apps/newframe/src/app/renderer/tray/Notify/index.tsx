@@ -1,3 +1,4 @@
+import type { TransactionRequest } from '@newframe/schema/request-records'
 import { Button } from '@newframe/ui/button'
 import { Dialog } from '@newframe/ui/dialog'
 import { Stack } from '@newframe/ui/stack'
@@ -12,7 +13,6 @@ import { AirGapSigning } from '../../../../features/accounts/renderer/airgap/Air
 import SignerRecovery from '../../../../features/accounts/renderer/onboarding/SignerRecovery.tsx'
 import ExtensionAccessNotification from '../../../../features/connections/renderer/ExtensionAccess.tsx'
 import ExtensionConnectNotification from '../../../../features/connections/renderer/ExtensionConnect.tsx'
-import type { TransactionRequest } from '../../../../features/requests/contract/requests.ts'
 import type {
   RequestExternalCapability,
   RequestReviewCapability

@@ -1,31 +1,31 @@
+import type { Account } from '@newframe/schema/accounts'
+import { AirGapPublicAccountSchema, type AirGapPublicAccount } from '@newframe/schema/airgap'
+import type { Balance } from '@newframe/schema/balances'
+import type { GasFees } from '@newframe/schema/gas'
+import type { TorStatus } from '@newframe/schema/internet'
+import type { NativeCurrency } from '@newframe/schema/native-currency'
+import type { CanonicalAccountRequest } from '@newframe/schema/request-records'
+import type { Token, TokenImage, TokenSource } from '@newframe/schema/tokens'
+import {
+  DEFAULT_PROFILE_ID,
+  DEFAULT_PROFILE_NAME,
+  type ActivityRecord,
+  type OrderRecord,
+  type PortfolioProviderId
+} from '@newframe/schema/wallet-state'
 import log from 'electron-log'
 import type { Draft } from 'immer'
 import { v5 as uuidv5 } from 'uuid'
 
-import {
-  DEFAULT_PROFILE_ID,
-  DEFAULT_PROFILE_NAME,
-  getProfileAccountIds,
-  type ActivityRecord,
-  type OrderRecord,
-  type PortfolioProviderId
-} from '../../app/contracts/state/main.ts'
 import { accountNS, isDefaultAccountName } from '../../features/accounts/domain/index.ts'
-import type { Account } from '../../features/accounts/domain/state/account.ts'
-import type { Balance } from '../../features/asset-data/domain/state/balance.ts'
-import type { GasFees } from '../../features/chains/domain/state/gas.ts'
-import type { NativeCurrency } from '../../features/chains/domain/state/nativeCurrency.ts'
+import { getProfileAccountIds } from '../../features/accounts/domain/profiles.ts'
 import {
   canExtensionSee,
   grantExtensionAccess,
   visibleExtensionAccountIds
 } from '../../features/connections/domain/extensionAccess.ts'
-import type { CanonicalAccountRequest } from '../../features/requests/contract/requests.ts'
 import { NATIVE_CURRENCY } from '../../features/tokens/domain/constants.ts'
 import { toTokenId } from '../../features/tokens/domain/index.ts'
-import type { Token, TokenImage, TokenSource } from '../../features/tokens/domain/state/token.ts'
-import type { TorStatus } from '../internet/contract/status.ts'
-import { AirGapPublicAccountSchema, type AirGapPublicAccount } from '../signing/domain/airgap.ts'
 import type { Derivation } from '../signing/signers/Signer/derive.ts'
 import type { SignerSummary } from '../signing/signers/Signer/index.ts'
 import { createOperationActions } from './actions.operation.ts'

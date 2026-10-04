@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
-import type { RPCRequestPayload } from '../../../../shared/domain/rpc.ts'
+import type { RPCRequestPayload } from '@newframe/schema/rpc'
+
 import { mapRequest as mapRequestTyped } from './index.ts'
 
 // Real function under test, exercised with deliberately loose payload fixtures.

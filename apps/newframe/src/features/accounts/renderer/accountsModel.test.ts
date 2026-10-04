@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections.ts'
+import type { WalletRendererState } from '@newframe/schema/projections'
+
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
 import { createBalanceSummarySelector } from '../../asset-data/domain/balance/index.ts'
 import type { AccountProjection, SignerProjection } from './accountsModel.ts'

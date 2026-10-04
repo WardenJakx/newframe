@@ -1,13 +1,9 @@
 import { afterEach, beforeEach, mock } from 'bun:test'
 
-import type {
-  AppCommand,
-  AppQuery,
-  CommandResult,
-  ResultForQuery
-} from '../../src/app/contracts/operations.ts'
-import type { NewframeHost } from '../../src/platform/ipc/contract/ipc.ts'
-import type { StateConnectionResult, StateMessage } from '../../src/platform/state-sync/contract/protocol.ts'
+import type { StateConnectionResult, StateMessage } from '@newframe/schema/projection-stream'
+import type { NewframeHost } from '@newframe/schema/tray-host'
+import type { AppCommand, AppQuery, CommandResult, ResultForQuery } from '@newframe/schema/tray-operations'
+
 import type { RendererStateFixtureOptions } from './rendererState.tsx'
 import { createRendererStateFixture, installRendererStateFixture } from './rendererState.tsx'
 

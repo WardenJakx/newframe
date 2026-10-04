@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, jest as timers, mock } from 'bun:test'
 
+import type { Chain, ChainMetadata } from '@newframe/schema/chains'
+import type { Origin } from '@newframe/schema/origins'
+
 import store from '../../../../platform/state-store/index.ts'
-import type { Chain, ChainMetadata } from '../../../chains/domain/state/chain.ts'
-import type { Origin } from '../../../connections/domain/state/origin.ts'
 import { createChainsObserver, createOriginChainObserver, getActiveChains } from './chains.ts'
 
 const ether = {

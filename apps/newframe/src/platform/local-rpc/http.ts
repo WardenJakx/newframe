@@ -5,12 +5,12 @@ import {
   HttpJsonRpcRequestSchema,
   MAX_RPC_REQUEST_BYTES,
   type HttpJsonRpcRequest
-} from '@newframe/desktop-api/protocol'
+} from '@newframe/schema/json-rpc'
+import type { JSONRPCRequestPayload, RPC, RPCResponsePayload } from '@newframe/schema/rpc'
 import log from 'electron-log'
 
 import { rpcMethodPolicy } from '../../app/main/gateway/rpcPolicy.ts'
 import { parseOrigin, parseRequestChainId } from '../../features/connections/main/origins.ts'
-import type { JSONRPCRequestPayload, RPC, RPCResponsePayload } from '../../shared/domain/rpc.ts'
 import {
   createOriginSessionMonitor,
   type ApiTimerPort,

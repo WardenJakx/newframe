@@ -1,14 +1,14 @@
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
-import { computeAddress, SigningKey, TypedDataEncoder, ZeroAddress } from 'ethers'
-import { z } from 'zod'
-
+import type { LegacyTypedData, TypedData } from '@newframe/schema/request-records'
 import {
   safeAddressSchema,
   safeConfigurationSchema,
   safeProposalSchema,
   type SafeProposal
-} from '../../src/features/accounts/domain/safe.ts'
-import type { LegacyTypedData, TypedData } from '../../src/features/requests/contract/requests.ts'
+} from '@newframe/schema/safe'
+import { computeAddress, SigningKey, TypedDataEncoder, ZeroAddress } from 'ethers'
+import { z } from 'zod'
+
 import {
   getSafeMessageHash,
   packSafeMessageSignatures,

@@ -1,8 +1,7 @@
 import { EventEmitter } from 'events'
 
+import type { JSONRPCRequestPayload } from '@newframe/schema/rpc'
 import { v5 as uuid } from 'uuid'
-
-import type { JSONRPCRequestPayload } from '../../../../shared/domain/rpc.ts'
 
 const internalOriginId = uuid('newframe-internal', uuid.DNS)
 

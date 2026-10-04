@@ -1,4 +1,4 @@
-import type { ExtensionAccounts } from '@newframe/desktop-api/schemas'
+import type { ExtensionAccounts } from '@newframe/schema/local-api'
 
 import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
 import {

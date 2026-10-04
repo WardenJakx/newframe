@@ -1,7 +1,8 @@
+import { ExecuteCommandChannel, ExecuteQueryChannel } from '@newframe/schema/tray-host'
+
 import { createRendererGateway } from '../../../app/main/gateway/renderer.ts'
 import { createNewframeInternalSource } from '../../../app/main/gateway/requestSource.ts'
 import type { OperationServices } from '../../../app/main/ipc-handlers/renderer.ts'
-import { ExecuteCommandChannel, ExecuteQueryChannel } from '../contract/ipc.ts'
 export interface OperationDispatcher {
   dispatchCommand(event: Electron.IpcMainInvokeEvent, command: unknown): Promise<unknown>
   dispatchQuery(event: Electron.IpcMainInvokeEvent, query: unknown): Promise<unknown>

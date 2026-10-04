@@ -17,8 +17,7 @@ import {
 } from '@newframe/flash/execution'
 import { getFlashAssetPairChains } from '@newframe/flash/pair'
 import type { FlashQuote, FlashQuoteAction } from '@newframe/flash/schemas'
-import { isAddress } from 'ethers'
-
+import type { OperationEntityRef } from '@newframe/schema/operation-records'
 import {
   FlashQuoteDisplaySchema,
   TypedDataV4Schema,
@@ -30,9 +29,10 @@ import {
   type TradeRequestCommand,
   type TradeSubmitCommand,
   type TypedDataV4
-} from '../../../../app/contracts/operations.ts'
+} from '@newframe/schema/tray-operations'
+import { isAddress } from 'ethers'
+
 import type { RequestSource } from '../../../../app/main/gateway/requestSource.ts'
-import type { OperationEntityRef } from '../../../../platform/operations/operation.ts'
 import type { OperationService } from '../../../../platform/operations/service.ts'
 import type { OperationOwner, OperationReference } from '../../../../platform/operations/types.ts'
 

@@ -1,10 +1,5 @@
-import type {
-  AppCommand,
-  AppQuery,
-  CommandResult,
-  ResultForQuery
-} from '../../../app/contracts/operations.ts'
-import type { StateConnectionResult, StateMessage } from '../../state-sync/contract/protocol.ts'
+import type { StateConnectionResult, StateMessage } from './projection-stream.ts'
+import type { AppCommand, AppQuery, CommandResult, ResultForQuery } from './tray-operations.ts'
 
 export const ExecuteCommandChannel = 'newframe:execute-command'
 export const ExecuteQueryChannel = 'newframe:execute-query'

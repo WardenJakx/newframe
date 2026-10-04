@@ -1,3 +1,4 @@
+import type { Account } from '@newframe/schema/accounts'
 import { Notification } from 'electron'
 
 import type { RpcIpcHandlers } from '../../../app/main/ipc-handlers/rpc.ts'
@@ -7,7 +8,6 @@ import type { CanonicalStore } from '../../../platform/state-store/actions.ts'
 import type store from '../../../platform/state-store/index.ts'
 import { arraysEqual } from '../../../shared/domain/collections.ts'
 import type { Chains } from '../../chains/main/index.ts'
-import type { Account } from '../domain/state/account.ts'
 import type { Accounts } from './index.ts'
 import type { AccountsRuntime } from './runtime.ts'
 import type { AccountServicePorts } from './service.ts'

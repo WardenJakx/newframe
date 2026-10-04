@@ -1,3 +1,11 @@
+import {
+  safeAddressSchema,
+  safeConfigurationSchema,
+  safeProposalSchema,
+  type SafeConfiguration,
+  type SafeProposal,
+  type SafeProposalSimulation
+} from '@newframe/schema/safe'
 import { Interface, concat, toBeHex } from 'ethers'
 import { z } from 'zod'
 
@@ -9,14 +17,6 @@ import {
   type TraceCall,
   type TransactionSimulationProjection
 } from '../../transactions/main/simulation.ts'
-import {
-  safeAddressSchema,
-  safeConfigurationSchema,
-  safeProposalSchema,
-  type SafeConfiguration,
-  type SafeProposal,
-  type SafeProposalSimulation
-} from '../domain/safe.ts'
 
 const abi = new Interface([
   'function getThreshold() view returns (uint256)',

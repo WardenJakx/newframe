@@ -47,7 +47,7 @@ test('extracts every supported static and dynamic module form', () => {
 // oxfmt-ignore
 const authorityCases: RejectCase[] = [
   ['asset-rate writer', checkAssetRateMutationAuthority, 'apps/newframe/src/features/connections/main/provider/rates.ts', 'store.getState().setAssetRates(batch)', 'canonical asset-rate mutation is restricted'],
-  ['duplicate operation catalog', checkOperationContractAuthority, 'apps/newframe/src/features/example/contract/operations.ts', 'export const querySchemas = {}', 'schema catalogs must be defined in src/app/contracts/operations.ts'],
+  ['duplicate operation catalog', checkOperationContractAuthority, 'apps/newframe/src/features/example/contract/operations.ts', 'export const querySchemas = {}', 'schema catalogs must be defined in packages/schema/src/tray-operations.ts'],
   ['generic renderer RPC', checkOperationContractAuthority, 'apps/newframe/src/platform/ipc/contract/ipc.ts', "export const RpcChannel = 'newframe:rpc'", 'generic renderer RPC channels are forbidden'],
   ['command-specific results', checkOperationContractAuthority, 'apps/newframe/src/platform/ipc/renderer/link.ts', 'type Legacy = CommandResultMap', 'command-specific result maps are forbidden'],
   ['erased operation input', checkOperationContractAuthority, 'apps/newframe/src/features/settings/renderer/Settings.tsx', "link.executeCommand({ type: 'settings.update' } as any)", 'casting command or query payloads to any is forbidden'],
@@ -74,7 +74,7 @@ test('allows each canonical authority', () => {
   // oxfmt-ignore
   const cases: readonly [Check, string, string][] = [
     [checkAssetRateMutationAuthority, 'apps/newframe/src/features/asset-data/main/assetRates/service.ts', 'state.setAssetRates(batch)'],
-    [checkOperationContractAuthority, 'apps/newframe/src/app/contracts/operations.ts', 'export const commandContracts = {}'],
+    [checkOperationContractAuthority, 'packages/schema/src/tray-operations.ts', 'export const commandContracts = {}'],
     [checkOperationContractAuthority, 'apps/newframe/src/features/accounts/contract/profile/schema.ts', 'export const ProfileCreateCommandSchema = z.object({})'],
     [checkPlatformCommandAuthority, 'apps/newframe/src/app/main/platform/service.ts', "command.type = 'renderer.context-menu'"],
     [checkPlatformCommandAuthority, 'apps/newframe/src/features/transactions/trade/renderer/index.tsx', 'const review = { safeQuote, operationId }'],

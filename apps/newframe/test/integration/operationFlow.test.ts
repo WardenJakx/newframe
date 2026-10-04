@@ -1,13 +1,14 @@
 import { expect, it, mock } from 'bun:test'
 
-import { CommandResultSchema } from '../../src/app/contracts/operations.ts'
-import { DEFAULT_PROFILE_ID } from '../../src/app/contracts/state/main.ts'
+import type { AccountRequest, TransactionRequest } from '@newframe/schema/request-records'
+import { GasFeesSource } from '@newframe/schema/transactions'
+import { CommandResultSchema } from '@newframe/schema/tray-operations'
+import { DEFAULT_PROFILE_ID } from '@newframe/schema/wallet-state'
+
 import type { OperationServices } from '../../src/app/main/ipc-handlers/renderer.ts'
-import type { AccountRequest, TransactionRequest } from '../../src/features/requests/contract/requests.ts'
 import { createRequestService } from '../../src/features/requests/main/service.ts'
 import { createRequestRendererCapabilities } from '../../src/features/requests/renderer/requestCapabilities.ts'
 import { createTokenService } from '../../src/features/tokens/main/service.ts'
-import { GasFeesSource } from '../../src/features/transactions/domain/index.ts'
 import { createOperationDispatcher } from '../../src/platform/ipc/main/operations.ts'
 import { createOperationService } from '../../src/platform/operations/service.ts'
 import createInitialState from '../../src/platform/state-store/state/index.ts'

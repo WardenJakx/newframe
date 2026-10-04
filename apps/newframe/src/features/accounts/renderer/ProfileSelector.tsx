@@ -1,3 +1,4 @@
+import type { WalletRendererState } from '@newframe/schema/projections'
 import { Button } from '@newframe/ui/button'
 import { Icon } from '@newframe/ui/icon'
 import { IconButton } from '@newframe/ui/icon-button'
@@ -10,7 +11,6 @@ import React from 'react'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
 import { cx } from '../../../../generated/styled-system/css/cx.js'
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections.ts'
 import {
   selectOperationById,
   selectOperationEntityId

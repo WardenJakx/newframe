@@ -1,7 +1,8 @@
 import { describe, expect, it, mock } from 'bun:test'
 
+import { DEFAULT_PROFILE_ID } from '@newframe/schema/wallet-state'
+
 import { createTestStore } from '../../../../test/support/createTestStore.ts'
-import { DEFAULT_PROFILE_ID } from '../../../app/contracts/state/main.ts'
 import { createAccountService } from './service.ts'
 
 const first = '0x1111111111111111111111111111111111111111'

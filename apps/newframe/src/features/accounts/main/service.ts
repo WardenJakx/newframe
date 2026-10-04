@@ -1,4 +1,5 @@
-import type { AccountUpdateCommand } from '../../../app/contracts/operations.ts'
+import type { AccountUpdateCommand } from '@newframe/schema/tray-operations'
+
 import type { CanonicalStore } from '../../../platform/state-store/actions.ts'
 import type { Accounts } from './index.ts'
 

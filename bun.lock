@@ -33,6 +33,7 @@
         "@metamask/eth-sig-util": "^8.2.0",
         "@newframe/desktop-api": "workspace:*",
         "@newframe/flash": "workspace:*",
+        "@newframe/schema": "workspace:*",
         "@newframe/ui": "workspace:*",
         "@ngraveio/bc-ur": "1.1.6",
         "@scure/bip32": "^2.2.0",
@@ -100,6 +101,7 @@
       "dependencies": {
         "@newframe/desktop-api": "workspace:*",
         "@newframe/flash": "workspace:*",
+        "@newframe/schema": "workspace:*",
       },
     },
     "apps/newframe-extension": {
@@ -107,6 +109,7 @@
       "version": "2026.729.1",
       "dependencies": {
         "@newframe/desktop-api": "workspace:*",
+        "@newframe/schema": "workspace:*",
         "@newframe/ui": "workspace:*",
         "events": "3.3.0",
         "react": "19.2.7",
@@ -128,6 +131,7 @@
       "dependencies": {
         "@newframe/desktop-api": "workspace:*",
         "@newframe/flash": "workspace:*",
+        "@newframe/schema": "workspace:*",
         "@safe-global/safe-smart-account": "1.5.0",
         "ethers": "6.16.0",
       },
@@ -140,6 +144,7 @@
       "name": "@newframe/desktop-api",
       "version": "0.1.0",
       "dependencies": {
+        "@newframe/schema": "workspace:*",
         "@trpc/client": "11.19.0",
         "@trpc/server": "11.19.0",
         "zod": "^4.4.3",
@@ -160,6 +165,21 @@
         "@types/bun": "1.4.0",
         "@types/node": "24",
         "@types/ws": "^8.18.1",
+        "typescript": "7.0.2",
+      },
+    },
+    "packages/schema": {
+      "name": "@newframe/schema",
+      "version": "0.1.0",
+      "dependencies": {
+        "@ethereumjs/tx": "^10.1.2",
+        "@metamask/eth-sig-util": "^8.2.0",
+        "@newframe/flash": "workspace:*",
+        "ethers": "6.16.0",
+        "zod": "^4.4.3",
+      },
+      "devDependencies": {
+        "@types/bun": "1.4.0",
         "typescript": "7.0.2",
       },
     },
@@ -433,6 +453,8 @@
     "@newframe/flash": ["@newframe/flash@workspace:packages/flash"],
 
     "@newframe/harness": ["@newframe/harness@workspace:harness"],
+
+    "@newframe/schema": ["@newframe/schema@workspace:packages/schema"],
 
     "@newframe/ui": ["@newframe/ui@workspace:packages/ui"],
 

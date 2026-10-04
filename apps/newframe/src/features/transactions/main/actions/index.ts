@@ -1,4 +1,5 @@
-import type { Address } from '../../../../shared/domain/address.ts'
+import type { Address } from '@newframe/schema/address'
+
 import type { AccountRequest } from '../../../accounts/main/index.ts'
 import type { ActionType as EnsActions } from './ens.ts'
 import type { ActionType as Erc20Actions } from './erc20.ts'

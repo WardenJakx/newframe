@@ -1,4 +1,4 @@
-import type { JSONRPCRequestPayload } from '../../../shared/domain/rpc.ts'
+import type { JSONRPCRequestPayload } from '@newframe/schema/rpc'
 
 const protocolRegex = /^(?:ws|http)s?:\/\//
 const hexChainIdRegex = /^0x[0-9a-f]+$/i

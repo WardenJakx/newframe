@@ -1,4 +1,5 @@
-import type { SafeConfirmationStatusQuery } from '../../../app/contracts/operations.ts'
+import type { SafeConfirmationStatusQuery } from '@newframe/schema/tray-operations'
+
 import type { SafeTransactionService } from './safeTransaction.ts'
 
 export type SafeTransactionPort = Pick<

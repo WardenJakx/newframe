@@ -2,15 +2,12 @@ import { randomUUID } from 'node:crypto'
 import { EventEmitter } from 'node:events'
 
 import { ETHSignature, EthSignRequest } from '@keystonehq/bc-ur-registry-eth'
+import type { CanonicalAccountRequest, TypedMessage } from '@newframe/schema/request-records'
+import { RequestStatus } from '@newframe/schema/request-records'
+import { GasFeesSource } from '@newframe/schema/transactions'
+import type { TransactionData } from '@newframe/schema/transactions'
 import { URDecoder, UREncoder } from '@ngraveio/bc-ur'
 
-import type {
-  CanonicalAccountRequest,
-  TypedMessage
-} from '../../../src/features/requests/contract/requests.ts'
-import { RequestStatus } from '../../../src/features/requests/contract/requests.ts'
-import { GasFeesSource } from '../../../src/features/transactions/domain/index.ts'
-import type { TransactionData } from '../../../src/features/transactions/domain/index.ts'
 import AirGapSigner from '../../../src/platform/signing/signers/airgap/AirGapSigner.ts'
 import {
   AirGapUrAssembler,

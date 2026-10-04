@@ -4,7 +4,7 @@ import {
   HttpJsonRpcRequestSchema,
   RoutedJsonRpcRequestSchema,
   WebSocketJsonRpcRequestSchema
-} from '@newframe/desktop-api/protocol'
+} from '@newframe/schema/json-rpc'
 
 import validatePayloadTyped from './validPayload.ts'
 

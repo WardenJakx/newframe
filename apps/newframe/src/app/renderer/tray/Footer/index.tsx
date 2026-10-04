@@ -1,3 +1,4 @@
+import type { WalletRendererState } from '@newframe/schema/projections'
 import { useEffect, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
@@ -11,7 +12,6 @@ import RequestCommand, {
 import { useRequestView, type RequestViewStep } from '../../../../features/requests/renderer/requestView.tsx'
 import { RequestActions } from '../../../../features/requests/renderer/ui/RequestActions.tsx'
 import { RequestSigningFooter } from '../../../../features/requests/renderer/ui/RequestSigningFooter.tsx'
-import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections.ts'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector.tsx'
 import { accountDisplayType } from '../../../../shared/renderer/ui/signerPresentation.ts'
 

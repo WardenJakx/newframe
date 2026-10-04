@@ -1,12 +1,12 @@
 import EventEmitter from 'events'
 import path from 'path'
 
+import type { Shortcut } from '@newframe/schema/shortcuts'
 import type { BrowserWindow } from 'electron'
 import { app as electronApp, screen, globalShortcut, type WebContents } from 'electron'
 import log from 'electron-log'
 import { shallow } from 'zustand/vanilla/shallow'
 
-import type { Shortcut } from '../../../features/settings/domain/state/shortcuts.ts'
 import { hexToInt, roundGwei } from '../../../shared/domain/hex.ts'
 import type { RendererAuthorizationRegistry } from '../../ipc/main/authorization.ts'
 import { isVisualHarness } from '../../runtime/visualHarness.ts'

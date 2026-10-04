@@ -1,7 +1,8 @@
 import { expect, it } from 'bun:test'
 
-import type { SignatureRequest } from '../../requests/contract/requests.ts'
-import type { Account } from '../domain/state/account.ts'
+import type { Account } from '@newframe/schema/accounts'
+import type { SignatureRequest } from '@newframe/schema/request-records'
+
 import { deriveSigningCapability } from './signingCapability.ts'
 
 const profileId = 'profile-1'

@@ -1,13 +1,9 @@
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
+import type { Account } from '@newframe/schema/accounts'
+import type { SignatureRequest, SigningCapability, SigningCandidate } from '@newframe/schema/request-records'
+import type { SafeDeployment } from '@newframe/schema/safe'
 
 import { getSignerType, isSignerReady, Type as SignerType } from '../../../platform/signing/domain/index.ts'
-import type {
-  SignatureRequest,
-  SigningCapability,
-  SigningCandidate
-} from '../../requests/contract/requests.ts'
-import type { SafeDeployment } from '../domain/safe.ts'
-import type { Account } from '../domain/state/account.ts'
 
 type SignerSummary = {
   id?: string

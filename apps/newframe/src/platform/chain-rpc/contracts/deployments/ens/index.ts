@@ -1,8 +1,8 @@
+import type { Address } from '@newframe/schema/address'
 import { Interface } from 'ethers'
 import type { JsonFragment, Fragment } from 'ethers'
 
 import type { DecodableContract } from '../../../../../features/transactions/main/actions/index.ts'
-import type { Address } from '../../../../../shared/domain/address.ts'
 import { registrar as registrarAbi, registrarController as registrarControllerAbi } from './abi.ts'
 
 // TODO: fix typing on contract types

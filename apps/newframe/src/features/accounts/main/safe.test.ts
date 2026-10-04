@@ -1,12 +1,12 @@
 import { afterEach, expect, it, mock } from 'bun:test'
 
+import type { SafeConfiguration, SafeProposal, SafeProposalSimulation } from '@newframe/schema/safe'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { createStore } from 'zustand/vanilla'
 
 import { createTestStore } from '../../../../test/support/createTestStore.ts'
 import { createOperationService } from '../../../platform/operations/service.ts'
 import { createSafeClient } from '../../../platform/safe/client.ts'
-import type { SafeConfiguration, SafeProposal, SafeProposalSimulation } from '../domain/safe.ts'
 import { createSafeService, type SafeServicePorts } from './safe.ts'
 
 const address = '0x1111111111111111111111111111111111111111'

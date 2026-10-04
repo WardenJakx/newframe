@@ -1,6 +1,7 @@
+import type { Address } from '@newframe/schema/address'
+import type { AssetRateInput, AssetRateSource } from '@newframe/schema/asset-rates'
+
 import type { Balance, Token } from '../../../platform/state-store/state/index.ts'
-import type { Address } from '../../../shared/domain/address.ts'
-import type { AssetRateInput, AssetRateSource } from '../../asset-data/domain/state/rate.ts'
 
 export interface PortfolioRefreshOptions {
   sync?: boolean

@@ -4,7 +4,7 @@ import Send from '../../../features/transactions/send/renderer/index.tsx'
 import type { SendCapability } from '../../../features/transactions/send/renderer/sendService.ts'
 import Trade from '../../../features/transactions/trade/renderer/index.tsx'
 import type { TradeCapability } from '../../../features/transactions/trade/renderer/tradeService.ts'
-import { parseSideTrayHashRoute } from '../../contracts/sidetray/index.ts'
+import { parseSideTrayHashRoute } from '../../../shared/domain/sideTray.ts'
 
 function useHashRoute() {
   const [hash, setHash] = React.useState(() => window.location.hash)

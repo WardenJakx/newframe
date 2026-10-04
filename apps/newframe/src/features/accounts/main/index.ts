@@ -1,30 +1,8 @@
 import EventEmitter from 'events'
 
 import { addHexPrefix, intToHex } from '@ethereumjs/util'
-import log from 'electron-log'
-import { v5 as uuidv5 } from 'uuid'
-
-import { getProfileAccountIds } from '../../../app/contracts/state/main.ts'
-import { authorizeGatewayOperation, type RequestSource } from '../../../app/main/gateway/requestSource.ts'
-import { getSignerType } from '../../../platform/signing/domain/index.ts'
-import type { SigningApprovalContext } from '../../../platform/signing/signers/Signer/index.ts'
-import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
-import type { ActivityRecord, Token } from '../../../platform/state-store/state/index.ts'
-import type { Address } from '../../../shared/domain/address.ts'
-import type { Callback } from '../../../shared/domain/async.ts'
-import { weiIntToEthInt, hexToInt } from '../../../shared/domain/hex.ts'
-import type {
-  EVMError,
-  RPC,
-  RPCRequestCallback,
-  RPCRequestPayload,
-  RPCResponsePayload
-} from '../../../shared/domain/rpc.ts'
-import { resolveAssetRate } from '../../asset-data/domain/asset/index.ts'
-import type { DataScanner } from '../../asset-data/main/externalData/index.ts'
-import { chainUsesOptimismFees } from '../../chains/domain/chain/fees.ts'
-import type { Chain } from '../../chains/main/index.ts'
-import type { NameResolutionService } from '../../name-resolution/main/nameResolution.ts'
+import type { Account } from '@newframe/schema/accounts'
+import type { Address } from '@newframe/schema/address'
 import type {
   AccountRequest,
   AccessRequest,
@@ -32,34 +10,55 @@ import type {
   TransactionReceipt,
   TypedMessage,
   PermitSignatureRequest
-} from '../../requests/contract/requests.ts'
+} from '@newframe/schema/request-records'
 import {
   ReplacementType,
   RequestStatus,
   RequestMode,
   TxClassification
-} from '../../requests/contract/requests.ts'
+} from '@newframe/schema/request-records'
+import type {
+  EVMError,
+  RPC,
+  RPCRequestCallback,
+  RPCRequestPayload,
+  RPCResponsePayload
+} from '@newframe/schema/rpc'
+import type { TransactionData } from '@newframe/schema/transactions'
+import { GasFeesSource, type TransactionEffect } from '@newframe/schema/transactions'
+import log from 'electron-log'
+import { v5 as uuidv5 } from 'uuid'
+
+import { authorizeGatewayOperation, type RequestSource } from '../../../app/main/gateway/requestSource.ts'
+import { getSignerType } from '../../../platform/signing/domain/index.ts'
+import type { SigningApprovalContext } from '../../../platform/signing/signers/Signer/index.ts'
+import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
+import type { ActivityRecord, Token } from '../../../platform/state-store/state/index.ts'
+import type { Callback } from '../../../shared/domain/async.ts'
+import { weiIntToEthInt, hexToInt } from '../../../shared/domain/hex.ts'
+import { resolveAssetRate } from '../../asset-data/domain/asset/index.ts'
+import type { DataScanner } from '../../asset-data/main/externalData/index.ts'
+import { chainUsesOptimismFees } from '../../chains/domain/chain/fees.ts'
+import type { Chain } from '../../chains/main/index.ts'
+import type { NameResolutionService } from '../../name-resolution/main/nameResolution.ts'
 import type { ApprovalType } from '../../requests/domain/approval.ts'
 import type { PromptedRequestLifecyclePort } from '../../requests/main/service.ts'
 import { NATIVE_CURRENCY } from '../../tokens/domain/constants.ts'
 import { tokensForAccount, toTokenId } from '../../tokens/domain/index.ts'
-import type { TransactionData } from '../../transactions/domain/index.ts'
 import {
   usesBaseFee,
-  GasFeesSource,
   TRANSACTION_CONFIRMATION_TARGET,
   getTransactionIntent,
   getTransactionPositionTokens,
   getTransactionEffects,
-  getPaidTransactionFee,
-  type TransactionEffect
+  getPaidTransactionFee
 } from '../../transactions/domain/index.ts'
 import type { AccountTransactionPolicyPort } from '../../transactions/main/accountPolicyPort.ts'
 import type { ActionType } from '../../transactions/main/actions/index.ts'
 import type { RevealService } from '../../transactions/main/reveal.ts'
 import type { TransactionSimulationPort } from '../../transactions/main/simulationPort.ts'
 import { accountNS } from '../domain/index.ts'
-import type { Account } from '../domain/state/account.ts'
+import { getProfileAccountIds } from '../domain/profiles.ts'
 import FrameAccount from './Account.ts'
 import type { AccountChainRpcPort } from './providerPort.ts'
 import type { AccountsRuntime } from './runtime.ts'
@@ -179,7 +178,7 @@ function toTransactionsByLayer(requests: Record<string, AccountRequest | undefin
 const frameOriginId = uuidv5('newframe-internal', uuidv5.DNS)
 const CONFIRMED_REQUEST_CLOSE_MS = 3000
 
-export type { AccountRequest, AccessRequest, TransactionRequest } from '../../requests/contract/requests.ts'
+export type { AccountRequest, AccessRequest, TransactionRequest } from '@newframe/schema/request-records'
 
 type RequestWithId = [string, TransactionRequest]
 

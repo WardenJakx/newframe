@@ -1,4 +1,5 @@
-import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections.ts'
+import type { WalletRendererState } from '@newframe/schema/projections'
+
 import type { ChainLike, ChainMetaLike } from '../../../../../shared/renderer/ui/tokenSelectorTypes.ts'
 
 type OrderRecord = WalletRendererState['orders'][string]

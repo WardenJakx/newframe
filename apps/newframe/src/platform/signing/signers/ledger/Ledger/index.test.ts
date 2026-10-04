@@ -11,10 +11,10 @@ import {
 } from 'bun:test'
 
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
+import type { TypedMessage } from '@newframe/schema/request-records'
+import { GasFeesSource, type TransactionData } from '@newframe/schema/transactions'
 import log from 'electron-log'
 
-import type { TypedMessage } from '../../../../../features/requests/contract/requests.ts'
-import { GasFeesSource, type TransactionData } from '../../../../../features/transactions/domain/index.ts'
 import type { Callback } from '../../../../../shared/domain/async.ts'
 import { callbackResult } from '../../callback.test-support.ts'
 import { Derivation } from '../../Signer/derive.ts'

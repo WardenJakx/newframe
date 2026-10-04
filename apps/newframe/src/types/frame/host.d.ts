@@ -1,4 +1,4 @@
-import type { NewframeHost } from '../../platform/ipc/contract/ipc.ts'
+import type { NewframeHost } from '@newframe/schema/tray-host'
 
 declare global {
   interface Window {

@@ -67,8 +67,7 @@ function glob(pattern: string) {
 
 function normalizeSource(source: string) {
   const absolute = path.isAbsolute(source) ? source : path.resolve(appRoot, source)
-  const relative = path.relative(appRoot, absolute).split(path.sep).join('/')
-  return relative.startsWith('../../') ? source.replace(/^.*apps\/newframe\//, '') : relative
+  return path.relative(appRoot, absolute).split(path.sep).join('/')
 }
 
 function coverageReports(input: string): string[] {
@@ -202,7 +201,10 @@ if (reports.length === 0) {
 }
 const files = parseLcov(reports)
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as { groups: Rule[] }
-const productionSources = sourceFiles(appRoot)
+const productionSources = [
+  ...sourceFiles(appRoot),
+  ...sourceFiles(path.resolve(appRoot, '../../packages/schema/src'))
+]
 const failures: string[] = []
 const rows = manifest.groups.map((rule) => {
   const matchedByName = new Map<string, Coverage>()

@@ -1,3 +1,4 @@
+import type { WalletRendererState } from '@newframe/schema/projections'
 import { Button } from '@newframe/ui/button'
 import { Grid } from '@newframe/ui/grid'
 import { Icon } from '@newframe/ui/icon'
@@ -8,7 +9,6 @@ import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 import { useEffect, useMemo, useState } from 'react'
 
-import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections.ts'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector.tsx'
 import { AppIcon } from '../../../../shared/renderer/ui/appIcon.tsx'
 import {

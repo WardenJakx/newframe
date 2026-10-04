@@ -44,7 +44,12 @@ export class DevelopmentAppService implements HarnessService<{ exited: Promise<n
 
   async start() {
     this.completion.promise.catch(() => undefined)
-    for (const directory of [appDir, path.join(rootDir, 'packages/ui'), path.join(rootDir, 'assets')]) {
+    for (const directory of [
+      appDir,
+      path.join(rootDir, 'packages/schema'),
+      path.join(rootDir, 'packages/ui'),
+      path.join(rootDir, 'assets')
+    ]) {
       const changed = sourceChanges(directory, ignoredDirectories)
       const watcher = watch(directory, { recursive: true }, (_event, filename) => {
         if (!filename) {

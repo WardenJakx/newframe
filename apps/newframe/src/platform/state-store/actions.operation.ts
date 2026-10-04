@@ -1,4 +1,5 @@
-import type { OperationRecord } from '../operations/operation.ts'
+import type { OperationRecord } from '@newframe/schema/operation-records'
+
 import type { OperationOwner } from '../operations/types.ts'
 import type { CanonicalGet, CanonicalSet } from './actions.panel.ts'
 

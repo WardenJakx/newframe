@@ -1,5 +1,6 @@
-import type { SafeOwnerAccount } from '../domain/safe.ts'
-import type { Account } from '../domain/state/account.ts'
+import type { Account } from '@newframe/schema/accounts'
+import type { SafeOwnerAccount } from '@newframe/schema/safe'
+
 import { safeExecutorCandidates, safeOwnerCandidates } from './signingCapability.ts'
 
 export function deriveSafeOwners(

@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'bun:test'
 import type { Mock } from 'bun:test'
 
+import type { OperationRecord } from '@newframe/schema/operation-records'
+import type { WalletRendererState } from '@newframe/schema/projections'
+import type { AppCommand, CommandMap, CommandResult } from '@newframe/schema/tray-operations'
 import { useState } from 'react'
 import type { ComponentProps } from 'react'
 
 import { act, render, screen } from '../../../../../../test/support/componentSetup.tsx'
 import { registerTestRuntimeFixture } from '../../../../../../test/support/rendererClient.ts'
-import type { AppCommand, CommandMap, CommandResult } from '../../../../../app/contracts/operations.ts'
-import type { OperationRecord } from '../../../../../platform/operations/operation.ts'
-import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections.ts'
 import { walletState } from '../../../../../platform/state-sync/renderer/fixtures.test-support.ts'
 import { OrderDetails } from './OrderDetails.tsx'
 import { Orders as OrdersController, type OpenOrderInput } from './Orders.tsx'

@@ -1,15 +1,15 @@
 import type { IncomingMessage } from 'http'
 
+import type { Address } from '@newframe/schema/address'
+import type { AccessRequest } from '@newframe/schema/request-records'
+import type { JSONRPCRequestPayload, RPCRequestPayload } from '@newframe/schema/rpc'
 import log from 'electron-log'
 import { v5 as uuidv5 } from 'uuid'
 
 import { hasSourceCapability, type LocalApiSource } from '../../../app/main/gateway/requestSource.ts'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
 import type { Permission } from '../../../platform/state-store/state/index.ts'
-import type { Address } from '../../../shared/domain/address.ts'
-import type { JSONRPCRequestPayload, RPCRequestPayload } from '../../../shared/domain/rpc.ts'
 import type { Accounts } from '../../accounts/main/index.ts'
-import type { AccessRequest } from '../../requests/contract/requests.ts'
 import type { PromptedRequestContinuationPort } from '../../requests/main/service.ts'
 import { activeExtensionAccountId } from '../domain/extensionAccess.ts'
 import {

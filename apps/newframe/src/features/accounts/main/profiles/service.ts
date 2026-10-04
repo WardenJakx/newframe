@@ -1,13 +1,14 @@
 import { randomUUID } from 'node:crypto'
 
+import type { OperationEntityRef } from '@newframe/schema/operation-records'
 import type {
   AccountUpdateCommand,
   ProfileCreateCommand,
   ProfileDeleteCommand,
   ProfileUpdateCommand,
   ProfileSelectCommand
-} from '../../../../app/contracts/operations.ts'
-import type { OperationEntityRef } from '../../../../platform/operations/operation.ts'
+} from '@newframe/schema/tray-operations'
+
 import type { OperationService } from '../../../../platform/operations/service.ts'
 import type { OperationOwner, OperationReference } from '../../../../platform/operations/types.ts'
 import type { CanonicalStore } from '../../../../platform/state-store/actions.ts'

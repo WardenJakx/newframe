@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, type Mock } from 'bun:test'
 
+import type { Shortcut } from '@newframe/schema/shortcuts'
+
 import { electronMock } from '../../../test/support/electron.mock.ts'
-import type { Shortcut } from '../../features/settings/domain/state/shortcuts.ts'
 
 let registerShortcut: typeof import('./keyboardShortcuts.ts').registerShortcut
 const { register, unregister } = electronMock.globalShortcut

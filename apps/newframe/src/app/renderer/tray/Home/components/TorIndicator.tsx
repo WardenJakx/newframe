@@ -1,3 +1,4 @@
+import type { TorStatus } from '@newframe/schema/internet'
 import { Button } from '@newframe/ui/button'
 import { Icon } from '@newframe/ui/icon'
 import { Inline } from '@newframe/ui/inline'
@@ -8,7 +9,6 @@ import { Text } from '@newframe/ui/text'
 import { useId } from 'react'
 
 import { cva } from '../../../../../../generated/styled-system/css/cva.js'
-import type { TorStatus } from '../../../../../platform/internet/contract/status.ts'
 
 const indicatorRecipe = cva({
   base: {

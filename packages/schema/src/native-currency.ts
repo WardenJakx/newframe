@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { TokenImageSchema } from '../../../tokens/domain/state/token.ts'
+import { TokenImageSchema } from './tokens.ts'
 
 export const NativeCurrencySchema = z.object({
   symbol: z.string(),

@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'bun:test'
 
-import type { RPC } from '../../../shared/domain/rpc.ts'
+import type { RPC } from '@newframe/schema/rpc'
+import { type TransactionData, type TransactionEffect } from '@newframe/schema/transactions'
+
 import {
   getPaidTransactionFee,
   getTransactionEffects,
   getTransactionIntent,
   getTransactionPositionTokens,
   normalizeChainId,
-  type TransactionData,
-  type TransactionEffect,
   usesBaseFee
 } from './index.ts'
 

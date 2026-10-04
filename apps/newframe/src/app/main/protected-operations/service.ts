@@ -1,6 +1,15 @@
 import crypto from 'crypto'
 
 import { recoverTypedSignature } from '@metamask/eth-sig-util'
+import type {
+  AccountRequest,
+  TransactionRequest,
+  SignTypedDataRequest,
+  TypedMessage
+} from '@newframe/schema/request-records'
+import type { RPCRequestCallback, RPCRequestPayload } from '@newframe/schema/rpc'
+import { type TransactionApprovalAdjustments } from '@newframe/schema/transaction-approval'
+import type { TransactionData } from '@newframe/schema/transactions'
 import log from 'electron-log'
 
 import type { Chain, Chains } from '../../../features/chains/main/index.ts'
@@ -11,18 +20,8 @@ import {
   resError,
   encodePersonalSignMessage
 } from '../../../features/connections/main/provider/helpers.ts'
-import type {
-  AccountRequest,
-  TransactionRequest,
-  SignTypedDataRequest,
-  TypedMessage
-} from '../../../features/requests/contract/requests.ts'
 import { isSignatureRequest } from '../../../features/requests/domain/index.ts'
-import {
-  applyTransactionAdjustments,
-  type TransactionApprovalAdjustments
-} from '../../../features/transactions/domain/approval.ts'
-import type { TransactionData } from '../../../features/transactions/domain/index.ts'
+import { applyTransactionAdjustments } from '../../../features/transactions/domain/approval.ts'
 import { maxFee } from '../../../features/transactions/main/index.ts'
 import type {
   SigningApprovalContext,
@@ -30,7 +29,6 @@ import type {
 } from '../../../platform/signing/signers/Signer/index.ts'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
 import type { Callback } from '../../../shared/domain/async.ts'
-import type { RPCRequestCallback, RPCRequestPayload } from '../../../shared/domain/rpc.ts'
 import { isAiSessionActive, type AiSessionClientSource } from '../gateway/requestSource.ts'
 import { exportProtectedPrivateKey } from './secrets.ts'
 type AccountHandle = NonNullable<ReturnType<AccountRequestPort['getFrameAccount']>>

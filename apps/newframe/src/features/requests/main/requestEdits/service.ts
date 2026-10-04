@@ -1,6 +1,11 @@
-import type { RequestTokenApprovalUpdateCommand } from '../../../../app/contracts/operations.ts'
+import type {
+  AccountRequest,
+  PermitSignatureRequest,
+  TransactionRequest
+} from '@newframe/schema/request-records'
+import type { RequestTokenApprovalUpdateCommand } from '@newframe/schema/tray-operations'
+
 import type { Accounts } from '../../../accounts/main/index.ts'
-import type { AccountRequest, PermitSignatureRequest, TransactionRequest } from '../../contract/requests.ts'
 
 export interface RequestEditServicePorts {
   accounts: Pick<Accounts, 'current' | 'updateRequest'>

@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'bun:test'
 
+import type { StateMessage } from '@newframe/schema/projection-stream'
+import type { SideTrayRendererState } from '@newframe/schema/projections'
+
 import { createTestRuntimeFixture } from '../../../../test/support/rendererClient.ts'
-import type { SideTrayRendererState } from '../contract/projections.ts'
-import type { StateMessage } from '../contract/protocol.ts'
 import { connectRendererState } from './connectState.ts'
 import { sideTrayState } from './fixtures.test-support.ts'
 

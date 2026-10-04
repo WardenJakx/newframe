@@ -1,10 +1,11 @@
 import { expect, it, mock, spyOn } from 'bun:test'
 
+import type { OperationRecord } from '@newframe/schema/operation-records'
+import type { QueryResultMap } from '@newframe/schema/tray-operations'
+
 import { act, cleanup, render, screen, waitFor } from '../../../../test/support/componentSetup.tsx'
 import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient.ts'
-import type { QueryResultMap } from '../../../app/contracts/operations.ts'
 import { createQrCameraFake } from '../../../platform/desktop/renderer/camera.test-support.ts'
-import type { OperationRecord } from '../../../platform/operations/operation.ts'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
 import { createBuiltInChains } from '../../chains/domain/chain/catalog.ts'
 import {

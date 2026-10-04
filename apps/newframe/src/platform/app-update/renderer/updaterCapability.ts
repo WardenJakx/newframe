@@ -1,5 +1,5 @@
-import type { CommandMap, CommandResult } from '../../../app/contracts/operations.ts'
-import type { NewframeHost } from '../../ipc/contract/ipc.ts'
+import type { NewframeHost } from '@newframe/schema/tray-host'
+import type { CommandMap, CommandResult } from '@newframe/schema/tray-operations'
 
 type UpdaterResponse = Omit<CommandMap['updater.respond'], 'type'>
 

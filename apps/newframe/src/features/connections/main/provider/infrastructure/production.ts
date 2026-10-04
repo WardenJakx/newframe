@@ -1,15 +1,16 @@
+import type {
+  AccountRequest,
+  SignTypedDataRequest,
+  TransactionRequest
+} from '@newframe/schema/request-records'
+import type { RPCRequestPayload, RPCResponsePayload } from '@newframe/schema/rpc'
+
 import type { RequestSource } from '../../../../../app/main/gateway/requestSource.ts'
 import type { RpcIpcHandlers } from '../../../../../app/main/ipc-handlers/rpc.ts'
 import type { ProtectedOperationsService } from '../../../../../app/main/protected-operations/service.ts'
 import { createOneResultCallbackBoundary } from '../../../../../platform/callbacks/oneResult.ts'
 import type { SigningUiContext } from '../../../../../platform/signing/signers/Signer/index.ts'
 import type { Callback } from '../../../../../shared/domain/async.ts'
-import type { RPCRequestPayload, RPCResponsePayload } from '../../../../../shared/domain/rpc.ts'
-import type {
-  AccountRequest,
-  SignTypedDataRequest,
-  TransactionRequest
-} from '../../../../requests/contract/requests.ts'
 import type { SideTrayTransactionPorts } from '../../../../transactions/main/sideTrayService.ts'
 
 export function createNamedAccountTransactionAdapter(

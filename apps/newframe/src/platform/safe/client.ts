@@ -1,7 +1,5 @@
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
-import { Interface } from 'ethers'
-import { z } from 'zod'
-
+import type { TypedData, TypedMessage } from '@newframe/schema/request-records'
 import {
   safeAddressSchema,
   safeConfigurationSchema,
@@ -9,8 +7,10 @@ import {
   safeProposalSchema,
   type SafeConfiguration,
   type SafeProposal
-} from '../../features/accounts/domain/safe.ts'
-import type { TypedData, TypedMessage } from '../../features/requests/contract/requests.ts'
+} from '@newframe/schema/safe'
+import { Interface } from 'ethers'
+import { z } from 'zod'
+
 import { decodeCallDataWithSignature, type DecodedCallData } from '../chain-rpc/contracts/index.ts'
 import { getLocalFunctionSelectorSignatures } from '../chain-rpc/contracts/selectors.ts'
 import { multicallAddress, type Call } from '../chain-rpc/multicall/constants.ts'

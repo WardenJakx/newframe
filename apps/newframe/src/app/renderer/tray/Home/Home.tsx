@@ -1,3 +1,5 @@
+import type { AirGapRequestReference } from '@newframe/schema/airgap'
+
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
 import type { AccountsCapability } from '../../../../features/accounts/renderer/accountsCapability.ts'
 import type { ChainsCapability } from '../../../../features/chains/renderer/chainsCapability.ts'
@@ -11,7 +13,6 @@ import type { TokensCapability } from '../../../../features/tokens/renderer/toke
 import type { ActivityCapability } from '../../../../features/transactions/renderer/activity/activityCapability.ts'
 import type { OrdersCapability } from '../../../../features/transactions/trade/renderer/orders/ordersCapability.ts'
 import type { QrCameraCapability } from '../../../../platform/desktop/renderer/camera.ts'
-import type { AirGapRequestReference } from '../../../../platform/signing/domain/airgap.ts'
 import { HomeHeader } from './components/HomeHeader.tsx'
 import { HomeNavigation } from './components/HomeNavigation.tsx'
 import { HomeNotifications } from './components/HomeNotifications.tsx'

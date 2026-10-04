@@ -1,7 +1,7 @@
+import type { Shortcut } from '@newframe/schema/shortcuts'
 import { globalShortcut } from 'electron'
 import log from 'electron-log'
 
-import type { Shortcut } from '../../features/settings/domain/state/shortcuts.ts'
 import { shortcutKeyMap } from '../../shared/domain/keyboard.ts'
 import { isVisualHarness } from '../runtime/visualHarness.ts'
 

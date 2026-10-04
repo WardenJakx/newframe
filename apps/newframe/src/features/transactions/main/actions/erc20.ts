@@ -1,5 +1,6 @@
-import type { Address } from '../../../../shared/domain/address.ts'
-import type { Identity } from '../../../requests/contract/requests.ts'
+import type { Address } from '@newframe/schema/address'
+import type { Identity } from '@newframe/schema/request-records'
+
 import type { Action } from './index.ts'
 
 export type ActionType = 'erc20:approve' | 'erc20:revoke' | 'erc20:transfer'

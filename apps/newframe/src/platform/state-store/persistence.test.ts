@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'bun:test'
 
+import type { TokenImage } from '@newframe/schema/tokens'
+import { DEFAULT_PROFILE_ID, DEFAULT_PROFILE_NAME } from '@newframe/schema/wallet-state'
 import { Wallet } from 'ethers'
 
 import { createTestStore } from '../../../test/support/createTestStore.ts'
-import { DEFAULT_PROFILE_ID, DEFAULT_PROFILE_NAME } from '../../app/contracts/state/main.ts'
 import { builtInChainIconUrl } from '../../features/chains/domain/chain/index.ts'
-import type { TokenImage } from '../../features/tokens/domain/state/token.ts'
 import {
   CanonicalStatePersistenceError,
   createPersistenceAdapter,
@@ -751,7 +751,7 @@ describe('canonical persistence failure boundaries', () => {
 
 it('retains Safe metadata through persistence and projects only the current profile', async () => {
   const { projectRendererState } = await import('../state-sync/main/projections.ts')
-  const { projectionStateSchemas } = await import('../state-sync/contract/projections.ts')
+  const { projectionStateSchemas } = await import('@newframe/schema/projections')
   const store = createTestStore()
   const owner = new Wallet(`0x${'11'.repeat(32)}`)
   const address = owner.address

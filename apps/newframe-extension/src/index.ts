@@ -1,5 +1,5 @@
 /* globals chrome */
-import type { AvailableChain, ExtensionAccounts } from '@newframe/desktop-api/schemas'
+import type { AvailableChain, ExtensionAccounts } from '@newframe/schema/local-api'
 
 import FrameBackgroundProvider, {
   RawFrameConnection,

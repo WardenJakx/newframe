@@ -1,10 +1,19 @@
-import { Interface, ZeroAddress } from 'ethers'
-
+import type { RPC } from '@newframe/schema/rpc'
+import {
+  safeConfigurationSchema,
+  safeProposalSchema,
+  type SafeConfiguration,
+  type SafeProposal
+} from '@newframe/schema/safe'
+import type { TransactionApprovalAdjustments } from '@newframe/schema/transaction-approval'
+import { GasFeesSource, type TransactionData } from '@newframe/schema/transactions'
 import type {
   SafeApprovalCommand,
   SafeConfirmationStatus,
   SafeConfirmationStatusQuery
-} from '../../../app/contracts/operations.ts'
+} from '@newframe/schema/tray-operations'
+import { Interface, ZeroAddress } from 'ethers'
+
 import type { OperationService } from '../../../platform/operations/service.ts'
 import type { OperationOwner } from '../../../platform/operations/types.ts'
 import {
@@ -16,15 +25,6 @@ import {
 } from '../../../platform/safe/integrity.ts'
 import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.ts'
 import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
-import type { RPC } from '../../../shared/domain/rpc.ts'
-import type { TransactionApprovalAdjustments } from '../../transactions/domain/approval.ts'
-import { GasFeesSource, type TransactionData } from '../../transactions/domain/index.ts'
-import {
-  safeConfigurationSchema,
-  safeProposalSchema,
-  type SafeConfiguration,
-  type SafeProposal
-} from '../domain/safe.ts'
 import type FrameAccount from './Account.ts'
 import { safeExecutorCandidates, safeOwnerCandidates } from './signingCapability.ts'
 

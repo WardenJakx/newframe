@@ -1,8 +1,10 @@
 import { expect, it } from 'bun:test'
 
-import { applyTransactionAdjustments, TransactionApprovalAdjustmentsSchema } from './approval.ts'
+import { TransactionApprovalAdjustmentsSchema } from '@newframe/schema/transaction-approval'
+import { GasFeesSource, type TransactionData } from '@newframe/schema/transactions'
+
+import { applyTransactionAdjustments } from './approval.ts'
 import { MAX_FEE_COMPONENT } from './fees.ts'
-import { GasFeesSource, type TransactionData } from './index.ts'
 
 const canonical: TransactionData = {
   chainId: '0x1',

@@ -4,10 +4,10 @@ import { RLP } from '@ethereumjs/rlp'
 import type { TypedTransaction } from '@ethereumjs/tx'
 import { CryptoHDKey, CryptoKeypath, PathComponent } from '@keystonehq/bc-ur-registry'
 import { DataType, EthSignRequest, ETHSignature } from '@keystonehq/bc-ur-registry-eth'
+import { AirGapPublicAccountSchema, type AirGapPublicAccount } from '@newframe/schema/airgap'
 import { URDecoder, UREncoder } from '@ngraveio/bc-ur'
 import { HDKey } from '@scure/bip32'
 
-import { AirGapPublicAccountSchema, type AirGapPublicAccount } from '../../domain/airgap.ts'
 import { deriveHDAccounts } from '../Signer/derive.ts'
 
 export { DataType }

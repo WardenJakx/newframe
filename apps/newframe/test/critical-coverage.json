@@ -6,8 +6,15 @@
       "patterns": [
         "src/platform/ipc/main/authorization.ts",
         "src/platform/ipc/main/operations.ts",
-        "src/**/contract/**/*.ts",
-        "src/app/contracts/**/*.ts",
+        "../../packages/schema/src/tray-host.ts",
+        "../../packages/schema/src/projections.ts",
+        "../../packages/schema/src/projection-stream.ts",
+        "../../packages/schema/src/internet.ts",
+        "../../packages/schema/src/request-records.ts",
+        "../../packages/schema/src/tray-operations.ts",
+        "../../packages/schema/src/wallet-state.ts",
+        "../../packages/schema/src/side-tray.ts",
+        "src/shared/domain/sideTray.ts",
         "src/app/main/gateway/*.ts",
         "src/app/main/ipc-handlers/renderer.ts"
       ],

@@ -1,4 +1,4 @@
-import type { ExtensionAccounts } from '@newframe/desktop-api/schemas'
+import type { ExtensionAccounts } from '@newframe/schema/local-api'
 import { Button } from '@newframe/ui/button'
 import { Icon } from '@newframe/ui/icon'
 import { Selection } from '@newframe/ui/selection'

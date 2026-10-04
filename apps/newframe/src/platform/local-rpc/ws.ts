@@ -1,13 +1,14 @@
 import type { IncomingMessage, Server } from 'http'
 import { EventEmitter, on } from 'node:events'
 
+import { desktopRouter, type DesktopContext } from '@newframe/desktop-api/router'
 import {
   MAX_RPC_REQUEST_BYTES,
   WebSocketJsonRpcRequestSchema,
   type WebSocketJsonRpcRequest
-} from '@newframe/desktop-api/protocol'
-import { desktopRouter, type DesktopContext } from '@newframe/desktop-api/router'
-import { WalletEventSchema } from '@newframe/desktop-api/schemas'
+} from '@newframe/schema/json-rpc'
+import { WalletEventSchema } from '@newframe/schema/local-api'
+import type { JSONRPCRequestPayload, RPC, RPCResponsePayload } from '@newframe/schema/rpc'
 import { getWSConnectionHandler } from '@trpc/server/adapters/ws'
 import log from 'electron-log'
 import { v4 as uuid } from 'uuid'
@@ -22,7 +23,6 @@ import {
   type FrameExtension,
   type OriginsService
 } from '../../features/connections/main/origins.ts'
-import type { JSONRPCRequestPayload, RPC, RPCResponsePayload } from '../../shared/domain/rpc.ts'
 import {
   createOriginSessionMonitor,
   type ApiTimerPort,

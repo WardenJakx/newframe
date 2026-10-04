@@ -1,10 +1,3 @@
-import { Button } from '@newframe/ui/button'
-import { Icon, type IconName } from '@newframe/ui/icon'
-import { Text } from '@newframe/ui/text'
-import type { ReactNode } from 'react'
-
-import { cva } from '../../../../../../generated/styled-system/css/cva.js'
-import { persistedImageSource } from '../../../../asset-data/domain/image/index.ts'
 import type {
   AccessRequest,
   AgentAccessRequest,
@@ -13,7 +6,14 @@ import type {
   AddTokenRequest,
   SignatureRequest,
   TransactionRequest
-} from '../../../contract/requests.ts'
+} from '@newframe/schema/request-records'
+import { Button } from '@newframe/ui/button'
+import { Icon, type IconName } from '@newframe/ui/icon'
+import { Text } from '@newframe/ui/text'
+import type { ReactNode } from 'react'
+
+import { cva } from '../../../../../../generated/styled-system/css/cva.js'
+import { persistedImageSource } from '../../../../asset-data/domain/image/index.ts'
 import type { RequestRendererCapabilities } from '../../requestCapabilities.ts'
 import RequestItem from '../../ui/RequestItem.tsx'
 import { RequestList } from '../../ui/RequestList.tsx'

@@ -1,6 +1,7 @@
+import type { TokenCatalog, TokenImage, TokenRecord, WithTokenId } from '@newframe/schema/tokens'
+
 import { persistedImageSource } from '../../asset-data/domain/image/index.ts'
 import { NATIVE_CURRENCY } from './constants.ts'
-import type { TokenCatalog, TokenImage, TokenRecord, WithTokenId } from './state/token.ts'
 
 export function toTokenId(token: WithTokenId) {
   return `${Number(token.chainId)}:${token.address.toLowerCase()}`

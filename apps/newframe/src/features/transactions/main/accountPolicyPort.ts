@@ -1,5 +1,6 @@
+import type { TransactionData } from '@newframe/schema/transactions'
+
 import type { SignerSummary } from '../../../platform/signing/signers/Signer/index.ts'
-import type { TransactionData } from '../domain/index.ts'
 import type { SignerCompatibility } from './index.ts'
 
 export interface AccountTransactionPolicyPort {

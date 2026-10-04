@@ -1,3 +1,12 @@
+import type { AirGapRequestReference } from '@newframe/schema/airgap'
+import type { WalletRendererState } from '@newframe/schema/projections'
+import type {
+  SafeMessageProgress,
+  SignatureRequest,
+  SigningCapability,
+  TransactionRequest
+} from '@newframe/schema/request-records'
+import type { TransactionApprovalAdjustments } from '@newframe/schema/transaction-approval'
 import { Button } from '@newframe/ui/button'
 import { Inline } from '@newframe/ui/inline'
 import { Spinner } from '@newframe/ui/spinner'
@@ -7,17 +16,8 @@ import { Text } from '@newframe/ui/text'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
-import type { AirGapRequestReference } from '../../../../platform/signing/domain/airgap.ts'
-import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections.ts'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector.tsx'
 import StatusGlyph from '../../../../shared/renderer/ui/StatusGlyph.tsx'
-import type { TransactionApprovalAdjustments } from '../../../transactions/domain/approval.ts'
-import type {
-  SafeMessageProgress,
-  SignatureRequest,
-  SigningCapability,
-  TransactionRequest
-} from '../../contract/requests.ts'
 import { isCancelableRequest, isSignatureRequest } from '../../domain/index.ts'
 import { useAccountIdentity } from '../Account/Requests/state.ts'
 import type { RequestRendererCapabilities, RequestReviewCapability } from '../requestCapabilities.ts'

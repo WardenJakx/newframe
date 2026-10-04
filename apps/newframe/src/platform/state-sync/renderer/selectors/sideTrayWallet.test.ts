@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'bun:test'
 
+import type { SideTrayRendererState } from '@newframe/schema/projections'
+import type { Token } from '@newframe/schema/tokens'
+
 import { NATIVE_CURRENCY } from '../../../../features/tokens/domain/constants.ts'
-import type { Token } from '../../../../features/tokens/domain/state/token.ts'
-import type { SideTrayRendererState } from '../../contract/projections.ts'
 import { createSideTrayWalletSelector } from './sideTrayWallet.ts'
 
 const emptyCatalog = () => ({ byId: {}, accountTokenIds: {} })

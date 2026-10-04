@@ -1,9 +1,9 @@
+import type { WalletRendererState } from '@newframe/schema/projections'
+import type { CommandResult, QueryResultMap } from '@newframe/schema/tray-operations'
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
-import type { CommandResult, QueryResultMap } from '../../../app/contracts/operations.ts'
 import type { QrCameraCapability } from '../../../platform/desktop/renderer/camera.ts'
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections.ts'
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector.tsx'
 import { shortAddress } from '../../../shared/renderer/ui/AddressIdentity.tsx'
 import { ChainIcon } from '../../../shared/renderer/ui/ChainIcon.tsx'

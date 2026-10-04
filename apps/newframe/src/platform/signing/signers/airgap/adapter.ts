@@ -1,5 +1,6 @@
+import { AirGapPublicAccountSchema } from '@newframe/schema/airgap'
+
 import type canonicalStore from '../../../state-store/index.ts'
-import { AirGapPublicAccountSchema } from '../../domain/airgap.ts'
 import { SignerAdapter } from '../adapters.ts'
 import AirGapSigner from './AirGapSigner.ts'
 import { airGapId } from './protocol.ts'

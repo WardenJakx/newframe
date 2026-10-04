@@ -1,12 +1,12 @@
 import { expect, it, mock } from 'bun:test'
 
+import type { SafeDeployment, SafeOwnerAccount, SafeProposalSimulation } from '@newframe/schema/safe'
+import type { SafeConfirmationStatus } from '@newframe/schema/tray-operations'
 import { act, fireEvent, waitFor, within } from '@testing-library/react'
 
 import { render, screen } from '../../../../test/support/componentSetup.tsx'
 import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient.ts'
-import type { SafeConfirmationStatus } from '../../../app/contracts/operations.ts'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
-import type { SafeDeployment, SafeOwnerAccount, SafeProposalSimulation } from '../../accounts/domain/safe.ts'
 import { createRequestRendererCapabilitiesFake as createCapabilityFake } from './requestCapabilities.test-support.ts'
 import { RequestsOverlay } from './RequestsOverlay.tsx'
 import { SafeProposalDetailsView } from './SafeProposalDetailsView.tsx'
@@ -1091,7 +1091,7 @@ it('shows a prominent mismatch, local interpretation and the shared calldata dig
 })
 
 it('keeps RPC and Safe requests together and routes the single back button through review', async () => {
-  const { WalletRequestSchema } = await import('../../../platform/state-sync/contract/projections.ts')
+  const { WalletRequestSchema } = await import('@newframe/schema/projections')
   const mixed = state({ ...deployment, error: undefined })
   mixed.accounts[address].requests.access = WalletRequestSchema.parse({
     type: 'access',

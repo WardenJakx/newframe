@@ -1,11 +1,3 @@
-import log from 'electron-log'
-
-import type {
-  AuthorizationContext,
-  RendererEntrypoint,
-  RendererRole
-} from '../../../platform/ipc/main/authorization.ts'
-import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.ts'
 import {
   FlashQuoteResultSchema,
   KeystoreLocateResultSchema,
@@ -23,7 +15,15 @@ import {
   type SeedGenerateQuery,
   type RendererContextMenuCommand,
   type TokenLookupQuery
-} from '../../contracts/operations.ts'
+} from '@newframe/schema/tray-operations'
+import log from 'electron-log'
+
+import type {
+  AuthorizationContext,
+  RendererEntrypoint,
+  RendererRole
+} from '../../../platform/ipc/main/authorization.ts'
+import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.ts'
 
 export type RendererOperationContext = AuthorizationContext & {
   source: import('../gateway/requestSource.ts').NewframeInternalSource

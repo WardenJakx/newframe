@@ -35,12 +35,12 @@ import {
   type FlashOrderFrameType,
   type FlashWebSocketFactory
 } from '@newframe/flash/websocket'
+import type { AssetRateInput } from '@newframe/schema/asset-rates'
 
 import type { Internet } from '../../../../platform/internet/index.ts'
 import { getMainRuntime } from '../../../../platform/runtime/index.ts'
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
 import type { Token } from '../../../../platform/state-store/state/index.ts'
-import type { AssetRateInput } from '../../../asset-data/domain/state/rate.ts'
 import type { AssetRateService } from '../../../asset-data/main/assetRates/service.ts'
 import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
 

@@ -1,18 +1,15 @@
-import type { IpcMainInvokeEvent, WebContents } from 'electron'
-import log from 'electron-log'
-
-import type { CanonicalStoreReader } from '../../state-store/actions.ts'
-import {
-  projectionStateChangeSchemas,
-  projectionStateSchemas
-} from '../../state-sync/contract/projections.ts'
 import {
   StateConnectChannel,
   StateDisconnectChannel,
   StateMessageChannel,
   type RendererState,
   type StateMessage
-} from '../../state-sync/contract/protocol.ts'
+} from '@newframe/schema/projection-stream'
+import { projectionStateChangeSchemas, projectionStateSchemas } from '@newframe/schema/projections'
+import type { IpcMainInvokeEvent, WebContents } from 'electron'
+import log from 'electron-log'
+
+import type { CanonicalStoreReader } from '../../state-store/actions.ts'
 import type { RendererAuthorizationRegistry, RendererRole } from './authorization.ts'
 
 export interface StateStreamDependencies {

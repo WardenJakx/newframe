@@ -1,12 +1,6 @@
 import { padToEven, unpadHex, addHexPrefix, stripHexPrefix, bytesToHex, utf8ToBytes } from '@ethereumjs/util'
 import { recoverPersonalSignature } from '@metamask/eth-sig-util'
-import log from 'electron-log'
-import { isHexString } from 'ethers'
-
-import { accountAccessMethods } from '../../../../app/main/gateway/rpcPolicy.ts'
-import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
-import { getAddress } from '../../../../shared/domain/address.ts'
-import type { Callback } from '../../../../shared/domain/async.ts'
+import type { TransactionRequest } from '@newframe/schema/request-records'
 import type {
   EVMError,
   JSONRPCRequestPayload,
@@ -14,10 +8,17 @@ import type {
   RPCErrorCallback,
   RPCId,
   RPCRequestCallback
-} from '../../../../shared/domain/rpc.ts'
-import type { TransactionRequest } from '../../../requests/contract/requests.ts'
-import type { TransactionData } from '../../../transactions/domain/index.ts'
-import { usesBaseFee, GasFeesSource } from '../../../transactions/domain/index.ts'
+} from '@newframe/schema/rpc'
+import type { TransactionData } from '@newframe/schema/transactions'
+import { GasFeesSource } from '@newframe/schema/transactions'
+import log from 'electron-log'
+import { isHexString } from 'ethers'
+
+import { accountAccessMethods } from '../../../../app/main/gateway/rpcPolicy.ts'
+import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
+import { getAddress } from '../../../../shared/domain/address.ts'
+import type { Callback } from '../../../../shared/domain/async.ts'
+import { usesBaseFee } from '../../../transactions/domain/index.ts'
 import isUtf8 from './isUtf8.ts'
 
 const permission = (date: number, method: string) => ({ parentCapability: method, date })

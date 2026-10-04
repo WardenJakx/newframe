@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
-import type { OperationRecord } from '../../../../platform/operations/operation.ts'
+import type { OperationRecord } from '@newframe/schema/operation-records'
+
 import {
   initialTradeExecutionState,
   tradeExecutionBlocksQuotes,

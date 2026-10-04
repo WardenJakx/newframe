@@ -1,6 +1,6 @@
+import type { SendRequestCommand } from '@newframe/schema/tray-operations'
 import { isAddress } from 'ethers'
 
-import type { SendRequestCommand } from '../../../../app/contracts/operations.ts'
 import type { RequestSource } from '../../../../app/main/gateway/requestSource.ts'
 import type { OperationService } from '../../../../platform/operations/service.ts'
 import type { OperationOwner, OperationReference } from '../../../../platform/operations/types.ts'

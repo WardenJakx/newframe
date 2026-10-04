@@ -1,14 +1,12 @@
-import type { CanonicalStore } from '../../../platform/state-store/actions.ts'
+import { SIDE_TRAY_FRAME_ID } from '@newframe/schema/side-tray'
 import type {
   SideTrayOpenCommand,
   UpdaterRespondCommand,
   WarningToggleCommand
-} from '../../contracts/operations.ts'
-import {
-  buildSideTrayRoute,
-  normalizeSideTrayFrameRequest,
-  SIDE_TRAY_FRAME_ID
-} from '../../contracts/sidetray/index.ts'
+} from '@newframe/schema/tray-operations'
+
+import type { CanonicalStore } from '../../../platform/state-store/actions.ts'
+import { buildSideTrayRoute, normalizeSideTrayFrameRequest } from '../../../shared/domain/sideTray.ts'
 
 type PlatformState = Pick<
   CanonicalStore,

@@ -1,15 +1,15 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, jest as timers, setSystemTime } from 'bun:test'
 
 import { addHexPrefix } from '@ethereumjs/util'
+import { RequestStatus } from '@newframe/schema/request-records'
+import type { Token, TokenCatalog, TokenRecord } from '@newframe/schema/tokens'
+import { DEFAULT_PROFILE_ID, type OrderRecord } from '@newframe/schema/wallet-state'
 import log from 'electron-log'
 
 import { createTestStore as createActionHarness } from '../../../test/support/createTestStore.ts'
-import { DEFAULT_PROFILE_ID, type OrderRecord } from '../../app/contracts/state/main.ts'
 import { toTokenId } from '../../features/asset-data/domain/balance/index.ts'
-import { RequestStatus } from '../../features/requests/contract/requests.ts'
 import { NATIVE_CURRENCY } from '../../features/tokens/domain/constants.ts'
 import { customTokens, tokensForAccount } from '../../features/tokens/domain/index.ts'
-import type { Token, TokenCatalog, TokenRecord } from '../../features/tokens/domain/state/token.ts'
 import type { CanonicalStore } from './actions.ts'
 import createInitialState from './state/index.ts'
 import type { ActivityRecord } from './state/index.ts'

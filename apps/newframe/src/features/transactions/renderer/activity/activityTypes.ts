@@ -1,6 +1,7 @@
-import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections.ts'
+import type { WalletRendererState } from '@newframe/schema/projections'
+import type { TransactionEffect } from '@newframe/schema/transactions'
+
 import type { ChainLike, ChainMetaLike } from '../../../../shared/renderer/ui/tokenSelectorTypes.ts'
-import type { TransactionEffect } from '../../domain/index.ts'
 
 export type WalletActivityRecord = WalletRendererState['activity'][string]
 

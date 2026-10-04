@@ -1,10 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
-import type {
-  AccountRequest,
-  RequestAuthorization,
-  RequestType
-} from '../../../features/requests/contract/requests.ts'
+import type { AccountRequest, RequestAuthorization, RequestType } from '@newframe/schema/request-records'
+
 import type {
   AuthorizationContext,
   RendererEntrypoint,

@@ -1,13 +1,14 @@
+import type { Balance } from '@newframe/schema/balances'
+import type { SideTrayRendererState } from '@newframe/schema/projections'
+import type { Token } from '@newframe/schema/tokens'
+
 import {
   createBalanceSummarySelector,
   hasPositiveBalance,
   toTokenId,
   type BalanceSummary
 } from '../../../../features/asset-data/domain/balance/index.ts'
-import type { Balance } from '../../../../features/asset-data/domain/state/balance.ts'
 import { selectableTokens as selectGlobalTokens } from '../../../../features/tokens/domain/index.ts'
-import type { Token } from '../../../../features/tokens/domain/state/token.ts'
-import type { SideTrayRendererState } from '../../contract/projections.ts'
 
 type SideTrayWalletAccount = SideTrayRendererState['accounts'][string]
 type SideTrayWalletEthereumChain = SideTrayRendererState['chains']['ethereum'][number]

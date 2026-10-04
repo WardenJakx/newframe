@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'bun:test'
 
+import type { StateMessage } from '@newframe/schema/projection-stream'
+import type { WalletRendererState } from '@newframe/schema/projections'
+
 import { act, render, screen } from '../../../../test/support/componentSetup.tsx'
 import { createTestRuntimeFixture } from '../../../../test/support/rendererClient.ts'
-import type { WalletRendererState } from '../contract/projections.ts'
-import type { StateMessage } from '../contract/protocol.ts'
 import { connectRendererState } from './connectState.ts'
 import { walletChanges, walletState } from './fixtures.test-support.ts'
 import { RendererStateProvider, useWalletSelector } from './useAppSelector.tsx'

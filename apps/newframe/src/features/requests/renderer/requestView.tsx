@@ -1,6 +1,6 @@
+import type { TransactionApprovalAdjustments } from '@newframe/schema/transaction-approval'
 import { createContext, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
 
-import type { TransactionApprovalAdjustments } from '../../transactions/domain/approval.ts'
 import {
   limitTransactionFee,
   transactionFeePreset,

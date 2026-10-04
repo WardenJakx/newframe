@@ -9,8 +9,8 @@ import {
   FLASH_TAKE_PROFIT_ORDER_TYPE
 } from '@newframe/flash/constants'
 import { type FlashAsset } from '@newframe/flash/schemas'
+import type { FlashQuoteDisplay } from '@newframe/schema/tray-operations'
 
-import type { FlashQuoteDisplay } from '../../../../app/contracts/operations.ts'
 import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
 import { createInitialTradeState, getTradeInputAmount, tradeReducer } from './tradeReducer.ts'
 

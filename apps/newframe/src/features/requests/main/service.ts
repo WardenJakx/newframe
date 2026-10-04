@@ -1,9 +1,20 @@
 import { randomUUID } from 'node:crypto'
 
 import type {
-  ChainRequestResolveCommand,
-  TransactionReplaceCommand
-} from '../../../app/contracts/operations.ts'
+  AccountRequest,
+  AccessRequest,
+  AddChainRequest,
+  AddTokenRequest,
+  RequestApprovalGate,
+  SignatureRequest,
+  SignTypedDataRequest,
+  TransactionRequest
+} from '@newframe/schema/request-records'
+import { ReplacementType } from '@newframe/schema/request-records'
+import type { EVMError, RPCRequestCallback, RPCResponsePayload } from '@newframe/schema/rpc'
+import { type TransactionApprovalAdjustments } from '@newframe/schema/transaction-approval'
+import type { ChainRequestResolveCommand, TransactionReplaceCommand } from '@newframe/schema/tray-operations'
+
 import type { RequestSource } from '../../../app/main/gateway/requestSource.ts'
 import {
   findUnavailableSigners,
@@ -13,7 +24,6 @@ import {
 import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.ts'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
 import type { Chain } from '../../../platform/state-store/state/index.ts'
-import type { EVMError, RPCRequestCallback, RPCResponsePayload } from '../../../shared/domain/rpc.ts'
 import { toBigInt } from '../../../shared/domain/units.ts'
 import type { Accounts } from '../../accounts/main/index.ts'
 import type { SafeMessageApprovalResult } from '../../accounts/main/safeMessage.ts'
@@ -21,23 +31,9 @@ import type { SafeTransactionPort } from '../../accounts/main/safeTransactionPor
 import { deriveSigningCapability } from '../../accounts/main/signingCapability.ts'
 import { resolveAssetRate } from '../../asset-data/domain/asset/index.ts'
 import { NATIVE_CURRENCY } from '../../tokens/domain/constants.ts'
-import {
-  applyTransactionAdjustments,
-  type TransactionApprovalAdjustments
-} from '../../transactions/domain/approval.ts'
+import { applyTransactionAdjustments } from '../../transactions/domain/approval.ts'
 import { usesBaseFee } from '../../transactions/domain/index.ts'
 import type { AccountTransactionPolicyPort } from '../../transactions/main/accountPolicyPort.ts'
-import type {
-  AccountRequest,
-  AccessRequest,
-  AddChainRequest,
-  AddTokenRequest,
-  RequestApprovalGate,
-  SignatureRequest,
-  SignTypedDataRequest,
-  TransactionRequest
-} from '../contract/requests.ts'
-import { ReplacementType } from '../contract/requests.ts'
 import type { ApprovalType } from '../domain/approval.ts'
 import { isSignatureRequest, isTransactionRequest, isTypedMessageSignatureRequest } from '../domain/index.ts'
 

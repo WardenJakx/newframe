@@ -4,12 +4,12 @@ import type {
   TypedDataV1,
   TypedMessage as BaseTypedMessage
 } from '@metamask/eth-sig-util'
-import type { AgentConnect } from '@newframe/desktop-api/schemas'
 
-import type { Address } from '../../../shared/domain/address.ts'
-import type { JSONRPCRequestPayload, RPC } from '../../../shared/domain/rpc.ts'
-import type { Token } from '../../tokens/domain/state/token.ts'
-import type { TransactionData, TransactionSimulation } from '../../transactions/domain/index.ts'
+import type { Address } from './address.ts'
+import type { AgentConnect } from './local-api.ts'
+import type { JSONRPCRequestPayload, RPC } from './rpc.ts'
+import type { Token } from './tokens.ts'
+import type { TransactionData, TransactionSimulation } from './transactions.ts'
 
 interface DecodedCallData {
   contractAddress: string

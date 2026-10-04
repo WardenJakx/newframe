@@ -1,4 +1,5 @@
 import { addHexPrefix } from '@ethereumjs/util'
+import type { Address } from '@newframe/schema/address'
 import log from 'electron-log'
 import { Interface, toBeHex } from 'ethers'
 import type { BytesLike } from 'ethers'
@@ -8,7 +9,6 @@ import multicall, {
   supportsChain as multicallSupportsChain
 } from '../../../../../platform/chain-rpc/multicall/index.ts'
 import type { Token } from '../../../../../platform/state-store/state/index.ts'
-import type { Address } from '../../../../../shared/domain/address.ts'
 import erc20TokenAbi from '../../../../../shared/domain/erc20-abi.ts'
 import { formatUnits } from '../../../../../shared/domain/units.ts'
 import type { Eip1193Provider } from '../../../../connections/main/provider/connection.ts'

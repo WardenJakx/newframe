@@ -1,7 +1,8 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
 import type { DesktopContext } from '@newframe/desktop-api/router'
-import type { AgentConnect, AgentDescriptor } from '@newframe/desktop-api/schemas'
+import type { AgentConnect, AgentDescriptor } from '@newframe/schema/local-api'
+import type { AgentAccessRequest } from '@newframe/schema/request-records'
 import { TRPCError } from '@trpc/server'
 
 import { createAiSessionClientSource, createLocalApiSource } from '../../../app/main/gateway/requestSource.ts'
@@ -9,7 +10,6 @@ import type { RpcIpcHandlers } from '../../../app/main/ipc-handlers/rpc.ts'
 import { rpcCall } from '../../../platform/local-rpc/trpc.ts'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
 import type { Accounts } from '../../accounts/main/index.ts'
-import type { AgentAccessRequest } from '../../requests/contract/requests.ts'
 import type { PromptedRequestContinuationPort } from '../../requests/main/service.ts'
 import type { FlashService } from '../../transactions/trade/main/index.ts'
 import { AgentSessionStore } from './sessionStore.ts'

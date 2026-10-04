@@ -1,4 +1,4 @@
-import type { ShortcutKey } from '../../features/settings/domain/state/shortcuts.ts'
+import type { ShortcutKey } from '@newframe/schema/shortcuts'
 
 export type Platform = 'darwin' | 'win32' | 'linux'
 

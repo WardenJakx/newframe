@@ -1,7 +1,7 @@
 import type { EIP712MessageDomain } from '@ledgerhq/types-live'
 import type { SignTypedDataVersion, MessageTypeProperty } from '@metamask/eth-sig-util'
+import type { TypedMessage, TypedSignatureRequestType } from '@newframe/schema/request-records'
 
-import type { TypedMessage, TypedSignatureRequestType } from '../../../features/requests/contract/requests.ts'
 import signatureTypes from './types.ts'
 
 const matchesMsgType = (properties: MessageTypeProperty[], required: MessageTypeProperty[]) =>

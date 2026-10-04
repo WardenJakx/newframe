@@ -1,4 +1,5 @@
-import type { SettingsUpdateCommand } from '../../../app/contracts/operations.ts'
+import type { SettingsUpdateCommand } from '@newframe/schema/tray-operations'
+
 import type { CanonicalStore } from '../../../platform/state-store/actions.ts'
 
 type SettingsState = Pick<

@@ -1,18 +1,18 @@
 import { describe, expect, it, mock } from 'bun:test'
 
-import { Interface } from 'ethers'
-
-import createCanonicalStore from '../../../platform/state-store/createCanonicalStore.ts'
-import type { Callback } from '../../../shared/domain/async.ts'
-import { erc20Interface } from '../../../shared/domain/evm.ts'
+import { TxClassification, type TransactionRequest } from '@newframe/schema/request-records'
 import type {
   EVMError,
   RPCRequestCallback,
   RPCRequestPayload,
   RPCResponsePayload
-} from '../../../shared/domain/rpc.ts'
-import { TxClassification, type TransactionRequest } from '../../requests/contract/requests.ts'
-import { GasFeesSource, type TransactionEffect } from '../domain/index.ts'
+} from '@newframe/schema/rpc'
+import { GasFeesSource, type TransactionEffect } from '@newframe/schema/transactions'
+import { Interface } from 'ethers'
+
+import createCanonicalStore from '../../../platform/state-store/createCanonicalStore.ts'
+import type { Callback } from '../../../shared/domain/async.ts'
+import { erc20Interface } from '../../../shared/domain/evm.ts'
 import {
   createTransactionSimulationProjection,
   effectsFromTrace,

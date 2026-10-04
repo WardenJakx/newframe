@@ -4,11 +4,11 @@ import path from 'node:path'
 import { createInterface } from 'node:readline'
 import type { Readable } from 'node:stream'
 
+import type { TorStatus } from '@newframe/schema/internet'
 import { app, session } from 'electron'
 import log from 'electron-log'
 import { z } from 'zod'
 
-import type { TorStatus } from './contract/status.ts'
 import type { Internet } from './index.ts'
 
 type TorProcess = ChildProcessByStdio<null, Readable, Readable>

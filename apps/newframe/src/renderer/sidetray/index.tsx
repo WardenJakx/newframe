@@ -1,14 +1,13 @@
+import type { SideTrayRendererState } from '@newframe/schema/projections'
 import { UIRoot } from '@newframe/ui/root'
 import { createRoot } from 'react-dom/client'
 
-import App from '../../app/renderer/sidetray/App.tsx'
-
 import '../../../generated/styled-system/styles.css'
 
+import App from '../../app/renderer/sidetray/App.tsx'
 import { createSendCapability } from '../../features/transactions/send/renderer/sendService.ts'
 import { createTradeCapability } from '../../features/transactions/trade/renderer/tradeService.ts'
 import link from '../../platform/ipc/renderer/link.ts'
-import type { SideTrayRendererState } from '../../platform/state-sync/contract/projections.ts'
 import { connectRendererState } from '../../platform/state-sync/renderer/connectState.ts'
 import { RendererStateProvider } from '../../platform/state-sync/renderer/useAppSelector.tsx'
 

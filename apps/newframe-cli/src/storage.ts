@@ -4,7 +4,7 @@ import { chmod, lstat, mkdir, open, readFile, rename, rm } from 'node:fs/promise
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
-import { SessionSchema, type Session as StoredSession } from '@newframe/desktop-api/schemas'
+import { SessionSchema, type Session as StoredSession } from '@newframe/schema/local-api'
 
 export function stateDirectory(env: NodeJS.ProcessEnv = process.env) {
   return (

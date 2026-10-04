@@ -4,11 +4,11 @@ import { rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
+import { GasFeesSource } from '@newframe/schema/transactions'
 import log from 'electron-log'
 import { Mnemonic, randomBytes } from 'ethers'
 
 import { electronMock } from '../../../../../../test/support/electron.mock.ts'
-import { GasFeesSource } from '../../../../../features/transactions/domain/index.ts'
 import { callbackResult, exerciseHotSignerContract } from '../../callback.test-support.ts'
 import type Signer from '../../Signer/index.ts'
 import type SeedSigner from './index.ts'

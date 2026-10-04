@@ -1,9 +1,9 @@
+import type { Address } from '@newframe/schema/address'
 import log from 'electron-log'
 
 import type { InternetGate } from '../../../../platform/internet/index.ts'
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
 import type { Token } from '../../../../platform/state-store/state/index.ts'
-import type { Address } from '../../../../shared/domain/address.ts'
 import { debounce } from '../../../../shared/domain/async.ts'
 import { arraysMatch } from '../../../../shared/domain/collections.ts'
 import { customTokens, tokensForAccount } from '../../../tokens/domain/index.ts'

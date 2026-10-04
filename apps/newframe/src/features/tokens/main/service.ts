@@ -1,9 +1,10 @@
-import type { TokenAddCommand, WalletToken } from '../../../app/contracts/operations.ts'
+import type { Token, TokenSource } from '@newframe/schema/tokens'
+import type { TokenAddCommand, WalletToken } from '@newframe/schema/tray-operations'
+
 import type { OperationService } from '../../../platform/operations/service.ts'
 import type { OperationOwner, OperationReference } from '../../../platform/operations/types.ts'
 import type { CanonicalStore } from '../../../platform/state-store/actions.ts'
 import { toTokenId } from '../domain/index.ts'
-import type { Token, TokenSource } from '../domain/state/token.ts'
 
 type TokenState = Pick<CanonicalStore, 'main' | 'removeCustomTokens' | 'upsertTokens'>
 

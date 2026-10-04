@@ -1,10 +1,10 @@
 import EventEmitter from 'events'
 
 import { GNS_CONTRACT, gnsAbi, isGwei, normalizeName } from '@donnoh/gns-utils'
+import type { RPC } from '@newframe/schema/rpc'
 import { Interface, ZeroAddress, dnsEncode, ensNormalize, getAddress, isAddress, namehash } from 'ethers'
 import type { Result } from 'ethers'
 
-import type { RPC } from '../../../shared/domain/rpc.ts'
 import { createProxyProvider } from '../../connections/main/provider/connection.ts'
 import type { ProviderProxyConnection } from '../../connections/main/provider/proxy.ts'
 

@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { EventEmitter } from 'node:events'
 
+import { commandContracts, queryContracts } from '@newframe/schema/tray-operations'
+
 import { createOperationDispatcher } from '../../../platform/ipc/main/operations.ts'
 import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.ts'
-import { commandContracts, queryContracts } from '../../contracts/operations.ts'
 import { createOperationRegistry, type OperationServices } from '../ipc-handlers/renderer.ts'
 
 const fakes = (...names: string[]) =>

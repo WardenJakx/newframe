@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@newframe/flash": "workspace:*",
-    "@newframe/desktop-api": "workspace:*"
+    "@newframe/desktop-api": "workspace:*",
+    "@newframe/schema": "workspace:*"
   }
 }

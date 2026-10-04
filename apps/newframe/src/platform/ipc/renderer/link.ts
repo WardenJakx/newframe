@@ -1,10 +1,5 @@
-import type {
-  AppCommand,
-  AppQuery,
-  CommandResult,
-  ResultForQuery
-} from '../../../app/contracts/operations.ts'
-import type { StateConnectionResult, StateMessage } from '../../state-sync/contract/protocol.ts'
+import type { StateConnectionResult, StateMessage } from '@newframe/schema/projection-stream'
+import type { AppCommand, AppQuery, CommandResult, ResultForQuery } from '@newframe/schema/tray-operations'
 
 const getHost = () => {
   if (typeof window === 'undefined' || !window.__NEWFRAME_HOST__) {

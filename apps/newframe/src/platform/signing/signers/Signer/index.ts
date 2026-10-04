@@ -1,14 +1,14 @@
 import EventEmitter from 'events'
 
 import { addHexPrefix } from '@ethereumjs/util'
+import type { AirGapPendingSummary } from '@newframe/schema/airgap'
+import type { TypedMessage } from '@newframe/schema/request-records'
+import type { TransactionData } from '@newframe/schema/transactions'
 import log from 'electron-log'
 
-import type { TypedMessage } from '../../../../features/requests/contract/requests.ts'
-import type { TransactionData } from '../../../../features/transactions/domain/index.ts'
 import type { Callback } from '../../../../shared/domain/async.ts'
 import type { OperationOwner } from '../../../operations/types.ts'
 import crypt from '../../crypt.ts'
-import type { AirGapPendingSummary } from '../../domain/airgap.ts'
 import { getSignerDisplayType } from '../../domain/index.ts'
 import { deriveHDAccounts } from './derive.ts'
 

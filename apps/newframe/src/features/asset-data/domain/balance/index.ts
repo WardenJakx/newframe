@@ -1,11 +1,12 @@
+import type { AssetRateMap, ResolvedAssetRate } from '@newframe/schema/asset-rates'
+import type { Balance } from '@newframe/schema/balances'
+import type { TokenCatalog } from '@newframe/schema/tokens'
+
 import { formatUnits, toBigInt } from '../../../../shared/domain/units.ts'
 import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
 import { tokenFromBalance, tokenImageSource, toTokenId } from '../../../tokens/domain/index.ts'
-import type { TokenCatalog } from '../../../tokens/domain/state/token.ts'
 import { resolveAssetRate } from '../asset/index.ts'
 import { persistedImageSource } from '../image/index.ts'
-import type { Balance } from '../state/balance.ts'
-import type { AssetRateMap, ResolvedAssetRate } from '../state/rate.ts'
 
 export interface DisplayedBalance extends Balance {
   decimals: number

@@ -1,9 +1,9 @@
+import type { RPC, RPCRequestPayload, RPCResponsePayload } from '@newframe/schema/rpc'
+import type { TypedDataV4 } from '@newframe/schema/tray-operations'
 import { v5 as uuidv5 } from 'uuid'
 
-import type { TypedDataV4 } from '../../../app/contracts/operations.ts'
 import type { RequestSource } from '../../../app/main/gateway/requestSource.ts'
 import type { TokenData } from '../../../platform/chain-rpc/contracts/erc20.ts'
-import type { RPC, RPCRequestPayload, RPCResponsePayload } from '../../../shared/domain/rpc.ts'
 
 const internalOriginName = 'newframe-internal'
 const internalOriginId = uuidv5(internalOriginName, uuidv5.DNS)

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
-import type { AccountRequest, RequestType } from '../../../features/requests/contract/requests.ts'
+import type { AccountRequest, RequestType } from '@newframe/schema/request-records'
+
 import {
   createMainProcessSource,
   createAiSessionClientSource,

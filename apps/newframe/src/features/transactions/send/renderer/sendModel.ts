@@ -1,8 +1,6 @@
-import {
-  resolveSendAssetFromRouteAssetId,
-  toCanonicalAssetId
-} from '../../../../app/contracts/sidetray/index.ts'
-import type { SideTrayRendererState } from '../../../../platform/state-sync/contract/projections.ts'
+import type { SideTrayRendererState } from '@newframe/schema/projections'
+
+import { resolveSendAssetFromRouteAssetId, toCanonicalAssetId } from '../../../../shared/domain/sideTray.ts'
 import type { BalanceSummary } from '../../../asset-data/domain/balance/index.ts'
 import { cleanAddress } from './sendTransaction.ts'
 import type { SendAccountViewModel, SendSubmissionViewModel } from './sendViewModel.ts'

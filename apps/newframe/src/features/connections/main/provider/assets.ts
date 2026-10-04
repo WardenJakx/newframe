@@ -1,7 +1,8 @@
+import type { Address } from '@newframe/schema/address'
+import type { RPC } from '@newframe/schema/rpc'
+
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
 import type { Balance, NativeCurrency, Token } from '../../../../platform/state-store/state/index.ts'
-import type { Address } from '../../../../shared/domain/address.ts'
-import type { RPC } from '../../../../shared/domain/rpc.ts'
 import { resolveAssetRate } from '../../../asset-data/domain/asset/index.ts'
 import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
 import { toTokenId } from '../../../tokens/domain/index.ts'

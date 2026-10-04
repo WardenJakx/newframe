@@ -1,10 +1,6 @@
-import type {
-  CommandMap,
-  CommandResult,
-  QueryMap,
-  ResultForQuery
-} from '../../../app/contracts/operations.ts'
-import type { NewframeHost } from '../../../platform/ipc/contract/ipc.ts'
+import type { NewframeHost } from '@newframe/schema/tray-host'
+import type { CommandMap, CommandResult, QueryMap, ResultForQuery } from '@newframe/schema/tray-operations'
+
 import {
   createWebAuthnBiometricCredential,
   isBiometricUserCanceledError,

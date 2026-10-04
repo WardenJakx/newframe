@@ -1,4 +1,6 @@
 import { isValidAddress } from '@ethereumjs/util'
+import type { WalletRendererState } from '@newframe/schema/projections'
+import type { Token } from '@newframe/schema/tokens'
 import { Button } from '@newframe/ui/button'
 import { Field } from '@newframe/ui/field'
 import { Input } from '@newframe/ui/input'
@@ -11,14 +13,12 @@ import { Text } from '@newframe/ui/text'
 import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
-import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections.ts'
 import { selectOperationById } from '../../../../platform/state-sync/renderer/selectors/operation.ts'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector.tsx'
 import { AddressIdentity } from '../../../../shared/renderer/ui/AddressIdentity.tsx'
 import { ChainIcon } from '../../../../shared/renderer/ui/ChainIcon.tsx'
 import { accountDisplayType } from '../../../../shared/renderer/ui/signerPresentation.ts'
 import { toTokenId } from '../../domain/index.ts'
-import type { Token } from '../../domain/state/token.ts'
 import type { TokensCapability } from '../tokensCapability.ts'
 
 type SelectedChain = {

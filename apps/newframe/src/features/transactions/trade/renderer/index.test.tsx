@@ -7,11 +7,11 @@ import {
   FLASH_USDC_ADDRESS,
   FLASH_WETH_ADDRESS
 } from '@newframe/flash/constants'
+import type { CommandResult, FlashQuoteDisplay } from '@newframe/schema/tray-operations'
 import { act } from '@testing-library/react'
 
 import { fireEvent, render, screen, waitFor } from '../../../../../test/support/componentSetup.tsx'
 import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient.ts'
-import type { CommandResult, FlashQuoteDisplay } from '../../../../app/contracts/operations.ts'
 import Trade from './index.tsx'
 import { createTradeCapabilityFake, type TradeCapabilityFake } from './tradeService.test-support.ts'
 

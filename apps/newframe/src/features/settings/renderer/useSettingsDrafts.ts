@@ -1,6 +1,6 @@
+import type { WalletRendererState } from '@newframe/schema/projections'
 import { useEffect, useRef, useState } from 'react'
 
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections.ts'
 import type { PersistSetting } from './types.ts'
 
 type PortfolioProviderId = WalletRendererState['portfolioProvider']

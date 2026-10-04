@@ -1,6 +1,7 @@
-import type { Address } from '../../../../shared/domain/address.ts'
+import type { Address } from '@newframe/schema/address'
+import type { AssetRateMap, AssetRateReference, ResolvedAssetRate } from '@newframe/schema/asset-rates'
+
 import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
-import type { AssetRateMap, AssetRateReference, ResolvedAssetRate } from '../state/rate.ts'
 import { CURATED_ASSETS, type CuratedAsset } from './registry.ts'
 
 export type { CuratedAsset } from './registry.ts'

@@ -1,11 +1,8 @@
+import type { RendererState } from '@newframe/schema/projection-stream'
+import type { SideTrayRendererState, WalletRendererState } from '@newframe/schema/projections'
 import type { ComponentType, PropsWithChildren } from 'react'
 import { createStore, type StoreApi } from 'zustand/vanilla'
 
-import type {
-  SideTrayRendererState,
-  WalletRendererState
-} from '../../src/platform/state-sync/contract/projections.ts'
-import type { RendererState } from '../../src/platform/state-sync/contract/protocol.ts'
 import { RendererStateProvider } from '../../src/platform/state-sync/renderer/useAppSelector.tsx'
 
 export interface RendererStateFixtureOptions {

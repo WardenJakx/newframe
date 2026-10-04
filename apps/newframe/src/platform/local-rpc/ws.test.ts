@@ -1,9 +1,9 @@
 import { expect, it } from 'bun:test'
 import { EventEmitter } from 'events'
 
-import { MAX_RPC_REQUEST_BYTES } from '@newframe/desktop-api/protocol'
+import { MAX_RPC_REQUEST_BYTES } from '@newframe/schema/json-rpc'
+import type { JSONRPCRequestPayload, RPCResponsePayload } from '@newframe/schema/rpc'
 
-import type { JSONRPCRequestPayload, RPCResponsePayload } from '../../shared/domain/rpc.ts'
 import type { RpcRequestDescription } from './request.ts'
 import { createWebSocketRpcTransport } from './ws.ts'
 

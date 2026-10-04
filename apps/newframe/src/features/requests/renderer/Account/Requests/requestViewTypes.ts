@@ -1,4 +1,3 @@
-import type { TransactionEffect } from '../../../../transactions/domain/index.ts'
 import type {
   Eip712Digests,
   Erc7730Display,
@@ -8,7 +7,8 @@ import type {
   SafeExecutionMetadata,
   SafeTransactionProgress,
   TxClassification
-} from '../../../contract/requests.ts'
+} from '@newframe/schema/request-records'
+import type { TransactionEffect } from '@newframe/schema/transactions'
 
 type RequestRpcPayload = {
   id: string | number

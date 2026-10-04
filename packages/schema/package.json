@@ -1,0 +1,210 @@
+{
+  "name": "@newframe/schema",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./accounts": {
+      "types": "./src/accounts.ts",
+      "bun": "./src/accounts.ts",
+      "browser": "./src/accounts.ts",
+      "default": "./dist/accounts.js"
+    },
+    "./address": {
+      "types": "./src/address.ts",
+      "bun": "./src/address.ts",
+      "browser": "./src/address.ts",
+      "default": "./dist/address.js"
+    },
+    "./airgap": {
+      "types": "./src/airgap.ts",
+      "bun": "./src/airgap.ts",
+      "browser": "./src/airgap.ts",
+      "default": "./dist/airgap.js"
+    },
+    "./asset-rates": {
+      "types": "./src/asset-rates.ts",
+      "bun": "./src/asset-rates.ts",
+      "browser": "./src/asset-rates.ts",
+      "default": "./dist/asset-rates.js"
+    },
+    "./balances": {
+      "types": "./src/balances.ts",
+      "bun": "./src/balances.ts",
+      "browser": "./src/balances.ts",
+      "default": "./dist/balances.js"
+    },
+    "./chain-connections": {
+      "types": "./src/chain-connections.ts",
+      "bun": "./src/chain-connections.ts",
+      "browser": "./src/chain-connections.ts",
+      "default": "./dist/chain-connections.js"
+    },
+    "./chains": {
+      "types": "./src/chains.ts",
+      "bun": "./src/chains.ts",
+      "browser": "./src/chains.ts",
+      "default": "./dist/chains.js"
+    },
+    "./colors": {
+      "types": "./src/colors.ts",
+      "bun": "./src/colors.ts",
+      "browser": "./src/colors.ts",
+      "default": "./dist/colors.js"
+    },
+    "./extension-access": {
+      "types": "./src/extension-access.ts",
+      "bun": "./src/extension-access.ts",
+      "browser": "./src/extension-access.ts",
+      "default": "./dist/extension-access.js"
+    },
+    "./gas": {
+      "types": "./src/gas.ts",
+      "bun": "./src/gas.ts",
+      "browser": "./src/gas.ts",
+      "default": "./dist/gas.js"
+    },
+    "./internet": {
+      "types": "./src/internet.ts",
+      "bun": "./src/internet.ts",
+      "browser": "./src/internet.ts",
+      "default": "./dist/internet.js"
+    },
+    "./json-rpc": {
+      "types": "./src/json-rpc.ts",
+      "bun": "./src/json-rpc.ts",
+      "browser": "./src/json-rpc.ts",
+      "default": "./dist/json-rpc.js"
+    },
+    "./local-api": {
+      "types": "./src/local-api.ts",
+      "bun": "./src/local-api.ts",
+      "browser": "./src/local-api.ts",
+      "default": "./dist/local-api.js"
+    },
+    "./native-currency": {
+      "types": "./src/native-currency.ts",
+      "bun": "./src/native-currency.ts",
+      "browser": "./src/native-currency.ts",
+      "default": "./dist/native-currency.js"
+    },
+    "./operation-records": {
+      "types": "./src/operation-records.ts",
+      "bun": "./src/operation-records.ts",
+      "browser": "./src/operation-records.ts",
+      "default": "./dist/operation-records.js"
+    },
+    "./origins": {
+      "types": "./src/origins.ts",
+      "bun": "./src/origins.ts",
+      "browser": "./src/origins.ts",
+      "default": "./dist/origins.js"
+    },
+    "./permissions": {
+      "types": "./src/permissions.ts",
+      "bun": "./src/permissions.ts",
+      "browser": "./src/permissions.ts",
+      "default": "./dist/permissions.js"
+    },
+    "./projection-stream": {
+      "types": "./src/projection-stream.ts",
+      "bun": "./src/projection-stream.ts",
+      "browser": "./src/projection-stream.ts",
+      "default": "./dist/projection-stream.js"
+    },
+    "./projections": {
+      "types": "./src/projections.ts",
+      "bun": "./src/projections.ts",
+      "browser": "./src/projections.ts",
+      "default": "./dist/projections.js"
+    },
+    "./request-records": {
+      "types": "./src/request-records.ts",
+      "bun": "./src/request-records.ts",
+      "browser": "./src/request-records.ts",
+      "default": "./dist/request-records.js"
+    },
+    "./rpc": {
+      "types": "./src/rpc.ts",
+      "bun": "./src/rpc.ts",
+      "browser": "./src/rpc.ts",
+      "default": "./dist/rpc.js"
+    },
+    "./safe": {
+      "types": "./src/safe.ts",
+      "bun": "./src/safe.ts",
+      "browser": "./src/safe.ts",
+      "default": "./dist/safe.js"
+    },
+    "./shortcuts": {
+      "types": "./src/shortcuts.ts",
+      "bun": "./src/shortcuts.ts",
+      "browser": "./src/shortcuts.ts",
+      "default": "./dist/shortcuts.js"
+    },
+    "./side-tray": {
+      "types": "./src/side-tray.ts",
+      "bun": "./src/side-tray.ts",
+      "browser": "./src/side-tray.ts",
+      "default": "./dist/side-tray.js"
+    },
+    "./tokens": {
+      "types": "./src/tokens.ts",
+      "bun": "./src/tokens.ts",
+      "browser": "./src/tokens.ts",
+      "default": "./dist/tokens.js"
+    },
+    "./trade-limits": {
+      "types": "./src/trade-limits.ts",
+      "bun": "./src/trade-limits.ts",
+      "browser": "./src/trade-limits.ts",
+      "default": "./dist/trade-limits.js"
+    },
+    "./transaction-approval": {
+      "types": "./src/transaction-approval.ts",
+      "bun": "./src/transaction-approval.ts",
+      "browser": "./src/transaction-approval.ts",
+      "default": "./dist/transaction-approval.js"
+    },
+    "./transactions": {
+      "types": "./src/transactions.ts",
+      "bun": "./src/transactions.ts",
+      "browser": "./src/transactions.ts",
+      "default": "./dist/transactions.js"
+    },
+    "./tray-host": {
+      "types": "./src/tray-host.ts",
+      "bun": "./src/tray-host.ts",
+      "browser": "./src/tray-host.ts",
+      "default": "./dist/tray-host.js"
+    },
+    "./tray-operations": {
+      "types": "./src/tray-operations.ts",
+      "bun": "./src/tray-operations.ts",
+      "browser": "./src/tray-operations.ts",
+      "default": "./dist/tray-operations.js"
+    },
+    "./wallet-state": {
+      "types": "./src/wallet-state.ts",
+      "bun": "./src/wallet-state.ts",
+      "browser": "./src/wallet-state.ts",
+      "default": "./dist/wallet-state.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit && tsc -p tsconfig.json",
+    "test": "bun test --isolate ./src"
+  },
+  "dependencies": {
+    "@ethereumjs/tx": "^10.1.2",
+    "@metamask/eth-sig-util": "^8.2.0",
+    "@newframe/flash": "workspace:*",
+    "ethers": "6.16.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.0",
+    "typescript": "7.0.2"
+  }
+}

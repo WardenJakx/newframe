@@ -1,11 +1,14 @@
 import { expect, it } from 'bun:test'
 import { EventEmitter } from 'node:events'
 
+import type { AirGapPublicAccount } from '@newframe/schema/airgap'
+import { RequestStatus } from '@newframe/schema/request-records'
+import type { RPCRequestCallback, RPCRequestPayload, RPCResponsePayload } from '@newframe/schema/rpc'
+import type { SafeProposal } from '@newframe/schema/safe'
 import { HDNodeWallet, ZeroAddress } from 'ethers'
 
 import { createSafeHandler } from '../../scripts/local-safe/handler.ts'
 import { RpcIpcHandlers } from '../../src/app/main/ipc-handlers/rpc.ts'
-import type { SafeProposal } from '../../src/features/accounts/domain/safe.ts'
 import { createProductionAirGapService } from '../../src/features/accounts/main/airgap/production.ts'
 import { Accounts } from '../../src/features/accounts/main/index.ts'
 import { createSafeTransactionService } from '../../src/features/accounts/main/safeTransaction.ts'
@@ -14,7 +17,6 @@ import { createRequestApprovalAdapter } from '../../src/features/connections/mai
 import { createProviderProxyConnection } from '../../src/features/connections/main/provider/proxy.ts'
 import { createProviderStatePort } from '../../src/features/connections/main/provider/statePort.ts'
 import type { NameResolutionService } from '../../src/features/name-resolution/main/nameResolution.ts'
-import { RequestStatus } from '../../src/features/requests/contract/requests.ts'
 import { createRequestService } from '../../src/features/requests/main/service.ts'
 import { signerCompatibility, maxFee } from '../../src/features/transactions/main/index.ts'
 import { createRevealService } from '../../src/features/transactions/main/reveal.ts'
@@ -22,13 +24,7 @@ import { createInternet } from '../../src/platform/internet/index.ts'
 import { createOperationService } from '../../src/platform/operations/service.ts'
 import { createSafeClient } from '../../src/platform/safe/client.ts'
 import { getSafeTypedMessage, verifySafeHash } from '../../src/platform/safe/integrity.ts'
-import type { AirGapPublicAccount } from '../../src/platform/signing/domain/airgap.ts'
 import type { Callback } from '../../src/shared/domain/async.ts'
-import type {
-  RPCRequestCallback,
-  RPCRequestPayload,
-  RPCResponsePayload
-} from '../../src/shared/domain/rpc.ts'
 import { signerFixture, transaction, uiContext, vectors } from './fixtures/airgap.ts'
 
 function integrationFixture({

@@ -1,8 +1,3 @@
-export const FLASH_MIN_TWAP_DURATION_SECONDS = 300
-export const FLASH_MAX_TWAP_DURATION_SECONDS = 2_592_000
-export const FLASH_MIN_TWAP_BUCKET_COUNT = 2
-export const FLASH_MAX_TWAP_BUCKET_COUNT = 2_560
-
 export const cleanFlashDecimal = (value: unknown = '') => {
   let decimal = ''
   if (typeof value === 'string') {

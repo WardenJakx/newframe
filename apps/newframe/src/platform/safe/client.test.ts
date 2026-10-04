@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 
+import type { SafeProposal } from '@newframe/schema/safe'
 import { getBytes, Interface, Wallet, ZeroAddress } from 'ethers'
 
 import { createSafeHandler } from '../../../scripts/local-safe/handler.ts'
-import type { SafeProposal } from '../../features/accounts/domain/safe.ts'
 import { abi as multicallAbi, multicallAddress } from '../chain-rpc/multicall/constants.ts'
 import { getEip712Digests } from '../signing/signatures/digests.ts'
 import { createSafeClient, safeServiceChains } from './client.ts'

@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test'
 
+import type { SafeProposal } from '@newframe/schema/safe'
 import { getBytes, Wallet, ZeroAddress } from 'ethers'
 
-import type { SafeProposal } from '../../features/accounts/domain/safe.ts'
 import { getEip712Digests } from '../signing/signatures/digests.ts'
 import {
   getSafeMessageHash,

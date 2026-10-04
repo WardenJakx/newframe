@@ -1,7 +1,7 @@
+import type { Address } from '@newframe/schema/address'
 import log from 'electron-log'
 import { FunctionFragment, Interface, hexlify } from 'ethers'
 
-import type { Address } from '../../../shared/domain/address.ts'
 import { fetchFunctionSelectorSignatures, getLocalFunctionSelectorSignatures } from './selectors.ts'
 import { fetchEtherscanContract } from './sources/etherscan.ts'
 import { fetchSourcifyContract } from './sources/sourcify.ts'

@@ -1,9 +1,10 @@
 import { describe, expect, it, mock } from 'bun:test'
 
+import type { RPCRequestPayload, RPCResponsePayload } from '@newframe/schema/rpc'
+import { GasFeesSource } from '@newframe/schema/transactions'
+
 import { createNewframeInternalSource } from '../../../../../app/main/gateway/requestSource.ts'
 import type { Callback } from '../../../../../shared/domain/async.ts'
-import type { RPCRequestPayload, RPCResponsePayload } from '../../../../../shared/domain/rpc.ts'
-import { GasFeesSource } from '../../../../transactions/domain/index.ts'
 import {
   createNamedAccountTransactionAdapter,
   createProviderRequestAdapter,

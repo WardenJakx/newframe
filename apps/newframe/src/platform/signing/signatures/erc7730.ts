@@ -1,7 +1,7 @@
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
+import type { TypedData, TypedMessage } from '@newframe/schema/request-records'
 import { formatUnits, getAddress, isAddress, keccak256, toUtf8Bytes } from 'ethers'
 
-import type { TypedData, TypedMessage } from '../../../features/requests/contract/requests.ts'
 import { internet, type HttpFetch } from '../../internet/index.ts'
 
 const REGISTRY_BASE_URL = 'https://raw.githubusercontent.com/ethereum/clear-signing-erc7730-registry/master'

@@ -1,10 +1,10 @@
+import type { WalletRendererState } from '@newframe/schema/projections'
 import { ScrollArea } from '@newframe/ui/scroll-area'
 import { Stack } from '@newframe/ui/stack'
 import type { ReactNode } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
-import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections.ts'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector.tsx'
 import { SidePanelHeader } from '../../../../shared/renderer/ui/SidePanel/SidePanelHeader.tsx'
 import { persistedImageSource } from '../../../asset-data/domain/image/index.ts'

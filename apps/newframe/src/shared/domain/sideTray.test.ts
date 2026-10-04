@@ -14,7 +14,7 @@ import {
   resolveFlashAssetFromRouteAssetId,
   resolveSendAssetFromRouteAssetId,
   toCanonicalAssetId
-} from './index.ts'
+} from './sideTray.ts'
 
 describe('#parseSideTrayHashRoute', () => {
   it('parses send routes', () => {

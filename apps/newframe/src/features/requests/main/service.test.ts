@@ -1,15 +1,16 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
-import type { EVMError, RPCRequestCallback, RPCResponsePayload } from '../../../shared/domain/rpc.ts'
-import type { SafeTransactionPort } from '../../accounts/main/safeTransactionPort.ts'
-import { GasFeesSource } from '../../transactions/domain/index.ts'
 import type {
   AccessRequest,
   AccountRequest,
   AddChainRequest,
   TransactionRequest
-} from '../contract/requests.ts'
-import { RequestStatus, TxClassification } from '../contract/requests.ts'
+} from '@newframe/schema/request-records'
+import { RequestStatus, TxClassification } from '@newframe/schema/request-records'
+import type { EVMError, RPCRequestCallback, RPCResponsePayload } from '@newframe/schema/rpc'
+import { GasFeesSource } from '@newframe/schema/transactions'
+
+import type { SafeTransactionPort } from '../../accounts/main/safeTransactionPort.ts'
 import { createRequestService, type RequestService } from './service.ts'
 
 const accountId = '0x1111111111111111111111111111111111111111'

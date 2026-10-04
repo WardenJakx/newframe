@@ -1,20 +1,20 @@
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
-import { Interface } from 'ethers'
-
+import type { TypedMessage } from '@newframe/schema/request-records'
 import {
   recoverSafeConfirmationOwner,
   safeAddressSchema,
   safeProposalSchema,
   type SafeProposal
-} from '../../features/accounts/domain/safe.ts'
-import type { TypedMessage } from '../../features/requests/contract/requests.ts'
+} from '@newframe/schema/safe'
+import { Interface } from 'ethers'
+
 import {
   getEip712Digests,
   getOriginalMessageDigest,
   type OriginalMessage
 } from '../signing/signatures/digests.ts'
 
-export { recoverSafeConfirmationOwner } from '../../features/accounts/domain/safe.ts'
+export { recoverSafeConfirmationOwner } from '@newframe/schema/safe'
 
 export const EIP1271_MAGIC_VALUE = '0x1626ba7e'
 export const EIP1271_SIGNATURE =

@@ -1,8 +1,9 @@
+import type { Address } from '@newframe/schema/address'
+import type { AssetRateInput } from '@newframe/schema/asset-rates'
+
 import { internet } from '../../../../platform/internet/index.ts'
 import type { Balance, Token } from '../../../../platform/state-store/state/index.ts'
-import type { Address } from '../../../../shared/domain/address.ts'
 import { formatUnits } from '../../../../shared/domain/units.ts'
-import type { AssetRateInput } from '../../../asset-data/domain/state/rate.ts'
 import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
 import ProviderRequestPolicy, { type ProviderRequestPolicyOptions } from '../requestPolicy.ts'
 import type {

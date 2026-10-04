@@ -1,12 +1,13 @@
 import { expect, it, mock } from 'bun:test'
 
+import type { NewframeHost } from '@newframe/schema/tray-host'
 import type {
   CommandResult,
   QueryMap,
   QueryResultMap,
   ResultForQuery
-} from '../../../app/contracts/operations.ts'
-import type { NewframeHost } from '../../../platform/ipc/contract/ipc.ts'
+} from '@newframe/schema/tray-operations'
+
 import { createRequestRendererCapabilities as createRequestPorts } from './requestCapabilities.ts'
 
 it('maps each request surface to its exact host command and preserves failures', async () => {

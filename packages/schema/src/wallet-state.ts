@@ -1,16 +1,16 @@
 import { z } from 'zod'
 
-import { AccountMetadataSchema, AccountSchema } from '../../../features/accounts/domain/state/account.ts'
-import { BalanceSchema } from '../../../features/asset-data/domain/state/balance.ts'
-import { AssetRateMapSchema } from '../../../features/asset-data/domain/state/rate.ts'
-import { ChainMetadataSchema, ChainSchema } from '../../../features/chains/domain/state/chain.ts'
-import { ExtensionAccessSchema } from '../../../features/connections/domain/state/extensionAccess.ts'
-import { OriginSchema } from '../../../features/connections/domain/state/origin.ts'
-import { PermissionSchema } from '../../../features/connections/domain/state/permission.ts'
-import { ShortcutSchema } from '../../../features/settings/domain/state/shortcuts.ts'
-import { TokenCatalogSchema } from '../../../features/tokens/domain/state/token.ts'
-import { TorStatusSchema } from '../../../platform/internet/contract/status.ts'
-import { AirGapPublicAccountSchema } from '../../../platform/signing/domain/airgap.ts'
+import { AccountMetadataSchema, AccountSchema } from './accounts.ts'
+import { AirGapPublicAccountSchema } from './airgap.ts'
+import { AssetRateMapSchema } from './asset-rates.ts'
+import { BalanceSchema } from './balances.ts'
+import { ChainMetadataSchema, ChainSchema } from './chains.ts'
+import { ExtensionAccessSchema } from './extension-access.ts'
+import { TorStatusSchema } from './internet.ts'
+import { OriginSchema } from './origins.ts'
+import { PermissionSchema } from './permissions.ts'
+import { ShortcutSchema } from './shortcuts.ts'
+import { TokenCatalogSchema } from './tokens.ts'
 
 export const DEFAULT_PROFILE_ID = 'default-profile'
 export const DEFAULT_PROFILE_NAME = 'Profile 1'
@@ -217,20 +217,3 @@ export const MainSchema = z
 export type Main = z.infer<typeof MainSchema>
 export type ActivityRecord = z.infer<typeof ActivityRecordSchema>
 export type OrderRecord = z.infer<typeof OrderRecordSchema>
-
-export function getProfileAccountIds(
-  main: Pick<Main, 'accounts' | 'accountOrder'>,
-  profileId: string
-): string[] {
-  const ordered: string[] = []
-  const seen = new Set<string>()
-
-  for (const id of [...main.accountOrder, ...Object.keys(main.accounts)]) {
-    if (!seen.has(id) && main.accounts[id]?.profileId === profileId) {
-      seen.add(id)
-      ordered.push(id)
-    }
-  }
-
-  return ordered
-}

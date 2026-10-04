@@ -1,13 +1,13 @@
 import { expect, it } from 'bun:test'
 
+import { projectionStateSchemas } from '@newframe/schema/projections'
+import { TxClassification } from '@newframe/schema/request-records'
+import type { SafeDeployment } from '@newframe/schema/safe'
+import { GasFeesSource } from '@newframe/schema/transactions'
+import { DEFAULT_PROFILE_ID } from '@newframe/schema/wallet-state'
 import { Wallet } from 'ethers'
 
-import { DEFAULT_PROFILE_ID } from '../../../app/contracts/state/main.ts'
-import type { SafeDeployment } from '../../../features/accounts/domain/safe.ts'
-import { TxClassification } from '../../../features/requests/contract/requests.ts'
-import { GasFeesSource } from '../../../features/transactions/domain/index.ts'
 import createInitialState from '../../state-store/state/index.ts'
-import { projectionStateSchemas } from '../contract/projections.ts'
 import { projectSideTrayState, projectWalletState } from './projections.ts'
 
 const operation = (id: string) => ({

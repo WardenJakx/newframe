@@ -6,7 +6,8 @@ const appRoot = path.resolve(import.meta.dirname, '..')
 const outputRoot = path.join(appRoot, 'coverage', 'critical-parts')
 const testFile = /\.(?:test|spec)\.[cm]?[jt]sx?$/
 const riskTests = [
-  /^src\/app\/contracts\//,
+  /^\.\.\/\.\.\/packages\/schema\/src\//,
+  /^src\/shared\/domain\/sideTray\.test\./,
   /^src\/app\/main\/(?:gateway|protected-operations)\//,
   /^src\/features\/transactions\/domain\//,
   /^src\/features\/accounts\/main\/(?:Account|index|providerPort)\.test\./,
@@ -39,7 +40,7 @@ function relative(absolute: string) {
   return path.relative(appRoot, absolute).split(path.sep).join('/')
 }
 
-const tests = walk(appRoot)
+const tests = [...walk(appRoot), ...walk(path.resolve(appRoot, '../../packages/schema/src'))]
   .filter((file) => testFile.test(file))
   .map(relative)
   .filter((file) => riskTests.some((pattern) => pattern.test(file)))

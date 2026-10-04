@@ -6,11 +6,11 @@ import { Common, createCustomCommon, Holesky, Mainnet, Sepolia, type ChainConfig
 import { createTx, type TypedTxData } from '@ethereumjs/tx'
 import { bytesToHex } from '@ethereumjs/util'
 import { personalSign, recoverPersonalSignature, signTypedData } from '@metamask/eth-sig-util'
+import type { TypedMessage } from '@newframe/schema/request-records'
+import type { TransactionData } from '@newframe/schema/transactions'
 import { app } from 'electron'
 import log from 'electron-log'
 
-import type { TypedMessage } from '../../../../../features/requests/contract/requests.ts'
-import type { TransactionData } from '../../../../../features/transactions/domain/index.ts'
 import type { Callback } from '../../../../../shared/domain/async.ts'
 import Signer from '../../Signer/index.ts'
 

@@ -1,3 +1,4 @@
+import type { Identity } from '@newframe/schema/request-records'
 import { Button } from '@newframe/ui/button'
 import { Icon } from '@newframe/ui/icon'
 import { Input } from '@newframe/ui/input'
@@ -9,7 +10,6 @@ import { useState } from 'react'
 
 import { formatUnits, max, parseUnits, toBigInt } from '../../../../shared/domain/units.ts'
 import { AddressIdentity } from '../../../../shared/renderer/ui/AddressIdentity.tsx'
-import type { Identity } from '../../contract/requests.ts'
 import type { AddressIdentities } from '../Account/Requests/state.ts'
 import type { SourceValue } from '../format/displayValue.ts'
 import useCopiedMessage from '../hooks/useCopiedMessage.ts'

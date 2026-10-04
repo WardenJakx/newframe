@@ -1,11 +1,12 @@
+import type { NewframeHost } from '@newframe/schema/tray-host'
 import type {
   CommandMap,
   CommandResult,
   QueryMap,
   QueryResultMap,
   ResultForQuery
-} from '../../../app/contracts/operations.ts'
-import type { NewframeHost } from '../../../platform/ipc/contract/ipc.ts'
+} from '@newframe/schema/tray-operations'
+
 import type { ClipboardCapability } from '../../../shared/renderer/capabilities.ts'
 
 type WithoutType<TInput> = TInput extends { type: string } ? Omit<TInput, 'type'> : never
