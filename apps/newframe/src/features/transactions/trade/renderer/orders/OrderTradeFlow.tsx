@@ -11,7 +11,7 @@ import {
   orderPairIntent,
   orderTargetNotional
 } from './orderModel.ts'
-import type { OrderNetworkMap, OrderNetworkMetadataMap, OrderModel, OrderTokenCatalog } from './orderTypes.ts'
+import type { OrderChainMap, OrderChainMetadataMap, OrderModel, OrderTokenCatalog } from './orderTypes.ts'
 
 const tradeFlowRecipe = cva({
   base: {
@@ -26,15 +26,15 @@ const tradeFlowRecipe = cva({
 export function OrderTradeFlow({
   assetImages,
   imageCapability,
-  networks,
-  networksMeta,
+  chains,
+  chainsMeta,
   order,
   tokens
 }: {
   assetImages?: { contra?: string; target?: string }
   imageCapability: TokenImageCapability
-  networks: OrderNetworkMap
-  networksMeta: OrderNetworkMetadataMap
+  chains: OrderChainMap
+  chainsMeta: OrderChainMetadataMap
   order: OrderModel
   tokens: OrderTokenCatalog
 }) {
@@ -55,8 +55,8 @@ export function OrderTradeFlow({
         asset={order.targetAsset}
         imageSource={assetImages?.target}
         imageCapability={imageCapability}
-        networks={networks}
-        networksMeta={networksMeta}
+        chains={chains}
+        chainsMeta={chainsMeta}
         notional={orderTargetNotional(order)}
         tokens={tokens}
       />
@@ -69,8 +69,8 @@ export function OrderTradeFlow({
         asset={order.contraAsset}
         imageSource={assetImages?.contra}
         imageCapability={imageCapability}
-        networks={networks}
-        networksMeta={networksMeta}
+        chains={chains}
+        chainsMeta={chainsMeta}
         notional={orderContraNotional(order)}
         tokens={tokens}
       />

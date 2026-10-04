@@ -16,7 +16,7 @@ type TestProjectedState = ProjectedRecord & {
   assetRates: Record<string, unknown>
   accountOrder: string[]
   accounts: Record<string, ProjectedAccount>
-  networksMeta: { ethereum: Record<number, Record<string, unknown>> }
+  chainsMeta: { ethereum: Record<number, Record<string, unknown>> }
   operations: Record<string, unknown>
   orders: Record<string, unknown>
   portfolioApiKeyConfigured: boolean
@@ -405,9 +405,9 @@ describe('renderer state stream', () => {
       base64: 'Y2hhaW4=',
       contentHash: 'chain-image',
       mimeType: 'image/png',
-      sourceUrl: state.main.networksMeta.ethereum[1].icon
+      sourceUrl: state.main.chainsMeta.ethereum[1].icon
     }
-    state.main.networksMeta.ethereum[1].image = chainImage
+    state.main.chainsMeta.ethereum[1].image = chainImage
     const customToken = {
       address: '0x00000000000000000000000000000000000000aa',
       chainId: 1,
@@ -450,9 +450,9 @@ describe('renderer state stream', () => {
       'activity',
       'assetRates',
       'balances',
+      'chains',
+      'chainsMeta',
       'currentAccount',
-      'networks',
-      'networksMeta',
       'operations',
       'orders',
       'runtime',
@@ -474,8 +474,8 @@ describe('renderer state stream', () => {
       byId: { [`1:${customToken.address}`]: customToken },
       accountTokenIds: { [id]: [] }
     })
-    expect(snapshot.state.networksMeta.ethereum[1].image).toEqual(chainImage)
-    expect(snapshot.state.networksMeta.ethereum[1]).not.toHaveProperty('icon')
+    expect(snapshot.state.chainsMeta.ethereum[1].image).toEqual(chainImage)
+    expect(snapshot.state.chainsMeta.ethereum[1]).not.toHaveProperty('icon')
 
     store.getState().updateLattice('device', { privKey: 'another-secret' })
     expect(sender.send).toHaveBeenCalledTimes(1)

@@ -9,22 +9,22 @@ import {
   type Main
 } from '../../../app/contracts/state/main.ts'
 import {
-  createBuiltInNetworkMetadata,
-  createBuiltInNetworks
-} from '../../../features/networks/domain/chain/index.ts'
+  createBuiltInChainMetadata,
+  createBuiltInChains
+} from '../../../features/chains/domain/chain/index.ts'
 import { OperationRecordSchema } from '../../operations/operation.ts'
 import { getMainRuntime } from '../../runtime/index.ts'
 import { Derivation } from '../../signing/signers/Signer/derive.ts'
 import type { SignerSummary } from '../../signing/signers/Signer/index.ts'
 import type { OwnedOperation } from '../actions.operation.ts'
 
-export type { ChainId, Chain, ChainMetadata } from '../../../features/networks/domain/state/chain.ts'
+export type { ChainId, Chain, ChainMetadata } from '../../../features/chains/domain/state/chain.ts'
 export type { Origin } from '../../../features/connections/domain/state/origin.ts'
 export type { Permission } from '../../../features/connections/domain/state/permission.ts'
 export type { Balance } from '../../../features/asset-data/domain/state/balance.ts'
 export type { Token, TokenImage, TokenRecord } from '../../../features/tokens/domain/state/token.ts'
-export type { NativeCurrency } from '../../../features/networks/domain/state/nativeCurrency.ts'
-export type { Gas, GasFees } from '../../../features/networks/domain/state/gas.ts'
+export type { NativeCurrency } from '../../../features/chains/domain/state/nativeCurrency.ts'
+export type { Gas, GasFees } from '../../../features/chains/domain/state/gas.ts'
 
 export type { ActivityRecord } from '../../../app/contracts/state/main.ts'
 
@@ -159,8 +159,8 @@ const mainState: M = {
   assetRates: {},
   signers: {},
   updater: { dontRemind: [], lastChecked: 0 },
-  networks: { ethereum: createBuiltInNetworks() },
-  networksMeta: { ethereum: createBuiltInNetworkMetadata() },
+  chains: { ethereum: createBuiltInChains() },
+  chainsMeta: { ethereum: createBuiltInChainMetadata() },
   frames: {},
   focusedFrame: ''
 }

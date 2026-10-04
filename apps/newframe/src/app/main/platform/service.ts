@@ -107,11 +107,11 @@ export function createPlatformService(ports: PlatformServicePorts) {
 
     openSideTray(command: SideTrayOpenCommand) {
       const state = ports.store.getState()
-      const networks = state.main.networks.ethereum as Record<
+      const chains = state.main.chains.ethereum as Record<
         number,
-        (typeof state.main.networks.ethereum)[number] | undefined
+        (typeof state.main.chains.ethereum)[number] | undefined
       >
-      if (command.chainId && !networks[command.chainId]) {
+      if (command.chainId && !chains[command.chainId]) {
         return false
       }
 
@@ -134,11 +134,11 @@ export function createPlatformService(ports: PlatformServicePorts) {
 
     openTransactionExplorer(chainId: number, transactionHash?: string) {
       const state = ports.store.getState()
-      const networks = state.main.networks.ethereum as Record<
+      const chains = state.main.chains.ethereum as Record<
         number,
-        (typeof state.main.networks.ethereum)[number] | undefined
+        (typeof state.main.chains.ethereum)[number] | undefined
       >
-      const chain = networks[chainId]
+      const chain = chains[chainId]
       if (!chain) {
         return false
       }

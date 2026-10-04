@@ -114,7 +114,7 @@ class RingSigner extends HotSigner {
 
   constructor(
     signer:
-      | { id?: string; addresses?: string[]; network?: string; encryptedKeys?: EncryptedSecret[] }
+      | { id?: string; addresses?: string[]; chain?: string; encryptedKeys?: EncryptedSecret[] }
       | undefined,
     vault: VaultAccess
   ) {

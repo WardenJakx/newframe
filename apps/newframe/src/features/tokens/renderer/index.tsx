@@ -35,12 +35,12 @@ export default function Tokens({
   capability,
   initialToken,
   onBack,
-  onOpenNetworks
+  onOpenChains
 }: {
   capability: TokensCapability
   initialToken?: PendingCustomToken
   onBack: () => void
-  onOpenNetworks: () => void
+  onOpenChains: () => void
 }) {
   const [pages, setPages] = useState<TokenPage[]>(() =>
     initialToken
@@ -104,7 +104,7 @@ export default function Tokens({
           onBack={back}
           onDone={done}
           onNavigate={navigate}
-          onOpenNetworks={onOpenNetworks}
+          onOpenChains={onOpenChains}
         />
       ) : (
         <CustomTokens capability={capability} onEdit={edit} />

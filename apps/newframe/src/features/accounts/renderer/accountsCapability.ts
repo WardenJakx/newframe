@@ -33,7 +33,7 @@ export interface AccountsCapability extends ClipboardCapability {
   locateKeystore(): Promise<QueryResultMap['keystore.locate']>
   generateSeed(): Promise<QueryResultMap['seed.generate']>
   createAccount(input: CommandInput<'account.create'>): Promise<CommandResult>
-  discoverSafeNetworks(address: string, chainId: number): Promise<QueryResultMap['safe.discover']>
+  discoverSafeChains(address: string, chainId: number): Promise<QueryResultMap['safe.discover']>
   importSigner(input: CommandInput<'signer.import'>): Promise<CommandResult>
 
   startSignerSession(input: CommandInput<'signer.session-start'>): Promise<CommandResult>
@@ -70,7 +70,7 @@ export function createAccountsCapability(host: AccountsHost): AccountsCapability
     locateKeystore: () => host.executeQuery({ type: 'keystore.locate' }),
     generateSeed: () => host.executeQuery({ type: 'seed.generate' }),
     createAccount: (input) => host.executeCommand({ type: 'account.create', ...input }),
-    discoverSafeNetworks: async (address, chainId) => {
+    discoverSafeChains: async (address, chainId) => {
       const result = await host.executeQuery({ type: 'safe.discover', address, chainId })
       if (!Array.isArray(result)) {
         throw new Error(result.message ?? 'Could not load Safe networks')

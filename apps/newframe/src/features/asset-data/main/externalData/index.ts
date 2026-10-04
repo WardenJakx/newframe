@@ -1,6 +1,6 @@
 import log from 'electron-log'
 
-import type { OutboundGate } from '../../../../platform/outbound/index.ts'
+import type { InternetGate } from '../../../../platform/internet/index.ts'
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
 import type { Token } from '../../../../platform/state-store/state/index.ts'
 import type { Address } from '../../../../shared/domain/address.ts'
@@ -17,7 +17,7 @@ export interface DataScanner {
 
 export default function createExternalDataScanner(
   canonicalStore: CanonicalStoreReader,
-  outbound: OutboundGate,
+  internet: InternetGate,
   registerTokens?: Parameters<typeof Balances>[1]
 ): DataScanner {
   const storeApi = {
@@ -29,10 +29,10 @@ export default function createExternalDataScanner(
       address
         ? tokensForAccount(canonicalStore.getState().main.tokens, address).filter((token) => !token.custom)
         : [],
-    getConnectedNetworks: () => {
-      const networks = Object.values(canonicalStore.getState().main.networks.ethereum)
-      return networks.filter(
-        (network) => network.connection.primary.connected || network.connection.secondary.connected
+    getConnectedChains: () => {
+      const chains = Object.values(canonicalStore.getState().main.chains.ethereum)
+      return chains.filter(
+        (chain) => chain.connection.primary.connected || chain.connection.secondary.connected
       )
     }
   }
@@ -40,7 +40,7 @@ export default function createExternalDataScanner(
     const signerType = storeApi.getAccount(address)?.lastSignerType ?? ''
     return signerType.toLowerCase() !== 'address'
   }
-  const scanningAllowed = () => outbound.isOpen()
+  const scanningAllowed = () => internet.isOpen()
   const balances = Balances(canonicalStore, registerTokens)
 
   let connectedChains: number[] = [],
@@ -78,7 +78,7 @@ export default function createExternalDataScanner(
 
   function stopBalances() {
     clearPauseScanningDelay()
-    handleNetworkUpdate.cancel()
+    handleChainUpdate.cancel()
     handleAddressUpdate.cancel()
     handleTokensUpdate.cancel()
     balances.stop()
@@ -87,12 +87,12 @@ export default function createExternalDataScanner(
       return
     }
 
-    log.verbose('stopping external data while outbound traffic is closed')
+    log.verbose('stopping external data while the internet is closed')
     balancesRunning = false
   }
 
   function resumeBalances() {
-    log.verbose('resuming external data after outbound traffic opened')
+    log.verbose('resuming external data after the internet opened')
     startBalances()
 
     if (!canonicalStore.getState().tray.open && !pauseScanningDelay) {
@@ -102,18 +102,18 @@ export default function createExternalDataScanner(
 
   startBalances()
 
-  const unsubscribeOutbound = outbound.subscribe((open) => (open ? resumeBalances() : stopBalances()))
+  const unsubscribeInternet = internet.subscribe((open) => (open ? resumeBalances() : stopBalances()))
 
-  const handleNetworkUpdate = debounce((newlyConnected: number[]) => {
+  const handleChainUpdate = debounce((newlyConnected: number[]) => {
     if (!scanningAllowed()) {
       return
     }
 
-    log.verbose('updating external data due to network update(s)', { connectedChains, newlyConnected })
+    log.verbose('updating external data due to chain update(s)', { connectedChains, newlyConnected })
 
     if (newlyConnected.length > 0 && activeAccount) {
       if (shouldScanOnChain(activeAccount)) {
-        balances.addNetworks(activeAccount, newlyConnected)
+        balances.addChains(activeAccount, newlyConnected)
       } else {
         balances.refresh(activeAccount)
       }
@@ -147,21 +147,21 @@ export default function createExternalDataScanner(
     }
   })
 
-  const handleNetworksChange = () => {
-    const connectedNetworkIds = storeApi
-      .getConnectedNetworks()
+  const handleChainsChange = () => {
+    const connectedChainIds = storeApi
+      .getConnectedChains()
       .map((n) => n.id)
       .sort()
 
-    if (!arraysMatch(connectedChains, connectedNetworkIds)) {
-      const newlyConnectedNetworks = connectedNetworkIds.filter((c) => !connectedChains.includes(c))
-      connectedChains = connectedNetworkIds
+    if (!arraysMatch(connectedChains, connectedChainIds)) {
+      const newlyConnectedChains = connectedChainIds.filter((c) => !connectedChains.includes(c))
+      connectedChains = connectedChainIds
 
-      handleNetworkUpdate(newlyConnectedNetworks)
+      handleChainUpdate(newlyConnectedChains)
     }
   }
-  handleNetworksChange()
-  const unsubscribeNetworks = canonicalStore.subscribe((state) => state.main.networks, handleNetworksChange)
+  handleChainsChange()
+  const unsubscribeChains = canonicalStore.subscribe((state) => state.main.chains, handleChainsChange)
 
   const handleAccountChange = () => {
     const activeAddress = storeApi.getActiveAddress()
@@ -237,15 +237,15 @@ export default function createExternalDataScanner(
       balances.refreshPositions(address, chainId, tokens)
     },
     close: () => {
-      handleNetworkUpdate.cancel()
+      handleChainUpdate.cancel()
       handleAddressUpdate.cancel()
       handleTokensUpdate.cancel()
 
-      unsubscribeNetworks()
+      unsubscribeChains()
       unsubscribeAccount()
       unsubscribeCustomTokens()
       unsubscribeTray()
-      unsubscribeOutbound()
+      unsubscribeInternet()
 
       balances.stop()
       balancesRunning = false

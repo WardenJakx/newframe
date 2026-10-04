@@ -161,7 +161,7 @@ export function createSafeService({
         account.address,
         deployment.chainId,
         deployment.address,
-        main.networks.ethereum[query.chainId],
+        main.chains.ethereum[query.chainId],
         proposal.safeTxHash,
         proposal.safe,
         proposal.to,
@@ -286,7 +286,7 @@ export function createSafeService({
     simulations.clear()
   }
   const discoveries = new Set<AbortController>()
-  const discoverNetworks = async (address: string, chainId?: number) => {
+  const discoverChains = async (address: string, chainId?: number) => {
     if (lifecycle.disposed) {
       return []
     }
@@ -295,11 +295,11 @@ export function createSafeService({
     const capturedProfile = store.getState().main.currentProfile
     try {
       const results = await Promise.allSettled(
-        Object.values(store.getState().main.networks.ethereum)
-          .filter((network) => chainId === undefined || network.id === chainId)
-          .map(async (network) => {
-            await client.discover(network.id, address, controller.signal)
-            return { chainId: network.id, name: network.name, supported: true }
+        Object.values(store.getState().main.chains.ethereum)
+          .filter((chain) => chainId === undefined || chain.id === chainId)
+          .map(async (chain) => {
+            await client.discover(chain.id, address, controller.signal)
+            return { chainId: chain.id, name: chain.name, supported: true }
           })
       )
       if (
@@ -469,12 +469,7 @@ export function createSafeService({
   }
   const unsubscribe = store.subscribe(
     (state) =>
-      [
-        state.main.currentProfile,
-        state.main.currentAccount,
-        state.main.accounts,
-        state.main.networks
-      ] as const,
+      [state.main.currentProfile, state.main.currentAccount, state.main.accounts, state.main.chains] as const,
     ([nextProfile, nextSelected, accounts]) => {
       const changed = profile !== nextProfile || selected !== nextSelected
       if (profile !== nextProfile) {
@@ -538,7 +533,7 @@ export function createSafeService({
       executorId: string
     ) => transactionService.prepareExecution(identity, executorId),
     execute: (...args: Parameters<typeof transactionService.execute>) => transactionService.execute(...args),
-    discoverNetworks,
+    discoverChains,
     simulate,
     refresh,
     import(command: Extract<AccountCreateCommand, { source: 'safe' }>, owner: OperationOwner) {

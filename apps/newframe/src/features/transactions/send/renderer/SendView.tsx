@@ -173,8 +173,8 @@ export function SendView({
                   }}
                   items={model.tokenItems}
                   searchableItems={model.searchableTokenItems}
-                  networks={model.networks}
-                  networksMeta={model.networksMeta}
+                  chains={model.chains}
+                  chainsMeta={model.chainsMeta}
                   onOpenChange={events.onTokenPickerOpenChange}
                   onSelect={events.onSelectAsset}
                   open={model.tokenOpen}

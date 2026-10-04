@@ -116,7 +116,7 @@ it('authorizes and validates final adjustments against canonical state before si
     vault: { exists: () => false, isUnlocked: () => true },
     agent: { resolveAccess: () => false },
     clock: { delay: async () => {} },
-    network: { rpcMatchesChain: async () => true }
+    chain: { rpcMatchesChain: async () => true }
   })
   requests.create(mock(), request.handlerId)
   requests.bind(request)
@@ -185,7 +185,7 @@ it('acknowledges a real command and projects its completion only to the owning w
     accountMutations: {} as OperationServices['accountMutations'],
     accountOnboarding: {} as OperationServices['accountOnboarding'],
     agent: {} as OperationServices['agent'],
-    networks: {} as OperationServices['networks'],
+    chains: {} as OperationServices['chains'],
     portfolio: {} as OperationServices['portfolio'],
     profiles: {} as OperationServices['profiles'],
     platform: {} as OperationServices['platform'],

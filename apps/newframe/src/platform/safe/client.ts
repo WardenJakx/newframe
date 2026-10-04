@@ -32,7 +32,7 @@ import {
 const SAFE_TRANSACTION_SERVICE_URL = 'https://api.safe.global/tx-service'
 // Hosted Transaction Service resolver from @safe-global/api-kit@5.0.3, synced 2026-09-09.
 // Codex (81224) was added from the current upstream resolver after that release.
-const SAFE_SERVICE_NETWORK_SHORT_NAMES = Object.freeze({
+const SAFE_SERVICE_CHAIN_SHORT_NAMES = Object.freeze({
   1: 'eth',
   10: 'oeth',
   50: 'xdc',
@@ -87,21 +87,21 @@ const SAFE_SERVICE_NETWORK_SHORT_NAMES = Object.freeze({
   11155111: 'sep',
   1313161554: 'aurora'
 } satisfies Readonly<Record<number, string>>)
-const SAFE_SERVICE_NETWORKS: Readonly<Record<string, string>> = Object.freeze(
+const SAFE_SERVICE_CHAINS: Readonly<Record<string, string>> = Object.freeze(
   Object.fromEntries(
-    Object.entries(SAFE_SERVICE_NETWORK_SHORT_NAMES).map(([chainId, shortName]) => [
+    Object.entries(SAFE_SERVICE_CHAIN_SHORT_NAMES).map(([chainId, shortName]) => [
       chainId,
       `${SAFE_TRANSACTION_SERVICE_URL}/${shortName}/api`
     ])
   )
 )
-export function safeServiceNetworks(options: {
+export function safeServiceChains(options: {
   development: boolean
   url?: string
   chainId?: string
 }): Readonly<Record<string, string>> {
   if (!options.development || !options.url || !options.chainId) {
-    return SAFE_SERVICE_NETWORKS
+    return SAFE_SERVICE_CHAINS
   }
   const chainId = Number(options.chainId)
   if (!Number.isSafeInteger(chainId) || chainId <= 0) {
@@ -111,7 +111,7 @@ export function safeServiceNetworks(options: {
   if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) {
     throw new Error('Invalid development Safe URL')
   }
-  return { ...SAFE_SERVICE_NETWORKS, [chainId]: url.href.replace(/\/$/, '') }
+  return { ...SAFE_SERVICE_CHAINS, [chainId]: url.href.replace(/\/$/, '') }
 }
 export type SafeRequest = (url: string, init: RequestInit) => Promise<Response>
 const decimalInput = z
@@ -228,14 +228,14 @@ function rawOriginalMessage(message: OriginalMessage): string | TypedMessage['da
 
 export function createSafeClient({
   request,
-  networks = SAFE_SERVICE_NETWORKS,
+  chains = SAFE_SERVICE_CHAINS,
   timeoutMs = 15000,
   decode,
   call,
   now = Date.now
 }: {
   request: SafeRequest
-  networks?: Readonly<Record<string, string>>
+  chains?: Readonly<Record<string, string>>
   timeoutMs?: number
   decode?: (address: string, chainId: number, data: string) => Promise<DecodedCallData | undefined>
   call?: (
@@ -249,7 +249,7 @@ export function createSafeClient({
 }) {
   const cooldowns = new Map<string, number>()
   function base(chainId: number) {
-    const url = networks[chainId]
+    const url = chains[chainId]
     if (!Number.isSafeInteger(chainId) || !url) {
       throw new Error('Safe queue service is unavailable on this network')
     }

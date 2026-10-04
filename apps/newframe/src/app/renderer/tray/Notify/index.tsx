@@ -42,8 +42,8 @@ type NotificationProps = {
   data: NotificationData
   dismiss: TrayNotifier
   mute: TrayRendererState['mute']
-  networks: TrayRendererState['networks']
-  networksMeta: TrayRendererState['networksMeta']
+  chains: TrayRendererState['chains']
+  chainsMeta: TrayRendererState['chainsMeta']
   assetRates: TrayRendererState['assetRates']
   external: Pick<RequestExternalCapability, 'openExplorer'>
   home: Pick<HomeCapability, 'toggleWarning'>
@@ -202,9 +202,9 @@ function SignerCompatibilityWarning({ data, dismiss, home, mute, review }: Notif
   )
 }
 
-function OpenExplorer({ data, dismiss, external, home, mute, networks }: NotificationProps) {
+function OpenExplorer({ data, dismiss, external, home, mute, chains }: NotificationProps) {
   const { hash, chain = { type: 'ethereum', id: 0 } } = data
-  const ethereum: Partial<typeof networks.ethereum> = networks.ethereum
+  const ethereum: Partial<typeof chains.ethereum> = chains.ethereum
   const { name: chainName, explorer: explorerUrl } = ethereum[Number(chain.id)] ?? {}
   const proceed = () => {
     void external.openExplorer({
@@ -246,8 +246,8 @@ const selectNotificationState = (state: TrayRendererState) => ({
       ? state.view.notifyData.id
       : undefined,
   mute: state.mute,
-  networks: state.networks,
-  networksMeta: state.networksMeta,
+  chains: state.chains,
+  chainsMeta: state.chainsMeta,
   assetRates: state.assetRates
 })
 
@@ -282,8 +282,8 @@ export default function Notification({
     data: local.data,
     dismiss: local.notify,
     mute: state.mute,
-    networks: state.networks,
-    networksMeta: state.networksMeta,
+    chains: state.chains,
+    chainsMeta: state.chainsMeta,
     assetRates: state.assetRates,
     external,
     home,

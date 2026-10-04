@@ -4,7 +4,7 @@ import EventEmitter from 'events'
 import { RpcIpcHandlers } from '../../../../app/main/ipc-handlers/rpc.ts'
 import createCanonicalStore from '../../../../platform/state-store/createCanonicalStore.ts'
 import type { RPCRequestCallback, RPCResponsePayload } from '../../../../shared/domain/rpc.ts'
-import type { Chains } from '../../../networks/main/index.ts'
+import type { Chains } from '../../../chains/main/index.ts'
 import type { AccountRequestPort } from './accountRequestPort.ts'
 import { createProxyProvider } from './frameProvider.ts'
 import { createProviderProxyConnection } from './proxy.ts'
@@ -46,7 +46,7 @@ function createProviderFixture(chainId?: number, start = false, proxy = new Even
   const store = createCanonicalStore(memoryStorage).store
   if (chainId) {
     store.setState((state) => {
-      state.main.networks.ethereum[chainId] = { ...state.main.networks.ethereum[1], id: chainId, on: true }
+      state.main.chains.ethereum[chainId] = { ...state.main.chains.ethereum[1], id: chainId, on: true }
     })
   }
   const requests = createRequestContinuations()

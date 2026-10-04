@@ -2,7 +2,7 @@ import { getDirectionLabel } from '@newframe/flash/pair'
 import type { FlashTradeSide } from '@newframe/flash/schemas'
 
 import { timestamp } from '../../../../../shared/domain/timestamp.ts'
-import type { OrderAsset, OrderModel, OrderNetworkMap, OrderRow } from './orderTypes.ts'
+import type { OrderAsset, OrderModel, OrderChainMap, OrderRow } from './orderTypes.ts'
 
 export function normalizeOrderSide(side = ''): FlashTradeSide | '' {
   const normalized = String(side).toLowerCase()
@@ -274,13 +274,13 @@ export function orderErrorMessage(error: unknown, fallback: string) {
 
 export function createOrderRows({
   accountAddress,
-  networks,
+  chains,
   orders,
   selectedChainId,
   showTestnets
 }: {
   accountAddress: string
-  networks: OrderNetworkMap
+  chains: OrderChainMap
   orders: Record<string, OrderModel>
   selectedChainId: number
   showTestnets: boolean
@@ -296,7 +296,7 @@ export function createOrderRows({
           Number.isInteger(chainId) && chainId > 0 && values.indexOf(chainId) === index
       )
       const visibleChainIds = chainIds.filter((chainId) => {
-        const chain = (networks as Partial<typeof networks>)[chainId]
+        const chain = (chains as Partial<typeof chains>)[chainId]
         return chain !== undefined && (!chain.isTestnet || showTestnets)
       })
       return (

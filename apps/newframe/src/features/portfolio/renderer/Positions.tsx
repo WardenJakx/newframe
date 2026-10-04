@@ -28,11 +28,11 @@ export function Positions({
     () =>
       createPositionGroups({
         balances: shared.balances,
-        networks: shared.networks,
+        chains: shared.chains,
         query,
         selectedChainId
       }),
-    [query, selectedChainId, shared.balances, shared.networks]
+    [query, selectedChainId, shared.balances, shared.chains]
   )
 
   return (
@@ -41,8 +41,8 @@ export function Positions({
       dustRowsVisible={dustRowsVisible}
       groups={groups}
       imageCapability={capability}
-      networks={shared.networks}
-      networksMeta={shared.networksMeta}
+      chains={shared.chains}
+      chainsMeta={shared.chainsMeta}
       onChangeQuery={setQuery}
       onOpenAsset={onOpenAsset}
       onShowMoreDust={() => setDustRowsVisible((rows) => rows + ROW_INCREMENT)}

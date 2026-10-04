@@ -64,9 +64,9 @@ export function createPortfolioService(ports: PortfolioServicePorts) {
       }
 
       const address = account.address.toLowerCase()
-      const chainIds = Object.values(state.main.networks.ethereum)
-        .filter((network) => network.on)
-        .map((network) => network.id)
+      const chainIds = Object.values(state.main.chains.ethereum)
+        .filter((chain) => chain.on)
+        .map((chain) => chain.id)
       const discovery = ports.getTokenDiscoveryProvider()
 
       try {

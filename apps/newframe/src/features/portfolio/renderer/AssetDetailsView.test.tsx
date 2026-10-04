@@ -9,8 +9,8 @@ import { NATIVE_CURRENCY } from '../../tokens/domain/constants.ts'
 import { AssetDetailsView } from './AssetDetailsView.tsx'
 
 const address = '0xaf88d065e77c8cc2239327c5edb3a432268e5831'
-const networks = { 42161: { name: 'Arbitrum' } }
-const networksMeta = { 42161: {} }
+const chains = { 42161: { name: 'Arbitrum' } }
+const chainsMeta = { 42161: {} }
 const fixture = registerTestRuntimeFixture()
 const utilityPorts = createUtilityPorts({
   executeCommand: (command) => fixture.client.executeCommand(command)
@@ -42,8 +42,8 @@ function renderAsset(assetAddress = address) {
       canTrade
       clipboard={utilityPorts}
       imageCapability={utilityPorts}
-      networks={networks}
-      networksMeta={networksMeta}
+      chains={chains}
+      chainsMeta={chainsMeta}
       onBack={() => {}}
       onSend={() => {}}
       onTrade={() => {}}
@@ -64,8 +64,8 @@ describe('AssetDetailsView contract address', () => {
         canTrade
         clipboard={utilityPorts}
         imageCapability={utilityPorts}
-        networks={networks}
-        networksMeta={networksMeta}
+        chains={chains}
+        chainsMeta={chainsMeta}
         onBack={() => {}}
         onSend={() => {}}
         onTrade={() => {}}

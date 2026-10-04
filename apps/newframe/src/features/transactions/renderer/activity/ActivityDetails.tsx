@@ -36,8 +36,8 @@ export function ActivityDetails({
             (account) => account.address.toLowerCase() === projected?.data?.to?.toLowerCase()
           )
         ),
-        network: state.networks.ethereum[chainId],
-        networkMeta: state.networksMeta.ethereum[chainId],
+        chain: state.chains.ethereum[chainId],
+        chainMeta: state.chainsMeta.ethereum[chainId],
         originName: origin ? (origins[origin]?.name ?? origin) : ''
       }
     })

@@ -57,11 +57,11 @@ export function createAccountsCapabilityFake() {
       error: 'operation_failed'
     })),
     createAccount: acknowledged<Parameters<AccountsCapability['createAccount']>[0]>(),
-    discoverSafeNetworks: mock(
+    discoverSafeChains: mock(
       async (
         _address: string,
         _chainId: number
-      ): Promise<CapabilityResult<AccountsCapability['discoverSafeNetworks']>> => []
+      ): Promise<CapabilityResult<AccountsCapability['discoverSafeChains']>> => []
     ),
     importSigner: acknowledged<Parameters<AccountsCapability['importSigner']>[0]>(),
     startSignerSession: acknowledged<Parameters<AccountsCapability['startSignerSession']>[0]>(),

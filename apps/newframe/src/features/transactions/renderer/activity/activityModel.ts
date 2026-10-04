@@ -3,7 +3,7 @@ import { formatUnits, toBigInt } from '../../../../shared/domain/units.ts'
 import { getPaidTransactionFee, getTransactionEffects, type TransactionEffect } from '../../domain/index.ts'
 import {
   projectActivityRecord,
-  type ActivityNetworkMap,
+  type ActivityChainMap,
   type ActivityBalanceChange,
   type ActivityRecord,
   type ActivityViewRecord,
@@ -197,13 +197,13 @@ export function activityAssetEffect(activity: ActivityRecord, nativeSymbol = 'ET
 export function createActivityRows({
   accountAddress,
   activity,
-  networks,
+  chains,
   selectedChainId,
   showTestnets
 }: {
   accountAddress: string
   activity: Record<string, WalletActivityRecord | ActivityRecord>
-  networks: ActivityNetworkMap
+  chains: ActivityChainMap
   selectedChainId: number
   showTestnets: boolean
 }) {
@@ -213,7 +213,7 @@ export function createActivityRows({
     .filter((record): record is ActivityViewRecord => {
       const recordAddress = String(record.account ?? record.address ?? '').toLowerCase()
       const chainId = Number(record.chainId)
-      const chain = (networks as Partial<typeof networks>)[chainId]
+      const chain = (chains as Partial<typeof chains>)[chainId]
       return (
         Boolean(record.id) &&
         (recordAddress === address ||

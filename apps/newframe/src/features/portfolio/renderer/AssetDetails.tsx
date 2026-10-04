@@ -34,8 +34,8 @@ export function AssetDetails({
       clipboard={capability}
       canSend={actions.canSend(asset)}
       canTrade={actions.canTrade(asset)}
-      networks={shared.networks}
-      networksMeta={shared.networksMeta}
+      chains={shared.chains}
+      chainsMeta={shared.chainsMeta}
       imageCapability={capability}
       onBack={onBack}
       onSend={() => actions.openSend(asset)}

@@ -8,7 +8,7 @@ import { persistedImageSource } from '../../../../asset-data/domain/image/index.
 import { NATIVE_CURRENCY } from '../../../../tokens/domain/constants.ts'
 import { tokenForId, tokenImageSource } from '../../../../tokens/domain/index.ts'
 import { orderAssetName, orderAssetSymbol } from './orderModel.ts'
-import type { OrderAsset, OrderNetworkMap, OrderNetworkMetadataMap, OrderTokenCatalog } from './orderTypes.ts'
+import type { OrderAsset, OrderChainMap, OrderChainMetadataMap, OrderTokenCatalog } from './orderTypes.ts'
 
 function orderAssetIdentity(asset?: OrderAsset) {
   const chainId = Number(asset?.chainId ?? 0)
@@ -31,28 +31,28 @@ export function OrderAssetIcon({
   asset,
   imageSource,
   imageCapability,
-  networks,
-  networksMeta,
+  chains,
+  chainsMeta,
   tokens
 }: {
   asset?: OrderAsset
   imageSource?: string
   imageCapability: TokenImageCapability
-  networks: OrderNetworkMap
-  networksMeta: OrderNetworkMetadataMap
+  chains: OrderChainMap
+  chainsMeta: OrderChainMetadataMap
   tokens?: OrderTokenCatalog
 }) {
   const symbol = orderAssetSymbol(asset)
   const { chainId, isNative, tokenId } = orderAssetIdentity(asset)
-  const resolvedImage = resolveOrderAssetImageSource({ asset, networksMeta, tokens })
+  const resolvedImage = resolveOrderAssetImageSource({ asset, chainsMeta, tokens })
 
   return (
     <ChainTokenIcon
       chainId={chainId}
       imageCapability={imageCapability}
       logoURI={imageSource ?? resolvedImage}
-      networks={networks}
-      networksMeta={networksMeta}
+      chains={chains}
+      chainsMeta={chainsMeta}
       size='md'
       symbol={symbol}
       tokenId={isNative ? undefined : tokenId}
@@ -62,16 +62,16 @@ export function OrderAssetIcon({
 
 export function resolveOrderAssetImageSource({
   asset,
-  networksMeta,
+  chainsMeta,
   tokens
 }: {
   asset?: OrderAsset
-  networksMeta: OrderNetworkMetadataMap
+  chainsMeta: OrderChainMetadataMap
   tokens?: OrderTokenCatalog
 }) {
   const { chainId, isNative, tokenId } = orderAssetIdentity(asset)
   const canonicalImage = tokens ? tokenImageSource(tokenForId(tokens, tokenId)) : ''
-  const nativeCurrency = networksMeta[chainId]?.nativeCurrency ?? {}
+  const nativeCurrency = chainsMeta[chainId]?.nativeCurrency ?? {}
   const nativeImage = isNative ? persistedImageSource(nativeCurrency.image) : ''
 
   return (
@@ -89,8 +89,8 @@ export function OrderAssetPosition({
   asset,
   imageSource,
   imageCapability,
-  networks,
-  networksMeta,
+  chains,
+  chainsMeta,
   notional,
   tokens
 }: {
@@ -99,8 +99,8 @@ export function OrderAssetPosition({
   asset?: OrderAsset
   imageSource?: string
   imageCapability: TokenImageCapability
-  networks: OrderNetworkMap
-  networksMeta: OrderNetworkMetadataMap
+  chains: OrderChainMap
+  chainsMeta: OrderChainMetadataMap
   notional?: string
   tokens: OrderTokenCatalog
 }) {
@@ -114,8 +114,8 @@ export function OrderAssetPosition({
           asset={asset}
           imageCapability={imageCapability}
           imageSource={imageSource}
-          networks={networks}
-          networksMeta={networksMeta}
+          chains={chains}
+          chainsMeta={chainsMeta}
           tokens={tokens}
         />
         <Text align={align} variant='label' truncate>

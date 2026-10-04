@@ -427,7 +427,7 @@ describe('creation-block listener lifecycle', () => {
     expect(providerMock.off).toHaveBeenCalledWith('connect', listener)
   })
 
-  it('starts profile-owned network callbacks only while the Account is active', async () => {
+  it('starts profile-owned chain callbacks only while the Account is active', async () => {
     account.close()
     store.getState().removeAccount(account.id)
     mock.clearAllMocks()

@@ -242,7 +242,7 @@ function sourceMayRequest(principal: RequestSource, requestType: RequestType) {
   }
 
   // Wallet UI requests are created by reviewed workflows such as replacement transactions.
-  // Access and network requests originate at the RPC transports, never in the renderer.
+  // Access and chain requests originate at the RPC transports, never in the renderer.
   return signingRequestTypes.has(requestType)
 }
 

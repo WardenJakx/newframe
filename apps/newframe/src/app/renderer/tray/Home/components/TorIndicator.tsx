@@ -8,7 +8,7 @@ import { Text } from '@newframe/ui/text'
 import { useId } from 'react'
 
 import { cva } from '../../../../../../generated/styled-system/css/cva.js'
-import type { TorStatus } from '../../../../../platform/outbound/contract/status.ts'
+import type { TorStatus } from '../../../../../platform/internet/contract/status.ts'
 
 const indicatorRecipe = cva({
   base: {

@@ -20,7 +20,7 @@ import {
   orderTypeLabel
 } from './orderModel.ts'
 import { OrderTradeFlow } from './OrderTradeFlow.tsx'
-import type { OrderNetworkMap, OrderNetworkMetadataMap, OrderModel, OrderTokenCatalog } from './orderTypes.ts'
+import type { OrderChainMap, OrderChainMetadataMap, OrderModel, OrderTokenCatalog } from './orderTypes.ts'
 
 const payloadRecipe = cva({
   base: {
@@ -36,8 +36,8 @@ export function OrderDetailsView({
   assetImages,
   accountType,
   imageCapability,
-  networks,
-  networksMeta,
+  chains,
+  chainsMeta,
   onBack,
   order,
   orderId,
@@ -46,8 +46,8 @@ export function OrderDetailsView({
   assetImages?: { contra?: string; target?: string }
   accountType?: string
   imageCapability: TokenImageCapability
-  networks: OrderNetworkMap
-  networksMeta: OrderNetworkMetadataMap
+  chains: OrderChainMap
+  chainsMeta: OrderChainMetadataMap
   onBack: () => void
   order: OrderModel
   orderId: string
@@ -76,11 +76,11 @@ export function OrderDetailsView({
     )
   }
   const chainDetail = (chainId: number) => {
-    const chain = (networks as Partial<typeof networks>)[chainId] ?? {}
+    const chain = (chains as Partial<typeof chains>)[chainId] ?? {}
 
     return (
       <Stack align='center' direction='row' gap='xsmall' justify='end'>
-        <ChainIcon chainId={chainId} networks={networks} networksMeta={networksMeta} size='large' />
+        <ChainIcon chainId={chainId} chains={chains} chainsMeta={chainsMeta} size='large' />
         <Text truncate variant='supporting'>
           {chain.name ?? `Chain ${chainId}`}
         </Text>
@@ -109,8 +109,8 @@ export function OrderDetailsView({
           <OrderTradeFlow
             assetImages={assetImages}
             imageCapability={imageCapability}
-            networks={networks}
-            networksMeta={networksMeta}
+            chains={chains}
+            chainsMeta={chainsMeta}
             order={order}
             tokens={tokens}
           />

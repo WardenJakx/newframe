@@ -12,8 +12,8 @@ import { RequestList } from './ui/RequestList.tsx'
 
 export function SafeQueueView({
   deployments,
-  networkNames,
-  networkIcons,
+  chainNames,
+  chainIcons,
   currencies = {},
   refreshing,
   refreshError,
@@ -21,8 +21,8 @@ export function SafeQueueView({
   onSelect
 }: {
   deployments: SafeDeployment[]
-  networkNames: Record<number, string>
-  networkIcons?: Record<number, ReactNode>
+  chainNames: Record<number, string>
+  chainIcons?: Record<number, ReactNode>
   currencies?: Partial<Record<number, { symbol: string; decimals: number }>>
   refreshing: boolean
   refreshError?: string
@@ -39,8 +39,8 @@ export function SafeQueueView({
     .filter((deployment) => deployment.pending?.length)
     .map((deployment) => ({
       id: String(deployment.chainId),
-      title: networkNames[deployment.chainId] || `Chain ${deployment.chainId}`,
-      icon: networkIcons?.[deployment.chainId],
+      title: chainNames[deployment.chainId] || `Chain ${deployment.chainId}`,
+      icon: chainIcons?.[deployment.chainId],
       items: [...deployment.pending!]
         .sort((a, b) => {
           if (BigInt(a.nonce) < BigInt(b.nonce)) {

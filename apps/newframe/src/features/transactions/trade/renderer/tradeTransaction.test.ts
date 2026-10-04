@@ -324,11 +324,11 @@ describe('tradeTransaction', () => {
   it('includes native assets for enabled supported chains without balance rows', () => {
     const assets = buildTradeAssetOptions({
       balances: [],
-      networks: {
+      chains: {
         1: { on: true },
         8453: { on: false }
       },
-      networksMeta: {
+      chainsMeta: {
         1: { nativeCurrency: { decimals: 18, name: 'Ether', symbol: 'ETH' } },
         8453: { nativeCurrency: { decimals: 18, name: 'Ether', symbol: 'ETH' } }
       },

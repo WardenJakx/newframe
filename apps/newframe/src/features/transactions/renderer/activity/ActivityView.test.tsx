@@ -12,8 +12,8 @@ const utilityPorts = createUtilityPorts({
 type CommandCall = [command: Parameters<typeof fixture.client.executeCommand>[0]]
 const hash = `0x${'1'.repeat(64)}`
 const wethAddress = '0x0000000000000000000000000000000000000002'
-const networks = { 1: { name: 'Ethereum', explorer: 'https://etherscan.io' } }
-const networksMeta = {
+const chains = { 1: { name: 'Ethereum', explorer: 'https://etherscan.io' } }
+const chainsMeta = {
   1: { nativeCurrency: { name: 'Ether', symbol: 'ETH' } }
 }
 const tokens = { byId: {}, accountTokenIds: {} }
@@ -63,8 +63,8 @@ describe('ActivityView', () => {
         activity={[activity()]}
         clipboard={utilityPorts}
         imageCapability={utilityPorts}
-        networks={networks}
-        networksMeta={networksMeta}
+        chains={chains}
+        chainsMeta={chainsMeta}
         onOpen={onOpen}
         onOpenExplorer={onOpenExplorer}
         tokens={tokens}
@@ -88,8 +88,8 @@ describe('ActivityView', () => {
         activity={[activity()]}
         clipboard={utilityPorts}
         imageCapability={utilityPorts}
-        networks={{ 1: { name: 'Ethereum', explorer: '' } }}
-        networksMeta={networksMeta}
+        chains={{ 1: { name: 'Ethereum', explorer: '' } }}
+        chainsMeta={chainsMeta}
         onOpen={() => {}}
         onOpenExplorer={() => {}}
         tokens={tokens}
@@ -120,8 +120,8 @@ describe('ActivityView', () => {
         ]}
         clipboard={utilityPorts}
         imageCapability={utilityPorts}
-        networks={networks}
-        networksMeta={networksMeta}
+        chains={chains}
+        chainsMeta={chainsMeta}
         onOpen={() => {}}
         onOpenExplorer={() => {}}
         tokens={{
@@ -157,8 +157,8 @@ describe('ActivityView', () => {
         activity={[pending]}
         clipboard={utilityPorts}
         imageCapability={utilityPorts}
-        networks={networks}
-        networksMeta={networksMeta}
+        chains={chains}
+        chainsMeta={chainsMeta}
         onOpen={onOpen}
         onOpenExplorer={onOpenExplorer}
         tokens={tokens}
@@ -185,8 +185,8 @@ describe('ActivityView', () => {
         ]}
         clipboard={utilityPorts}
         imageCapability={utilityPorts}
-        networks={networks}
-        networksMeta={networksMeta}
+        chains={chains}
+        chainsMeta={chainsMeta}
         onOpen={() => {}}
         onOpenExplorer={() => {}}
         tokens={tokens}

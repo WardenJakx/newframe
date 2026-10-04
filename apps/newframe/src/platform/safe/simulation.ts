@@ -1,4 +1,4 @@
-import type { Chains } from '../../features/networks/main/index.ts'
+import type { Chains } from '../../features/chains/main/index.ts'
 import { createOneResultCallbackBoundary } from '../callbacks/oneResult.ts'
 import type { Erc20ProviderPort } from '../chain-rpc/contracts/erc20.ts'
 

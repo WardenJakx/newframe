@@ -22,7 +22,7 @@ describe('createPositionGroups', () => {
   it('filters by query and groups balances by importance', () => {
     const groups = createPositionGroups({
       balances: [balance('ETH', 100), balance('USDC', 0.5), balance('DUST', 0.001)],
-      networks: { 1: { name: 'Ethereum' } },
+      chains: { 1: { name: 'Ethereum' } },
       query: '',
       selectedChainId: 0
     })
@@ -35,7 +35,7 @@ describe('createPositionGroups', () => {
   it('returns no rows when the filter does not match', () => {
     const groups = createPositionGroups({
       balances: [balance('ETH', 100)],
-      networks: { 1: { name: 'Ethereum' } },
+      chains: { 1: { name: 'Ethereum' } },
       query: 'bitcoin',
       selectedChainId: 0
     })

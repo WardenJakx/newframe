@@ -422,7 +422,7 @@ export class NewframeDriver {
     await this.waitForSelectedAccount(account)
   }
 
-  async selectNetwork(name: string) {
+  async selectChain(name: string) {
     const dialog = this.tray.getByRole('dialog', { name: 'Networks' })
 
     if (!(await dialog.isVisible().catch(() => false))) {

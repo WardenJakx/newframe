@@ -35,6 +35,12 @@ import {
   type ImageService,
   type ImageServiceAdapters
 } from '../../../features/asset-data/main/images/index.ts'
+import { Chains } from '../../../features/chains/main/index.ts'
+import {
+  createChainService,
+  type ChainService,
+  type ChainServicePorts
+} from '../../../features/chains/main/service.ts'
 import { createProductionOriginsService } from '../../../features/connections/main/origins.ts'
 import {
   createProviderRequestAdapter,
@@ -50,12 +56,6 @@ import {
   createProductionNameResolutionService,
   type NameResolutionService
 } from '../../../features/name-resolution/main/nameResolution.ts'
-import { Chains } from '../../../features/networks/main/index.ts'
-import {
-  createNetworkService,
-  type NetworkService,
-  type NetworkServicePorts
-} from '../../../features/networks/main/service.ts'
 import ProviderRequestPolicy from '../../../features/portfolio/main/requestPolicy.ts'
 import {
   createPortfolioService,
@@ -95,6 +95,7 @@ import {
 import type { FlashService } from '../../../features/transactions/trade/main/index.ts'
 import { createProductionFlashService } from '../../../features/transactions/trade/main/instance.ts'
 import { createTradeService, type TradeService } from '../../../features/transactions/trade/main/service.ts'
+import { internet } from '../../../platform/internet/index.ts'
 import {
   createRendererAuthorizationRegistry,
   type RendererAuthorizationRegistry
@@ -102,9 +103,8 @@ import {
 import { createOperationDispatcher, type IpcMainHandlerPort } from '../../../platform/ipc/main/operations.ts'
 import { createStateStream } from '../../../platform/ipc/main/stateStream.ts'
 import { createOperationService } from '../../../platform/operations/service.ts'
-import { outbound } from '../../../platform/outbound/index.ts'
 import type { PersistenceLifecycle } from '../../../platform/persistence/ports.ts'
-import { createSafeClient, safeServiceNetworks } from '../../../platform/safe/client.ts'
+import { createSafeClient, safeServiceChains } from '../../../platform/safe/client.ts'
 import { createSafeSimulationRpc } from '../../../platform/safe/simulation.ts'
 import type store from '../../../platform/state-store/index.ts'
 import { projectRendererState } from '../../../platform/state-sync/main/projections.ts'
@@ -138,7 +138,7 @@ export interface ProductionMainAppDependencies {
   platformService: PlatformService
   settingsService: ReturnType<typeof createSettingsService>
   accountService: AccountService
-  networkService: NetworkService
+  chainService: ChainService
   tokenService: TokenService
   safeService: SafeService
   requestEditService: RequestEditService
@@ -167,7 +167,7 @@ export interface ProductionCapabilityAdapters {
     protectedOperations: { exportSecret(address: string): Promise<{ type: string; value: string }> }
     dispose(): void
   }
-  network: Pick<NetworkServicePorts, 'rpcMatchesChain'> & {
+  chain: Pick<ChainServicePorts, 'rpcMatchesChain'> & {
     lookupChainIcon(chainId: number): Promise<string>
   }
 }
@@ -238,7 +238,7 @@ export function createProductionCapabilities(
       resolveAccess: (requestId, approved) => agentService.resolveAgentAccessRequest(requestId, approved)
     },
     clock: { delay: (ms) => new Promise((resolve) => setTimeout(resolve, ms)) },
-    network: adapters.network,
+    chain: adapters.chain,
     provider: {
       approveSign: (request, context) => requestApprovals.approveSign(request, context),
       approveSignTypedData: (request, context) => requestApprovals.approveSignTypedData(request, context),
@@ -259,18 +259,18 @@ export function createProductionCapabilities(
     reveal,
     runtime: adapters.accounts,
     createDataScanner: (canonicalStore) =>
-      createExternalDataScanner(canonicalStore, outbound, (tokens, options) =>
+      createExternalDataScanner(canonicalStore, internet, (tokens, options) =>
         tokenService.register(tokens, options)
       ),
     registerTokens: (tokens, options) => tokenService.register(tokens, options),
     requests: requestService
   })
-  const chains = new Chains(store, outbound)
+  const chains = new Chains(store, internet)
   const provider = createProductionProvider(
     store,
     accounts,
     chains,
-    (chainId) => adapters.network.lookupChainIcon(chainId),
+    (chainId) => adapters.chain.lookupChainIcon(chainId),
     proxy,
     reveal,
     requestService,
@@ -329,15 +329,15 @@ export function createProductionCapabilities(
     signers: adapters.accountOnboarding.signers,
     store
   })
-  const networkService = createNetworkService({ ...adapters.network, store })
-  const safeRequests = new ProviderRequestPolicy(outbound.request, { maxRetries: 0, minIntervalMs: 500 })
+  const chainService = createChainService({ ...adapters.chain, store })
+  const safeRequests = new ProviderRequestPolicy(internet.request, { maxRetries: 0, minIntervalMs: 500 })
   const safeRpc = createSafeSimulationRpc(chains)
   const safeClient = createSafeClient({
     call: (chainId, address, data, blockTag, signal) =>
       safeRpc.call(chainId, address, data, blockTag, signal),
     decode: (address, chainId, data) => reveal.decode(address, chainId, data),
     request: (url, init) => safeRequests.request(url, init),
-    networks: safeServiceNetworks({
+    chains: safeServiceChains({
       development: process.env.FRAME_PROFILE === 'dev',
       url: process.env.NEWFRAME_SAFE_SERVICE_URL,
       chainId: process.env.NEWFRAME_SAFE_CHAIN_ID
@@ -405,7 +405,7 @@ export function createProductionCapabilities(
           currentAccount: main.currentAccount,
           accounts: main.accounts,
           balances: main.balances,
-          networks: main.networks.ethereum,
+          chains: main.chains.ethereum,
           tokens: main.tokens.byId
         }
       }
@@ -425,7 +425,7 @@ export function createProductionCapabilities(
         return {
           currentAccount: main.currentAccount,
           accounts: main.accounts,
-          networks: main.networks.ethereum,
+          chains: main.chains.ethereum,
           orders: main.orders
         }
       }
@@ -478,7 +478,7 @@ export function createProductionCapabilities(
     tradeService,
     settingsService,
     accountService,
-    networkService,
+    chainService,
     tokenService,
     safeService,
     requestEditService,
@@ -502,7 +502,7 @@ function createProductionOperationServices(
   platformService: PlatformService,
   settingsService: ReturnType<typeof createSettingsService>,
   accountService: AccountService,
-  networkService: NetworkService,
+  chainService: ChainService,
   tokenService: TokenService,
   safeService: SafeService,
   requestEditService: RequestEditService,
@@ -519,7 +519,7 @@ function createProductionOperationServices(
     airgap: airgapService,
     accountMutations: accountService,
     agent: agentService,
-    networks: networkService,
+    chains: chainService,
     portfolio: portfolioService,
     platform: platformService,
     profiles: profileService,
@@ -559,7 +559,7 @@ export function createProductionMainApp({
   platformService,
   settingsService,
   accountService,
-  networkService,
+  chainService,
   tokenService,
   safeService,
   requestEditService,
@@ -584,7 +584,7 @@ export function createProductionMainApp({
       platformService,
       settingsService,
       accountService,
-      networkService,
+      chainService,
       tokenService,
       safeService,
       requestEditService,
@@ -652,9 +652,9 @@ export function createProductionMainApp({
         provider.start()
         nameResolution.start()
         proxy.start()
-        // Images download only while outbound is open. Restarting the service retries what failed.
+        // Images download only while the internet is open. Restarting the service retries what failed.
         disconnectCapabilities.push(
-          outbound.subscribe((open) => (open ? imageService.start() : imageService.dispose()))
+          internet.subscribe((open) => (open ? imageService.start() : imageService.dispose()))
         )
         app.start()
       } catch (error) {

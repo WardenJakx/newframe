@@ -32,8 +32,8 @@ it('keeps portfolio groups, asset actions, and pagination independent', async ()
       dust: [balance('DUST', 0.001), balance('TINY', 0.002)]
     },
     imageCapability: { hydrateTokenImage: async () => {} },
-    networks: { 1: { name: 'Ethereum' } },
-    networksMeta: {},
+    chains: { 1: { name: 'Ethereum' } },
+    chainsMeta: {},
     onChangeQuery: mock(() => {}),
     onOpenAsset: mock(() => {}),
     onShowMoreDust: mock(() => {}),

@@ -63,8 +63,8 @@ export function SafeProposalDetailsView({
   deployment,
   proposal,
   simulation,
-  networkName,
-  networkIcon,
+  chainName,
+  chainIcon,
   symbol,
   decimals = 18,
   originName,
@@ -81,8 +81,8 @@ export function SafeProposalDetailsView({
   deployment: SafeDeployment
   proposal: SafeProposal
   simulation: SafePreview
-  networkName: string
-  networkIcon?: string
+  chainName: string
+  chainIcon?: string
   symbol: string
   decimals?: number
   originName?: string
@@ -249,9 +249,9 @@ export function SafeProposalDetailsView({
       capabilities={capabilities}
       originName={originName ?? review.origin}
       favicon={favicon}
-      network={{ name: networkName, isTestnet }}
-      networkMetadata={{ nativeCurrency: { symbol, decimals } }}
-      networkIcon={networkIcon}
+      chain={{ name: chainName, isTestnet }}
+      chainMetadata={{ nativeCurrency: { symbol, decimals } }}
+      chainIcon={chainIcon}
       nativeCurrencyRate={nativeCurrencyRate}
       identities={identities}
       tokens={tokens}

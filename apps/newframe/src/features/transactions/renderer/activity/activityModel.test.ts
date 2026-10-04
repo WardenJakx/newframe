@@ -9,14 +9,14 @@ import {
 } from './activityModel.ts'
 
 describe('activityModel', () => {
-  it('filters activity by account and selected network', () => {
+  it('filters activity by account and selected chain', () => {
     const rows = createActivityRows({
       accountAddress: '0xabc',
       activity: {
         one: { id: 'one', account: '0xAbC', chainId: 1, submittedAt: 1 },
         two: { id: 'two', account: '0xabc', chainId: 10, submittedAt: 2 }
       },
-      networks: { 1: { on: true }, 10: { on: true } },
+      chains: { 1: { on: true }, 10: { on: true } },
       selectedChainId: 10,
       showTestnets: false
     })
@@ -42,7 +42,7 @@ describe('activityModel', () => {
         createActivityRows({
           accountAddress,
           activity,
-          networks: { 1: { on: true }, 10: { on: true } },
+          chains: { 1: { on: true }, 10: { on: true } },
           selectedChainId,
           showTestnets: false
         })
@@ -81,7 +81,7 @@ describe('activityModel', () => {
         createActivityRows({
           accountAddress,
           activity,
-          networks: { 1: { on: true } },
+          chains: { 1: { on: true } },
           selectedChainId: 0,
           showTestnets: false
         })

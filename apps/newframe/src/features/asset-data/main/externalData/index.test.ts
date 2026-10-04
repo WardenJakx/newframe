@@ -1,7 +1,7 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, jest as timers, mock } from 'bun:test'
 
 import { DEFAULT_PROFILE_ID } from '../../../../app/contracts/state/main.ts'
-import { createOutbound } from '../../../../platform/outbound/index.ts'
+import { createInternet } from '../../../../platform/internet/index.ts'
 import createCanonicalStore from '../../../../platform/state-store/createCanonicalStore.ts'
 import store from '../../../../platform/state-store/index.ts'
 import type { Account } from '../../../accounts/domain/state/account.ts'
@@ -27,7 +27,7 @@ beforeEach(() => {
   })
 
   mockBalances = {
-    addNetworks: mock(),
+    addChains: mock(),
     addTokens: mock(),
     start: mock(() => true),
     stop: mock(),
@@ -37,7 +37,7 @@ beforeEach(() => {
     refreshPositions: mock(),
     setAddress: mock()
   }
-  dataManager = externalData(store, outbound())
+  dataManager = externalData(store, internet())
 })
 
 afterEach(() => {
@@ -47,7 +47,7 @@ afterEach(() => {
 
 function createBalancesMock(start = mock(() => true)) {
   return {
-    addNetworks: mock(),
+    addChains: mock(),
     addTokens: mock(),
     start,
     stop: mock(),
@@ -75,8 +75,8 @@ function accountState(address: string, lastSignerType: string): Account {
   }
 }
 
-function outbound(open = true) {
-  const gate = createOutbound(fetch)
+function internet(open = true) {
+  const gate = createInternet(fetch)
   gate.setOpen(open)
   return gate
 }
@@ -103,33 +103,33 @@ function isolatedStore(address?: string, signerType = 'ledger') {
   return isolated
 }
 
-describe('outbound lifecycle', () => {
+describe('internet lifecycle', () => {
   const normalAddress = '0x0000000000000000000000000000000000004444'
   const watchAddress = '0x0000000000000000000000000000000000005555'
 
-  it('does not start while outbound traffic is closed', () => {
+  it('does not start while the internet is closed', () => {
     const balances = createBalancesMock()
     mockBalancesFactory.mockImplementationOnce(() => balances)
 
-    const scanner = externalData(isolatedStore(), outbound(false))
+    const scanner = externalData(isolatedStore(), internet(false))
 
     expect(balances.start.mock.calls).toHaveLength(0)
 
     scanner.close()
   })
 
-  it('starts once outbound traffic opens and immediately scans normal and watch accounts appropriately', () => {
+  it('starts once the internet opens and immediately scans normal and watch accounts appropriately', () => {
     const normalBalances = createBalancesMock()
     const watchBalances = createBalancesMock()
-    const normalOutbound = outbound(false)
-    const watchOutbound = outbound(false)
+    const normalInternet = internet(false)
+    const watchInternet = internet(false)
     mockBalancesFactory.mockImplementationOnce(() => normalBalances)
     mockBalancesFactory.mockImplementationOnce(() => watchBalances)
-    const normalScanner = externalData(isolatedStore(normalAddress), normalOutbound)
-    const watchScanner = externalData(isolatedStore(watchAddress, 'Address'), watchOutbound)
+    const normalScanner = externalData(isolatedStore(normalAddress), normalInternet)
+    const watchScanner = externalData(isolatedStore(watchAddress, 'Address'), watchInternet)
 
-    normalOutbound.setOpen(true)
-    watchOutbound.setOpen(true)
+    normalInternet.setOpen(true)
+    watchInternet.setOpen(true)
 
     expect(normalBalances.start.mock.calls).toHaveLength(1)
     expect(normalBalances.setAddress.mock.calls).toEqual([[normalAddress]])
@@ -142,9 +142,9 @@ describe('outbound lifecycle', () => {
     watchScanner.close()
   })
 
-  it('stops when outbound traffic closes and ignores repeated equivalent transitions', () => {
+  it('stops when the internet closes and ignores repeated equivalent transitions', () => {
     const balances = createBalancesMock()
-    const gate = outbound(false)
+    const gate = internet(false)
     mockBalancesFactory.mockImplementationOnce(() => balances)
     const scanner = externalData(isolatedStore(normalAddress), gate)
 
@@ -159,10 +159,10 @@ describe('outbound lifecycle', () => {
     scanner.close()
   })
 
-  it('ignores manual refresh while outbound traffic is closed', () => {
+  it('ignores manual refresh while the internet is closed', () => {
     const balances = createBalancesMock()
     mockBalancesFactory.mockImplementationOnce(() => balances)
-    const scanner = externalData(isolatedStore(normalAddress), outbound(false))
+    const scanner = externalData(isolatedStore(normalAddress), internet(false))
 
     scanner.refreshBalances(normalAddress)
     scanner.refreshPositions(normalAddress, 1, [])
@@ -179,7 +179,7 @@ describe('outbound lifecycle', () => {
     const start = mock(() => ++startCount > 1)
     const balances = createBalancesMock(start)
     mockBalancesFactory.mockImplementationOnce(() => balances)
-    const scanner = externalData(isolatedStore(normalAddress), outbound())
+    const scanner = externalData(isolatedStore(normalAddress), internet())
 
     scanner.refreshBalances(normalAddress)
 
@@ -195,7 +195,7 @@ describe('outbound lifecycle', () => {
     const start = mock(() => ++startCount > 1)
     const balances = createBalancesMock(start)
     mockBalancesFactory.mockImplementationOnce(() => balances)
-    const scanner = externalData(isolatedStore(normalAddress), outbound())
+    const scanner = externalData(isolatedStore(normalAddress), internet())
 
     scanner.refreshPositions(normalAddress, 1, [])
 
@@ -206,13 +206,13 @@ describe('outbound lifecycle', () => {
     scanner.close()
   })
 
-  it('does not replay pending store refreshes after outbound traffic closes and reopens', () => {
+  it('does not replay pending store refreshes after the internet closes and reopens', () => {
     const balances = createBalancesMock()
     const scannerStore = isolatedStore()
-    const gate = outbound()
+    const gate = internet()
     mockBalancesFactory.mockImplementationOnce(() => balances)
     const scanner = externalData(scannerStore, gate)
-    balances.addNetworks.mockClear()
+    balances.addChains.mockClear()
     balances.addTokens.mockClear()
     balances.refresh.mockClear()
     balances.setAddress.mockClear()
@@ -220,9 +220,9 @@ describe('outbound lifecycle', () => {
     scannerStore.setState((state) => {
       state.main.accounts[normalAddress] = accountState(normalAddress, 'ledger')
       state.main.currentAccount = normalAddress
-      const network = Object.values(state.main.networks.ethereum).at(0)
-      if (network) {
-        network.connection.primary.connected = true
+      const chain = Object.values(state.main.chains.ethereum).at(0)
+      if (chain) {
+        chain.connection.primary.connected = true
       }
       state.main.tokens = { ...state.main.tokens }
     })
@@ -230,12 +230,12 @@ describe('outbound lifecycle', () => {
     gate.setOpen(true)
 
     expect(balances.setAddress.mock.calls).toEqual([[normalAddress]])
-    expect(balances.addNetworks.mock.calls).toHaveLength(0)
+    expect(balances.addChains.mock.calls).toHaveLength(0)
     expect(balances.addTokens.mock.calls).toHaveLength(0)
 
     timers.advanceTimersByTime(1_000)
 
-    expect(balances.addNetworks.mock.calls).toHaveLength(0)
+    expect(balances.addChains.mock.calls).toHaveLength(0)
     expect(balances.addTokens.mock.calls).toHaveLength(0)
     expect(balances.refresh.mock.calls).toHaveLength(0)
     expect(balances.setAddress.mock.calls).toEqual([[normalAddress]])
@@ -243,9 +243,9 @@ describe('outbound lifecycle', () => {
     scanner.close()
   })
 
-  it('unsubscribes from outbound traffic when closed', () => {
+  it('unsubscribes from the internet when closed', () => {
     const balances = createBalancesMock()
-    const gate = outbound(false)
+    const gate = internet(false)
     mockBalancesFactory.mockImplementationOnce(() => balances)
     const scanner = externalData(isolatedStore(normalAddress), gate)
 
@@ -292,7 +292,7 @@ it('keeps refresh state and lifecycle isolated across two production scanner ins
   const firstStore = createCanonicalStore(memoryStorage).store
   const secondStore = createCanonicalStore(memoryStorage).store
   const scannerBalances = () => ({
-    addNetworks: mock(),
+    addChains: mock(),
     addTokens: mock(),
     start: mock(() => true),
     stop: mock(),
@@ -306,8 +306,8 @@ it('keeps refresh state and lifecycle isolated across two production scanner ins
   const secondBalances = scannerBalances()
   mockBalancesFactory.mockImplementationOnce(() => firstBalances)
   mockBalancesFactory.mockImplementationOnce(() => secondBalances)
-  const firstScanner = externalData(firstStore, outbound())
-  const secondScanner = externalData(secondStore, outbound())
+  const firstScanner = externalData(firstStore, internet())
+  const secondScanner = externalData(secondStore, internet())
   const firstAddress = '0x0000000000000000000000000000000000001111'
   const secondAddress = '0x0000000000000000000000000000000000002222'
 
@@ -351,7 +351,7 @@ it('keeps refresh state and lifecycle isolated across two production scanner ins
 
 it('cancels pending store-driven scans when closed', () => {
   const address = '0x0000000000000000000000000000000000003333'
-  mockBalances.addNetworks.mockClear()
+  mockBalances.addChains.mockClear()
   mockBalances.addTokens.mockClear()
   mockBalances.refresh.mockClear()
   mockBalances.setAddress.mockClear()
@@ -359,9 +359,9 @@ it('cancels pending store-driven scans when closed', () => {
   store.setState((state) => {
     state.main.accounts[address] = accountState(address, 'ledger')
     state.main.currentAccount = address
-    const network = Object.values(state.main.networks.ethereum).at(0)
-    if (network) {
-      network.connection.primary.connected = true
+    const chain = Object.values(state.main.chains.ethereum).at(0)
+    if (chain) {
+      chain.connection.primary.connected = true
     }
     state.main.tokens = { ...state.main.tokens }
   })
@@ -370,13 +370,13 @@ it('cancels pending store-driven scans when closed', () => {
   timers.advanceTimersByTime(1_000)
 
   expect({
-    addNetworks: mockBalances.addNetworks.mock.calls,
+    addChains: mockBalances.addChains.mock.calls,
     addTokens: mockBalances.addTokens.mock.calls,
     refresh: mockBalances.refresh.mock.calls,
     setAddress: mockBalances.setAddress.mock.calls,
     stopped: mockBalances.stop.mock.calls.length
   }).toEqual({
-    addNetworks: [],
+    addChains: [],
     addTokens: [],
     refresh: [],
     setAddress: [],

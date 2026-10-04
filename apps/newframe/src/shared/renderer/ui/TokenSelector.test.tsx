@@ -13,11 +13,11 @@ const fixture = registerTestRuntimeFixture()
 const utilityPorts = createUtilityPorts({
   executeCommand: (command) => fixture.client.executeCommand(command)
 })
-const networks = {
+const chains = {
   1: { name: 'Mainnet' }
 }
 
-const networksMeta = {
+const chainsMeta = {
   1: {
     icon: 'https://example.com/chain.png',
     primaryColor: 'accent1'
@@ -52,8 +52,8 @@ function ControlledSelector({ initialSelectedId = 'eth' }: { initialSelectedId?:
         ariaLabel='Choose token'
         imageCapability={utilityPorts}
         items={items}
-        networks={networks}
-        networksMeta={networksMeta}
+        chains={chains}
+        chainsMeta={chainsMeta}
         onOpenChange={setOpen}
         onSelect={setSelectedId}
         open={open}
@@ -76,8 +76,8 @@ function ChangingTokenIcon() {
         chainId={1}
         imageCapability={utilityPorts}
         logoURI={logoURI}
-        networks={networks}
-        networksMeta={networksMeta}
+        chains={chains}
+        chainsMeta={chainsMeta}
         size='md'
         symbol='BROKEN'
       />
@@ -100,8 +100,8 @@ describe('ChainTokenIcon', () => {
         <ChainTokenIcon
           chainId={1}
           imageCapability={utilityPorts}
-          networks={networks}
-          networksMeta={networksMeta}
+          chains={chains}
+          chainsMeta={chainsMeta}
           size='md'
           symbol='TKN'
           tokenId={tokenId}
@@ -124,8 +124,8 @@ describe('ChainTokenIcon', () => {
         chainId={1}
         imageCapability={utilityPorts}
         logoURI='data:image/png;base64,dG9rZW4='
-        networks={networks}
-        networksMeta={networksMeta}
+        chains={chains}
+        chainsMeta={chainsMeta}
         size='md'
         symbol='TKN'
         tokenId='1:0x1111111111111111111111111111111111111111'
@@ -140,8 +140,8 @@ describe('ChainTokenIcon', () => {
       <ChainTokenIcon
         chainId={1}
         imageCapability={utilityPorts}
-        networks={networks}
-        networksMeta={{
+        chains={chains}
+        chainsMeta={{
           1: {
             image: { base64: 'aWNvbg==', mimeType: 'image/png' },
             primaryColor: 'accent1'
@@ -160,8 +160,8 @@ describe('ChainTokenIcon', () => {
       <ChainTokenIcon
         chainId={1}
         imageCapability={utilityPorts}
-        networks={{ 1: { name: 'Newframe Local Anvil' } }}
-        networksMeta={{ 1: { primaryColor: 'accent1' } }}
+        chains={{ 1: { name: 'Newframe Local Anvil' } }}
+        chainsMeta={{ 1: { primaryColor: 'accent1' } }}
         size='md'
         symbol='USDC'
       />
@@ -177,8 +177,8 @@ describe('ChainTokenIcon', () => {
       <ChainTokenIcon
         chainId={1}
         imageCapability={utilityPorts}
-        networks={networks}
-        networksMeta={networksMeta}
+        chains={chains}
+        chainsMeta={chainsMeta}
         size='md'
         symbol='abcDEFG'
       />
@@ -193,8 +193,8 @@ describe('ChainTokenIcon', () => {
         chainId={1}
         imageCapability={utilityPorts}
         logoURI='frame-cache:icon:token'
-        networks={{ 1: { name: 'Newframe Local Anvil' } }}
-        networksMeta={{ 1: { icon: 'frame-cache:icon:chain', primaryColor: 'accent1' } }}
+        chains={{ 1: { name: 'Newframe Local Anvil' } }}
+        chainsMeta={{ 1: { icon: 'frame-cache:icon:chain', primaryColor: 'accent1' } }}
         size='md'
         symbol='USDC'
       />
@@ -212,8 +212,8 @@ describe('ChainTokenIcon', () => {
         chainId={1}
         imageCapability={utilityPorts}
         logoURI='data:image/png;base64,YnJva2Vu'
-        networks={networks}
-        networksMeta={networksMeta}
+        chains={chains}
+        chainsMeta={chainsMeta}
         size='md'
         symbol='BROKEN'
       />
@@ -256,8 +256,8 @@ describe('TokenSelector', () => {
         imageCapability={utilityPorts}
         items={items.slice(0, 1)}
         searchableItems={items}
-        networks={networks}
-        networksMeta={networksMeta}
+        chains={chains}
+        chainsMeta={chainsMeta}
         onOpenChange={() => {}}
         onSelect={() => {}}
         open

@@ -28,13 +28,13 @@ export function useSafeQueue({
   onRecoverSigner?: (signerId: string) => void
   onAirGapSigning?: (reference: AirGapRequestReference) => void
 }) {
-  const { account, networks, metadata, accounts, currentProfile } = useWalletSelector(
+  const { account, chains, metadata, accounts, currentProfile } = useWalletSelector(
     useShallow((state) => ({
       account: (state.accounts as Partial<typeof state.accounts>)[accountId],
       accounts: state.accounts as Partial<typeof state.accounts>,
       currentProfile: state.currentProfile,
-      networks: state.networks.ethereum,
-      metadata: state.networksMeta.ethereum
+      chains: state.chains.ethereum,
+      metadata: state.chainsMeta.ethereum
     }))
   )
   const safe = account?.profileId === currentProfile ? account.safe : undefined
@@ -124,7 +124,7 @@ export function useSafeQueue({
   } else if (ownerSelection.account && !selectedOwner) {
     setOwnerSelection({ scope: ownerScope, account: null })
   }
-  const network = deployment ? networks[deployment.chainId] : undefined
+  const chain = deployment ? chains[deployment.chainId] : undefined
   const { scope, preview } = useSafeProposalSimulation({
     accountId,
     scope: ownerScope,
@@ -146,26 +146,26 @@ export function useSafeQueue({
       />
     )
   }
-  const networkIcons = Object.fromEntries(
+  const chainIcons = Object.fromEntries(
     Object.values(safe ?? {}).map((deployment) => [
       deployment.chainId,
       <ChainIcon
         key={deployment.chainId}
         chainId={deployment.chainId}
-        networks={networks}
-        networksMeta={metadata}
+        chains={chains}
+        chainsMeta={metadata}
       />
     ])
   )
   const currency = deployment ? metadata[deployment.chainId]?.nativeCurrency : undefined
-  const networkIcon = deployment ? persistedImageSource(metadata[deployment.chainId]?.image) : undefined
+  const chainIcon = deployment ? persistedImageSource(metadata[deployment.chainId]?.image) : undefined
   const origins = useOrigins()
   const tokens = useTokens()
   const origin = proposal?.local?.origin
   const nativeCurrencyRate = useAssetRate({
     chainId: chainId ?? 1,
     address: NATIVE_CURRENCY,
-    nativeTicker: currency?.symbol ?? network?.symbol ?? '?'
+    nativeTicker: currency?.symbol ?? chain?.symbol ?? '?'
   })
   const confirmation = useSafeConfirmation({
     identity:
@@ -187,7 +187,7 @@ export function useSafeQueue({
           deployment?.configuration.nonce,
           deployment?.configuration.owners,
           deployment?.configuration.threshold,
-          network
+          chain
         ])
       : '',
     capability: capabilities.safe,
@@ -319,28 +319,28 @@ export function useSafeQueue({
             actions,
             simulation: preview,
             capabilities,
-            networkName: network?.name ?? `Chain ${deployment.chainId}`,
-            networkIcon,
-            symbol: currency?.symbol ?? network?.symbol ?? 'native',
+            chainName: chain?.name ?? `Chain ${deployment.chainId}`,
+            chainIcon,
+            symbol: currency?.symbol ?? chain?.symbol ?? 'native',
             decimals: currency?.decimals ?? 18,
             originName: origin ? origins[origin]?.name || origin : 'Safe proposal',
             favicon: origin ? persistedImageSource(origins[origin]?.image) : undefined,
             accountName: account?.name ?? account?.ensName,
-            isTestnet: Boolean(network?.isTestnet),
+            isTestnet: Boolean(chain?.isTestnet),
             nativeCurrencyRate,
             tokens
           }
         : undefined,
     back: () => setSelection(null),
     queue: {
-      networkIcons,
+      chainIcons,
       deployments: Object.values(safe ?? {}),
-      networkNames: Object.fromEntries(Object.entries(networks).map(([id, network]) => [id, network.name])),
+      chainNames: Object.fromEntries(Object.entries(chains).map(([id, chain]) => [id, chain.name])),
       currencies: Object.fromEntries(
-        Object.entries(networks).map(([id, network]) => [
+        Object.entries(chains).map(([id, chain]) => [
           id,
           {
-            symbol: (metadata[Number(id)]?.nativeCurrency?.symbol || network.symbol) ?? 'native',
+            symbol: (metadata[Number(id)]?.nativeCurrency?.symbol || chain.symbol) ?? 'native',
             decimals: (metadata as Partial<typeof metadata>)[Number(id)]?.nativeCurrency?.decimals ?? 18
           }
         ])

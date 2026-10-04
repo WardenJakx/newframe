@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, jest as timers, mock } from 'bun:test'
 
 import store from '../../../../platform/state-store/index.ts'
+import type { Chain, ChainMetadata } from '../../../chains/domain/state/chain.ts'
 import type { Origin } from '../../../connections/domain/state/origin.ts'
-import type { Chain, ChainMetadata } from '../../../networks/domain/state/chain.ts'
 import { createChainsObserver, createOriginChainObserver, getActiveChains } from './chains.ts'
 
 const ether = {
@@ -20,7 +20,7 @@ const connection = (connected: boolean) => ({
   custom: ''
 })
 
-const network = (id: number, name: string, on: boolean, connected: boolean, explorer = ''): Chain => ({
+const testChain = (id: number, name: string, on: boolean, connected: boolean, explorer = ''): Chain => ({
   id,
   type: 'ethereum',
   name,
@@ -31,9 +31,9 @@ const network = (id: number, name: string, on: boolean, connected: boolean, expl
 })
 
 const chains: Record<number, Chain> = {
-  1: network(1, 'Ethereum Mainnet', true, true, 'https://etherscan.io'),
-  137: network(137, 'Polygon', false, true),
-  11155111: network(11155111, 'Ethereum Testnet Sepolia', true, false, 'https://sepolia.etherscan.io')
+  1: testChain(1, 'Ethereum Mainnet', true, true, 'https://etherscan.io'),
+  137: testChain(137, 'Polygon', false, true),
+  11155111: testChain(11155111, 'Ethereum Testnet Sepolia', true, false, 'https://sepolia.etherscan.io')
 }
 
 const metadata = (overrides: Partial<ChainMetadata> = {}): ChainMetadata => ({
@@ -82,7 +82,7 @@ describe('#getActiveChains', () => {
     })
   })
 
-  it('does not substitute native-currency art for a missing network icon', () => {
+  it('does not substitute native-currency art for a missing chain icon', () => {
     const sepolia = getActiveChains(store).find((chain) => chain.chainId === 11155111)
 
     expect(sepolia?.icon).toEqual([])
@@ -93,7 +93,7 @@ describe('#createChainsObserver', () => {
   const handler = {
     chainsChanged: mock((_address: string, _chains: ReturnType<typeof getActiveChains>) => {})
   }
-  const optimism = network(10, 'Optimism', true, true, 'https://optimistic.etherscan.io')
+  const optimism = testChain(10, 'Optimism', true, true, 'https://optimistic.etherscan.io')
   let fireObserver: () => void
 
   beforeEach(() => {
@@ -205,8 +205,8 @@ describe('#createOriginChainObserver', () => {
 function setChains(chainState: Record<number, Chain>, chainMetaState: typeof chainMeta = chainMeta) {
   store.setState((state) => {
     state.main.currentAccount = selectedAddress
-    state.main.networks.ethereum = chainState
-    state.main.networksMeta.ethereum = chainMetaState
+    state.main.chains.ethereum = chainState
+    state.main.chainsMeta.ethereum = chainMetaState
   })
 }
 

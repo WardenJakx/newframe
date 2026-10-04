@@ -1,6 +1,6 @@
 import type {
-  NetworkLike,
-  NetworkMetaLike,
+  ChainLike,
+  ChainMetaLike,
   TokenSelectorItem
 } from '../../../../shared/renderer/ui/tokenSelectorTypes.ts'
 import type { SendRecipient } from './sendReducer.ts'
@@ -31,8 +31,8 @@ export interface SendViewModel {
   amount: string
   fiatValue: string
   firstTimeRecipient: boolean
-  networks: Record<string | number, NetworkLike>
-  networksMeta: Record<string | number, NetworkMetaLike>
+  chains: Record<string | number, ChainLike>
+  chainsMeta: Record<string | number, ChainMetaLike>
   recipient: SendAccountViewModel | null
   recipientAccounts: SendAccountViewModel[]
   recipientInput: string

@@ -1,6 +1,6 @@
 import { createFlashApi } from '@newframe/flash/api'
 
-import { outbound } from '../../../platform/outbound/index.ts'
+import { internet } from '../../../platform/internet/index.ts'
 import { getMainRuntime } from '../../../platform/runtime/index.ts'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
 import FlashPortfolioProvider from './providers/flash.ts'
@@ -28,7 +28,7 @@ export function getTokenDiscoveryProvider(
       return {
         ok: true,
         provider: new FlashPortfolioProvider({
-          api: createFlashApi({ runtime: getMainRuntime(), fetch: outbound.request })
+          api: createFlashApi({ runtime: getMainRuntime(), fetch: internet.request })
         })
       }
     case 'zerion': {

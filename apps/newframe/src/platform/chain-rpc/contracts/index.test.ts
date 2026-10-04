@@ -13,7 +13,7 @@ import {
 
 import log from 'electron-log'
 
-import { outbound } from '../../outbound/index.ts'
+import { internet } from '../../internet/index.ts'
 
 await mock.module('./sources/sourcify.ts', () => ({ fetchSourcifyContract: mock() }))
 await mock.module('./sources/etherscan.ts', () => ({ fetchEtherscanContract: mock() }))
@@ -46,7 +46,7 @@ const mockAbi = [
 
 beforeAll(async () => {
   log.transports.console.level = false
-  spyOn(outbound, 'request').mockImplementation((input, init) => globalThis.fetch(input, init))
+  spyOn(internet, 'request').mockImplementation((input, init) => globalThis.fetch(input, init))
   ;({ decodeCallData, decodeCallDataWithSelectorRegistry, fetchContract } = await import('./index.ts'))
   ;({ clearFunctionSelectorCache } = await import('./selectors.ts'))
   ;({ fetchSourcifyContract } = await import('./sources/sourcify.ts'))
@@ -154,7 +154,7 @@ describe('#decodeCallData', () => {
 })
 
 describe('#decodeCallDataWithSelectorRegistry', () => {
-  it('decodes local selector signatures without a network result', async () => {
+  it('decodes local selector signatures without an internet request', async () => {
     globalThis.fetch = mock(async () => ({
       ok: true,
       json: async () => ({ result: { function: {} } })

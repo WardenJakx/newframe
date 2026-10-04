@@ -43,8 +43,8 @@ function SafeTransactionRequestReview({
   const safeTxHash = req.safeTxHash ?? ''
   const account = useWalletSelector((state) => state.accounts[req.account])
   const currentProfile = useWalletSelector((state) => state.currentProfile)
-  const network = useWalletSelector((state) => state.networks.ethereum[chainId])
-  const metadata = useWalletSelector((state) => state.networksMeta.ethereum[chainId])
+  const chain = useWalletSelector((state) => state.chains.ethereum[chainId])
+  const metadata = useWalletSelector((state) => state.chainsMeta.ethereum[chainId])
   const originName = useOriginName(req.origin)
   const origins = useOrigins()
   const identities = useAddressIdentities()
@@ -123,14 +123,14 @@ function SafeTransactionRequestReview({
       proposal={proposal}
       actions={actions}
       simulation={preview}
-      networkName={network.name}
-      networkIcon={persistedImageSource(metadata.image)}
+      chainName={chain.name}
+      chainIcon={persistedImageSource(metadata.image)}
       symbol={currency.symbol}
       decimals={currency.decimals}
       originName={originName}
       favicon={persistedImageSource(origins[req.origin]?.image)}
       accountName={account.name || account.ensName}
-      isTestnet={network.isTestnet}
+      isTestnet={chain.isTestnet}
       nativeCurrencyRate={nativeCurrencyRate}
       identities={identities}
       tokens={tokens}

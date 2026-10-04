@@ -29,7 +29,7 @@ import { homeCapability } from '../capabilities/home.ts'
 import {
   activityCapability,
   connectionsCapability,
-  networksCapability,
+  chainsCapability,
   ordersCapability,
   portfolioCapability,
   securityCapability,
@@ -90,7 +90,7 @@ const HOME_CAPABILITIES: HomeCapabilities = {
   activity: activityCapability,
   connections: connectionsCapability,
   home: homeCapability,
-  networks: networksCapability,
+  chains: chainsCapability,
   orders: ordersCapability,
   portfolio: portfolioCapability,
   requests: requestCapabilities,

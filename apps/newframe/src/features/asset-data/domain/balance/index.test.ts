@@ -105,10 +105,10 @@ describe('#createBalanceSummaries', () => {
           symbol: 'TEST'
         }
       ],
-      networks: {
+      chains: {
         11155111: { isTestnet: true, name: 'Sepolia', on: true }
       },
-      networksMeta: {
+      chainsMeta: {
         11155111: { nativeCurrency: { symbol: 'ETH', decimals: 18 } }
       }
     })
@@ -152,10 +152,10 @@ describe('#createBalanceSummaries', () => {
           observedAt: 1
         }
       },
-      networks: {
+      chains: {
         1: { name: 'Mainnet', on: true }
       },
-      networksMeta: {
+      chainsMeta: {
         1: { nativeCurrency: { symbol: 'ETH', decimals: 18 } }
       },
       includeChain: (chain) => !!chain.on
@@ -187,10 +187,10 @@ describe('#createBalanceSummarySelector', () => {
         observedAt: 1
       }
     }
-    const networks = {
+    const chains = {
       1: { name: 'Mainnet', on: true }
     }
-    const networksMeta = {
+    const chainsMeta = {
       1: { nativeCurrency: { symbol: 'ETH', decimals: 18 } }
     }
     const selectBalanceSummaries = createBalanceSummarySelector()
@@ -198,24 +198,24 @@ describe('#createBalanceSummarySelector', () => {
     const first = selectBalanceSummaries({
       rawBalances,
       assetRates,
-      networks,
-      networksMeta,
+      chains,
+      chainsMeta,
       includeChain: (chain) => !!chain.on,
       cacheKey: 'mainnet'
     })
     const second = selectBalanceSummaries({
       rawBalances,
       assetRates,
-      networks,
-      networksMeta,
+      chains,
+      chainsMeta,
       includeChain: (chain) => !!chain.on,
       cacheKey: 'mainnet'
     })
     const third = selectBalanceSummaries({
       rawBalances,
       assetRates,
-      networks,
-      networksMeta,
+      chains,
+      chainsMeta,
       includeChain: () => false,
       cacheKey: 'hidden'
     })

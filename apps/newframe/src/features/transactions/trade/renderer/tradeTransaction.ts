@@ -492,22 +492,22 @@ export function createTradeBalanceIndex(balances: BalanceSummary[]) {
   return balanceIndex
 }
 
-function networkEnabled(networks: Record<string | number, { on?: boolean }>, chainId: number) {
-  const sparseNetworks: Partial<typeof networks> = networks
-  const network = sparseNetworks[chainId] ?? sparseNetworks[String(chainId)]
+function chainEnabled(chains: Record<string | number, { on?: boolean }>, chainId: number) {
+  const sparseChains: Partial<typeof chains> = chains
+  const chain = sparseChains[chainId] ?? sparseChains[String(chainId)]
 
-  return network?.on !== false
+  return chain?.on !== false
 }
 
 export function buildTradeAssetOptions({
   balances,
-  networks = {},
-  networksMeta = {},
+  chains = {},
+  chainsMeta = {},
   runtime = {}
 }: {
   balances: BalanceSummary[]
-  networks?: Record<string | number, { on?: boolean }>
-  networksMeta?: Record<
+  chains?: Record<string | number, { on?: boolean }>
+  chainsMeta?: Record<
     string | number,
     { nativeCurrency?: { decimals?: number; name?: string; symbol?: string } }
   >
@@ -518,7 +518,7 @@ export function buildTradeAssetOptions({
     if (!isFlashChainSupported(asset.chainId, runtime)) {
       return
     }
-    if (!networkEnabled(networks, asset.chainId)) {
+    if (!chainEnabled(chains, asset.chainId)) {
       return
     }
     assets.set(getTradeAssetKey(asset), asset)
@@ -532,13 +532,13 @@ export function buildTradeAssetOptions({
     }
   })
 
-  Object.keys(networks).forEach((chainIdValue) => {
+  Object.keys(chains).forEach((chainIdValue) => {
     const chainId = Number(chainIdValue)
     if (!Number.isInteger(chainId) || chainId <= 0) {
       return
     }
 
-    const sparseMetadata: Partial<typeof networksMeta> = networksMeta
+    const sparseMetadata: Partial<typeof chainsMeta> = chainsMeta
     const nativeCurrency = (sparseMetadata[chainId] ?? sparseMetadata[String(chainId)])?.nativeCurrency
     if (!nativeCurrency?.symbol) {
       return
@@ -560,7 +560,7 @@ export function buildTradeAssetOptions({
     }
   })
 
-  if (isFlashChainSupported(31337, runtime) && networkEnabled(networks, 31337)) {
+  if (isFlashChainSupported(31337, runtime) && chainEnabled(chains, 31337)) {
     getFlashAssetsForChain(31337).forEach(addAsset)
   }
 

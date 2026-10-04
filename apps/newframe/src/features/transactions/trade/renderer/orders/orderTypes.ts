@@ -1,5 +1,5 @@
 import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections.ts'
-import type { NetworkLike, NetworkMetaLike } from '../../../../../shared/renderer/ui/tokenSelectorTypes.ts'
+import type { ChainLike, ChainMetaLike } from '../../../../../shared/renderer/ui/tokenSelectorTypes.ts'
 
 type OrderRecord = WalletRendererState['orders'][string]
 export type OrderAsset = Partial<OrderRecord['targetAsset']> & {
@@ -18,6 +18,6 @@ export type OrderModel = Partial<
   targetAsset?: OrderAsset
 }
 export type OrderRow = OrderModel & { orderId: string }
-export type OrderNetworkMap = Record<string | number, NetworkLike & { isTestnet?: boolean }>
-export type OrderNetworkMetadataMap = Record<string | number, NetworkMetaLike>
+export type OrderChainMap = Record<string | number, ChainLike & { isTestnet?: boolean }>
+export type OrderChainMetadataMap = Record<string | number, ChainMetaLike>
 export type OrderTokenCatalog = WalletRendererState['tokens']

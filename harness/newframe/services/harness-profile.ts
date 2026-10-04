@@ -9,15 +9,16 @@ import type { HarnessService } from '../core/service.ts'
 const sourceProfile =
   process.env.NEWFRAME_DEV_PROFILE ?? path.join(homedir(), 'Library/Application Support/Newframe dev')
 
+type StoredChains = {
+  ethereum?: Record<string, { connection?: { primary?: { custom?: string } } }>
+}
+
 type PersistedConfig = {
   zustand?: {
     'canonical-wallet-state'?: {
       state?: {
-        main?: {
-          networks?: {
-            ethereum?: Record<string, { connection?: { primary?: { custom?: string } } }>
-          }
-        }
+        // Before v8, chains were stored under `networks`.
+        main?: Partial<Record<'chains' | 'networks', StoredChains>>
       }
     }
   }
@@ -26,9 +27,8 @@ type PersistedConfig = {
 // The canonical profile's local chain points at the regular development Anvil.
 async function pointAnvilChainAtHarness(configPath: string) {
   const config = JSON.parse(await readFile(configPath, 'utf8')) as PersistedConfig
-  const primary =
-    config.zustand?.['canonical-wallet-state']?.state?.main?.networks?.ethereum?.[anvilChainId]?.connection
-      ?.primary
+  const main = config.zustand?.['canonical-wallet-state']?.state?.main
+  const primary = (main?.chains ?? main?.networks)?.ethereum?.[anvilChainId]?.connection?.primary
   if (primary) {
     primary.custom = anvilRpcUrl
     await writeFile(configPath, JSON.stringify(config))

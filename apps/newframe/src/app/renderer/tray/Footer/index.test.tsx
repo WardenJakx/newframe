@@ -178,7 +178,7 @@ const signingState = () =>
       signers: { 'signer-1': { id: 'signer-1' } },
       appLock: { locked: false },
       mute: { explorerWarning: false },
-      networks: { ethereum: {} }
+      chains: { ethereum: {} }
     }
   })
 

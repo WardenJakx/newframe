@@ -8,7 +8,7 @@ import log from 'electron-log'
 import { createProductionAccountOnboardingAdapters } from '../../features/accounts/main/accountOnboarding/production.ts'
 import { createProductionAccountsRuntime } from '../../features/accounts/main/production.ts'
 import { createProductionImageServiceAdapters } from '../../features/asset-data/main/images/production.ts'
-import { lookupChainlistIcon, rpcMatchesChain } from '../../features/networks/main/production.ts'
+import { lookupChainlistIcon, rpcMatchesChain } from '../../features/chains/main/production.ts'
 import { createProductionPortfolioAdapters } from '../../features/portfolio/main/production.ts'
 import { createProductionSecurityAdapters } from '../../features/security/main/production.ts'
 import { createBundledTokenService } from '../../features/tokens/main/tokens.ts'
@@ -18,8 +18,8 @@ import menu from '../../platform/desktop/menu.ts'
 import { lockWithSystem } from '../../platform/desktop/systemLock.ts'
 import { showUnhandledExceptionDialog } from '../../platform/desktop/windows/dialog.ts'
 import windows from '../../platform/desktop/windows/index.ts'
-import { installOutboundDefaults, outbound } from '../../platform/outbound/index.ts'
-import { routeOutbound } from '../../platform/outbound/tor.ts'
+import { installInternetDefaults, internet } from '../../platform/internet/index.ts'
+import { routeInternet } from '../../platform/internet/tor.ts'
 import { createProductionPersistencePorts } from '../../platform/persistence/index.ts'
 import { getErrorCode } from '../../platform/runtime/errors.ts'
 import { isVisualHarness } from '../../platform/runtime/visualHarness.ts'
@@ -33,7 +33,7 @@ import { createProductionApiServer } from './api/index.ts'
 import { createProductionCapabilities, createProductionMainApp } from './composition/index.ts'
 import { createProductionPlatformAdapters } from './platform/production.ts'
 
-installOutboundDefaults()
+installInternetDefaults()
 
 const signers = new Signers({ biometrics, store, vault })
 const updater = new Updater(store)
@@ -91,7 +91,7 @@ const {
   tradeService,
   sideTrayTransactions,
   settingsService,
-  networkService,
+  chainService,
   tokenService,
   safeService
 } = createProductionCapabilities(store, {
@@ -117,7 +117,7 @@ const {
     store,
     trezorBridge: TrezorBridge
   }),
-  network: { lookupChainIcon: lookupChainlistIcon, rpcMatchesChain }
+  chain: { lookupChainIcon: lookupChainlistIcon, rpcMatchesChain }
 })
 const mainApp = createProductionMainApp({
   accountCapabilities,
@@ -147,7 +147,7 @@ const mainApp = createProductionMainApp({
   sideTrayTransactions,
   settingsService,
   store,
-  networkService,
+  chainService,
   tokenService,
   safeService
 })
@@ -191,7 +191,7 @@ process.on('unhandledRejection', (e) => {
 })
 
 function startUpdater() {
-  outbound.subscribe((open) => (open ? updater.start() : updater.stop()))
+  internet.subscribe((open) => (open ? updater.start() : updater.stop()))
 }
 
 let domainServicesStarted = false
@@ -247,7 +247,7 @@ void app.whenReady().then(async () => {
     app.quit()
     return
   }
-  routeOutbound(outbound, store.getState().main.torEnabled, (status) => store.getState().setTorStatus(status))
+  routeInternet(internet, store.getState().main.torEnabled, (status) => store.getState().setTorStatus(status))
   signers.start()
   accounts.start()
   const biometricUnlockEnabled = biometrics.summary().enabled
@@ -261,10 +261,10 @@ void app.whenReady().then(async () => {
   })
   configureWebAuthn()
   startDomainServices()
-  // Outbound traffic stays closed until stored state has loaded and its route is ready, then follows the lock.
+  // The internet stays closed until stored state has loaded and its route is ready, then follows the lock.
   store.subscribe(
     (state) => state.main.appLock.locked,
-    (locked) => outbound.setOpen(!locked),
+    (locked) => internet.setOpen(!locked),
     { fireImmediately: true }
   )
   menu()

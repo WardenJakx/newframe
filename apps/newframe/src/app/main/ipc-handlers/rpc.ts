@@ -12,6 +12,9 @@ import packageFile from '../../../../package.json' with { type: 'json' }
 import { hasAddress } from '../../../features/accounts/domain/index.ts'
 import { safeDecodedSchema } from '../../../features/accounts/domain/safe.ts'
 import type { SafeTransactionPort } from '../../../features/accounts/main/safeTransactionPort.ts'
+import type { Chains } from '../../../features/chains/main/index.ts'
+import type { Chain } from '../../../features/chains/main/index.ts'
+import { estimateL1GasCost } from '../../../features/chains/main/l1GasFees.ts'
 import { activeExtensionAccountId } from '../../../features/connections/domain/extensionAccess.ts'
 import type { OriginsService } from '../../../features/connections/main/origins.ts'
 import type { AccountRequestPort } from '../../../features/connections/main/provider/accountRequestPort.ts'
@@ -34,9 +37,6 @@ import {
   hasSubscriptionPermission
 } from '../../../features/connections/main/provider/subscriptions.ts'
 import { getVersionFromTypedData } from '../../../features/connections/main/provider/typedData.ts'
-import type { Chains } from '../../../features/networks/main/index.ts'
-import type { Chain } from '../../../features/networks/main/index.ts'
-import { estimateL1GasCost } from '../../../features/networks/main/l1GasFees.ts'
 import type {
   TransactionRequest,
   SignTypedDataRequest,
@@ -343,7 +343,7 @@ export class RpcIpcHandlers extends EventEmitter {
 
     this.storeUnsubscribes.push(
       this.store.subscribe(
-        (state) => [state.main.networks.ethereum, state.main.networksMeta.ethereum] as const,
+        (state) => [state.main.chains.ethereum, state.main.chainsMeta.ethereum] as const,
         chainsObserver,
         { equalityFn: shallow }
       ),
@@ -367,7 +367,7 @@ export class RpcIpcHandlers extends EventEmitter {
             state.main.currentAccount,
             state.main.accounts,
             state.main.balances,
-            state.main.networksMeta.ethereum,
+            state.main.chainsMeta.ethereum,
             state.main.assetRates
           ] as const,
         assetsObserver,
@@ -376,18 +376,18 @@ export class RpcIpcHandlers extends EventEmitter {
     )
   }
 
-  private network(chainId: number) {
-    const networks = this.store.getState().main.networks.ethereum as Record<
+  private chain(chainId: number) {
+    const chains = this.store.getState().main.chains.ethereum as Record<
       number,
-      ReturnType<typeof this.store.getState>['main']['networks']['ethereum'][number] | undefined
+      ReturnType<typeof this.store.getState>['main']['chains']['ethereum'][number] | undefined
     >
-    return networks[chainId]
+    return chains[chainId]
   }
 
-  private networkMetadata(chainId: number) {
-    const metadata = this.store.getState().main.networksMeta.ethereum as Record<
+  private chainMetadata(chainId: number) {
+    const metadata = this.store.getState().main.chainsMeta.ethereum as Record<
       number,
-      ReturnType<typeof this.store.getState>['main']['networksMeta']['ethereum'][number] | undefined
+      ReturnType<typeof this.store.getState>['main']['chainsMeta']['ethereum'][number] | undefined
     >
     return metadata[chainId]
   }
@@ -494,7 +494,7 @@ export class RpcIpcHandlers extends EventEmitter {
   }
 
   getNetVersion(payload: RPCRequestPayload, res: RPCRequestCallback, targetChain: Chain) {
-    const chain = this.network(targetChain.id)
+    const chain = this.chain(targetChain.id)
     const response = chain?.on
       ? { result: targetChain.id }
       : { error: { message: 'not connected', code: -1 } }
@@ -503,7 +503,7 @@ export class RpcIpcHandlers extends EventEmitter {
   }
 
   getChainId(payload: RPCRequestPayload, res: RPCSuccessCallback, targetChain: Chain) {
-    const chain = this.network(targetChain.id)
+    const chain = this.chain(targetChain.id)
     const response = chain?.on
       ? { result: intToHex(targetChain.id) }
       : { error: { message: 'not connected', code: -1 } }
@@ -1461,7 +1461,7 @@ export class RpcIpcHandlers extends EventEmitter {
       }
 
       // Check if chain exists
-      const exists = Boolean(this.store.getState().main.networks.ethereum[chainId]?.on)
+      const exists = Boolean(this.store.getState().main.chains.ethereum[chainId]?.on)
       if (!exists) {
         const err: EVMError = { message: 'Chain does not exist', code: 4902 }
         return resError(err, payload, res)
@@ -1506,7 +1506,7 @@ export class RpcIpcHandlers extends EventEmitter {
       return resError('Invalid chain id', payload, res)
     }
 
-    const existing = this.network(id)
+    const existing = this.chain(id)
     if (existing?.on) {
       return this.switchEthereumChain(payload, res)
     }
@@ -1544,7 +1544,7 @@ export class RpcIpcHandlers extends EventEmitter {
     const customRpcUrls = rpcUrls as string[]
     const customExplorerUrls = blockExplorerUrls as string[]
 
-    const metadata = this.networkMetadata(id)
+    const metadata = this.chainMetadata(id)
     let icon = typeof metadata?.icon === 'string' ? metadata.icon.trim() : ''
     if (!icon && this.lookupChainIcon) {
       try {
@@ -1611,10 +1611,10 @@ export class RpcIpcHandlers extends EventEmitter {
       return resError('invalid token chain ID', payload, cb)
     }
     const chainId = Number(requestedChainId)
-    const network = (
-      this.store.getState().main.networks.ethereum as Record<number, { on: boolean } | undefined>
-    )[chainId]
-    if (!network?.on) {
+    const chain = (this.store.getState().main.chains.ethereum as Record<number, { on: boolean } | undefined>)[
+      chainId
+    ]
+    if (!chain?.on) {
       return resError('token chain is not connected', payload, cb)
     }
 

@@ -106,7 +106,7 @@ it('imports through real HTTP, merges chains, retains queue on later-page failur
     operations,
     client: createSafeClient({
       request: fetch,
-      networks: { '1': `${server.url}api`, '100': `${server.url}api` }
+      chains: { '1': `${server.url}api`, '100': `${server.url}api` }
     })
   })
   cleanup.push(() => service.dispose())
@@ -149,7 +149,7 @@ it('creates nothing for invalid info and rejects cross-profile imports', async (
     accounts,
     store,
     operations,
-    client: createSafeClient({ request: fetch, networks: { '1': `${server.url}api` } })
+    client: createSafeClient({ request: fetch, chains: { '1': `${server.url}api` } })
   })
   cleanup.push(() => service.dispose())
   service.import({ type: 'account.create', source: 'safe', operationId: 'bad', address, chainId: 1 }, owner)
@@ -222,7 +222,7 @@ it('imports valid configuration when the initial queue fails, leaving pending un
     accounts,
     store,
     operations,
-    client: createSafeClient({ request: fetch, networks: { '1': `${server.url}api` } })
+    client: createSafeClient({ request: fetch, chains: { '1': `${server.url}api` } })
   })
   cleanup.push(() => service.dispose())
   service.import(
@@ -239,9 +239,9 @@ it('imports valid configuration when the initial queue fails, leaving pending un
 
 it('probes all configured chains, retains successes and discards stale discovery after disposal', async () => {
   const { store, accounts, operations } = setup()
-  const networks = Object.values(store.getState().main.networks.ethereum)
-  expect(networks.length).toBeGreaterThan(1)
-  const found = networks[networks.length - 1]
+  const chains = Object.values(store.getState().main.chains.ethereum)
+  expect(chains.length).toBeGreaterThan(1)
+  const found = chains[chains.length - 1]
   const checked: number[] = []
   let release: (() => void) | undefined
   let delay = false
@@ -271,12 +271,12 @@ it('probes all configured chains, retains successes and discards stale discovery
     }
   })
   cleanup.push(() => service.dispose())
-  expect(await service.discoverNetworks(address)).toEqual([
+  expect(await service.discoverChains(address)).toEqual([
     { chainId: found.id, name: found.name, supported: true }
   ])
-  expect(checked.sort((a, b) => a - b)).toEqual(networks.map((network) => network.id).sort((a, b) => a - b))
+  expect(checked.sort((a, b) => a - b)).toEqual(chains.map((chain) => chain.id).sort((a, b) => a - b))
   checked.length = 0
-  expect(await service.discoverNetworks(address, found.id)).toEqual([
+  expect(await service.discoverChains(address, found.id)).toEqual([
     { chainId: found.id, name: found.name, supported: true }
   ])
   expect(checked).toEqual([found.id])
@@ -287,7 +287,7 @@ it('probes all configured chains, retains successes and discards stale discovery
   await until(() => Boolean(store.getState().main.accounts[address]?.safe?.[String(found.id)]?.error))
   expect(store.getState().main.accounts[address].safe![String(found.id)].configuration.version).toBe('1.4.1')
   delay = true
-  const pending = service.discoverNetworks(address)
+  const pending = service.discoverChains(address)
   service.dispose()
   release!()
   expect(await pending).toEqual([])

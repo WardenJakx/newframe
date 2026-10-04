@@ -236,7 +236,7 @@ it('discards a published operation when the main confirmation context becomes in
   capabilities.safe.confirmationStatus.mockResolvedValue({ status: 'idle' })
   const reads = capabilities.safe.confirmationStatus.mock.calls.length
   const changed = structuredClone(fixture.state.wallet.getState())
-  changed.networks.ethereum[1] = { ...changed.networks.ethereum[1], name: 'Changed network configuration' }
+  changed.chains.ethereum[1] = { ...changed.chains.ethereum[1], name: 'Changed chain configuration' }
   await act(async () => fixture.state.reset(changed))
   await waitFor(() =>
     expect(screen.getByRole('button', { name: 'Sign' }).hasAttribute('disabled')).toBe(false)
@@ -813,7 +813,7 @@ it.each([
         deployment={deployment}
         proposal={deployment.pending![0]}
         simulation={simulation}
-        networkName='Ethereum'
+        chainName='Ethereum'
         symbol='ETH'
         capabilities={createCapabilityFake()}
       />
@@ -978,7 +978,7 @@ it('omits unknown chain groups without claiming the queue is empty', () => {
   render(
     <SafeQueueView
       deployments={[{ ...deployment, pending: undefined, error: undefined }]}
-      networkNames={{ 1: 'Ethereum' }}
+      chainNames={{ 1: 'Ethereum' }}
       refreshing={false}
       onRefresh={() => {}}
       onSelect={() => {}}
@@ -1011,7 +1011,7 @@ it('orders proposals by nonce while preserving alternatives and the snapshot', (
   render(
     <SafeQueueView
       deployments={[{ ...deployment, pending }]}
-      networkNames={{ 1: 'Ethereum' }}
+      chainNames={{ 1: 'Ethereum' }}
       refreshing={false}
       onRefresh={() => {}}
       onSelect={() => {}}
@@ -1039,7 +1039,7 @@ it('groups pending proposals by chain and omits chains without proposals', () =>
         { ...deployment, chainId: 137, pending: undefined, error: undefined },
         { ...deployment, chainId: 8453, pending: [], refreshedAt, error: 'Rate limited' }
       ]}
-      networkNames={{ 1: 'Ethereum', 10: 'Optimism', 137: 'Polygon', 8453: 'Base' }}
+      chainNames={{ 1: 'Ethereum', 10: 'Optimism', 137: 'Polygon', 8453: 'Base' }}
       refreshing={false}
       onRefresh={() => {}}
       onSelect={() => {}}
@@ -1158,7 +1158,7 @@ it('keeps matching Safe checks silent and exposes raw integer arguments, confirm
       deployment={deployment}
       proposal={proposal}
       simulation={{ status: 'success', effects: [], ...previewContext, currentNonce: '3' }}
-      networkName='Ethereum'
+      chainName='Ethereum'
       symbol='ETH'
       capabilities={capabilities}
     />
@@ -1209,7 +1209,7 @@ it.each([
         deployment={deployment}
         proposal={{ ...deployment.pending![0], nonce, integrity: { status, reason: 'Verification reason' } }}
         simulation={{ status: 'success', effects: [], ...previewContext, currentNonce: '3' }}
-        networkName='Ethereum'
+        chainName='Ethereum'
         symbol='ETH'
         capabilities={createCapabilityFake()}
       />

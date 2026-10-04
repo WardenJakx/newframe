@@ -98,7 +98,7 @@ export function createBlockExplorerOpener(
 ) {
   return ({ id, type }: ChainId, hash?: string, account?: string) => {
     // remove trailing slashes from the base url
-    const explorer = (canonicalStore.getState().main.networks[type][id]?.explorer || '').replace(/\/+$/, '')
+    const explorer = (canonicalStore.getState().main.chains[type][id]?.explorer || '').replace(/\/+$/, '')
 
     try {
       if (!['http:', 'https:'].includes(new URL(explorer).protocol)) {

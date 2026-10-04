@@ -20,19 +20,19 @@ const navigationRecipe = cva({
   }
 })
 
-const networkDotsRecipe = cva({
+const chainDotsRecipe = cva({
   base: { display: 'grid', gridTemplateColumns: 'repeat(2, 5px)', gap: '1' }
 })
 
 export function HomeNavigationView({
   enabledChainDots,
-  onOpenNetworks,
+  onOpenChains,
   onSelectSection,
   section,
   selectedChain
 }: {
   enabledChainDots: ReactNode
-  onOpenNetworks: () => void
+  onOpenChains: () => void
   onSelectSection: (section: HomeSection) => void
   section: HomeSection
   selectedChain?: { icon: ReactNode; name: string }
@@ -53,11 +53,11 @@ export function HomeNavigationView({
         appearance='control'
         hasPopup='dialog'
         label='Network filter'
-        onPress={onOpenNetworks}
+        onPress={onOpenChains}
         shape='pill'
         size='small'
       >
-        {selectedChain ? selectedChain.icon : <span className={networkDotsRecipe()}>{enabledChainDots}</span>}
+        {selectedChain ? selectedChain.icon : <span className={chainDotsRecipe()}>{enabledChainDots}</span>}
         <Text display='inline' variant='supporting'>
           {selectedChain?.name ?? 'All Networks'}
         </Text>

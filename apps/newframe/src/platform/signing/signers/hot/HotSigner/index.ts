@@ -30,25 +30,25 @@ function chainConfig(chain: number, hardfork: string) {
 }
 
 abstract class HotSigner extends Signer {
-  network?: string
+  chain?: string
 
   constructor(
-    signer: { id?: string; addresses?: string[]; network?: string } | undefined,
+    signer: { id?: string; addresses?: string[]; chain?: string } | undefined,
     protected readonly vault: VaultAccess
   ) {
     super()
     this.status = 'ok'
     this.id = signer?.id ?? ''
     this.addresses = signer?.addresses ?? []
-    this.network = signer?.network
+    this.chain = signer?.chain
   }
 
   protected abstract openPrivateKey(index: number, vaultKeyHex: string): Buffer
   protected abstract persistedSecret(): Record<string, unknown>
 
   save() {
-    const { id, addresses, type, network } = this
-    const signer = { version: 1, id, addresses, type, network, ...this.persistedSecret() }
+    const { id, addresses, type, chain } = this
+    const signer = { version: 1, id, addresses, type, chain, ...this.persistedSecret() }
     fs.mkdirSync(SIGNERS_PATH, { recursive: true })
     const signerPath = path.resolve(SIGNERS_PATH, `${id}.json`)
     fs.writeFileSync(signerPath, JSON.stringify(signer), { mode: 0o600 })

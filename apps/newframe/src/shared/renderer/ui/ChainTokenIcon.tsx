@@ -7,14 +7,14 @@ import React from 'react'
 import { imageSource, persistedImageSource } from '../../../features/asset-data/domain/image/index.ts'
 import type { TokenImageCapability } from '../capabilities.ts'
 import { useTokenImageHydration } from '../hooks/useTokenImageHydration.ts'
-import type { ChainTokenIconSize, NetworkLike, NetworkMetaLike } from './tokenSelectorTypes.ts'
+import type { ChainTokenIconSize, ChainLike, ChainMetaLike } from './tokenSelectorTypes.ts'
 
 interface ChainTokenIconProps {
   chainId: number
   imageCapability: TokenImageCapability
   logoURI?: string
-  networks: Partial<Record<string | number, NetworkLike>>
-  networksMeta: Partial<Record<string | number, NetworkMetaLike>>
+  chains: Partial<Record<string | number, ChainLike>>
+  chainsMeta: Partial<Record<string | number, ChainMetaLike>>
   size?: ChainTokenIconSize
   symbol: string
   tokenId?: string
@@ -34,8 +34,8 @@ export default function ChainTokenIcon({
   chainId,
   imageCapability,
   logoURI = '',
-  networks,
-  networksMeta,
+  chains,
+  chainsMeta,
   size = 'md',
   symbol,
   tokenId
@@ -43,13 +43,13 @@ export default function ChainTokenIcon({
   const hydrationTarget = React.useRef<HTMLSpanElement>(null)
   const [failedTokenUrl, setFailedTokenUrl] = React.useState('')
   const [failedChainUrl, setFailedChainUrl] = React.useState('')
-  const chainMetadata = networksMeta[chainId]
+  const chainMetadata = chainsMeta[chainId]
   const chainIconUrl = persistedImageSource(chainMetadata?.image)
   const tokenImageSource = imageSource(logoURI)
   const chainImageSource = imageSource(chainIconUrl)
   const tokenImageVisible = !!tokenImageSource && failedTokenUrl !== logoURI
   const chainImageVisible = !!chainImageSource && failedChainUrl !== chainIconUrl
-  const chain = networks[chainId] ?? {}
+  const chain = chains[chainId] ?? {}
   const chainName = (chain.name ?? '').toLowerCase()
 
   useTokenImageHydration(imageCapability, tokenId, !!tokenImageSource, hydrationTarget)

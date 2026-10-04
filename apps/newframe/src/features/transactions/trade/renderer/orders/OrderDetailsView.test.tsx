@@ -17,8 +17,8 @@ it('keeps useful sanitized diagnostic sections without rendering executable orde
   render(
     <OrderDetailsView
       imageCapability={ordersCapability}
-      networks={{ 1: { name: 'Ethereum' }, 8453: { name: 'Base' } }}
-      networksMeta={{ 1: {}, 8453: {} }}
+      chains={{ 1: { name: 'Ethereum' }, 8453: { name: 'Base' } }}
+      chainsMeta={{ 1: {}, 8453: {} }}
       onBack={() => {}}
       order={{
         orderId: 'order-1',
@@ -61,8 +61,8 @@ it('shows one shared chain for same-chain orders', () => {
   render(
     <OrderDetailsView
       imageCapability={ordersCapability}
-      networks={{ 1: { name: 'Ethereum' } }}
-      networksMeta={{ 1: {} }}
+      chains={{ 1: { name: 'Ethereum' } }}
+      chainsMeta={{ 1: {} }}
       onBack={() => {}}
       order={{
         orderId: 'same-chain-order',
@@ -89,18 +89,18 @@ it('shows one shared chain for same-chain orders', () => {
 it('resolves catalog and native artwork from wallet state for real Flash asset identities', () => {
   fixture.state.reset(
     walletState({
-      networks: {
+      chains: {
         ethereum: {
-          1: { id: 1, name: 'Ethereum' } as WalletRendererState['networks']['ethereum'][number]
+          1: { id: 1, name: 'Ethereum' } as WalletRendererState['chains']['ethereum'][number]
         }
       },
-      networksMeta: {
+      chainsMeta: {
         ethereum: {
           1: {
             nativeCurrency: {
               image: { base64: 'ZXRo', mimeType: 'image/png' }
             }
-          } as WalletRendererState['networksMeta']['ethereum'][number]
+          } as WalletRendererState['chainsMeta']['ethereum'][number]
         }
       },
       orders: {

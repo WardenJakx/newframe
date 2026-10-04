@@ -11,7 +11,7 @@ import { SafeOwnerAccountSchema } from '../../../features/accounts/domain/safe.t
 import { AccountSchema } from '../../../features/accounts/domain/state/account.ts'
 import { BalanceSchema } from '../../../features/asset-data/domain/state/balance.ts'
 import { AssetRateMapSchema } from '../../../features/asset-data/domain/state/rate.ts'
-import { NativeCurrencySchema } from '../../../features/networks/domain/state/nativeCurrency.ts'
+import { NativeCurrencySchema } from '../../../features/chains/domain/state/nativeCurrency.ts'
 import { TokenCatalogSchema, TokenImageSchema } from '../../../features/tokens/domain/state/token.ts'
 import { OperationCollectionSchema } from '../../operations/operation.ts'
 import { AirGapPendingSummarySchema } from '../../signing/domain/airgap.ts'
@@ -85,7 +85,7 @@ export const WalletHomeCommandSchema = z.discriminatedUnion('view', [
   z
     .object({
       ...HomeCommandBaseSchema,
-      view: z.literal('networks'),
+      view: z.literal('chains'),
       data: z
         .object({
           newChain: WalletNavigationChainSchema.optional(),
@@ -546,8 +546,8 @@ const WalletRendererStateSchema = z.strictObject({
   ledger: LedgerSettingsSchema,
   menubarGasPrice: MainSchema.shape.menubarGasPrice,
   mute: MainSchema.shape.mute,
-  networks: MainSchema.shape.networks,
-  networksMeta: MainSchema.shape.networksMeta,
+  chains: MainSchema.shape.chains,
+  chainsMeta: MainSchema.shape.chainsMeta,
   orders: WalletOrdersSchema,
   operations: OperationCollectionSchema,
   origins: MainSchema.shape.origins,
@@ -580,7 +580,7 @@ const SideTrayAccountSchema = z.strictObject({
   ensName: z.string().optional()
 })
 
-const SideTrayNetworkSchema = z.strictObject({
+const SideTrayChainSchema = z.strictObject({
   id: z.coerce.number(),
   name: z.string(),
   on: z.boolean(),
@@ -589,7 +589,7 @@ const SideTrayNetworkSchema = z.strictObject({
   explorer: z.string()
 })
 
-const SideTrayNetworkMetadataSchema = z.strictObject({
+const SideTrayChainMetadataSchema = z.strictObject({
   image: TokenImageSchema.optional(),
   primaryColor: z.string(),
   nativeCurrency: NativeCurrencySchema
@@ -606,11 +606,11 @@ const SideTrayRendererStateSchema = z.strictObject({
   currentAccount: z.string(),
   operations: OperationCollectionSchema,
   orders: WalletOrdersSchema.optional(),
-  networks: z.strictObject({
-    ethereum: z.record(z.coerce.number(), SideTrayNetworkSchema)
+  chains: z.strictObject({
+    ethereum: z.record(z.coerce.number(), SideTrayChainSchema)
   }),
-  networksMeta: z.strictObject({
-    ethereum: z.record(z.coerce.number(), SideTrayNetworkMetadataSchema)
+  chainsMeta: z.strictObject({
+    ethereum: z.record(z.coerce.number(), SideTrayChainMetadataSchema)
   }),
   assetRates: AssetRateMapSchema,
   tokens: TokenCatalogSchema,

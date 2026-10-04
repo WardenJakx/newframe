@@ -99,8 +99,8 @@ afterEach(() => {
 describe('#loadAssets', () => {
   it('loads native currency assets', () => {
     store.setState((state) => {
-      state.main.networksMeta.ethereum[1] = {
-        ...state.main.networksMeta.ethereum[1],
+      state.main.chainsMeta.ethereum[1] = {
+        ...state.main.chainsMeta.ethereum[1],
         nativeCurrency: nativeCurrency()
       }
       state.main.balances[account] = [nativeBalance]
@@ -157,10 +157,10 @@ describe('#loadAssets', () => {
     })
   })
 
-  it('ignores a stale native balance after its network has been removed', () => {
+  it('ignores a stale native balance after its chain has been removed', () => {
     store.setState((state) => {
       state.main.balances[account] = [{ ...nativeBalance, chainId: 31337 }]
-      delete state.main.networksMeta.ethereum[31337]
+      delete state.main.chainsMeta.ethereum[31337]
     })
 
     expect(loadAssets(store, account, refreshBalances)).toEqual({ nativeCurrency: [], erc20: [] })
@@ -216,8 +216,8 @@ describe('#createObserver', () => {
 
   it('invokes the handler when the account is holding native currency assets', () => {
     store.setState((state) => {
-      state.main.networksMeta.ethereum[1] = {
-        ...state.main.networksMeta.ethereum[1],
+      state.main.chainsMeta.ethereum[1] = {
+        ...state.main.chainsMeta.ethereum[1],
         nativeCurrency: nativeCurrency()
       }
       state.main.balances[account] = [nativeBalance]

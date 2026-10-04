@@ -131,7 +131,7 @@ export function getRawTx(newTx: RPC.SendTransaction.TxParams): TransactionData {
 }
 
 export function gasFees(rawTx: TransactionData, canonicalStore: Pick<CanonicalStoreReader, 'getState'>) {
-  return canonicalStore.getState().main.networksMeta.ethereum[parseInt(rawTx.chainId, 16)].gas
+  return canonicalStore.getState().main.chainsMeta.ethereum[parseInt(rawTx.chainId, 16)].gas
 }
 
 export function resError(errorData: string | EVMError, request: RPCId, res: RPCErrorCallback) {

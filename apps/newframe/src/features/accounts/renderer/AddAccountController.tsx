@@ -111,8 +111,8 @@ export function AddAccountController({
       currentAccount: state.currentAccount,
       balances: state.balances,
       ledger: state.ledger,
-      networks: state.networks.ethereum,
-      networksMeta: state.networksMeta.ethereum,
+      chains: state.chains.ethereum,
+      chainsMeta: state.chainsMeta.ethereum,
       operations: state.operations as Record<string, WalletRendererState['operations'][string] | undefined>,
       assetRates: state.assetRates,
       tokens: state.tokens,
@@ -121,7 +121,7 @@ export function AddAccountController({
       signers: state.signers as Record<string, SignerProjection | undefined>
     }))
   )
-  const [safeNetworks, setSafeNetworks] = useState<QueryResultMap['safe.discover']>([])
+  const [safeChains, setSafeChains] = useState<QueryResultMap['safe.discover']>([])
   const [safeDiscovering, setSafeDiscovering] = useState(false)
   const [safeSelected, setSafeSelected] = useState<number[]>([])
   const [safeImports, setSafeImports] = useState<Record<string, { operationId: string; error?: string }>>({})
@@ -138,11 +138,11 @@ export function AddAccountController({
     safeProfile.current = shared.currentProfile
     setSafeImports({})
     setSafeSelected([])
-    setSafeNetworks([])
+    setSafeChains([])
     dispatch({ type: 'flow.reset' })
   }, [shared.currentProfile])
   const safeScope = [shared.currentProfile, state.addAccountCategory, state.addAccountInput].join(':')
-  const safeChainIds = Object.keys(shared.networks).join(',')
+  const safeChainIds = Object.keys(shared.chains).join(',')
   safeDraft.current = safeScope
   const safeImportScope = useRef('')
   const visibleSafeImports = safeImportScope.current === safeScope ? safeImports : {}
@@ -160,7 +160,7 @@ export function AddAccountController({
     }
     let active = true
     const address = state.addAccountInput.trim()
-    setSafeNetworks([])
+    setSafeChains([])
     setSafeSelected([])
     setSafeDiscovering(false)
     if (!/^0x[0-9a-fA-F]{40}$/.test(address)) {
@@ -171,14 +171,14 @@ export function AddAccountController({
       const chainIds = safeChainIds ? safeChainIds.split(',').map(Number) : []
       void Promise.allSettled(
         chainIds.map(async (chainId) => {
-          const networks = await capability.discoverSafeNetworks(address, chainId)
+          const chains = await capability.discoverSafeChains(address, chainId)
           if (!active) {
             return
           }
-          setSafeNetworks((current) => [...current, ...networks])
+          setSafeChains((current) => [...current, ...chains])
           setSafeSelected((current) => [
             ...current,
-            ...networks.filter((network) => network.supported).map((network) => network.chainId)
+            ...chains.filter((chain) => chain.supported).map((chain) => chain.chainId)
           ])
         })
       ).then((results) => {
@@ -227,7 +227,7 @@ export function AddAccountController({
         }
       })
   })
-  async function importSafeNetworks() {
+  async function importSafeChains() {
     if (safeBusy || !safeSelected.length) {
       return
     }
@@ -240,7 +240,7 @@ export function AddAccountController({
     safeSelectedAccount.current = false
     const imports = Object.fromEntries(
       safeSelected
-        .filter((chainId) => safeNetworks.some((network) => network.chainId === chainId && network.supported))
+        .filter((chainId) => safeChains.some((chain) => chain.chainId === chainId && chain.supported))
         .map((chainId) => [chainId, { operationId: crypto.randomUUID() }])
     )
     setSafeImports(imports)
@@ -315,7 +315,7 @@ export function AddAccountController({
   const visibleHardwareAddressKey = visibleHardwareAddresses
     .map((address: string) => address.toLowerCase())
     .join(',')
-  const enabledChainKey = Object.values(shared.networks)
+  const enabledChainKey = Object.values(shared.chains)
     .filter((chain) => chain.on)
     .map((chain) => chain.id)
     .sort((a: number, b: number) => a - b)
@@ -534,8 +534,8 @@ export function AddAccountController({
       rawBalances,
       assetRates: shared.assetRates,
       tokens: shared.tokens,
-      networks: shared.networks,
-      networksMeta: shared.networksMeta,
+      chains: shared.chains,
+      chainsMeta: shared.chainsMeta,
       includeChain: (chain) => (!chain.isTestnet || shared.showTestnets) && !!chain.on,
       cacheKey: account.address
     })
@@ -941,14 +941,9 @@ export function AddAccountController({
       accountType: input.accountType,
       chains: (input.chainUsage?.chainIds ?? []).map((chainId) => ({
         id: chainId,
-        name: shared.networks[chainId]?.name || `Chain ${chainId}`,
+        name: shared.chains[chainId]?.name || `Chain ${chainId}`,
         icon: (
-          <ChainIcon
-            chainId={chainId}
-            networks={shared.networks}
-            networksMeta={shared.networksMeta}
-            size='small'
-          />
+          <ChainIcon chainId={chainId} chains={shared.chains} chainsMeta={shared.chainsMeta} size='small' />
         )
       })),
       imported: input.imported,
@@ -1118,8 +1113,8 @@ export function AddAccountController({
           busy: safeBusy,
           discovering: safeDiscovering,
           error: state.addAccountError,
-          networks: safeNetworks.map((network) => {
-            const outcome = safeOutcomes.find((item) => item.chainId === network.chainId)
+          chains: safeChains.map((chain) => {
+            const outcome = safeOutcomes.find((item) => item.chainId === chain.chainId)
             let outcomeMessage = outcome?.error ?? ''
             if (!outcomeMessage && outcome?.operation?.status === 'failed') {
               outcomeMessage = outcome.operation.error?.message ?? 'Import failed'
@@ -1129,15 +1124,11 @@ export function AddAccountController({
               outcomeMessage = 'Importing'
             }
             return {
-              ...network,
+              ...chain,
               icon: (
-                <ChainIcon
-                  chainId={network.chainId}
-                  networks={shared.networks}
-                  networksMeta={shared.networksMeta}
-                />
+                <ChainIcon chainId={chain.chainId} chains={shared.chains} chainsMeta={shared.chainsMeta} />
               ),
-              selected: safeSelected.includes(network.chainId),
+              selected: safeSelected.includes(chain.chainId),
               outcome: outcomeMessage
             }
           })
@@ -1225,11 +1216,11 @@ export function AddAccountController({
     )
   }
   const events = {
-    onSafeNetworkToggle: (chainId: number) =>
+    onSafeChainToggle: (chainId: number) =>
       setSafeSelected((current) =>
         current.includes(chainId) ? current.filter((id) => id !== chainId) : [...current, chainId]
       ),
-    onSafeImport: () => void importSafeNetworks(),
+    onSafeImport: () => void importSafeChains(),
     onBack: backInlineAdd,
     onCategorySelect: chooseInlineAddCategory,
     onCreateGeneratedSeed: () => void createGeneratedSeedAccount(),

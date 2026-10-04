@@ -261,8 +261,8 @@ let previousWalletProfileInputs:
       | 'accountOrder'
       | 'balances'
       | 'assetRates'
-      | 'networks'
-      | 'networksMeta'
+      | 'chains'
+      | 'chainsMeta'
       | 'tokens'
     >
   | undefined
@@ -277,8 +277,8 @@ function projectWalletProfiles(main: CanonicalMain): WalletRendererState['profil
     accountOrder: main.accountOrder,
     balances: main.balances,
     assetRates: main.assetRates,
-    networks: main.networks,
-    networksMeta: main.networksMeta,
+    chains: main.chains,
+    chainsMeta: main.chainsMeta,
     tokens: main.tokens
   }
   if (
@@ -326,8 +326,8 @@ function projectWalletProfiles(main: CanonicalMain): WalletRendererState['profil
     const summaries = selectBalanceSummaries({
       rawBalances: cachedAddresses.flatMap((address) => balancesByAddress[address] ?? []),
       assetRates: main.assetRates,
-      networks: main.networks.ethereum,
-      networksMeta: main.networksMeta.ethereum,
+      chains: main.chains.ethereum,
+      chainsMeta: main.chainsMeta.ethereum,
       tokens: main.tokens,
       cacheKey: profileId
     })
@@ -542,8 +542,8 @@ export function projectWalletState(
     ledger: main.ledger,
     menubarGasPrice: main.menubarGasPrice,
     mute: main.mute,
-    networks: main.networks,
-    networksMeta: main.networksMeta,
+    chains: main.chains,
+    chainsMeta: main.chainsMeta,
     operations: projectOperations(state.operations, audience),
     orders: projectOrders(main.orders),
     origins: main.origins,
@@ -615,53 +615,53 @@ function projectSideTrayAccounts(main: CanonicalMain) {
   return { accounts: previousSideTrayAccounts, accountOrder }
 }
 
-let previousSideTrayNetworksInput: CanonicalMain['networks'] | undefined
-let previousSideTrayNetworks: SideTrayRendererState['networks'] | undefined
+let previousSideTrayChainsInput: CanonicalMain['chains'] | undefined
+let previousSideTrayChains: SideTrayRendererState['chains'] | undefined
 
-function projectSideTrayNetworks(networks: CanonicalMain['networks']): SideTrayRendererState['networks'] {
-  if (networks === previousSideTrayNetworksInput && previousSideTrayNetworks) {
-    return previousSideTrayNetworks
+function projectSideTrayChains(chains: CanonicalMain['chains']): SideTrayRendererState['chains'] {
+  if (chains === previousSideTrayChainsInput && previousSideTrayChains) {
+    return previousSideTrayChains
   }
 
   const ethereum = Object.fromEntries(
-    Object.entries(networks.ethereum)
-      .filter(([, network]) => network.on)
-      .map(([chainId, network]) => [
+    Object.entries(chains.ethereum)
+      .filter(([, chain]) => chain.on)
+      .map(([chainId, chain]) => [
         chainId,
         {
-          id: network.id,
-          name: network.name,
-          on: network.on,
-          layer: network.layer,
-          isTestnet: network.isTestnet,
-          explorer: network.explorer
+          id: chain.id,
+          name: chain.name,
+          on: chain.on,
+          layer: chain.layer,
+          isTestnet: chain.isTestnet,
+          explorer: chain.explorer
         }
       ])
   )
 
-  previousSideTrayNetworksInput = networks
-  previousSideTrayNetworks = { ethereum }
-  return previousSideTrayNetworks
+  previousSideTrayChainsInput = chains
+  previousSideTrayChains = { ethereum }
+  return previousSideTrayChains
 }
 
-let previousSideTrayNetworkMetadataInput: CanonicalMain['networksMeta'] | undefined
-let previousSideTrayNetworkMetadataNetworks: SideTrayRendererState['networks'] | undefined
-let previousSideTrayNetworkMetadata: SideTrayRendererState['networksMeta'] | undefined
+let previousSideTrayChainMetadataInput: CanonicalMain['chainsMeta'] | undefined
+let previousSideTrayChainMetadataChains: SideTrayRendererState['chains'] | undefined
+let previousSideTrayChainMetadata: SideTrayRendererState['chainsMeta'] | undefined
 
-function projectSideTrayNetworkMetadata(
-  metadata: CanonicalMain['networksMeta'],
-  networks: SideTrayRendererState['networks']
-): SideTrayRendererState['networksMeta'] {
+function projectSideTrayChainMetadata(
+  metadata: CanonicalMain['chainsMeta'],
+  chains: SideTrayRendererState['chains']
+): SideTrayRendererState['chainsMeta'] {
   if (
-    metadata === previousSideTrayNetworkMetadataInput &&
-    networks === previousSideTrayNetworkMetadataNetworks &&
-    previousSideTrayNetworkMetadata
+    metadata === previousSideTrayChainMetadataInput &&
+    chains === previousSideTrayChainMetadataChains &&
+    previousSideTrayChainMetadata
   ) {
-    return previousSideTrayNetworkMetadata
+    return previousSideTrayChainMetadata
   }
 
   const ethereum = Object.fromEntries(
-    Object.keys(networks.ethereum).flatMap((chainId) => {
+    Object.keys(chains.ethereum).flatMap((chainId) => {
       const metadataByChain = metadata.ethereum as Record<
         number,
         (typeof metadata.ethereum)[number] | undefined
@@ -684,10 +684,10 @@ function projectSideTrayNetworkMetadata(
     })
   )
 
-  previousSideTrayNetworkMetadataInput = metadata
-  previousSideTrayNetworkMetadataNetworks = networks
-  previousSideTrayNetworkMetadata = { ethereum }
-  return previousSideTrayNetworkMetadata
+  previousSideTrayChainMetadataInput = metadata
+  previousSideTrayChainMetadataChains = chains
+  previousSideTrayChainMetadata = { ethereum }
+  return previousSideTrayChainMetadata
 }
 
 let previousSideTrayBalancesInput: CanonicalMain['balances'] | undefined
@@ -844,7 +844,7 @@ export function projectSideTrayState(
 ): SideTrayRendererState {
   const { main } = state
   const { accounts, accountOrder } = projectSideTrayAccounts(main)
-  const networks = projectSideTrayNetworks(main.networks)
+  const chains = projectSideTrayChains(main.chains)
   const currentAddress = accounts[main.currentAccount]?.address || ''
   const projection: SideTrayRendererState = {
     accounts,
@@ -854,8 +854,8 @@ export function projectSideTrayState(
     currentAccount: main.currentAccount,
     operations: projectOperations(state.operations, audience),
     orders: projectOrders(main.orders, currentAddress),
-    networks,
-    networksMeta: projectSideTrayNetworkMetadata(main.networksMeta, networks),
+    chains,
+    chainsMeta: projectSideTrayChainMetadata(main.chainsMeta, chains),
     assetRates: main.assetRates,
     tokens: projectSideTrayTokens(main.tokens, currentAddress),
     runtime: main.runtime

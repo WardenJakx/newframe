@@ -11,7 +11,7 @@ class SeedSigner extends HotSigner {
 
   constructor(
     signer:
-      | { id?: string; addresses?: string[]; network?: string; encryptedSeed?: EncryptedSecret }
+      | { id?: string; addresses?: string[]; chain?: string; encryptedSeed?: EncryptedSecret }
       | undefined,
     vault: VaultAccess
   ) {

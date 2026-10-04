@@ -39,7 +39,7 @@ export function useHomeCommand(capability: Pick<HomeCapability, 'consumeCommand'
     if (view === 'settings') {
       openOverlay({ type: 'settings' })
     }
-    if (view === 'networks') {
+    if (view === 'chains') {
       if (data.newChain && Object.keys(data.newChain).length) {
         openOverlay({
           type: 'addChain',
@@ -49,7 +49,7 @@ export function useHomeCommand(capability: Pick<HomeCapability, 'consumeCommand'
         if (data.selectedChain) {
           setSelectedChainId(Number(data.selectedChain.id ?? data.selectedChain.chainId))
         }
-        openOverlay({ type: 'networks' })
+        openOverlay({ type: 'chains' })
       }
     }
     if (view === 'addChain') {
@@ -65,7 +65,7 @@ export function useHomeCommand(capability: Pick<HomeCapability, 'consumeCommand'
       openOverlay({ type: 'tokens', initialToken: data.token })
     }
 
-    const waitsForApproval = view === 'networks' && data.newChain
+    const waitsForApproval = view === 'chains' && data.newChain
     if (!waitsForApproval) {
       void capability.consumeCommand({ commandId: command.id })
     }

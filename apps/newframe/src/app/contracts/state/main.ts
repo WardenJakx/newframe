@@ -3,13 +3,13 @@ import { z } from 'zod'
 import { AccountMetadataSchema, AccountSchema } from '../../../features/accounts/domain/state/account.ts'
 import { BalanceSchema } from '../../../features/asset-data/domain/state/balance.ts'
 import { AssetRateMapSchema } from '../../../features/asset-data/domain/state/rate.ts'
+import { ChainMetadataSchema, ChainSchema } from '../../../features/chains/domain/state/chain.ts'
 import { ExtensionAccessSchema } from '../../../features/connections/domain/state/extensionAccess.ts'
 import { OriginSchema } from '../../../features/connections/domain/state/origin.ts'
 import { PermissionSchema } from '../../../features/connections/domain/state/permission.ts'
-import { ChainMetadataSchema, ChainSchema } from '../../../features/networks/domain/state/chain.ts'
 import { ShortcutSchema } from '../../../features/settings/domain/state/shortcuts.ts'
 import { TokenCatalogSchema } from '../../../features/tokens/domain/state/token.ts'
-import { TorStatusSchema } from '../../../platform/outbound/contract/status.ts'
+import { TorStatusSchema } from '../../../platform/internet/contract/status.ts'
 import { AirGapPublicAccountSchema } from '../../../platform/signing/domain/airgap.ts'
 
 export const DEFAULT_PROFILE_ID = 'default-profile'
@@ -58,7 +58,7 @@ const PreferencesSchema = {
     'Portfolio provider used for token auto-discovery'
   ),
   portfolioApiKey: z.string().default('').describe('Zerion API key for portfolio providers'),
-  showTestnets: z.boolean().default(false).describe('Show testnet networks in the wallet UI'),
+  showTestnets: z.boolean().default(false).describe('Show testnet chains in the wallet UI'),
   menubarGasPrice: z.boolean().default(false).describe('Show gas price in menu bar'),
   biometricUnlock: z.boolean().default(false).describe('Unlock Newframe with biometrics on this device')
 }
@@ -181,10 +181,10 @@ export const MainSchema = z
     instanceId: z.string(), // TODO: uuid
     runtime: RuntimeSchema,
     tor: TorStatusSchema,
-    networks: z.object({
+    chains: z.object({
       ethereum: z.record(z.coerce.number(), ChainSchema)
     }),
-    networksMeta: z.object({
+    chainsMeta: z.object({
       ethereum: z.record(z.coerce.number(), ChainMetadataSchema)
     }),
     origins: z.record(z.string().describe('Origin Id'), OriginSchema),

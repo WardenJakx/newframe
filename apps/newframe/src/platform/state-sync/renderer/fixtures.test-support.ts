@@ -7,8 +7,8 @@ const baseProjectionState = {
   balances: {},
   currentAccount: '',
   operations: {},
-  networks: { ethereum: {} },
-  networksMeta: { ethereum: {} },
+  chains: { ethereum: {} },
+  chainsMeta: { ethereum: {} },
   assetRates: {},
   tokens: { byId: {}, accountTokenIds: {} },
   runtime: { environment: 'test', isDev: false, profile: null }

@@ -115,7 +115,7 @@ export type AddAccountFlowModel =
         discovering: boolean
         busy: boolean
         error: string
-        networks: Array<{
+        chains: Array<{
           chainId: number
           name: string
           icon?: ReactNode
@@ -132,7 +132,7 @@ export type AddAccountFlowModel =
   | { kind: 'hardware'; model: HardwareModel }
 
 export interface AddAccountViewEvents {
-  onSafeNetworkToggle?: (chainId: number) => void
+  onSafeChainToggle?: (chainId: number) => void
   onSafeImport?: () => void
   onBack: () => void
   onCategorySelect: (id: string) => void
@@ -887,10 +887,10 @@ export function AddAccountView({
   flow: AddAccountFlowModel
   airgapPairing?: ReactNode
 }) {
-  const selectedSafeNetworkCount =
-    flow.kind === 'safe' ? flow.model.networks.filter((network) => network.selected).length : 0
-  const safeImportLabel = selectedSafeNetworkCount
-    ? `Import ${selectedSafeNetworkCount} Safe network${selectedSafeNetworkCount === 1 ? '' : 's'}`
+  const selectedSafeChainCount =
+    flow.kind === 'safe' ? flow.model.chains.filter((chain) => chain.selected).length : 0
+  const safeImportLabel = selectedSafeChainCount
+    ? `Import ${selectedSafeChainCount} Safe network${selectedSafeChainCount === 1 ? '' : 's'}`
     : 'Import Safe networks'
   let body: ReactNode
   if (flow.kind === 'safe') {
@@ -911,27 +911,27 @@ export function AddAccountView({
         </Text>
         {!flow.model.discovering &&
         /^0x[0-9a-fA-F]{40}$/.test(flow.model.address.trim()) &&
-        !flow.model.networks.length ? (
+        !flow.model.chains.length ? (
           <Text variant='supporting'>No Safe found on reachable configured networks.</Text>
         ) : null}
         <Grid columns='one' gap='small'>
-          {flow.model.networks
-            .filter((network) => network.supported)
-            .map((network) => (
+          {flow.model.chains
+            .filter((chain) => chain.supported)
+            .map((chain) => (
               <Button
-                key={network.chainId}
-                label={network.name}
+                key={chain.chainId}
+                label={chain.name}
                 appearance='outlinedSelection'
-                selected={network.selected}
+                selected={chain.selected}
                 disabled={flow.model.busy}
-                onPress={() => events.onSafeNetworkToggle?.(network.chainId)}
+                onPress={() => events.onSafeChainToggle?.(chain.chainId)}
               >
                 <Stack gap='small'>
                   <Inline align='center' gap='small'>
-                    {network.icon}
-                    <Text variant='label'>{network.name}</Text>
+                    {chain.icon}
+                    <Text variant='label'>{chain.name}</Text>
                   </Inline>
-                  {network.outcome ? <Text variant='supporting'>{network.outcome}</Text> : null}
+                  {chain.outcome ? <Text variant='supporting'>{chain.outcome}</Text> : null}
                 </Stack>
               </Button>
             ))}
@@ -940,7 +940,7 @@ export function AddAccountView({
         <Button
           appearance='primary'
           label={safeImportLabel}
-          disabled={flow.model.busy || !flow.model.networks.some((network) => network.selected)}
+          disabled={flow.model.busy || !flow.model.chains.some((chain) => chain.selected)}
           onPress={events.onSafeImport}
         >
           {safeImportLabel}

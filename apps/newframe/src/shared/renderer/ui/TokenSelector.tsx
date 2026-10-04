@@ -8,15 +8,15 @@ import React from 'react'
 import type { TokenImageCapability } from '../capabilities.ts'
 import ChainTokenIcon from './ChainTokenIcon.tsx'
 import TokenOptionRow from './TokenOptionRow.tsx'
-import type { NetworkLike, NetworkMetaLike, TokenSelectorItem } from './tokenSelectorTypes.ts'
+import type { ChainLike, ChainMetaLike, TokenSelectorItem } from './tokenSelectorTypes.ts'
 
 interface TokenSelectorProps {
   ariaLabel: string
   imageCapability: TokenImageCapability
   items: TokenSelectorItem[]
   searchableItems?: TokenSelectorItem[]
-  networks: Record<string | number, NetworkLike>
-  networksMeta: Record<string | number, NetworkMetaLike>
+  chains: Record<string | number, ChainLike>
+  chainsMeta: Record<string | number, ChainMetaLike>
   onOpenChange: (open: boolean) => void
   onSelect: (id: string) => void
   open: boolean
@@ -33,8 +33,8 @@ function TokenSelectorContent({
   imageCapability,
   items,
   searchableItems = items,
-  networks,
-  networksMeta,
+  chains,
+  chainsMeta,
   onOpenChange,
   onSelect,
   open,
@@ -64,7 +64,7 @@ function TokenSelectorContent({
   const normalizedQuery = query.trim().toLowerCase()
   const visibleItems = normalizedQuery
     ? searchableItems.filter((item) =>
-        [item.symbol, item.searchText, item.id, networks[item.chainId]?.name]
+        [item.symbol, item.searchText, item.id, chains[item.chainId]?.name]
           .filter(Boolean)
           .some((value) => String(value).toLowerCase().includes(normalizedQuery))
       )
@@ -72,12 +72,7 @@ function TokenSelectorContent({
   const selectionItems: SelectionItem[] = visibleItems.map((item) => ({
     id: item.id,
     content: (
-      <TokenOptionRow
-        imageCapability={imageCapability}
-        item={item}
-        networks={networks}
-        networksMeta={networksMeta}
-      />
+      <TokenOptionRow imageCapability={imageCapability} item={item} chains={chains} chainsMeta={chainsMeta} />
     )
   }))
 
@@ -87,8 +82,8 @@ function TokenSelectorContent({
         chainId={selectedItem.chainId}
         imageCapability={imageCapability}
         logoURI={selectedItem.logoURI}
-        networks={networks}
-        networksMeta={networksMeta}
+        chains={chains}
+        chainsMeta={chainsMeta}
         size='sm'
         symbol={selectedItem.symbol}
         tokenId={selectedItem.id}

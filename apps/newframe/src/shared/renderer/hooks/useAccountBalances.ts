@@ -15,8 +15,8 @@ export function useAccountBalances() {
       return {
         currentAccount: state.currentAccount || '',
         accountAddress: account?.address ?? '',
-        networks: state.networks.ethereum,
-        networksMeta: state.networksMeta.ethereum,
+        chains: state.chains.ethereum,
+        chainsMeta: state.chainsMeta.ethereum,
         assetRates: state.assetRates,
         tokens: state.tokens,
         rawBalances: account?.address
@@ -32,8 +32,8 @@ export function useAccountBalances() {
     rawBalances: shared.rawBalances,
     assetRates: shared.assetRates,
     tokens: shared.tokens,
-    networks: shared.networks,
-    networksMeta: shared.networksMeta,
+    chains: shared.chains,
+    chainsMeta: shared.chainsMeta,
     includeChain: (chain) => (!chain.isTestnet || shared.showTestnets) && !!chain.on,
     cacheKey: `${shared.accountAddress}:${shared.showTestnets ? 'testnets' : 'mainnets'}`
   })

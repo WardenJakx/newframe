@@ -9,17 +9,17 @@ import type { SafeProposal } from '../../src/features/accounts/domain/safe.ts'
 import { createProductionAirGapService } from '../../src/features/accounts/main/airgap/production.ts'
 import { Accounts } from '../../src/features/accounts/main/index.ts'
 import { createSafeTransactionService } from '../../src/features/accounts/main/safeTransaction.ts'
+import { Chains } from '../../src/features/chains/main/index.ts'
 import { createRequestApprovalAdapter } from '../../src/features/connections/main/provider/infrastructure/production.ts'
 import { createProviderProxyConnection } from '../../src/features/connections/main/provider/proxy.ts'
 import { createProviderStatePort } from '../../src/features/connections/main/provider/statePort.ts'
 import type { NameResolutionService } from '../../src/features/name-resolution/main/nameResolution.ts'
-import { Chains } from '../../src/features/networks/main/index.ts'
 import { RequestStatus } from '../../src/features/requests/contract/requests.ts'
 import { createRequestService } from '../../src/features/requests/main/service.ts'
 import { signerCompatibility, maxFee } from '../../src/features/transactions/main/index.ts'
 import { createRevealService } from '../../src/features/transactions/main/reveal.ts'
+import { createInternet } from '../../src/platform/internet/index.ts'
 import { createOperationService } from '../../src/platform/operations/service.ts'
-import { createOutbound } from '../../src/platform/outbound/index.ts'
 import { createSafeClient } from '../../src/platform/safe/client.ts'
 import { getSafeTypedMessage, verifySafeHash } from '../../src/platform/safe/integrity.ts'
 import type { AirGapPublicAccount } from '../../src/platform/signing/domain/airgap.ts'
@@ -76,7 +76,7 @@ function integrationFixture({
     },
     agent: { resolveAccess: () => false },
     clock: { delay: async () => {} },
-    network: { rpcMatchesChain: async () => true },
+    chain: { rpcMatchesChain: async () => true },
     provider: {
       approveSign: (request, context) => approval.approveSign(request, context),
       approveSignTypedData: (request, context) => approval.approveSignTypedData(request, context),
@@ -102,7 +102,7 @@ function integrationFixture({
   })
   const proxy = createProviderProxyConnection()
   const reveal = createRevealService(proxy, names)
-  const chains = new Chains(f.store, createOutbound(fetch))
+  const chains = new Chains(f.store, createInternet(fetch))
   chains.send = rpc.send.bind(rpc)
   const accounts = new Accounts(f.store, {
     chainRpc: {
@@ -392,7 +392,7 @@ it('locally confirms an existing Safe proposal through the owner Account and ver
   })
   f.store.setState((state) => {
     state.main.currentAccount = safe
-    state.main.networks.ethereum[1].on = true
+    state.main.chains.ethereum[1].on = true
   })
   const handler = createSafeHandler({
     chainId: 1,
@@ -403,7 +403,7 @@ it('locally confirms an existing Safe proposal through the owner Account and ver
   })
   let posts = 0
   const client = createSafeClient({
-    networks: { 1: 'http://safe.test/api' },
+    chains: { 1: 'http://safe.test/api' },
     request(url, init) {
       if (init.method === 'POST') {
         posts++

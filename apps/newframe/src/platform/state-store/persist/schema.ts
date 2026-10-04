@@ -4,7 +4,7 @@ import { MainSchema } from '../../../app/contracts/state/main.ts'
 import { TokenCatalogSchema } from '../../../features/tokens/domain/state/token.ts'
 import { AirGapPublicAccountSchema } from '../../signing/domain/airgap.ts'
 
-export const PERSISTENCE_VERSION = 7
+export const PERSISTENCE_VERSION = 8
 export const CANONICAL_STATE_STORAGE_NAME = 'canonical-wallet-state'
 
 const DerivationSchema = z.enum(['live', 'legacy', 'standard', 'testnet'])

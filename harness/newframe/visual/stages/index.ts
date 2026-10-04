@@ -2,10 +2,10 @@ import type { VisualStage } from '../types.ts'
 import { activityStage } from './activity.ts'
 import { agentSessionStage } from './agent-session.ts'
 import { anvilPositionsStage } from './anvil-positions.ts'
+import { chainOnboardingStage } from './chain-onboarding.ts'
 import { harnessAccountStage } from './harness-account.ts'
 import { harnessSignerStage } from './harness-signer.ts'
 import { lockScreenStage } from './lock-screen.ts'
-import { networkOnboardingStage } from './network-onboarding.ts'
 import { resetStateStage } from './reset-state.ts'
 import { safeWatchStage } from './safe-watch.ts'
 import { sendStage } from './send.ts'
@@ -31,7 +31,7 @@ export const visualStages: VisualStage[] = [
   trayOverlaysStage,
   vitalikPositionsStage,
   harnessAccountStage,
-  networkOnboardingStage,
+  chainOnboardingStage,
   safeWatchStage,
   anvilPositionsStage,
   tradeTicketStage,

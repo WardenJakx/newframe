@@ -1,8 +1,8 @@
 import type { FlashOrderType, FlashTradeSide } from '@newframe/flash/schemas'
 
 import type {
-  NetworkLike,
-  NetworkMetaLike,
+  ChainLike,
+  ChainMetaLike,
   TokenSelectorItem
 } from '../../../../shared/renderer/ui/tokenSelectorTypes.ts'
 import type { TradeAssetField } from './tradeReducer.ts'
@@ -80,8 +80,8 @@ interface TradeActionViewModel {
 
 export interface TradeViewModel {
   action: TradeActionViewModel
-  networks: Record<string | number, NetworkLike>
-  networksMeta: Record<string | number, NetworkMetaLike>
+  chains: Record<string | number, ChainLike>
+  chainsMeta: Record<string | number, ChainMetaLike>
   progress: TradeProgressViewModel
   quote: TradeQuoteViewModel | null
   ticket: TradeTicketViewModel

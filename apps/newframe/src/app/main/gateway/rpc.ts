@@ -37,7 +37,7 @@ export function createRpcGateway(ports: RpcGatewayPorts) {
         respond(response)
       }
     }
-    // Dapps and AI sessions get nothing while locked: no accounts and no network reads.
+    // Dapps and AI sessions get nothing while locked: no accounts and no chain reads.
     if ((source?.kind === 'rpc' || source?.kind === 'agent') && ports.isLocked()) {
       reply(
         input.method === 'eth_accounts'

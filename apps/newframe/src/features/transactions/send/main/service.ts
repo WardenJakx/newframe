@@ -22,7 +22,7 @@ export interface SendCanonicalSnapshot {
   currentAccount: string
   accounts: Record<string, SendAccount | undefined>
   balances: Record<string, SendBalance[] | undefined>
-  networks: Record<number, { on?: boolean } | undefined>
+  chains: Record<number, { on?: boolean } | undefined>
   tokens: Record<string, SendToken | undefined>
 }
 
@@ -131,8 +131,8 @@ function validateCanonicalIntent(
   }
 
   const asset = normalizedAsset(command)
-  if (!snapshot.networks[asset.chainId]?.on) {
-    throw new SendFailure('network_unavailable', 'Chain is unavailable.')
+  if (!snapshot.chains[asset.chainId]?.on) {
+    throw new SendFailure('chain_unavailable', 'Chain is unavailable.')
   }
   const balance = canonicalBalance(snapshot, account, command)
   if (!balance) {

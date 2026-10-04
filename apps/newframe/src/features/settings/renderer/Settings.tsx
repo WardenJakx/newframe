@@ -90,7 +90,7 @@ export function Settings({
       ledgerDerivation: ledgerDerivation(state.ledger.derivation),
       liveAccountLimit: accountLimit(state.ledger.liveAccountLimit),
       menubarGasPrice: !!state.menubarGasPrice,
-      networks: state.networks.ethereum,
+      chains: state.chains.ethereum,
       platform: state.platform || '',
       portfolioApiKeyConfigured: !!state.portfolioApiKeyConfigured,
       portfolioProvider: state.portfolioProvider,
@@ -241,7 +241,7 @@ export function Settings({
 
   const setShowTestnets = (enabled: boolean) => {
     persist({ setting: 'show-testnets', value: enabled })
-    if (!enabled && shared.networks[selectedChainId]?.isTestnet) {
+    if (!enabled && shared.chains[selectedChainId]?.isTestnet) {
       onSelectedChainChange(0)
     }
   }

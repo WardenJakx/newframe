@@ -255,7 +255,7 @@ class Tray {
     const updateGasTitle = () => {
       let title = ''
       if (getStore().getState().platform === 'darwin' && getStore().getState().main.menubarGasPrice) {
-        const gasPrice = getStore().getState().main.networksMeta.ethereum[1].gas.price.levels.fast
+        const gasPrice = getStore().getState().main.chainsMeta.ethereum[1].gas.price.levels.fast
         if (!gasPrice) {
           return
         }
@@ -270,7 +270,7 @@ class Tray {
         [
           state.platform,
           state.main.menubarGasPrice,
-          state.main.networksMeta.ethereum[1]?.gas.price.levels.fast
+          state.main.chainsMeta.ethereum[1]?.gas.price.levels.fast
         ] as const,
       updateGasTitle,
       { equalityFn: shallow }

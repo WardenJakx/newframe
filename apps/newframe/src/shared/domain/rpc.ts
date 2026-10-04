@@ -1,4 +1,4 @@
-import type { NativeCurrency as ChainNativeCurrency } from '../../features/networks/domain/state/nativeCurrency.ts'
+import type { NativeCurrency as ChainNativeCurrency } from '../../features/chains/domain/state/nativeCurrency.ts'
 import type {
   LegacyTypedData,
   TransactionReceipt,

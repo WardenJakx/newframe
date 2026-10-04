@@ -56,4 +56,4 @@ MockUSDC fixture and starts an isolated Anvil on a free loopback port. Requires 
 (`forge` and `anvil`), as does the visual harness. It deploys the existing Safe fixture,
 imports it into a profile with no owner accounts, and checks unsigned calls, MultiSend,
 configuration changes, future nonces, refunds, rollback, tracing failures, and unchanged
-live state. No external network, wallet keys, or running Newframe instance is needed.
+live state. No internet, wallet keys, or running Newframe instance is needed.

@@ -5,7 +5,7 @@ import type { Chain, ChainMetadata, Origin } from '../../../../platform/state-st
 import type { Address } from '../../../../shared/domain/address.ts'
 import type { RPC } from '../../../../shared/domain/rpc.ts'
 import { persistedImageSource } from '../../../asset-data/domain/image/index.ts'
-import { getColor } from '../../../networks/domain/chain/colors.ts'
+import { getColor } from '../../../chains/domain/chain/colors.ts'
 type CanonicalStoreApi = CanonicalStoreReader
 
 // typed access to state
@@ -14,10 +14,10 @@ const createStoreApi = (store: CanonicalStoreApi) => ({
     return store.getState().main.origins
   },
   getChains: (): Record<string, Chain> => {
-    return store.getState().main.networks.ethereum
+    return store.getState().main.chains.ethereum
   },
   getChainsMeta: (): Record<string, ChainMetadata> => {
-    return store.getState().main.networksMeta.ethereum
+    return store.getState().main.chainsMeta.ethereum
   }
 })
 

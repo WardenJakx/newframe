@@ -5,17 +5,17 @@ import {
   DEFAULT_PROFILE_NAME,
   getProfileAccountIds
 } from '../../../app/contracts/state/main.ts'
-import { builtInChainIconUrl } from '../../../features/networks/domain/chain/index.ts'
+import { builtInChainIconUrl } from '../../../features/chains/domain/chain/index.ts'
 import createInitialState, { CanonicalStateSchema } from './index.ts'
 
 describe('canonical state defaults', () => {
   it('creates state that satisfies the canonical runtime schema', () => {
     const first = createInitialState()
     const second = createInitialState()
-    first.main.networks.ethereum[1].name = 'Changed'
+    first.main.chains.ethereum[1].name = 'Changed'
 
     expect(CanonicalStateSchema.safeParse(first).success).toBe(true)
-    expect(second.main.networks.ethereum[1].name).toBe('Mainnet')
+    expect(second.main.chains.ethereum[1].name).toBe('Mainnet')
   })
 
   it('starts with safe wallet preferences and one selected-account fact', () => {
@@ -50,28 +50,28 @@ describe('canonical state defaults', () => {
     expect(state.main).not.toHaveProperty('colorway')
   })
 
-  it('enables only the supported production networks by default', () => {
+  it('enables only the supported production chains by default', () => {
     const state = createInitialState()
-    const networks = state.main.networks.ethereum
-    const enabledChainIds = Object.values(networks)
-      .filter((network) => network.on)
-      .map((network) => network.id)
+    const chains = state.main.chains.ethereum
+    const enabledChainIds = Object.values(chains)
+      .filter((chain) => chain.on)
+      .map((chain) => chain.id)
       .sort((left, right) => left - right)
 
     expect(enabledChainIds).toEqual([1, 10, 56, 137, 143, 999, 8453, 9745, 42161, 43114, 81457])
-    expect(networks[56].connection.primary.custom).toBe('https://bsc-dataseed.bnbchain.org')
-    expect(networks[999].connection.primary.custom).toBe('https://rpc.hyperliquid.xyz/evm')
-    expect(networks[143].connection.primary.custom).toBe('https://rpc.monad.xyz')
-    expect(networks[9745].connection.primary.custom).toBe('https://rpc.plasma.to')
-    expect(networks[81457].connection.primary.custom).toBe('https://rpc.blast.io')
-    expect(networks[43114].connection.primary.custom).toBe('https://api.avax.network/ext/bc/C/rpc')
-    expect(networks[1].connection.primary.current).toBe('chainlist')
-    expect(networks[137].connection.primary.current).toBe('chainlist')
-    expect(networks[10].connection.primary.on).toBe(true)
-    expect(networks[100].on).toBe(false)
+    expect(chains[56].connection.primary.custom).toBe('https://bsc-dataseed.bnbchain.org')
+    expect(chains[999].connection.primary.custom).toBe('https://rpc.hyperliquid.xyz/evm')
+    expect(chains[143].connection.primary.custom).toBe('https://rpc.monad.xyz')
+    expect(chains[9745].connection.primary.custom).toBe('https://rpc.plasma.to')
+    expect(chains[81457].connection.primary.custom).toBe('https://rpc.blast.io')
+    expect(chains[43114].connection.primary.custom).toBe('https://api.avax.network/ext/bc/C/rpc')
+    expect(chains[1].connection.primary.current).toBe('chainlist')
+    expect(chains[137].connection.primary.current).toBe('chainlist')
+    expect(chains[10].connection.primary.on).toBe(true)
+    expect(chains[100].on).toBe(false)
     enabledChainIds.forEach((chainId) => {
-      expect(state.main.networksMeta.ethereum[chainId].icon).toBe(builtInChainIconUrl(chainId))
-      expect(state.main.networksMeta.ethereum[chainId].nativeCurrency.icon.startsWith('https://')).toBe(true)
+      expect(state.main.chainsMeta.ethereum[chainId].icon).toBe(builtInChainIconUrl(chainId))
+      expect(state.main.chainsMeta.ethereum[chainId].nativeCurrency.icon.startsWith('https://')).toBe(true)
     })
   })
 })

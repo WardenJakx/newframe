@@ -67,16 +67,16 @@ function persistedAccounts(accounts: UnknownRecord) {
   )
 }
 
-function persistedNetworks(networks: UnknownRecord) {
+function persistedChains(chains: UnknownRecord) {
   return {
     ethereum: Object.fromEntries(
-      Object.entries(unknownRecord(networks.ethereum)).map(([id, value]) => {
-        const network = unknownRecord(value)
-        const connection = unknownRecord(network.connection)
+      Object.entries(unknownRecord(chains.ethereum)).map(([id, value]) => {
+        const chain = unknownRecord(value)
+        const connection = unknownRecord(chain.connection)
         const cleanConnection = (candidate: UnknownRecord = {}) => ({
           ...candidate,
           connected: false,
-          network: '',
+          chain: '',
           status: candidate.on ? 'loading' : 'off',
           type: ''
         })
@@ -84,7 +84,7 @@ function persistedNetworks(networks: UnknownRecord) {
         return [
           id,
           {
-            ...network,
+            ...chain,
             connection: {
               primary: cleanConnection(unknownRecord(connection.primary)),
               secondary: cleanConnection(unknownRecord(connection.secondary))
@@ -96,10 +96,10 @@ function persistedNetworks(networks: UnknownRecord) {
   }
 }
 
-function persistedNetworkMetadata(networksMeta: UnknownRecord) {
+function persistedChainMetadata(chainsMeta: UnknownRecord) {
   return {
     ethereum: Object.fromEntries(
-      Object.entries(unknownRecord(networksMeta.ethereum)).map(([id, value]) => {
+      Object.entries(unknownRecord(chainsMeta.ethereum)).map(([id, value]) => {
         const metadata = unknownRecord(value)
         const { blockHeight: _legacyBlockHeight, ...durableMetadata } = metadata
         const { usd: _legacyUsd, ...nativeCurrency } = unknownRecord(metadata.nativeCurrency)
@@ -238,8 +238,8 @@ export function selectPersistedState(state: CanonicalStore): PersistedCanonicalS
       ),
       accounts: persistedAccounts(unknownRecord(main.accounts)),
       mute: persistedMute(main.mute),
-      networks: persistedNetworks(unknownRecord(main.networks)),
-      networksMeta: persistedNetworkMetadata(unknownRecord(main.networksMeta))
+      chains: persistedChains(unknownRecord(main.chains)),
+      chainsMeta: persistedChainMetadata(unknownRecord(main.chainsMeta))
     }
   } as unknown as PersistedCanonicalState
 }
@@ -254,6 +254,7 @@ export function migratePersistedState(
     fromVersion !== 4 &&
     fromVersion !== 5 &&
     fromVersion !== 6 &&
+    fromVersion !== 7 &&
     fromVersion !== PERSISTENCE_VERSION
   ) {
     log.error('Cannot migrate unsupported canonical state version', fromVersion)
@@ -264,7 +265,13 @@ export function migratePersistedState(
   }
 
   const raw = unknownRecord(value)
-  const rawMain = unknownRecord(raw.main)
+  const storedMain = unknownRecord(raw.main)
+  // Before v8, chains were stored under `networks` and `networksMeta`.
+  const { networks, networksMeta, ...storedMainWithoutNetworks } = storedMain
+  const rawMain =
+    fromVersion >= 8
+      ? storedMain
+      : { ...storedMainWithoutNetworks, chains: networks, chainsMeta: networksMeta }
   const legacyMain =
     fromVersion >= 5
       ? rawMain
@@ -278,8 +285,8 @@ export function migratePersistedState(
     main: normalizeProfileState({
       ...mainWithoutLegacyRates,
       ...(fromVersion === 2 ? { tokens: { byId: {}, accountTokenIds: {} } } : {}),
-      ...(fromVersion < PERSISTENCE_VERSION ? { orders: {} } : {}),
-      networksMeta: persistedNetworkMetadata(unknownRecord(mainWithoutLegacyRates.networksMeta))
+      ...(fromVersion < 7 ? { orders: {} } : {}),
+      chainsMeta: persistedChainMetadata(unknownRecord(mainWithoutLegacyRates.chainsMeta))
     })
   }
   const parsed = PersistedCanonicalStateSchema.safeParse(candidate)
@@ -318,7 +325,7 @@ function matchingPersistedImage(value: unknown, sourceUrl: string) {
   return sourceUrl && image.sourceUrl === sourceUrl ? value : undefined
 }
 
-function mergeNetworkMetadata(current: unknown, persisted: unknown) {
+function mergeChainMetadata(current: unknown, persisted: unknown) {
   const currentEthereum = unknownRecord(unknownRecord(current).ethereum)
   const persistedEthereum = unknownRecord(unknownRecord(persisted).ethereum)
   const ethereum = mergeRecord(currentEthereum, persistedEthereum)
@@ -380,13 +387,10 @@ export function mergePersistedState(persistedValue: unknown, current: CanonicalS
     latticeSettings: mergeRecord(currentMain.latticeSettings, saved.latticeSettings),
     ledger: mergeRecord(currentMain.ledger, saved.ledger),
     mute: mergeRecord(currentMain.mute, saved.mute),
-    networks: {
-      ethereum: mergeRecord(
-        unknownRecord(currentMain.networks).ethereum,
-        unknownRecord(saved.networks).ethereum
-      )
+    chains: {
+      ethereum: mergeRecord(unknownRecord(currentMain.chains).ethereum, unknownRecord(saved.chains).ethereum)
     },
-    networksMeta: mergeNetworkMetadata(currentMain.networksMeta, saved.networksMeta),
+    chainsMeta: mergeChainMetadata(currentMain.chainsMeta, saved.chainsMeta),
     focusedFrame: currentMain.focusedFrame,
     frames: currentMain.frames,
     runtime: currentMain.runtime,

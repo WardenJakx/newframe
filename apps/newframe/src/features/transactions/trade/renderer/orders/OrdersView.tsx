@@ -20,7 +20,7 @@ import {
   orderStatusLabel,
   orderTypeLabel
 } from './orderModel.ts'
-import type { OrderNetworkMap, OrderNetworkMetadataMap, OrderRow, OrderTokenCatalog } from './orderTypes.ts'
+import type { OrderChainMap, OrderChainMetadataMap, OrderRow, OrderTokenCatalog } from './orderTypes.ts'
 
 const orderListRecipe = cva({
   base: {
@@ -75,8 +75,8 @@ export function OrdersView({
   cancelErrors,
   cancellingOrderIds,
   imageCapability,
-  networks,
-  networksMeta,
+  chains,
+  chainsMeta,
   onCancel,
   onOpen,
   orders,
@@ -85,8 +85,8 @@ export function OrdersView({
   cancelErrors: Record<string, string>
   cancellingOrderIds: ReadonlySet<string>
   imageCapability: TokenImageCapability
-  networks: OrderNetworkMap
-  networksMeta: OrderNetworkMetadataMap
+  chains: OrderChainMap
+  chainsMeta: OrderChainMetadataMap
   onCancel: (order: OrderRow) => void
   onOpen: (order: OrderRow) => void
   orders: OrderRow[]
@@ -140,8 +140,8 @@ export function OrdersView({
               <OrderAssetIcon
                 asset={order.targetAsset}
                 imageCapability={imageCapability}
-                networks={networks}
-                networksMeta={networksMeta}
+                chains={chains}
+                chainsMeta={chainsMeta}
                 tokens={tokens}
               />
             </div>

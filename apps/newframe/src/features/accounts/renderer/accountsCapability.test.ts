@@ -134,7 +134,7 @@ it('maps every semantic account query to its exact catalog payload', async () =>
   await capability.locateKeystore()
   await capability.generateSeed()
   host.executeQuery.mockResolvedValueOnce([] as never)
-  await capability.discoverSafeNetworks(firstAddress, 1)
+  await capability.discoverSafeChains(firstAddress, 1)
 
   expect(host.executeQuery.mock.calls).toEqual(
     [

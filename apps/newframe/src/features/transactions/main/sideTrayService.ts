@@ -25,7 +25,7 @@ export interface SideTrayTransactionPorts {
   }
   store: {
     getState(): {
-      main: { networks: { ethereum: Record<number, { on?: boolean } | undefined> } }
+      main: { chains: { ethereum: Record<number, { on?: boolean } | undefined> } }
       initOrigin(id: string, origin: { name: string; chain: { id: number; type: 'ethereum' } }): void
     }
   }
@@ -62,7 +62,7 @@ export function createSideTrayTransactionService(ports: SideTrayTransactionPorts
   const currentAccountAddress = () => ports.accounts.current()?.getSelectedAddress() ?? ''
   const initializeOrigin = (chainId: number) => {
     const state = ports.store.getState()
-    if (!state.main.networks.ethereum[chainId]?.on) {
+    if (!state.main.chains.ethereum[chainId]?.on) {
       return false
     }
     state.initOrigin(internalOriginId, {

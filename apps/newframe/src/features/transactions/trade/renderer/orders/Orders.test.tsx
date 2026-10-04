@@ -62,14 +62,14 @@ function state(orders: WalletRendererState['orders'], operations: Record<string,
       } as WalletRendererState['accounts'][string]
     },
     accountOrder: ['account-1'],
-    networks: {
+    chains: {
       ethereum: {
         1: {
           id: 1,
           name: 'Ethereum',
           isTestnet: false,
           on: true
-        } as WalletRendererState['networks']['ethereum'][number]
+        } as WalletRendererState['chains']['ethereum'][number]
       }
     },
     orders,
@@ -274,8 +274,8 @@ describe('Orders display', () => {
         cancelErrors={{}}
         cancellingOrderIds={new Set()}
         imageCapability={ordersCapability}
-        networks={{}}
-        networksMeta={{}}
+        chains={{}}
+        chainsMeta={{}}
         onCancel={(value) => cancelledOrders.push(value)}
         onOpen={(value) => openedOrders.push(value)}
         orders={[openOrder, filledOrder]}

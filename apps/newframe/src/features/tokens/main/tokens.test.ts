@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test'
 
 import { createTestStore } from '../../../../test/support/createTestStore.ts'
 import { listCuratedTokenAssets } from '../../asset-data/domain/asset/index.ts'
-import { createBuiltInNetworks } from '../../networks/domain/chain/catalog.ts'
+import { createBuiltInChains } from '../../chains/domain/chain/catalog.ts'
 import { createBundledTokenService } from './tokens.ts'
 
 function tokenProjection(store: ReturnType<typeof createTestStore>) {
@@ -35,14 +35,14 @@ function expectedTokens() {
 
 describe('bundled token startup', () => {
   it('hydrates every curated ERC-20 into each injected canonical store', () => {
-    const builtIns = createBuiltInNetworks()
+    const builtIns = createBuiltInChains()
     const mainnet = builtIns[1]
     const base = builtIns[8453]
     const first = createTestStore({
-      main: { networks: { ethereum: { 1: mainnet } } }
+      main: { chains: { ethereum: { 1: mainnet } } }
     })
     const second = createTestStore({
-      main: { networks: { ethereum: { 8453: base } } }
+      main: { chains: { ethereum: { 8453: base } } }
     })
     const firstTokens = createBundledTokenService(first.store)
     const secondTokens = createBundledTokenService(second.store)

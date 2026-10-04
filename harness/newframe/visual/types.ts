@@ -63,7 +63,7 @@ export type AppActivity = {
   [key: string]: unknown
 }
 
-export type AppNetwork = {
+export type AppChain = {
   name?: string
   [key: string]: unknown
 }
@@ -147,7 +147,7 @@ export type AppState = {
     currentAccount?: string
     extensionAccess?: Record<string, { all?: boolean; accounts?: string[] }>
     knownExtensions?: Record<string, boolean>
-    networks?: { ethereum?: Record<string, AppNetwork> }
+    chains?: { ethereum?: Record<string, AppChain> }
     orders?: Record<string, FlashOrder>
     origins?: Record<string, AppOrigin>
     permissions?: Record<string, Record<string, AppPermission>>

@@ -70,8 +70,8 @@ function fixture() {
       },
       assetRates: { ETH: { usdRate: 2_000, source: 'test', observedAt: 1 } },
       mute: { gasFeeWarning: false, signerCompatibilityWarning: false },
-      networks: { ethereum: { 1: { id: 1, isTestnet: false } } },
-      networksMeta: {
+      chains: { ethereum: { 1: { id: 1, isTestnet: false } } },
+      chainsMeta: {
         ethereum: { 1: { nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 } } }
       },
       origins: {},
@@ -89,8 +89,8 @@ function fixture() {
     navBack: mock(),
     navHome: mock(),
     switchOriginChain: mock(),
-    activateNetwork: mock(),
-    addNetwork: mock(),
+    activateChain: mock(),
+    addChain: mock(),
     clearHomeCommand: mock()
   }
   const account = {
@@ -164,7 +164,7 @@ function fixture() {
     accounts: accounts as never,
     agent: { resolveAccess: mock(() => true) },
     clock: { delay: async () => undefined },
-    network: { rpcMatchesChain: mock(async () => true) },
+    chain: { rpcMatchesChain: mock(async () => true) },
     provider: {
       approveSign: mock(),
       approveSignTypedData: mock(),
@@ -422,8 +422,8 @@ describe('prompted request lifecycle', () => {
     test.service.reviewAddChain(request.handlerId)
     expect(responses).toEqual([])
 
-    await test.service.resolveNetwork({
-      type: 'network.request-resolve',
+    await test.service.resolveChain({
+      type: 'chain.request-resolve',
       requestId: request.handlerId,
       approved: true
     })
@@ -477,8 +477,8 @@ describe('prompted request lifecycle', () => {
       test.add(otherOrigin, (response) => responses.push(response))
       test.add(differentSettings, (response) => responses.push(response))
 
-      await test.service.resolveNetwork({
-        type: 'network.request-resolve',
+      await test.service.resolveChain({
+        type: 'chain.request-resolve',
         requestId: request.handlerId,
         approved
       })
@@ -488,7 +488,7 @@ describe('prompted request lifecycle', () => {
         responses.every((response) => (approved ? response.result === null : response.error?.code === 4001))
       ).toBeTrue()
       expect(test.service.pendingCount).toBe(2)
-      expect(test.state.addNetwork).toHaveBeenCalledTimes(approved ? 1 : 0)
+      expect(test.state.addChain).toHaveBeenCalledTimes(approved ? 1 : 0)
     }
   )
 

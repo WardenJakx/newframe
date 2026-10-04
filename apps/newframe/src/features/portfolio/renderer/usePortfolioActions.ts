@@ -19,17 +19,17 @@ export function usePortfolioActions(
   balances: PortfolioActionAsset[],
   selectedChainId: number
 ) {
-  const { networks, runtime, isSafe } = useWalletSelector(
+  const { chains, runtime, isSafe } = useWalletSelector(
     useShallow((state) => ({
       isSafe: Boolean(
         Object.keys((state.accounts as Partial<typeof state.accounts>)[state.currentAccount]?.safe ?? {})
           .length
       ),
-      networks: state.networks.ethereum,
+      chains: state.chains.ethereum,
       runtime: state.runtime
     }))
   )
-  const chainEnabled = (chainId: number) => !!networks[chainId]?.on
+  const chainEnabled = (chainId: number) => !!chains[chainId]?.on
   const firstTradeAsset = balances.find((balance) => {
     const chainId = Number(balance.chainId)
     return (

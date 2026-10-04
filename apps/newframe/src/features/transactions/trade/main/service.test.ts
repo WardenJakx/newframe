@@ -75,7 +75,7 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
   const canonical = {
     currentAccount: account.id,
     accounts: { [account.id]: account },
-    networks: { 1: { on: true }, 8453: { on: true } },
+    chains: { 1: { on: true }, 8453: { on: true } },
     orders: {
       'order-cancel': {
         orderId: 'order-cancel',
@@ -264,12 +264,12 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
   await flush()
   expect(operation('expired-prepare')).toMatchObject({ status: 'failed' })
 
-  const unavailable = await quoteFor('quote-network-off')
-  canonical.networks[1].on = false
-  expect(prepare('network-off-prepare', unavailable.quoteId)).toBe(true)
+  const unavailable = await quoteFor('quote-chain-off')
+  canonical.chains[1].on = false
+  expect(prepare('chain-off-prepare', unavailable.quoteId)).toBe(true)
   await flush()
-  expect(operation('network-off-prepare')).toMatchObject({ status: 'failed' })
-  canonical.networks[1].on = true
+  expect(operation('chain-off-prepare')).toMatchObject({ status: 'failed' })
+  canonical.chains[1].on = true
 
   const txFailure = await quoteFor('quote-tx-failure')
   submitTransaction.mockImplementationOnce(async () => ({
@@ -371,14 +371,14 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
   expect(prepare(operationId, quoted.quoteId)).toBe(false)
 })
 
-it('keeps cross-chain provider state private and validates both networks and the spent chain', async () => {
+it('keeps cross-chain provider state private and validates both chains and the spent chain', async () => {
   let time = Date.parse('2099-01-01T00:00:00Z')
   const targetAsset = getFlashAssetsForChain(1).find((asset) => asset.symbol === 'WETH')!
   const contraAsset = getFlashAssetsForChain(8453).find((asset) => asset.symbol === 'USDC')!
   const canonical = {
     currentAccount: account.id,
     accounts: { [account.id]: account },
-    networks: { 1: { on: true }, 8453: { on: true } },
+    chains: { 1: { on: true }, 8453: { on: true } },
     orders: {}
   }
   const testStore = createTestStore()
@@ -522,28 +522,28 @@ it('keeps cross-chain provider state private and validates both networks and the
   if (!unavailable.ok) {
     throw new Error('unavailable quote setup failed')
   }
-  canonical.networks[1].on = false
+  canonical.chains[1].on = false
   const signCount = signTypedData.mock.calls.length
   expect(
     service.submit(
-      { type: 'trade.submit', operationId: 'network-invalidated', quoteId: unavailable.quoteId },
+      { type: 'trade.submit', operationId: 'chain-invalidated', quoteId: unavailable.quoteId },
       principal,
       owner
     )
   ).toBe(true)
   await flush()
-  expect(operation('network-invalidated')).toMatchObject({ status: 'failed' })
+  expect(operation('chain-invalidated')).toMatchObject({ status: 'failed' })
   expect(signTypedData.mock.calls).toHaveLength(signCount)
-  canonical.networks[1].on = true
+  canonical.chains[1].on = true
 
   let resolveLateQuote!: (value: { quote: FlashQuote; flash: unknown }) => void
   flashQuote.mockImplementationOnce(() => new Promise((resolve) => (resolveLateQuote = resolve)))
   const late = service.quote(request, owner)
   await Promise.resolve()
-  canonical.networks[8453].on = false
+  canonical.chains[8453].on = false
   resolveLateQuote({ quote: crossQuote(), flash: crossQuote().raw })
   expect((await late).ok).toBe(false)
-  canonical.networks[8453].on = true
+  canonical.chains[8453].on = true
 
   expect(
     (await service.quote({ ...request, orderType: 'limit', limitNotionalPrice: '2400' }, owner)).ok

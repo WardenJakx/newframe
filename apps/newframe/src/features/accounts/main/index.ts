@@ -22,9 +22,9 @@ import type {
 } from '../../../shared/domain/rpc.ts'
 import { resolveAssetRate } from '../../asset-data/domain/asset/index.ts'
 import type { DataScanner } from '../../asset-data/main/externalData/index.ts'
+import { chainUsesOptimismFees } from '../../chains/domain/chain/fees.ts'
+import type { Chain } from '../../chains/main/index.ts'
 import type { NameResolutionService } from '../../name-resolution/main/nameResolution.ts'
-import { chainUsesOptimismFees } from '../../networks/domain/chain/fees.ts'
-import type { Chain } from '../../networks/main/index.ts'
 import type {
   AccountRequest,
   AccessRequest,
@@ -253,7 +253,7 @@ export class Accounts extends EventEmitter {
     this.resumeActivityTracking()
     this.profileObserver = this.store.subscribe(
       (state) => [state.main.currentProfile, state.main.accounts, state.main.accountOrder] as const,
-      () => this.reconcileProfileNetworkOwners(),
+      () => this.reconcileProfileChainOwners(),
       {
         equalityFn: (previous, current) =>
           previous[0] === current[0] && previous[1] === current[1] && previous[2] === current[2]
@@ -315,7 +315,7 @@ export class Accounts extends EventEmitter {
     return activeIds.has(id.toLowerCase())
   }
 
-  private reconcileProfileNetworkOwners() {
+  private reconcileProfileChainOwners() {
     const nextActiveIds = this.readActiveProfileAccountIds()
     this.activeProfileAccountIds = nextActiveIds
 
@@ -355,14 +355,14 @@ export class Accounts extends EventEmitter {
 
   private getTransactionActivityDisplay(req: TransactionRequest, chain?: Chain) {
     const value = req.data.value
-    const networks = this.store.getState().main.networks.ethereum as Record<
+    const chains = this.store.getState().main.chains.ethereum as Record<
       number,
       { symbol?: string } | undefined
     >
-    const network = chain ? networks[chain.id] : undefined
+    const storedChain = chain ? chains[chain.id] : undefined
     const chainSymbol =
-      network?.symbol ??
-      (chain ? this.store.getState().main.networksMeta.ethereum[chain.id].nativeCurrency.symbol : '')
+      storedChain?.symbol ??
+      (chain ? this.store.getState().main.chainsMeta.ethereum[chain.id].nativeCurrency.symbol : '')
     const intent = getTransactionIntent(req, chainSymbol)
 
     if (intent.title !== 'Review transaction') {
@@ -391,12 +391,12 @@ export class Accounts extends EventEmitter {
 
   private getTransactionNativeSymbol(req: TransactionRequest) {
     const chain = this.getTransactionChain(req)
-    const network = chain
-      ? (this.store.getState().main.networks.ethereum[chain.id] as { symbol?: string })
+    const storedChain = chain
+      ? (this.store.getState().main.chains.ethereum[chain.id] as { symbol?: string })
       : undefined
-    const metadata = chain ? this.store.getState().main.networksMeta.ethereum[chain.id] : undefined
+    const metadata = chain ? this.store.getState().main.chainsMeta.ethereum[chain.id] : undefined
 
-    return network?.symbol ?? metadata?.nativeCurrency.symbol ?? 'ETH'
+    return storedChain?.symbol ?? metadata?.nativeCurrency.symbol ?? 'ETH'
   }
 
   private getAccountRelativeActivityDisplay(effects: TransactionEffect[]) {
@@ -1314,7 +1314,7 @@ export class Accounts extends EventEmitter {
 
       const data = JSON.parse(JSON.stringify(txRequest.data)) as TransactionData
       const targetChain: Chain = { type: 'ethereum', id: parseInt(data.chainId, 16) }
-      const { levels } = this.store.getState().main.networksMeta.ethereum[targetChain.id].gas.price
+      const { levels } = this.store.getState().main.chainsMeta.ethereum[targetChain.id].gas.price
 
       // Set the gas default to asap
       this.store.getState().setGasDefault(targetChain.type, targetChain.id, 'asap', levels.asap)
@@ -1427,14 +1427,14 @@ export class Accounts extends EventEmitter {
                 this.refreshTransactionPositions(txRequest)
 
                 if (!txRequest.feeAtTime) {
-                  const network = targetChain
-                  if (network.id === 1) {
+                  const chain = targetChain
+                  if (chain.id === 1) {
                     const currentState = this.store.getState().main
                     const ethPrice = resolveAssetRate(
                       {
                         chainId: 1,
                         address: NATIVE_CURRENCY,
-                        nativeTicker: currentState.networksMeta.ethereum[1].nativeCurrency.symbol
+                        nativeTicker: currentState.chainsMeta.ethereum[1].nativeCurrency.symbol
                       },
                       currentState.assetRates
                     )?.usdRate
@@ -1875,7 +1875,7 @@ export class Accounts extends EventEmitter {
         try {
           const tx = req.data
           const chain = { type: 'ethereum', id: parseInt(tx.chainId, 16) }
-          const gas = this.store.getState().main.networksMeta.ethereum[chain.id].gas
+          const gas = this.store.getState().main.chainsMeta.ethereum[chain.id].gas
 
           if (usesBaseFee(tx)) {
             const { maxBaseFeePerGas, maxPriorityFeePerGas } = gas.price.fees ?? {}
@@ -2352,7 +2352,7 @@ export class Accounts extends EventEmitter {
     }
   }
 
-  private stopNetworkMonitorsForAccount(address: string) {
+  private stopChainMonitorsForAccount(address: string) {
     const normalizedAddress = address.toLowerCase()
     Object.entries(this.activityMonitors).forEach(([id, monitor]) => {
       if (monitor?.accountId === normalizedAddress) {
@@ -2368,7 +2368,7 @@ export class Accounts extends EventEmitter {
 
   remove(address = '') {
     address = address.toLowerCase()
-    this.stopNetworkMonitorsForAccount(address)
+    this.stopChainMonitorsForAccount(address)
 
     const currentAccount = this.current()
     const selectedAccountId = (this.store.getState().main.currentAccount || '').toLowerCase().trim()

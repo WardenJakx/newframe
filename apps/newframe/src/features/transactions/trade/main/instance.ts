@@ -1,4 +1,4 @@
-import { outbound } from '../../../../platform/outbound/index.ts'
+import { internet } from '../../../../platform/internet/index.ts'
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
 import type { Accounts } from '../../../accounts/main/index.ts'
 import type { AssetRateService } from '../../../asset-data/main/assetRates/service.ts'
@@ -11,7 +11,7 @@ export function createProductionFlashService(
 ) {
   return createFlashService({
     assetRateService,
-    outbound,
+    internet,
     store: canonicalStore,
     positionSync: {
       track: ({ address, tokens }) => accounts.trackPositionTokens(address, tokens),

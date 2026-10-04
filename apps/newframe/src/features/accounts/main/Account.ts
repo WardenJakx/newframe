@@ -137,7 +137,7 @@ class FrameAccount {
     synchronizeSigner()
     this.accountObserver = this.store.subscribe((state) => state.main.signers, synchronizeSigner)
 
-    this.startProfileNetworkActivity()
+    this.startProfileChainActivity()
   }
 
   private get state() {
@@ -708,7 +708,7 @@ class FrameAccount {
     return account ? [account] : []
   }
 
-  private startProfileNetworkActivity() {
+  private startProfileChainActivity() {
     if (!this.profileActive) {
       return
     }
@@ -785,7 +785,7 @@ class FrameAccount {
 
     this.profileActive = active
     if (active) {
-      this.startProfileNetworkActivity()
+      this.startProfileChainActivity()
     } else {
       this.stopCreationBlockLookup()
       this.stopNameResolutionReadyLookup()

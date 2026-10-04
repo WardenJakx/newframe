@@ -4,8 +4,8 @@ import { StatusDot } from '@newframe/ui/status-dot'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
 import { persistedImageSource } from '../../../features/asset-data/domain/image/index.ts'
-import { chainColorValue } from '../../../features/networks/domain/chain/colors.ts'
-import type { NetworkLike, NetworkMetaLike } from './tokenSelectorTypes.ts'
+import { chainColorValue } from '../../../features/chains/domain/chain/colors.ts'
+import type { ChainLike, ChainMetaLike } from './tokenSelectorTypes.ts'
 
 const chainIconRecipe = cva({
   base: {
@@ -28,13 +28,13 @@ const chainIconRecipe = cva({
 
 export interface ChainIconProps {
   chainId: number
-  networks: Partial<Record<string | number, NetworkLike>>
-  networksMeta: Partial<Record<string | number, NetworkMetaLike>>
+  chains: Partial<Record<string | number, ChainLike>>
+  chainsMeta: Partial<Record<string | number, ChainMetaLike>>
   size?: 'compact' | 'large' | 'medium' | 'small'
 }
 
-export function ChainIcon({ chainId, networks, networksMeta, size = 'medium' }: ChainIconProps) {
-  const metadata = networksMeta[chainId]
+export function ChainIcon({ chainId, chains, chainsMeta, size = 'medium' }: ChainIconProps) {
+  const metadata = chainsMeta[chainId]
   const icon = persistedImageSource(metadata?.image)
   if (icon) {
     return (
@@ -44,7 +44,7 @@ export function ChainIcon({ chainId, networks, networksMeta, size = 'medium' }: 
     )
   }
 
-  const name = String(networks[chainId]?.name ?? '').toLowerCase()
+  const name = String(chains[chainId]?.name ?? '').toLowerCase()
   if (['mainnet', 'görli', 'goerli', 'sepolia', 'ropsten', 'rinkeby', 'kovan'].includes(name)) {
     return (
       <span className={chainIconRecipe({ size })}>

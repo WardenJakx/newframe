@@ -3,7 +3,7 @@ import { Text } from '@newframe/ui/text'
 import type { CSSProperties, ReactNode } from 'react'
 
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
-import { chainColorValue } from '../../../networks/domain/chain/colors.ts'
+import { chainColorValue } from '../../../chains/domain/chain/colors.ts'
 
 const chainRecipe = cva({ base: { color: 'var(--request-chain-color)' } })
 

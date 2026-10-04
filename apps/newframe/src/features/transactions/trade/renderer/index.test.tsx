@@ -62,7 +62,7 @@ function initializeTradeState() {
       [sender.address]: balances,
       [other.address]: [wethBalance()]
     },
-    networks: {
+    chains: {
       ethereum: {
         [FLASH_ANVIL_CHAIN_ID]: {
           id: FLASH_ANVIL_CHAIN_ID,
@@ -73,7 +73,7 @@ function initializeTradeState() {
         }
       }
     },
-    networksMeta: {
+    chainsMeta: {
       ethereum: {
         [FLASH_ANVIL_CHAIN_ID]: {
           image: {

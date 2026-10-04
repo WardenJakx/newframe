@@ -7,13 +7,13 @@ import { resolveAssetRate } from '../../../../asset-data/domain/asset/index.ts'
 import type { AssetRateReference } from '../../../../asset-data/domain/state/rate.ts'
 
 type AccountRequests = WalletRendererState['accounts'][string]['requests']
-type NetworkRecord = WalletRendererState['networks']['ethereum']
-type NetworkMetadataRecord = WalletRendererState['networksMeta']['ethereum']
+type ChainRecord = WalletRendererState['chains']['ethereum']
+type ChainMetadataRecord = WalletRendererState['chainsMeta']['ethereum']
 const EMPTY_ACCOUNT_REQUESTS: AccountRequests = {}
-const EMPTY_NETWORK: Partial<NetworkRecord[number]> = {}
-const EMPTY_NETWORK_METADATA: Partial<NetworkMetadataRecord[number]> = {}
-const selectEthereumNetworks = (state: WalletRendererState) => state.networks.ethereum
-const selectEthereumNetworkMetadata = (state: WalletRendererState) => state.networksMeta.ethereum
+const EMPTY_CHAIN: Partial<ChainRecord[number]> = {}
+const EMPTY_CHAIN_METADATA: Partial<ChainMetadataRecord[number]> = {}
+const selectEthereumChains = (state: WalletRendererState) => state.chains.ethereum
+const selectEthereumChainMetadata = (state: WalletRendererState) => state.chainsMeta.ethereum
 const selectOrigins = (state: WalletRendererState) => state.origins
 const selectTokens = (state: WalletRendererState) => state.tokens
 
@@ -26,36 +26,35 @@ export function useAccountRequests(accountId: string) {
   return useWalletSelector(selector)
 }
 
-export function useNetwork(type: string, chainId: string | number) {
+export function useChain(type: string, chainId: string | number) {
   const selector = useMemo(
     () => (state: WalletRendererState) =>
       type === 'ethereum'
-        ? ((state.networks.ethereum as Partial<typeof state.networks.ethereum>)[Number(chainId)] ??
-          EMPTY_NETWORK)
-        : EMPTY_NETWORK,
+        ? ((state.chains.ethereum as Partial<typeof state.chains.ethereum>)[Number(chainId)] ?? EMPTY_CHAIN)
+        : EMPTY_CHAIN,
     [chainId, type]
   )
   return useWalletSelector(selector)
 }
 
-export function useNetworkMetadata(type: string, chainId: string | number) {
+export function useChainMetadata(type: string, chainId: string | number) {
   const selector = useMemo(
     () => (state: WalletRendererState) =>
       type === 'ethereum'
-        ? ((state.networksMeta.ethereum as Partial<typeof state.networksMeta.ethereum>)[Number(chainId)] ??
-          EMPTY_NETWORK_METADATA)
-        : EMPTY_NETWORK_METADATA,
+        ? ((state.chainsMeta.ethereum as Partial<typeof state.chainsMeta.ethereum>)[Number(chainId)] ??
+          EMPTY_CHAIN_METADATA)
+        : EMPTY_CHAIN_METADATA,
     [chainId, type]
   )
   return useWalletSelector(selector)
 }
 
-export function useEthereumNetworks() {
-  return useWalletSelector(selectEthereumNetworks)
+export function useEthereumChains() {
+  return useWalletSelector(selectEthereumChains)
 }
 
-export function useEthereumNetworkMetadata() {
-  return useWalletSelector(selectEthereumNetworkMetadata)
+export function useEthereumChainMetadata() {
+  return useWalletSelector(selectEthereumChainMetadata)
 }
 
 export function useOrigins() {

@@ -1,6 +1,6 @@
 import log from 'electron-log'
 
-import { outbound, type OutboundGate } from '../../../outbound/index.ts'
+import { internet, type InternetGate } from '../../../internet/index.ts'
 import type canonicalStore from '../../../state-store/index.ts'
 import { SignerAdapter } from '../adapters.ts'
 import type { Derivation } from '../Signer/derive.ts'
@@ -55,7 +55,7 @@ export default class LatticeAdapter extends SignerAdapter {
   constructor(
     private readonly store: typeof canonicalStore,
     createLattice: CreateLattice = (deviceId, deviceName, tag) => new Lattice(deviceId, deviceName, tag),
-    private readonly gate: OutboundGate = outbound
+    private readonly gate: InternetGate = internet
   ) {
     super('lattice')
 
@@ -189,7 +189,7 @@ export default class LatticeAdapter extends SignerAdapter {
           if (device.paired) {
             // don't attempt to automatically connect if the Lattice isn't
             // paired as this could happen without the user noticing
-            this.whenOutboundOpen(() => {
+            this.whenInternetOpen(() => {
               if (!this.isActive(generation, deviceId, lattice)) {
                 return
               }
@@ -223,9 +223,9 @@ export default class LatticeAdapter extends SignerAdapter {
     this.knownSigners = {}
   }
 
-  // Connecting reaches the Lattice relay, which outbound refuses while locked or while Tor
-  // connects. Failing then would mark the device unpaired, so wait for outbound to open.
-  private whenOutboundOpen(connect: () => void) {
+  // Connecting reaches the Lattice relay, which the internet refuses while locked or while Tor
+  // connects. Failing then would mark the device unpaired, so wait for the internet to open.
+  private whenInternetOpen(connect: () => void) {
     if (this.gate.isOpen()) {
       connect()
       return

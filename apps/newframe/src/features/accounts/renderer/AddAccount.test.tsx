@@ -6,7 +6,7 @@ import type { QueryResultMap } from '../../../app/contracts/operations.ts'
 import { createQrCameraFake } from '../../../platform/desktop/renderer/camera.test-support.ts'
 import type { OperationRecord } from '../../../platform/operations/operation.ts'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
-import { createBuiltInNetworks } from '../../networks/domain/chain/catalog.ts'
+import { createBuiltInChains } from '../../chains/domain/chain/catalog.ts'
 import {
   createAccountsCapabilityFake,
   type AccountsCapabilityFake
@@ -373,9 +373,9 @@ function deferred<T>() {
   return { promise, resolve }
 }
 
-it('imports Safe networks independently, retains partial failure, and selects success once', async () => {
+it('imports Safe chains independently, retains partial failure, and selects success once', async () => {
   const capability = createAccountsCapabilityFake()
-  capability.discoverSafeNetworks.mockImplementation(async (_, chainId) =>
+  capability.discoverSafeChains.mockImplementation(async (_, chainId) =>
     chainId === 100 ? [] : [{ chainId, name: chainId === 1 ? 'Ethereum' : 'Optimism', supported: true }]
   )
   let closed = false
@@ -387,8 +387,8 @@ it('imports Safe networks independently, retains partial failure, and selects su
     selected = accountId
     return { ok: true }
   })
-  const builtIn = createBuiltInNetworks()
-  let state = walletState({ networks: { ethereum: { 1: builtIn[1], 10: builtIn[10], 100: builtIn[100] } } })
+  const builtIn = createBuiltInChains()
+  let state = walletState({ chains: { ethereum: { 1: builtIn[1], 10: builtIn[10], 100: builtIn[100] } } })
   fixture.state.reset(state)
   const { user } = render(
     <AddAccount camera={createQrCameraFake().camera} capability={capability} onClose={onClose} />
@@ -427,20 +427,20 @@ it('imports Safe networks independently, retains partial failure, and selects su
 it('discovers only complete addresses and ignores results from the previous address', async () => {
   const capability = createAccountsCapabilityFake()
   const first = deferred<QueryResultMap['safe.discover']>()
-  capability.discoverSafeNetworks.mockImplementation((value: string) =>
+  capability.discoverSafeChains.mockImplementation((value: string) =>
     value === address('8')
       ? first.promise
       : Promise.resolve([{ chainId: 8453, name: 'Base', supported: true }])
   )
-  fixture.state.reset(walletState({ networks: { ethereum: { 8453: createBuiltInNetworks()[8453] } } }))
+  fixture.state.reset(walletState({ chains: { ethereum: { 8453: createBuiltInChains()[8453] } } }))
   const { user } = render(
     <AddAccount camera={createQrCameraFake().camera} capability={capability} onClose={() => {}} />
   )
   await user.click(screen.getByRole('button', { name: 'Safe' }))
-  expect(capability.discoverSafeNetworks).not.toHaveBeenCalled()
+  expect(capability.discoverSafeChains).not.toHaveBeenCalled()
   const input = screen.getByLabelText('Safe address')
   await user.type(input, address('8'))
-  await waitFor(() => expect(capability.discoverSafeNetworks).toHaveBeenCalledWith(address('8'), 8453))
+  await waitFor(() => expect(capability.discoverSafeChains).toHaveBeenCalledWith(address('8'), 8453))
   await user.clear(input)
   await user.type(input, address('9'))
   await screen.findByRole('button', { name: 'Base' })
@@ -452,11 +452,11 @@ it('discovers only complete addresses and ignores results from the previous addr
 it('shows a Safe on a fast chain and closes after its import succeeds', async () => {
   const capability = createAccountsCapabilityFake()
   const slow = deferred<QueryResultMap['safe.discover']>()
-  capability.discoverSafeNetworks.mockImplementation(async (_, chainId) =>
+  capability.discoverSafeChains.mockImplementation(async (_, chainId) =>
     chainId === 1 ? [{ chainId, name: 'Ethereum', supported: true }] : slow.promise
   )
-  const builtIn = createBuiltInNetworks()
-  let state = walletState({ networks: { ethereum: { 1: builtIn[1], 10: builtIn[10] } } })
+  const builtIn = createBuiltInChains()
+  let state = walletState({ chains: { ethereum: { 1: builtIn[1], 10: builtIn[10] } } })
   fixture.state.reset(state)
   const onClose = mock()
   const { user } = render(
