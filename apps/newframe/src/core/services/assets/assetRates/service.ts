@@ -1,0 +1,89 @@
+import {
+  getAssetRateKey,
+  getCuratedAsset,
+  resolveAssetRate,
+  toAssetId
+} from '../../../../features/asset-data/domain/asset/index.ts'
+import type {
+  AssetRateInput,
+  AssetRateReference,
+  AssetRateSnapshot,
+  AssetRateSource,
+  ResolvedAssetRate
+} from '../../../../features/asset-data/domain/state/rate.ts'
+import { NATIVE_CURRENCY } from '../../../../features/tokens/domain/constants.ts'
+import type { CanonicalStore } from '../../../../platform/state-store/actions.ts'
+
+type AssetRateStoreState = Pick<CanonicalStore, 'main' | 'setAssetRates'>
+
+export interface AssetRateService {
+  observe(source: AssetRateSource, rates: readonly AssetRateInput[]): void
+  get(asset: AssetRateReference): ResolvedAssetRate | undefined
+}
+
+export interface AssetRateServiceDependencies {
+  store: { getState(): AssetRateStoreState }
+  clock: { now(): number }
+}
+
+export function createAssetRateService({ store, clock }: AssetRateServiceDependencies): AssetRateService {
+  const nativeTicker = (asset: AssetRateReference) =>
+    asset.nativeTicker ??
+    (asset.address === NATIVE_CURRENCY
+      ? store.getState().main.chainsMeta.ethereum[asset.chainId]?.nativeCurrency.symbol
+      : undefined)
+
+  return {
+    observe(source, rates) {
+      if (rates.length === 0) {
+        return
+      }
+
+      const state = store.getState()
+      const accepted: Record<string, AssetRateSnapshot | undefined> = {}
+      const storedRates = state.main.assetRates as Record<string, AssetRateSnapshot | undefined>
+
+      rates.forEach((input) => {
+        if (
+          !Number.isFinite(input.usdRate) ||
+          input.usdRate <= 0 ||
+          (input.change24hr !== undefined && !Number.isFinite(input.change24hr))
+        ) {
+          return
+        }
+
+        const assetId = toAssetId(input, nativeTicker(input))
+        if (!assetId || getCuratedAsset(assetId)?.fixedUsdRate !== undefined) {
+          return
+        }
+
+        const observedAt = input.observedAt ?? clock.now()
+        if (!Number.isFinite(observedAt)) {
+          return
+        }
+
+        const key = getAssetRateKey(assetId)
+        const previous = accepted[key] ?? storedRates[key]
+        if (previous && observedAt < previous.observedAt) {
+          return
+        }
+
+        accepted[key] = {
+          usdRate: input.usdRate,
+          ...(input.change24hr === undefined ? {} : { change24hr: input.change24hr }),
+          source,
+          observedAt
+        }
+      })
+
+      if (Object.keys(accepted).length) {
+        state.setAssetRates(accepted as Record<string, AssetRateSnapshot>)
+      }
+    },
+
+    get(asset) {
+      const state = store.getState()
+      return resolveAssetRate(asset, state.main.assetRates, nativeTicker(asset))
+    }
+  }
+}

@@ -186,10 +186,10 @@ const applicationOwnedMainModule = (file: string) =>
   productionMain(file) &&
   file !== path.join(sourceRoot, 'app', 'main', 'index.ts') &&
   file !== path.join(sourceRoot, 'app', 'main', 'platform', 'production.ts') &&
-  !/(?:(?:accounts|asset-data|portfolio|security|tokens)[\\/]main|core[\\/]services[\\/]chains)[\\/]production\.ts$/.test(
+  !/(?:(?:accounts|security)[\\/]main|core[\\/]services[\\/](?:chains|assets[\\/](?:tokens|portfolio)))[\\/]production\.ts$/.test(
     file
   ) &&
-  !file.endsWith(path.join('asset-data', 'main', 'images', 'production.ts')) &&
+  !file.endsWith(path.join('core', 'services', 'assets', 'images', 'production.ts')) &&
   !file.endsWith(path.join('main', 'accountOnboarding', 'production.ts')) &&
   file !== path.join(sourceRoot, 'features', 'accounts', 'main', 'airgap', 'production.ts') &&
   !singletonBoundaryExclusions.some((directory) => under(directory)(file))
@@ -401,8 +401,7 @@ export function checkAssetRateMutationAuthority(file: string, source: string) {
 
   const allowed =
     under(path.join('apps', 'newframe', 'src', 'platform', 'state-store'))(file) ||
-    file ===
-      path.join('apps', 'newframe', 'src', 'features', 'asset-data', 'main', 'assetRates', 'service.ts')
+    file === path.join('apps', 'newframe', 'src', 'core', 'services', 'assets', 'assetRates', 'service.ts')
 
   return allowed
     ? []

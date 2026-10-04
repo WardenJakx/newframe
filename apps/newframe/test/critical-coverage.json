@@ -72,7 +72,7 @@
         "src/features/requests/main/service.ts",
         "src/features/accounts/main/service.ts",
         "src/core/services/chains/service.ts",
-        "src/features/tokens/main/service.ts",
+        "src/core/services/assets/tokens/service.ts",
         "src/features/accounts/main/accountOnboarding/service.ts",
         "src/features/accounts/main/index.ts",
         "src/features/accounts/main/providerPort.ts",

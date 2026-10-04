@@ -112,7 +112,7 @@ await mock.module('../../../platform/desktop/windows/index.ts', () => ({
   default: windowsMock,
   ...windowsMock
 }))
-await mock.module('../../asset-data/main/externalData/index.ts', () => ({
+await mock.module('../../../core/services/assets/externalData/index.ts', () => ({
   default: externalDataScannerFactoryMock,
   start: mock(),
   stop: mock()

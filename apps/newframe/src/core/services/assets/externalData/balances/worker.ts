@@ -1,0 +1,104 @@
+import log from 'electron-log'
+
+import createProvider from '../../../../../features/connections/main/provider/connection.ts'
+import { localApiPort } from '../../../../entry/local-api/endpoint.ts'
+
+log.transports.console.format = '[scanWorker] {h}:{i}:{s}.{ms} {text}'
+log.transports.console.level = process.env.LOG_WORKER ? 'debug' : 'info'
+const nodeEnv = (process.env as Record<string, string | undefined>).NODE_ENV
+const runtimeEnvironment = nodeEnv === '' ? 'development' : (nodeEnv ?? 'development')
+log.transports.file.level = ['development', 'test'].includes(runtimeEnvironment) ? false : 'verbose'
+
+import type { Token } from '../../../../../platform/state-store/state/index.ts'
+import type { Address } from '../../../../../shared/domain/address.ts'
+import type { BalanceLoader } from './scan.ts'
+import balancesLoader from './scan.ts'
+
+interface ExternalDataWorkerMessage {
+  command: string
+  args: unknown[]
+}
+
+let heartbeat: NodeJS.Timeout
+let balances: BalanceLoader
+
+const eth = createProvider(`http://127.0.0.1:${localApiPort()}`, {
+  origin: 'newframe-internal',
+  name: 'scanWorker'
+})
+
+eth.on('connect', () => {
+  balances = balancesLoader(eth)
+
+  sendToMainProcess({ type: 'ready' })
+})
+
+async function getChains() {
+  try {
+    const chains: string[] = await eth.request({ method: 'wallet_getChains' })
+    return chains.map((chain) => parseInt(chain))
+  } catch (e) {
+    log.error('could not load chains', e)
+    return []
+  }
+}
+
+function sendToMainProcess(data: unknown) {
+  if (process.send) {
+    return process.send(data)
+  }
+  log.error(`cannot send to main process! connected: ${process.connected}`)
+}
+
+async function fetchTokenBalances(address: Address, tokens: Token[]) {
+  try {
+    const tokenBalances = await balances.getTokenBalances(address, tokens)
+
+    sendToMainProcess({ type: 'tokenBalances', address, balances: tokenBalances })
+  } catch (e) {
+    log.error('error fetching token balances', e)
+  }
+}
+
+async function chainBalanceScan(address: string, chains?: number[]) {
+  try {
+    const availableChains = chains ?? (await getChains())
+    const chainBalances = await balances.getCurrencyBalances(address, availableChains)
+
+    sendToMainProcess({ type: 'chainBalances', balances: chainBalances, address })
+  } catch (e) {
+    log.error('error scanning chain balance', e)
+  }
+}
+
+function disconnect() {
+  process.disconnect()
+  process.kill(process.pid, 'SIGHUP')
+}
+
+function resetHeartbeat() {
+  clearTimeout(heartbeat)
+
+  heartbeat = setTimeout(() => {
+    log.warn('no heartbeat received in 60 seconds, worker exiting')
+    disconnect()
+  }, 60 * 1000)
+}
+
+const messageHandler: { [command: string]: (...params: never[]) => void } = {
+  updateChainBalance: (address: string, chains?: number[]) => {
+    // Scans report their failures internally and may overlap.
+    void chainBalanceScan(address, chains)
+  },
+  fetchTokenBalances: (address: Address, tokens: Token[]) => {
+    // Token fetches report their failures internally.
+    void fetchTokenBalances(address, tokens)
+  },
+  heartbeat: resetHeartbeat
+}
+
+process.on('message', (message: ExternalDataWorkerMessage) => {
+  log.debug(`received message: ${message.command} [${message.args}]`)
+
+  messageHandler[message.command](...(message.args as never[]))
+})
