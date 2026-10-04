@@ -1,0 +1,178 @@
+import type {
+  AccessRequest,
+  AgentAccessRequest,
+  AccountRequest,
+  AddChainRequest,
+  AddTokenRequest,
+  SignatureRequest,
+  TransactionRequest
+} from '@newframe/schema/request-records'
+import { Button } from '@newframe/ui/button'
+import { Icon, type IconName } from '@newframe/ui/icon'
+import { Text } from '@newframe/ui/text'
+import type { ReactNode } from 'react'
+
+import { cva } from '../../../../../../generated/styled-system/css/cva.js'
+import { persistedImageSource } from '../../../../../features/asset-data/domain/image/index.ts'
+import type { RequestRendererCapabilities } from '../../requestCapabilities.ts'
+import RequestItem from '../../ui/RequestItem.tsx'
+import { RequestList } from '../../ui/RequestList.tsx'
+import {
+  useAddressIdentities,
+  useAccountRequests,
+  useEthereumChainMetadata,
+  useEthereumChains,
+  useOrigins
+} from './state.ts'
+import TxOverview from './TransactionRequest/TxMainNew/overview.tsx'
+
+type RenderableRequest =
+  | AccessRequest
+  | AgentAccessRequest
+  | AddChainRequest
+  | AddTokenRequest
+  | SignatureRequest
+  | TransactionRequest
+  | AccountRequest<'switchChain'>
+
+type RequestsWithStateProps = {
+  account?: string
+  capabilities: Pick<RequestRendererCapabilities, 'panel' | 'review'>
+  expanded?: boolean
+  moduleId?: string
+}
+
+type RequestsProps = RequestsWithStateProps & {
+  identities: ReturnType<typeof useAddressIdentities>
+  accountRequests: Record<string, RenderableRequest>
+  chains: ReturnType<typeof useEthereumChains>
+  chainMetadata: ReturnType<typeof useEthereumChainMetadata>
+  origins: ReturnType<typeof useOrigins>
+}
+
+const requestsRecipe = cva({ base: { width: '100%', paddingBlockStart: '10' } })
+
+function Requests(props: RequestsProps) {
+  const chains: Record<number, (typeof props.chains)[number] | undefined> = props.chains
+  const chainMetadata: Record<number, (typeof props.chainMetadata)[number] | undefined> = props.chainMetadata
+  const requestCard = (req: RenderableRequest, index: number) => {
+    let title: string
+    let svgName: IconName | undefined
+    let img: string | undefined
+    let detail: ReactNode
+
+    if (req.type === 'agentAccess') {
+      title = 'Agent Access'
+      svgName = 'edit'
+    } else if (req.type === 'access') {
+      title = 'Account Access'
+      svgName = 'accounts'
+    } else if (req.type === 'sign') {
+      title = 'Sign Message'
+      svgName = 'edit'
+    } else if (req.type === 'signTypedData') {
+      title = 'Sign Data'
+      svgName = 'edit'
+    } else if (req.type === 'signErc20Permit') {
+      const chainId = req.typedMessage.data.domain.chainId
+      title = `${chains[chainId]?.name ?? 'Network'} Token Permit`
+      img = persistedImageSource(chainMetadata[chainId]?.image)
+    } else if (req.type === 'addChain') {
+      title = 'Add Chain'
+      svgName = 'window'
+    } else if (req.type === 'switchChain') {
+      title = 'Switch Chain'
+      svgName = 'window'
+    } else if (req.type === 'addToken') {
+      title = 'Add Tokens'
+      svgName = 'tokens'
+    } else {
+      const chainId = parseInt(req.data.chainId, 16)
+      const chainName = chains[chainId]?.name
+      const metadata = chainMetadata[chainId]
+      const currentSymbol = metadata?.nativeCurrency.symbol ?? '?'
+      title = `${chainName ?? 'Network'} Transaction`
+      img = persistedImageSource(metadata?.image)
+      detail = (
+        <TxOverview
+          identities={props.identities}
+          chainColor={metadata?.primaryColor}
+          chainName={chainName}
+          originName={props.origins[req.origin]?.name || req.origin}
+          req={req}
+          simple
+          symbol={currentSymbol}
+        />
+      )
+    }
+
+    return (
+      <RequestItem
+        img={img}
+        key={`${req.type}-${index}`}
+        panel={props.capabilities.panel}
+        req={req}
+        svgName={svgName}
+        title={title}
+      >
+        {detail}
+      </RequestItem>
+    )
+  }
+
+  const requests = Object.values(props.accountRequests).sort((a, b) => (b.created ?? 0) - (a.created ?? 0))
+  const originSortedRequests = requests.reduce<Record<string, RenderableRequest[]>>((groups, request) => {
+    const sparseGroups = groups as Record<string, RenderableRequest[] | undefined>
+    const group = sparseGroups[request.origin] ?? []
+    group.push(request)
+    groups[request.origin] = group
+    return groups
+  }, {})
+  const groups = Object.entries(originSortedRequests)
+
+  return (
+    <div className={requestsRecipe()}>
+      <RequestList
+        groups={groups.map(([origin, requests]) => ({
+          id: origin,
+          title: props.origins[origin]?.name || origin,
+          icon: <Icon name='window' size='small' tone='accent' />,
+          action: (
+            <Button
+              appearance='ghost'
+              onPress={() =>
+                void props.capabilities.review.clearOrigin({
+                  accountId: props.account ?? '',
+                  originId: origin
+                })
+              }
+              size='small'
+              tone='danger'
+            >
+              <Icon name='close' size='small' />
+              <Text variant='caption'>Clear all</Text>
+            </Button>
+          ),
+          items: requests.map(requestCard)
+        }))}
+      />
+    </div>
+  )
+}
+
+export default function RequestsWithState(props: RequestsWithStateProps) {
+  const accountRequests = useAccountRequests(props.account ?? '') as unknown as Record<
+    string,
+    RenderableRequest
+  >
+  return (
+    <Requests
+      {...props}
+      identities={useAddressIdentities()}
+      accountRequests={accountRequests}
+      chainMetadata={useEthereumChainMetadata()}
+      chains={useEthereumChains()}
+      origins={useOrigins()}
+    />
+  )
+}

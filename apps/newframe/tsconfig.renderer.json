@@ -15,15 +15,9 @@
   "include": [
     "package.json",
     "./src/types/**/*.d.ts",
-    "./src/renderer/**/*.ts",
-    "./src/renderer/**/*.tsx",
-    "./src/app/renderer/**/*.ts",
-    "./src/app/renderer/**/*.tsx",
-    "./src/features/**/renderer/**/*.ts",
-    "./src/features/**/renderer/**/*.tsx",
+    "./src/trays/**/*.ts",
+    "./src/trays/**/*.tsx",
     "./src/features/**/domain/**/*.ts",
-    "./src/platform/**/renderer/**/*.ts",
-    "./src/platform/**/renderer/**/*.tsx",
     "./src/shared/**/*.ts",
     "./src/shared/**/*.tsx",
     "./generated/**/*.ts"

@@ -1,0 +1,215 @@
+import type { WalletRendererState } from '@newframe/schema/projections'
+import { Button } from '@newframe/ui/button'
+import { IconButton } from '@newframe/ui/icon-button'
+import { Input } from '@newframe/ui/input'
+import { MediaIcon } from '@newframe/ui/media-icon'
+import { SearchField } from '@newframe/ui/search-field'
+import { Spacer } from '@newframe/ui/spacer'
+import { Stack } from '@newframe/ui/stack'
+import { Text } from '@newframe/ui/text'
+import React from 'react'
+
+import { cva } from '../../../../generated/styled-system/css/cva.js'
+import { formatUsdRate } from '../../../features/asset-data/domain/balance/index.ts'
+import { TrayOverlay } from '../../shared/ui/TrayOverlay.tsx'
+
+type ChainConnection = WalletRendererState['chains']['ethereum'][number]['connection']
+
+const chainRecipe = cva({
+  base: { overflow: 'hidden', borderRadius: 'card', borderWidth: 'thin', borderStyle: 'solid' },
+  variants: {
+    selected: {
+      false: { borderColor: 'transparent' },
+      true: { borderColor: 'border.focus' }
+    }
+  },
+  defaultVariants: { selected: false }
+})
+
+const chainActionsRecipe = cva({
+  base: { paddingInline: '6', paddingBlockEnd: '4', paddingInlineStart: 'selection-offset' }
+})
+
+const chainDotsRecipe = cva({
+  base: { display: 'grid', gridTemplateColumns: 'repeat(2, 8px)', gap: '1', padding: '2' }
+})
+
+export interface ChainRowViewModel {
+  chainId: number
+  connection?: ChainConnection
+  icon: React.ReactNode
+  isTestnet?: boolean
+  name: string
+  on: boolean
+  removable: boolean
+  totalValue: number
+}
+
+export interface ChainsViewProps {
+  allTotal: number
+  enabledChainDots: React.ReactNode
+  getRpcDraft: (chainId: number) => string
+  kebabChainId: number
+  onBack: () => void
+  onChangeQuery: (query: string) => void
+  onChangeRpcDraft: (chainId: number, value: string) => void
+  onRemove: (chainId: number) => void
+  onSaveRpc: (chainId: number) => void
+  onSelect: (chainId: number) => void
+  onToggleChain: (chainId: number, enabled: boolean) => void
+  onToggleKebab: (chainId: number) => void
+  query: string
+  rows: ChainRowViewModel[]
+  selectedChainId: number
+  showTestnets: boolean
+}
+
+export function ChainsView(props: ChainsViewProps) {
+  const renderRows = (rows: ChainRowViewModel[]) =>
+    rows.map((chain) => {
+      const selected = props.selectedChainId === chain.chainId
+      const kebabOpen = props.kebabChainId === chain.chainId
+      const rpcValue = props.getRpcDraft(chain.chainId)
+      const primary = chain.connection?.primary
+      let primaryLabel = primary?.current ?? 'Default'
+      if (primary?.current === 'custom') {
+        primaryLabel = 'Custom'
+      } else if (primary?.current === 'chainlist') {
+        primaryLabel = 'Chainlist'
+      }
+
+      return (
+        <div key={chain.chainId} className={chainRecipe({ selected })}>
+          <Stack align='center' direction='row' gap='none'>
+            <Button
+              appearance='selectionOption'
+              disabled={!chain.on}
+              label={chain.name}
+              onPress={() => props.onSelect(chain.chainId)}
+              selected={selected}
+              width='full'
+            >
+              <MediaIcon>{chain.icon}</MediaIcon>
+              <Text truncate variant='label'>
+                {chain.name}
+              </Text>
+              <Spacer />
+              <Text tone='secondary' variant='numeric'>
+                {chain.on ? `$${formatUsdRate(chain.totalValue, 2)}` : 'Disabled'}
+              </Text>
+            </Button>
+            <IconButton
+              expanded={kebabOpen}
+              icon='ellipsis'
+              label={`${chain.name} actions`}
+              onPress={() => props.onToggleKebab(chain.chainId)}
+              size='small'
+            />
+          </Stack>
+          {kebabOpen ? (
+            <div className={chainActionsRecipe()}>
+              <Stack gap='small'>
+                <Stack gap='xsmall'>
+                  <Stack direction='row' justify='between'>
+                    <Text tone='muted' variant='caption'>
+                      Primary RPC
+                    </Text>
+                    <Text tone='muted' variant='caption'>
+                      {primaryLabel}
+                    </Text>
+                  </Stack>
+                  <Stack align='center' direction='row' gap='xsmall'>
+                    <Input
+                      appearance='code'
+                      label={`${chain.name} primary RPC`}
+                      onSubmit={() => props.onSaveRpc(chain.chainId)}
+                      onValueChange={(value) => props.onChangeRpcDraft(chain.chainId, value)}
+                      placeholder='Custom RPC URL'
+                      spellCheck={false}
+                      value={rpcValue}
+                    />
+                    <Button
+                      appearance='subtle'
+                      disabled={!rpcValue.trim()}
+                      label={`Save ${chain.name} RPC`}
+                      onPress={() => props.onSaveRpc(chain.chainId)}
+                      shape='pill'
+                      size='small'
+                    >
+                      <Text variant='compactAction'>Save</Text>
+                    </Button>
+                  </Stack>
+                </Stack>
+                {chain.chainId !== 1 ? (
+                  <Button
+                    appearance={chain.on ? 'danger' : 'subtle'}
+                    onPress={() => props.onToggleChain(chain.chainId, !chain.on)}
+                    shape='pill'
+                    size='small'
+                  >
+                    <Text variant='compactAction'>{chain.on ? 'Disable Chain' : 'Enable Chain'}</Text>
+                  </Button>
+                ) : null}
+                {!chain.on && chain.removable ? (
+                  <Button
+                    appearance='danger'
+                    label={`Remove ${chain.name}`}
+                    onPress={() => props.onRemove(chain.chainId)}
+                    shape='pill'
+                    size='small'
+                  >
+                    <Text variant='compactAction'>Remove Chain</Text>
+                  </Button>
+                ) : null}
+                <Button appearance='ghost' onPress={() => props.onToggleKebab(0)} shape='pill' size='small'>
+                  <Text variant='compactAction'>Cancel</Text>
+                </Button>
+              </Stack>
+            </div>
+          ) : null}
+        </div>
+      )
+    })
+
+  const productionRows = props.rows.filter((chain) => !chain.isTestnet)
+  const testnetRows = props.rows.filter((chain) => chain.isTestnet)
+  const section = (title: string, rows: ChainRowViewModel[]) =>
+    rows.length ? (
+      <React.Fragment key={title}>
+        {props.showTestnets ? (
+          <Text tone='muted' variant='overline'>
+            {title}
+          </Text>
+        ) : null}
+        {renderRows(rows)}
+      </React.Fragment>
+    ) : null
+
+  return (
+    <TrayOverlay closeLabel='Back' label='Networks' onClose={props.onBack} title='Networks'>
+      <Stack gap='small'>
+        <SearchField
+          label='Search networks'
+          onChange={props.onChangeQuery}
+          onClear={() => props.onChangeQuery('')}
+          placeholder='Search networks'
+          value={props.query}
+        />
+        <Button
+          appearance='outlinedSelection'
+          label='All Networks'
+          onPress={() => props.onSelect(0)}
+          selected={props.selectedChainId === 0}
+          width='full'
+        >
+          <span className={chainDotsRecipe()}>{props.enabledChainDots}</span>
+          <Text variant='label'>All Networks</Text>
+          <Spacer />
+          <Text variant='numeric'>{`$${formatUsdRate(props.allTotal, 2)}`}</Text>
+        </Button>
+        {section('Mainnets', productionRows)}
+        {section('Testnets', testnetRows)}
+      </Stack>
+    </TrayOverlay>
+  )
+}

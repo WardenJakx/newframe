@@ -1,0 +1,405 @@
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
+
+import type { OperationRecord } from '@newframe/schema/operation-records'
+import { within } from '@testing-library/react'
+
+import { act, render, screen, waitFor } from '../../../../test/support/componentSetup.tsx'
+import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient.ts'
+import { createQrCameraFake } from '../../shared/camera/camera.test-support.ts'
+import { walletState } from '../../shared/projection/fixtures.test-support.ts'
+import { signerIconName } from '../../shared/ui/signerPresentation.ts'
+import { Accounts } from './Accounts.tsx'
+import {
+  createAccountsCapabilityFake,
+  type AccountsCapabilityFake
+} from './accountsCapability.test-support.ts'
+import { AddAccount } from './AddAccount.tsx'
+
+const fixture = registerTestRuntimeFixture()
+let capability: AccountsCapabilityFake
+const account = {
+  id: 'account-a',
+  profileId: 'personal',
+  address: '0x0000000000000000000000000000000000000001',
+  name: 'Primary',
+  lastSignerType: 'address',
+  status: 'ok',
+  signer: 'watch',
+  requests: {},
+  created: '2026-01-01T00:00:00.000Z'
+}
+const profiles = [
+  { id: 'personal', name: 'Personal', accountCount: 1, cachedValue: { state: 'missing' as const } },
+  { id: 'work', name: 'Work', accountCount: 0, cachedValue: { state: 'unpriced' as const } }
+]
+function deferred<T>() {
+  let reject!: (reason?: unknown) => void
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((next, fail) => {
+    resolve = next
+    reject = fail
+  })
+  return { promise, reject, resolve }
+}
+
+function publishChanges(changes: Record<string, unknown>) {
+  act(() => {
+    fixture.state.reset({ ...fixture.state.getState(), ...changes })
+  })
+}
+
+describe('Accounts profile controls', () => {
+  beforeEach(() => {
+    capability = createAccountsCapabilityFake()
+    fixture.state.reset(
+      walletState({
+        accounts: { [account.id]: account },
+        accountOrder: [account.id],
+        currentAccount: account.id,
+        currentProfile: 'personal',
+        profiles
+      })
+    )
+  })
+
+  it('opens Ledger setup only through explicit account and device selections', async () => {
+    publishChanges({
+      accounts: { [account.address]: { ...account, id: account.address, lastSignerType: 'ledger' } },
+      accountOrder: [account.address],
+      currentAccount: account.address
+    })
+    const { user } = render(
+      <Accounts camera={createQrCameraFake().camera} capability={capability} onClose={mock()} />
+    )
+    const signers = {
+      'ledger-1': {
+        id: 'ledger-1',
+        type: 'ledger',
+        name: 'Ledger',
+        model: 'Nano S',
+        status: 'ok',
+        addresses: [account.address]
+      }
+    }
+    publishChanges({ signers })
+    expect(screen.getByText('Primary')).toBeTruthy()
+    expect(screen.queryByText('Connect a hardware wallet')).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Add account' }))
+    publishChanges({ signers: {} })
+    publishChanges({ signers })
+    expect(screen.getByRole('button', { name: 'Connect a hardware wallet' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'View Ledger accounts' })).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Connect a hardware wallet' }))
+    await user.click(screen.getByRole('button', { name: 'Ledger' }))
+    await user.click(screen.getByRole('button', { name: 'View Ledger accounts' }))
+    expect(screen.getByRole('button', { name: 'Select 0x000000...000001' })).toBeTruthy()
+  })
+
+  it('places the active profile selector immediately left of Close accounts', () => {
+    render(<Accounts camera={createQrCameraFake().camera} capability={capability} onClose={mock()} />)
+
+    const dialog = screen.getByRole('dialog', { name: 'Accounts' })
+    const profile = within(dialog).getByRole('button', { name: 'Select active profile' })
+    const close = within(dialog).getByRole('button', { name: 'Close accounts' })
+    const buttons = within(dialog).getAllByRole('button')
+    expect(buttons.indexOf(profile)).toBe(buttons.indexOf(close) - 1)
+    expect(profile.textContent).toContain('Personal')
+  })
+
+  it('keeps move failures visible and closes only after operation and account projections succeed', async () => {
+    const { user } = render(
+      <Accounts camera={createQrCameraFake().camera} capability={capability} onClose={mock()} />
+    )
+    await user.click(screen.getByRole('button', { name: 'Primary account actions' }))
+    await user.click(screen.getByRole('button', { name: 'Move Primary to profile' }))
+    await user.click(screen.getByRole('option', { name: /Work/ }))
+
+    expect(capability.updateAccount).toHaveBeenCalledWith({
+      operationId: expect.any(String) as unknown,
+      accountId: account.id,
+      profileId: 'work'
+    })
+    const failedCommand = capability.updateAccount.mock.calls.at(-1)![0]
+    if (!('operationId' in failedCommand)) {
+      throw new Error('Expected profile move')
+    }
+    publishChanges({
+      operations: {
+        [failedCommand.operationId]: {
+          id: failedCommand.operationId,
+          type: 'account.profile-move',
+          status: 'failed',
+          error: { code: 'operation_failed', message: 'Profile operation failed.' },
+          startedAt: 1,
+          updatedAt: 2,
+          finishedAt: 2
+        } satisfies OperationRecord
+      }
+    })
+    expect(await screen.findByText('Could not move the account. Try again.')).toBeTruthy()
+    await user.click(screen.getByRole('option', { name: /Work/ }))
+    const succeededCommand = capability.updateAccount.mock.calls.at(-1)![0]
+    if (!('operationId' in succeededCommand)) {
+      throw new Error('Expected profile move')
+    }
+    publishChanges({
+      operations: {
+        [succeededCommand.operationId]: {
+          id: succeededCommand.operationId,
+          type: 'account.profile-move',
+          status: 'succeeded',
+          startedAt: 3,
+          updatedAt: 4,
+          finishedAt: 4
+        } satisfies OperationRecord
+      }
+    })
+    expect(screen.getByText('Primary')).toBeTruthy()
+    publishChanges({ accounts: {}, accountOrder: [] })
+    await waitFor(() => expect(screen.queryByText('Primary')).toBeNull())
+  })
+
+  for (const staleOutcome of ['acknowledgement failure', 'thrown rejection'] as const) {
+    it(`keeps the newer overlapping profile move active after an older ${staleOutcome}`, async () => {
+      const staleMove = deferred<Awaited<ReturnType<AccountsCapabilityFake['updateAccount']>>>()
+      capability.updateAccount
+        .mockImplementationOnce(() => staleMove.promise)
+        .mockResolvedValueOnce({ ok: true })
+      const { user } = render(
+        <Accounts camera={createQrCameraFake().camera} capability={capability} onClose={mock()} />
+      )
+      await user.click(screen.getByRole('button', { name: 'Primary account actions' }))
+      await user.click(screen.getByRole('button', { name: 'Move Primary to profile' }))
+      await user.click(screen.getByRole('option', { name: /Work/ }))
+      await user.click(screen.getByRole('option', { name: /Work/ }))
+      const moveInputs = capability.updateAccount.mock.calls.map(([input]) => input)
+      const currentMove = moveInputs[1]
+      if (!('operationId' in currentMove)) {
+        throw new Error('Expected profile move')
+      }
+
+      await act(async () => {
+        if (staleOutcome === 'acknowledgement failure') {
+          staleMove.resolve({ ok: false, error: 'operation_failed' })
+          await staleMove.promise
+        } else {
+          staleMove.reject(new Error('stale move rejection'))
+          await staleMove.promise.catch(() => undefined)
+        }
+      })
+
+      expect(moveInputs).toHaveLength(2)
+      expect(screen.queryByText('Could not move the account. Try again.')).toBeNull()
+      expect(screen.getByRole('option', { name: /Work/ })).toBeTruthy()
+
+      publishChanges({
+        operations: {
+          [currentMove.operationId]: {
+            id: currentMove.operationId,
+            type: 'account.profile-move',
+            status: 'failed',
+            error: { code: 'operation_failed', message: 'Current profile move failed.' },
+            startedAt: 3,
+            updatedAt: 4,
+            finishedAt: 4
+          } satisfies OperationRecord
+        }
+      })
+      expect(await screen.findByText('Could not move the account. Try again.')).toBeTruthy()
+    })
+  }
+
+  it('exports a hot account private key only through the focused query and clipboard capability', async () => {
+    const hotAccount = {
+      ...account,
+      id: account.address,
+      lastSignerType: 'seed',
+      signer: 'seed-1'
+    }
+    fixture.state.reset(
+      walletState({
+        accounts: { [hotAccount.id]: hotAccount },
+        accountOrder: [hotAccount.id],
+        currentAccount: hotAccount.id,
+        currentProfile: 'personal',
+        profiles
+      })
+    )
+    const privateKey = `0x${'a'.repeat(64)}`
+    capability.exportAccountPrivateKey.mockResolvedValueOnce({ ok: true, privateKey })
+    const { user } = render(
+      <Accounts camera={createQrCameraFake().camera} capability={capability} onClose={mock()} />
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Primary account actions' }))
+    await user.click(screen.getByRole('button', { name: 'Export private key' }))
+    await user.click(screen.getByRole('button', { name: 'Export Primary' }))
+    await user.click(await screen.findByRole('button', { name: 'Copy key' }))
+
+    expect(capability.exportAccountPrivateKey.mock.calls.at(-1)?.[0]).toEqual({
+      accountId: hotAccount.address
+    })
+    expect(capability.writeClipboard.mock.calls.at(-1)?.[0]).toEqual({
+      text: privateKey
+    })
+  })
+
+  it('invalidates a pending private-key export when the export panel closes', async () => {
+    const hotAccount = { ...account, id: account.address, lastSignerType: 'seed', signer: 'seed-1' }
+    fixture.state.reset(
+      walletState({
+        accounts: { [hotAccount.id]: hotAccount },
+        accountOrder: [hotAccount.id],
+        currentAccount: hotAccount.id,
+        currentProfile: 'personal',
+        profiles
+      })
+    )
+    let resolveExport!: (result: { ok: true; privateKey: string }) => void
+    capability.exportAccountPrivateKey.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveExport = resolve
+        })
+    )
+    const { user } = render(
+      <Accounts camera={createQrCameraFake().camera} capability={capability} onClose={mock()} />
+    )
+    await user.click(screen.getByRole('button', { name: 'Primary account actions' }))
+    await user.click(screen.getByRole('button', { name: 'Export private key' }))
+    await user.click(screen.getByRole('button', { name: 'Export Primary' }))
+    await user.click(screen.getByRole('button', { name: 'Back to accounts' }))
+
+    const privateKey = `0x${'b'.repeat(64)}`
+    await act(async () => {
+      resolveExport({ ok: true, privateKey })
+      await Promise.resolve()
+    })
+    expect(screen.queryByText(privateKey)).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Copy key' })).toBeNull()
+    expect(screen.getByText('Primary')).toBeTruthy()
+  })
+})
+
+describe('AddAccount existing-account selection', () => {
+  const currentAddress = '0x0000000000000000000000000000000000000001'
+  const targetAddress = '0x0000000000000000000000000000000000000002'
+  const targetId = targetAddress.toLowerCase()
+
+  beforeEach(() => {
+    capability = createAccountsCapabilityFake()
+    fixture.state.reset(
+      walletState({
+        accounts: {
+          [currentAddress]: { ...account, id: currentAddress, address: currentAddress },
+          [targetId]: { ...account, id: targetId, address: targetAddress, name: 'Secondary' }
+        },
+        currentAccount: currentAddress,
+        signers: {
+          'seed-1': {
+            id: 'seed-1',
+            type: 'seed',
+            name: 'Recovery phrase',
+            model: 'seed',
+            status: 'ok',
+            addresses: [targetAddress],
+            appVersion: { major: 1, minor: 0, patch: 0 }
+          }
+        }
+      })
+    )
+  })
+
+  it('surfaces acknowledgement failure but closes only after currentAccount projects the selection', async () => {
+    capability.selectAccount
+      .mockResolvedValueOnce({ ok: false, error: 'not_found', message: 'Account no longer exists.' })
+      .mockResolvedValue({ ok: true })
+    const onClose = mock()
+    const { user } = render(
+      <AddAccount camera={createQrCameraFake().camera} capability={capability} onClose={onClose} />
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Add from stored recovery phrases' }))
+    await user.click(screen.getByRole('button', { name: 'Add address' }))
+    await user.click(screen.getByRole('button', { name: 'Select Secondary' }))
+    expect(await screen.findByText('Account no longer exists.')).toBeTruthy()
+    expect(onClose.mock.calls.length).toBe(0)
+
+    await user.click(screen.getByRole('button', { name: 'Select Secondary' }))
+    await waitFor(() =>
+      expect(capability.selectAccount).toHaveBeenLastCalledWith({
+        accountId: targetId
+      })
+    )
+    expect(onClose).not.toHaveBeenCalled()
+
+    act(() => {
+      fixture.state.reset(
+        walletState({
+          accounts: {
+            [currentAddress]: { ...account, id: currentAddress, address: currentAddress },
+            [targetId]: { ...account, id: targetId, address: targetAddress, name: 'Secondary' }
+          },
+          currentAccount: targetId
+        })
+      )
+    })
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
+  })
+})
+
+it('uses the Safe icon without signer labels and stays read-only with a local signer and AI flag', async () => {
+  const capability = createAccountsCapabilityFake()
+  fixture.state.reset(
+    walletState({
+      accounts: {
+        [account.id]: {
+          ...account,
+          lastSignerType: 'seed',
+          agentEnabled: true,
+          safe: {
+            '1': {
+              chainId: 1,
+              address: account.address,
+              configuration: { owners: [account.address], threshold: 1, nonce: '0' }
+            }
+          }
+        }
+      },
+      currentAccount: account.id
+    })
+  )
+  const { user } = render(
+    <Accounts camera={createQrCameraFake().camera} capability={capability} onClose={() => {}} />
+  )
+  expect(signerIconName('safe')).toBe('safe')
+  expect(screen.queryByText('Safe')).toBeNull()
+  expect(screen.queryByText('Watch-only')).toBeNull()
+  await user.click(screen.getByRole('button', { name: 'Primary account actions' }))
+  expect(screen.queryByText('Enable AI access')).toBeNull()
+  expect(screen.queryByText('Disable AI access')).toBeNull()
+  expect(screen.queryByText('Export private key')).toBeNull()
+  expect(screen.getByText('Remove account')).toBeTruthy()
+})
+
+it.each(['airgap', 'ledger'] as const)(
+  'keeps AI access and private-key export unavailable for %s',
+  async (type) => {
+    const capability = createAccountsCapabilityFake()
+    fixture.state.reset(
+      walletState({
+        accounts: { [account.id]: { ...account, lastSignerType: type, agentEnabled: false } },
+        currentAccount: account.id
+      })
+    )
+    const view = render(
+      <Accounts capability={capability} camera={createQrCameraFake().camera} onClose={() => {}} />
+    )
+    await view.user.click(screen.getByRole('button', { name: 'Primary account actions' }))
+    expect(screen.queryByText('Enable AI access')).toBeNull()
+    expect(screen.queryByText('Export private key')).toBeNull()
+    expect(screen.getByText('Remove account')).toBeTruthy()
+  }
+)

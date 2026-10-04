@@ -1,0 +1,96 @@
+import { describe, expect, it } from 'bun:test'
+
+import { render, screen } from '../../../../test/support/componentSetup.tsx'
+import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient.ts'
+import type { DisplayedBalance } from '../../../features/asset-data/domain/balance/index.ts'
+import { NATIVE_CURRENCY } from '../../../features/tokens/domain/constants.ts'
+import { createRendererUtilityCapabilities as createUtilityPorts } from '../../shared/capabilities.test-support.ts'
+import { shortAddress } from '../../shared/ui/AddressIdentity.tsx'
+import { AssetDetailsView } from './AssetDetailsView.tsx'
+
+const address = '0xaf88d065e77c8cc2239327c5edb3a432268e5831'
+const chains = { 42161: { name: 'Arbitrum' } }
+const chainsMeta = { 42161: {} }
+const fixture = registerTestRuntimeFixture()
+const utilityPorts = createUtilityPorts({
+  executeCommand: (command) => fixture.client.executeCommand(command)
+})
+
+function assetWithAddress(assetAddress: string): DisplayedBalance {
+  return {
+    address: assetAddress,
+    balance: '102000066',
+    chainId: 42161,
+    decimals: 6,
+    displayBalance: '102.000066',
+    displayValue: '0',
+    hasPrice: true,
+    name: 'USD Coin',
+    price: '0.00',
+    priceChange: false,
+    symbol: 'USDC',
+    totalValue: 0,
+    rate: { change24hr: 0, source: 'fixed', usdRate: 0 }
+  }
+}
+
+function renderAsset(assetAddress = address) {
+  return render(
+    <AssetDetailsView
+      asset={assetWithAddress(assetAddress)}
+      canSend
+      canTrade
+      clipboard={utilityPorts}
+      imageCapability={utilityPorts}
+      chains={chains}
+      chainsMeta={chainsMeta}
+      onBack={() => {}}
+      onSend={() => {}}
+      onTrade={() => {}}
+    />
+  )
+}
+
+describe('AssetDetailsView contract address', () => {
+  it('renders a missing individual asset rate as unknown', () => {
+    const asset = assetWithAddress(address)
+    asset.hasPrice = false
+    asset.rate = undefined
+
+    render(
+      <AssetDetailsView
+        asset={asset}
+        canSend
+        canTrade
+        clipboard={utilityPorts}
+        imageCapability={utilityPorts}
+        chains={chains}
+        chainsMeta={chainsMeta}
+        onBack={() => {}}
+        onSend={() => {}}
+        onTrade={() => {}}
+      />
+    )
+
+    expect(screen.getByText('—')).toBeTruthy()
+  })
+
+  it('copies a token contract from the row and briefly confirms the copy', async () => {
+    const { user } = renderAsset()
+
+    await user.click(screen.getByRole('button', { name: `Copy address for ${shortAddress(address)}` }))
+
+    expect(fixture.client.executeCommand).toHaveBeenCalledWith({
+      type: 'clipboard.write',
+      text: address
+    })
+    expect(screen.getByRole('button', { name: `Address copied for ${shortAddress(address)}` })).toBeTruthy()
+  })
+
+  it('keeps native assets non-interactive', () => {
+    renderAsset(NATIVE_CURRENCY)
+
+    expect(screen.getByText('Native asset')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Copy address/ })).toBeNull()
+  })
+})

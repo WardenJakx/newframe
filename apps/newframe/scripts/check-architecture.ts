@@ -69,30 +69,18 @@ const productionMainOutsideAccountGate = (file: string) =>
   productionMain(file) && !under(path.join('apps', 'newframe', 'src', 'features', 'accounts', 'main'))(file)
 const anyFile = () => true
 const migratedPilotFiles = new Set([
-  path.join('apps', 'newframe', 'src', 'app', 'renderer', 'tray', 'Home', 'components', 'HomeHeaderView.tsx'),
-  path.join('apps', 'newframe', 'src', 'app', 'renderer', 'tray', 'Home', 'components', 'HomeMenuView.tsx')
+  path.join('apps', 'newframe', 'src', 'trays', 'main', 'Home', 'components', 'HomeHeaderView.tsx'),
+  path.join('apps', 'newframe', 'src', 'trays', 'main', 'Home', 'components', 'HomeMenuView.tsx')
 ])
 const migratedSharedSideTrayFiles = new Set([
-  path.join('apps', 'newframe', 'src', 'shared', 'renderer', 'ui', 'ChainTokenIcon.tsx'),
-  path.join(
-    'apps',
-    'newframe',
-    'src',
-    'features',
-    'transactions',
-    'trade',
-    'renderer',
-    'ui',
-    'BalanceRange.tsx'
-  ),
-  path.join('apps', 'newframe', 'src', 'shared', 'renderer', 'ui', 'TokenOptionRow.tsx'),
-  path.join('apps', 'newframe', 'src', 'shared', 'renderer', 'ui', 'TokenSelector.tsx')
+  path.join('apps', 'newframe', 'src', 'trays', 'shared', 'ui', 'ChainTokenIcon.tsx'),
+  path.join('apps', 'newframe', 'src', 'trays', 'features', 'trading', 'ui', 'BalanceRange.tsx'),
+  path.join('apps', 'newframe', 'src', 'trays', 'shared', 'ui', 'TokenOptionRow.tsx'),
+  path.join('apps', 'newframe', 'src', 'trays', 'shared', 'ui', 'TokenSelector.tsx')
 ])
 const migratedSideTrayFiles = (file: string) =>
-  path.dirname(file) ===
-    path.join('apps', 'newframe', 'src', 'features', 'transactions', 'send', 'renderer') ||
-  path.dirname(file) ===
-    path.join('apps', 'newframe', 'src', 'features', 'transactions', 'trade', 'renderer') ||
+  path.dirname(file) === path.join('apps', 'newframe', 'src', 'trays', 'features', 'send') ||
+  path.dirname(file) === path.join('apps', 'newframe', 'src', 'trays', 'features', 'trading') ||
   migratedSharedSideTrayFiles.has(file)
 const extensionCompositionFiles = new Set([
   path.join('apps', 'newframe-extension', 'src', 'settings', 'ChoiceGrid.tsx'),
@@ -163,15 +151,16 @@ function lineNumber(source: string, index: number) {
 const applicationRoot = path.join('apps', 'newframe')
 type ApplicationLayer = 'contracts' | 'domain' | 'generated' | 'main' | 'preload' | 'renderer'
 const sourceRoot = path.join(applicationRoot, 'src')
-const featureRendererRoot = path.join(sourceRoot, 'features')
-const appRendererRoot = path.join(sourceRoot, 'app', 'renderer')
-const rendererEntryRoot = path.join(sourceRoot, 'renderer')
-const platformRoot = path.join(sourceRoot, 'platform')
-const rawRendererLinkRoot = path.join(platformRoot, 'ipc', 'renderer', 'link')
-const appRendererCapabilityRoot = path.join(appRendererRoot, 'capabilities')
-const appUpdateRendererProduction = path.join(platformRoot, 'app-update', 'renderer', 'production.ts')
-const featureRenderer = (file: string) =>
-  under(featureRendererRoot)(file) && /(?:^|[\\/])renderer(?:[\\/]|$)/.test(file)
+const traysRoot = path.join(sourceRoot, 'trays')
+const featureRendererRoot = path.join(traysRoot, 'features')
+const appRendererRoots = [path.join(traysRoot, 'main'), path.join(traysRoot, 'side')]
+const rendererEntryFiles = new Set(
+  appRendererRoots.flatMap((root) => [path.join(root, 'bootstrap.ts'), path.join(root, 'index.tsx')])
+)
+const rawRendererLinkRoot = path.join(traysRoot, 'shared', 'host', 'link')
+const appRendererCapabilityRoot = path.join(traysRoot, 'main', 'capabilities')
+const appUpdateRendererProduction = path.join(featureRendererRoot, 'update', 'production.ts')
+const featureRenderer = under(featureRendererRoot)
 const singletonBoundaryExclusions = [
   path.join(sourceRoot, 'app', 'main', 'composition'),
   path.join(sourceRoot, 'features', 'connections', 'main', 'provider', 'infrastructure'),
@@ -225,7 +214,7 @@ function layerFor(file: string): ApplicationLayer | undefined {
   if (under(path.join(sourceRoot, 'preload'))(file)) {
     return 'preload'
   }
-  if (under(path.join(sourceRoot, 'renderer'))(file) || /(?:^|[\\/])renderer(?:[\\/]|$)/.test(file)) {
+  if (under(traysRoot)(file) || /(?:^|[\\/])renderer(?:[\\/]|$)/.test(file)) {
     return 'renderer'
   }
   if (under(path.join(sourceRoot, 'app', 'contracts'))(file) || /(?:^|[\\/])contract(?:[\\/]|$)/.test(file)) {
@@ -350,7 +339,7 @@ export function checkDependencyDirection(file: string, source: string) {
     if (sourceLayer === 'renderer' && (targetLayer === 'main' || targetLayer === 'preload')) {
       violations.push(`${file}:${line} renderer cannot import ${targetLayer}`)
     }
-    if (featureRenderer(file) && target && under(appRendererRoot)(target)) {
+    if (featureRenderer(file) && target && appRendererRoots.some((root) => under(root)(target))) {
       violations.push(`${file}:${line} feature renderers cannot import app renderer modules`)
     }
     if (
@@ -514,7 +503,7 @@ export function checkRawIpcAuthority(file: string, source: string) {
 
 function isRendererTransportComposition(file: string) {
   return (
-    under(rendererEntryRoot)(file) ||
+    rendererEntryFiles.has(file) ||
     under(appRendererCapabilityRoot)(file) ||
     normalizedModuleRoot(file) === rawRendererLinkRoot ||
     file === appUpdateRendererProduction
@@ -558,8 +547,8 @@ export function checkPlatformCommandAuthority(file: string, source: string) {
   }
 
   const violations: string[] = []
-  const tradeRenderer = path.join('apps', 'newframe', 'src', 'features', 'transactions', 'trade', 'renderer')
-  const sendRenderer = path.join('apps', 'newframe', 'src', 'features', 'transactions', 'send', 'renderer')
+  const tradeRenderer = path.join('apps', 'newframe', 'src', 'trays', 'features', 'trading')
+  const sendRenderer = path.join('apps', 'newframe', 'src', 'trays', 'features', 'send')
   if (productionRenderer(file)) {
     const rendererExecutionCapability = source.match(
       /type\s*:\s*['"](?:transaction\.submit|typedData\.signV4|flash\.submit)['"]|['"](?:transaction\.submit|typedData\.signV4|flash\.submit)['"]\s*:/

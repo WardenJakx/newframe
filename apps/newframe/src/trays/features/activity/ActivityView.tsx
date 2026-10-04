@@ -1,0 +1,277 @@
+import { Button } from '@newframe/ui/button'
+import { Group } from '@newframe/ui/group'
+import { Inline } from '@newframe/ui/inline'
+import { MediaBadge } from '@newframe/ui/media-badge'
+import { Stack } from '@newframe/ui/stack'
+import { Text } from '@newframe/ui/text'
+import type { ReactNode } from 'react'
+
+import { cva } from '../../../../generated/styled-system/css/cva.js'
+import { persistedImageSource } from '../../../features/asset-data/domain/image/index.ts'
+import { tokenForId, tokenImageSource } from '../../../features/tokens/domain/index.ts'
+import type { ClipboardCapability, TokenImageCapability } from '../../shared/capabilities.ts'
+import { ChainIcon } from '../../shared/ui/ChainIcon.tsx'
+import ChainTokenIcon from '../../shared/ui/ChainTokenIcon.tsx'
+import { CopyButton } from '../../shared/ui/CopyButton.tsx'
+import StatusGlyph from '../../shared/ui/StatusGlyph.tsx'
+import {
+  activityAssetEffect,
+  activityBalanceChangeLabel,
+  activityGasLabel,
+  activityGlyphState,
+  activityTimestampLabel,
+  transactionStatusLabel
+} from './activityModel.ts'
+import type {
+  ActivityChainMap,
+  ActivityChainMetadataMap,
+  ActivityRecord,
+  ActivityViewRecord,
+  ActivityTokenCatalog
+} from './activityTypes.ts'
+
+const activityRowRecipe = cva({
+  base: {
+    width: '100%',
+    minHeight: 'menu-row-min',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: '4',
+    padding: '4',
+    borderRadius: 'compact'
+  }
+})
+
+const transactionLinkRecipe = cva({
+  base: { textDecoration: 'underline' }
+})
+
+const shortHash = (hash: string | null | undefined = '') =>
+  hash ? `${hash.substring(0, 6)}…${hash.substring(hash.length - 4)}` : ''
+
+function ActivityIcon({
+  imageCapability,
+  record,
+  chainId,
+  nativeSymbol,
+  chains,
+  chainsMeta,
+  tokens
+}: {
+  imageCapability: TokenImageCapability
+  record: ActivityRecord
+  chainId: number
+  nativeSymbol: string
+  chains: ActivityChainMap
+  chainsMeta: ActivityChainMetadataMap
+  tokens: ActivityTokenCatalog
+}) {
+  const effect = activityAssetEffect(record, nativeSymbol)
+  if (!effect) {
+    return (
+      <MediaBadge
+        badge={<ChainIcon chainId={chainId} chains={chains} chainsMeta={chainsMeta} size='medium' />}
+      >
+        <StatusGlyph state={activityGlyphState(record.status)} />
+      </MediaBadge>
+    )
+  }
+
+  const nativeCurrency = chainsMeta[chainId]?.nativeCurrency ?? {}
+  const address = effect.assetAddress?.toLowerCase()
+  const tokenId = address ? `${chainId}:${address}` : undefined
+  const canonicalImage = tokenId ? tokenImageSource(tokenForId(tokens, tokenId)) : ''
+  const nativeImage = effect.kind === 'native' ? persistedImageSource(nativeCurrency.image) : ''
+
+  return (
+    <ChainTokenIcon
+      chainId={chainId}
+      imageCapability={imageCapability}
+      logoURI={canonicalImage || (effect.logoURI ?? nativeImage) || nativeCurrency.icon}
+      chains={chains}
+      chainsMeta={chainsMeta}
+      symbol={effect.symbol ?? nativeSymbol}
+      tokenId={tokenId}
+    />
+  )
+}
+
+function ActivityRowContent({
+  imageCapability,
+  record,
+  chains,
+  chainsMeta,
+  right,
+  tokens
+}: {
+  imageCapability: TokenImageCapability
+  record: ActivityRecord
+  chains: ActivityChainMap
+  chainsMeta: ActivityChainMetadataMap
+  right: ReactNode
+  tokens: ActivityTokenCatalog
+}) {
+  const chainId = Number(record.chainId)
+  const chain = (chains as Partial<typeof chains>)[chainId] ?? {}
+  const nativeSymbol = chainsMeta[chainId]?.nativeCurrency?.symbol ?? chain.symbol ?? 'ETH'
+  const title = record.display?.title ?? 'Transaction'
+  const subtitle = record.display?.subtitle ?? chain.name ?? `Chain ${chainId}`
+  const balanceChanges =
+    record.status === 'succeeded'
+      ? activityBalanceChangeLabel(record, nativeSymbol, (address) =>
+          tokenForId(tokens, `${chainId}:${address.toLowerCase()}`)
+        )
+      : ''
+  const gasSpent =
+    record.status === 'succeeded' || record.status === 'reverted'
+      ? activityGasLabel(record, nativeSymbol)
+      : ''
+
+  return (
+    <>
+      <ActivityIcon
+        chainId={chainId}
+        imageCapability={imageCapability}
+        nativeSymbol={nativeSymbol}
+        chains={chains}
+        chainsMeta={chainsMeta}
+        record={record}
+        tokens={tokens}
+      />
+      <Stack gap='xsmall' grow>
+        <Text truncate variant='label'>
+          {title}
+        </Text>
+        <Text tone='secondary' truncate variant='supporting'>
+          {subtitle}
+        </Text>
+        {balanceChanges ? (
+          <Text tone='secondary' truncate variant='caption'>
+            {balanceChanges}
+          </Text>
+        ) : null}
+        {gasSpent ? (
+          <Text tone='muted' truncate variant='caption'>
+            {gasSpent}
+          </Text>
+        ) : null}
+      </Stack>
+      {right}
+    </>
+  )
+}
+
+export function ActivityView<TRecord extends ActivityViewRecord>({
+  activity,
+  clipboard,
+  imageCapability,
+  chains,
+  chainsMeta,
+  onOpen,
+  onOpenExplorer,
+  tokens
+}: {
+  activity: TRecord[]
+  clipboard: ClipboardCapability
+  imageCapability: TokenImageCapability
+  chains: ActivityChainMap
+  chainsMeta: ActivityChainMetadataMap
+  onOpen: (activityId: string) => void
+  onOpenExplorer: (record: TRecord) => void
+  tokens: ActivityTokenCatalog
+}) {
+  if (!activity.length) {
+    return (
+      <Text align='center' tone='disabled' variant='overline'>
+        No Activity Yet
+      </Text>
+    )
+  }
+
+  return (
+    <Group label='Activity list'>
+      <Stack gap='xsmall'>
+        {activity.map((record) => {
+          const status = transactionStatusLabel(record.status)
+          const submitted = activityTimestampLabel(record)
+          const confirmed = record.status === 'succeeded'
+          const canOpenExplorer = confirmed && !!record.hash && !!chains[Number(record.chainId)]?.explorer
+          const right = (
+            <Stack align='end' gap='xsmall'>
+              {confirmed ? (
+                <Inline align='center' gap='none'>
+                  {canOpenExplorer ? (
+                    <Button
+                      appearance='ghost'
+                      label={`Open transaction ${record.hash ?? ''} in explorer`}
+                      onPress={() => onOpenExplorer(record)}
+                      size='compact'
+                    >
+                      <span className={transactionLinkRecipe()} data-transaction-link=''>
+                        <Text display='inline' tone='secondary' variant='code'>
+                          {shortHash(record.hash)}
+                        </Text>
+                      </span>
+                    </Button>
+                  ) : (
+                    <Text display='inline' tone='secondary' variant='code'>
+                      {shortHash(record.hash)}
+                    </Text>
+                  )}
+                  {record.hash ? (
+                    <CopyButton
+                      clipboard={clipboard}
+                      copiedLabel={`Transaction hash copied ${record.hash}`}
+                      copiedTitle='Transaction hash copied'
+                      label={`Copy transaction hash ${record.hash}`}
+                      title='Copy transaction hash'
+                      value={record.hash}
+                    />
+                  ) : null}
+                </Inline>
+              ) : (
+                <Text tone={record.status === 'reverted' ? 'danger' : 'warning'} variant='supporting'>
+                  {status}
+                </Text>
+              )}
+              <Text tone='muted' variant='caption'>
+                {submitted}
+              </Text>
+            </Stack>
+          )
+          const content = (
+            <ActivityRowContent
+              imageCapability={imageCapability}
+              chains={chains}
+              chainsMeta={chainsMeta}
+              record={record}
+              right={right}
+              tokens={tokens}
+            />
+          )
+
+          if (confirmed) {
+            return (
+              <div className={activityRowRecipe()} key={record.id}>
+                {content}
+              </div>
+            )
+          }
+
+          return (
+            <Button
+              key={record.id}
+              appearance='selectionOption'
+              label={`${record.display?.title ?? 'Transaction'} ${status}`}
+              onPress={() => onOpen(record.id)}
+              width='full'
+            >
+              {content}
+            </Button>
+          )
+        })}
+      </Stack>
+    </Group>
+  )
+}

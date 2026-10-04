@@ -1,0 +1,52 @@
+import { useShallow } from 'zustand/react/shallow'
+
+import { useWalletSelector } from '../../../shared/projection/useAppSelector.tsx'
+import { accountDisplayType } from '../../../shared/ui/signerPresentation.ts'
+import { OrderDetailsView } from './OrderDetailsView.tsx'
+import type { OrdersCapability } from './ordersCapability.ts'
+
+export function OrderDetails({
+  assetImages,
+  capability,
+  onBack,
+  orderId
+}: {
+  assetImages?: { contra?: string; target?: string }
+  capability: Pick<OrdersCapability, 'hydrateTokenImage'>
+  onBack: () => void
+  orderId: string
+}) {
+  const shared = useWalletSelector(
+    useShallow((state) => {
+      const order = (state.orders as Partial<typeof state.orders>)[orderId]
+      return {
+        accountType: accountDisplayType(
+          Object.values(state.accounts).find(
+            (account) => account.address.toLowerCase() === order?.accountAddress.toLowerCase()
+          )
+        ),
+        chains: state.chains.ethereum,
+        chainsMeta: state.chainsMeta.ethereum,
+        order,
+        tokens: state.tokens
+      }
+    })
+  )
+  if (!shared.order) {
+    return null
+  }
+
+  return (
+    <OrderDetailsView
+      assetImages={assetImages}
+      accountType={shared.accountType}
+      imageCapability={capability}
+      chains={shared.chains}
+      chainsMeta={shared.chainsMeta}
+      onBack={onBack}
+      order={shared.order}
+      orderId={orderId}
+      tokens={shared.tokens}
+    />
+  )
+}

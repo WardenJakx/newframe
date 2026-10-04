@@ -1,0 +1,59 @@
+import type { DisplayedBalance } from '../../../../features/asset-data/domain/balance/index.ts'
+
+export type HomeSection = 'positions' | 'activity' | 'orders'
+
+interface ProposedChain {
+  id?: string | number
+  chainId?: string | number
+  icon?: string
+  name?: string
+  nativeCurrencyName?: string
+  symbol?: string
+  primaryRpc?: string
+  secondaryRpc?: string
+  explorer?: string
+  [key: string]: unknown
+}
+
+interface PendingAddChain {
+  chain?: ProposedChain
+  requestId?: string
+  homeCommandId?: number
+}
+
+interface PendingCustomToken {
+  address: string
+  chainId: number
+  decimals?: number
+  logoURI?: string
+  name?: string
+  symbol?: string
+}
+
+export type HomeOverlay =
+  | { type: 'none' }
+  | { type: 'menu' }
+  | { type: 'accounts' }
+  | { type: 'chains' }
+  | { type: 'settings' }
+  | { type: 'about' }
+  | { type: 'requests' }
+  | { type: 'dapps' }
+  | { type: 'tokens'; initialToken?: PendingCustomToken }
+  | { type: 'addChain'; pending: PendingAddChain }
+  | { type: 'asset'; accountId: string; asset: DisplayedBalance }
+  | { type: 'activity'; activityId: string }
+  | { type: 'order'; orderId: string; assetImages?: { contra?: string; target?: string } }
+  | { type: 'receive'; accountId: string }
+
+export interface HomeUiState {
+  section: HomeSection
+  selectedChainId: number
+  overlay: HomeOverlay
+  overlayHistory: Exclude<HomeOverlay, { type: 'none' }>[]
+  setSection: (section: HomeSection) => void
+  setSelectedChainId: (chainId: number) => void
+  openOverlay: (overlay: Exclude<HomeOverlay, { type: 'none' }>) => void
+  pushOverlay: (overlay: Exclude<HomeOverlay, { type: 'none' }>) => void
+  closeOverlay: () => void
+}

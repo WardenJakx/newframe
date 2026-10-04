@@ -54,7 +54,7 @@ function category(relativePath: string) {
   if (relativePath.startsWith('test/extension/')) {
     return 'renderer'
   }
-  if (relativePath.includes('/renderer/')) {
+  if (relativePath.startsWith('src/trays/')) {
     return 'renderer'
   }
   if (relativePath.startsWith('src/app/contracts/') || relativePath.includes('/contract/')) {

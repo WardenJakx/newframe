@@ -1,0 +1,494 @@
+import { afterEach, beforeEach, describe, expect, it, jest as timers } from 'bun:test'
+
+import { FLASH_USDC_ASSET, FLASH_WETH_ASSET } from '@newframe/flash/assets'
+import {
+  FLASH_ANVIL_CHAIN_ID,
+  FLASH_MARKET_ORDER_TYPE,
+  FLASH_USDC_ADDRESS,
+  FLASH_WETH_ADDRESS
+} from '@newframe/flash/constants'
+import type { CommandResult, FlashQuoteDisplay } from '@newframe/schema/tray-operations'
+import { act } from '@testing-library/react'
+
+import { fireEvent, render, screen, waitFor } from '../../../../test/support/componentSetup.tsx'
+import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient.ts'
+import Trade from './index.tsx'
+import { createTradeCapabilityFake, type TradeCapabilityFake } from './tradeService.test-support.ts'
+
+const fixture = registerTestRuntimeFixture()
+let trade: TradeCapabilityFake
+
+const sender = {
+  id: 'sender',
+  address: '0x0000000000000000000000000000000000000001',
+  name: 'Sender',
+  lastSignerType: 'address'
+}
+const other = {
+  id: 'other',
+  address: '0x0000000000000000000000000000000000000002',
+  name: 'Other',
+  lastSignerType: 'address'
+}
+const newAccount = {
+  id: 'new-account',
+  address: '0x0000000000000000000000000000000000000003',
+  name: 'New Account',
+  lastSignerType: 'address'
+}
+
+function updateTradeState(changes: Record<string, unknown>) {
+  fixture.state.reset({ ...fixture.state.getState(), ...changes })
+}
+
+function initializeTradeState() {
+  const balances = [wethBalance()]
+  const tokenRecords = balances.map((token) => ({
+    ...token,
+    custom: false,
+    curated: false,
+    sources: ['onchain'],
+    updatedAt: 0
+  }))
+  fixture.state.reset({
+    currentAccount: sender.id,
+    accounts: {
+      [sender.id]: sender,
+      [other.id]: other
+    },
+    accountOrder: [sender.id, other.id],
+    operations: {},
+    balances: {
+      [sender.address]: balances,
+      [other.address]: [wethBalance()]
+    },
+    chains: {
+      ethereum: {
+        [FLASH_ANVIL_CHAIN_ID]: {
+          id: FLASH_ANVIL_CHAIN_ID,
+          explorer: '',
+          isTestnet: true,
+          name: 'Local',
+          on: true
+        }
+      }
+    },
+    chainsMeta: {
+      ethereum: {
+        [FLASH_ANVIL_CHAIN_ID]: {
+          image: {
+            base64: 'Y2hhaW4=',
+            contentHash: 'chain-image',
+            mimeType: 'image/png',
+            sourceUrl: 'https://cdn.example/chain.png'
+          },
+          primaryColor: 'accent1',
+          nativeCurrency: {
+            symbol: 'ETH',
+            name: 'Ether',
+            decimals: 18
+          }
+        }
+      }
+    },
+    assetRates: {
+      [`${FLASH_ANVIL_CHAIN_ID}:${FLASH_USDC_ADDRESS}`]: {
+        usdRate: 1,
+        source: 'zerion',
+        observedAt: 1
+      }
+    },
+    runtime: {
+      profile: 'dev',
+      isDev: true,
+      environment: 'test'
+    },
+    tokens: {
+      byId: Object.fromEntries(
+        tokenRecords.map((token) => [
+          `${token.chainId}:${token.address.toLowerCase()}`,
+          { ...token, address: token.address.toLowerCase() }
+        ])
+      ),
+      accountTokenIds: {
+        [sender.address]: tokenRecords.map((token) => `${token.chainId}:${token.address.toLowerCase()}`)
+      }
+    }
+  })
+}
+
+function wethBalance() {
+  return {
+    address: FLASH_WETH_ADDRESS,
+    balance: '1000000000000000000',
+    chainId: FLASH_ANVIL_CHAIN_ID,
+    decimals: 18,
+    displayBalance: '',
+    name: 'Wrapped Ether',
+    symbol: 'WETH'
+  }
+}
+
+function quote(id: string, inputAmount: string): FlashQuoteDisplay {
+  return {
+    id,
+    side: 'sell',
+    orderType: FLASH_MARKET_ORDER_TYPE,
+    targetAsset: FLASH_WETH_ASSET,
+    contraAsset: FLASH_USDC_ASSET,
+    spentAsset: FLASH_WETH_ASSET,
+    receiveAsset: FLASH_USDC_ASSET,
+    inputAmount,
+    outputAmount: '2400',
+    nextAction: 'sign',
+    requiresPermit: false,
+    inputNotional: '2400',
+    outputNotional: '2390',
+    estimatedFeeNotional: '1.25',
+    targetNotionalPrice: '2400',
+    rate: '1 WETH = 2400 USDC',
+    fees: [],
+    steps: [
+      { id: 'approve', kind: 'approve', label: 'Approve WETH', status: 'required' },
+      { id: 'sign', kind: 'sign', label: 'Sign order', status: 'required' },
+      { id: 'submit', kind: 'submit', label: 'Submit order', status: 'required' }
+    ]
+  }
+}
+
+describe('Trade', () => {
+  beforeEach(() => {
+    timers.useFakeTimers()
+    initializeTradeState()
+    trade = createTradeCapabilityFake()
+  })
+
+  afterEach(() => {
+    timers.useRealTimers()
+  })
+
+  it('re-quotes account changes and does not promote stale output when direction changes', async () => {
+    const quoteCalls: Array<Parameters<TradeCapabilityFake['quote']>[0]> = []
+
+    trade.quote.mockImplementation(async (request) => {
+      quoteCalls.push(request)
+      return {
+        ok: true,
+        quoteId: `quote-${quoteCalls.length}`,
+        quote: quote(`quote-${quoteCalls.length}`, request.qty)
+      }
+    })
+
+    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} capability={trade} />)
+
+    fireEvent.change(screen.getByLabelText('WETH amount'), {
+      target: { value: '1' }
+    })
+
+    await act(async () => {
+      timers.advanceTimersByTime(250)
+    })
+
+    expect(quoteCalls).toHaveLength(1)
+    expect(quoteCalls[0].accountAddress).toBe(sender.address)
+    expect(quoteCalls[0]).not.toHaveProperty('chainId')
+    expect(quoteCalls[0]).not.toHaveProperty('targetChain')
+    expect(quoteCalls[0]).not.toHaveProperty('contraChain')
+
+    await act(async () => {
+      updateTradeState({ currentAccount: other.id })
+    })
+    await act(async () => {
+      timers.advanceTimersByTime(250)
+    })
+
+    expect(screen.getByLabelText<HTMLInputElement>('WETH amount').value).toBe('1')
+    expect(quoteCalls).toHaveLength(2)
+    expect(quoteCalls[1].accountAddress).toBe(other.address)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Switch to BUY' }))
+    expect(screen.getByLabelText<HTMLInputElement>('USDC amount').value).toBe('')
+  })
+
+  it('pauses quote refresh for projected signing and cancels a pending workflow when the ticket changes', async () => {
+    const quoteCalls: Array<Parameters<TradeCapabilityFake['quote']>[0]> = []
+
+    trade.quote.mockImplementation(async (request) => {
+      quoteCalls.push(request)
+      const result = quote(`quote-${quoteCalls.length}`, request.qty)
+      result.nextAction = 'approve'
+      result.actions = {
+        approval: {
+          id: 'approval',
+          kind: 'approve',
+          label: 'Approve WETH',
+          asset: FLASH_WETH_ASSET,
+          amount: request.qty,
+          amountRaw: '1000000000000000000'
+        }
+      }
+      return {
+        ok: true,
+        quoteId: `quote-${quoteCalls.length}`,
+        quote: result
+      }
+    })
+    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} capability={trade} />)
+    fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '1' } })
+    await act(async () => timers.advanceTimersByTime(250))
+    fireEvent.click(await screen.findByRole('button', { name: 'Approve WETH' }))
+
+    const prepareCommand = trade.prepare.mock.calls.at(0)?.[0]
+    if (!prepareCommand) {
+      throw new Error('Expected trade prepare command')
+    }
+    expect(prepareCommand).toEqual({
+      operationId: expect.any(String) as string,
+      quoteId: 'quote-1',
+      action: 'approve'
+    })
+    await act(async () => {
+      updateTradeState({
+        operations: {
+          [prepareCommand.operationId]: {
+            id: prepareCommand.operationId,
+            type: 'trade.execute',
+            status: 'pending',
+            phase: 'awaiting_submit',
+            startedAt: 1,
+            updatedAt: 2
+          }
+        }
+      })
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Review/sign' }))
+    const submitCommand = trade.submit.mock.calls.at(0)?.[0]
+    if (!submitCommand) {
+      throw new Error('Expected trade submit command')
+    }
+    expect(submitCommand.operationId).toBe(prepareCommand.operationId)
+    await act(async () => {
+      const mirrored = fixture.state.sideTray.getState()
+      updateTradeState({
+        balances: {
+          ...mirrored.balances,
+          [sender.address]: mirrored.balances[sender.address].map((balance) => ({ ...balance }))
+        },
+        assetRates: { ...mirrored.assetRates },
+        tokens: { ...mirrored.tokens, byId: { ...mirrored.tokens.byId } },
+        operations: {
+          [submitCommand.operationId]: {
+            id: submitCommand.operationId,
+            type: 'trade.execute',
+            status: 'pending',
+            phase: 'signing_order',
+            startedAt: 1,
+            updatedAt: 2
+          }
+        }
+      })
+    })
+    await act(async () => timers.advanceTimersByTime(500))
+
+    expect(quoteCalls).toHaveLength(1)
+    fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '2' } })
+    await act(async () => timers.advanceTimersByTime(250))
+    expect(trade.cancel.mock.calls).toEqual([[{ operationId: prepareCommand.operationId }]])
+    expect(quoteCalls).toHaveLength(2)
+    expect(quoteCalls[1].qty).toBe('2')
+  })
+
+  it('ignores a stale delayed acknowledgement and unlocks retry after a current rejection', async () => {
+    const staleMessage = 'Stale command failed.'
+    const currentMessage = 'Trade request was rejected.'
+    let resolveFirst!: (value: CommandResult) => void
+    let submitCount = 0
+
+    trade.quote.mockImplementation(async (request) => {
+      const quoteId = `submit-error-${request.qty}`
+      return { ok: true, quoteId, quote: quote(quoteId, request.qty) }
+    })
+    trade.submit.mockImplementation(async () => {
+      submitCount += 1
+      if (submitCount === 1) {
+        return await new Promise<CommandResult>((resolve) => (resolveFirst = resolve))
+      }
+      return { ok: false, error: 'invalid_command', message: currentMessage }
+    })
+
+    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} capability={trade} />)
+    fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '1' } })
+    await act(async () => timers.advanceTimersByTime(250))
+    fireEvent.click(await screen.findByRole('button', { name: 'Review/sign' }))
+    fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '2' } })
+    await act(async () => timers.advanceTimersByTime(250))
+    resolveFirst({ ok: false, error: 'invalid_command', message: staleMessage })
+    await act(async () => await Promise.resolve())
+    expect(screen.queryByText(staleMessage)).toBe(null)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Review/sign' }))
+    expect(await screen.findByText(currentMessage)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Review/sign' })).toBeTruthy()
+    expect(trade.close).not.toHaveBeenCalled()
+  })
+
+  it('refreshes unchanged quotes after fifteen seconds and request changes after the debounce', async () => {
+    const quoteCalls: Array<Parameters<TradeCapabilityFake['quote']>[0]> = []
+
+    trade.quote.mockImplementation(async (request) => {
+      quoteCalls.push(request)
+      return {
+        ok: true,
+        quoteId: `quote-${quoteCalls.length}`,
+        quote: quote(`quote-${quoteCalls.length}`, request.qty)
+      }
+    })
+
+    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} capability={trade} />)
+    fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '1' } })
+    await act(async () => timers.advanceTimersByTime(250))
+
+    expect(quoteCalls).toHaveLength(1)
+
+    await act(async () => {
+      const mirrored = fixture.state.sideTray.getState()
+      updateTradeState({
+        balances: {
+          ...mirrored.balances,
+          [sender.address]: mirrored.balances[sender.address].map((balance) => ({ ...balance }))
+        },
+        assetRates: { ...mirrored.assetRates }
+      })
+    })
+    await act(async () => timers.advanceTimersByTime(500))
+    expect(quoteCalls).toHaveLength(1)
+
+    await act(async () => timers.advanceTimersByTime(14_499))
+    expect(quoteCalls).toHaveLength(1)
+
+    await act(async () => timers.advanceTimersByTime(1))
+    expect(quoteCalls).toHaveLength(2)
+
+    fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '2' } })
+    await act(async () => timers.advanceTimersByTime(249))
+    expect(quoteCalls).toHaveLength(2)
+
+    await act(async () => timers.advanceTimersByTime(1))
+    expect(quoteCalls).toHaveLength(3)
+    expect(quoteCalls[2].qty).toBe('2')
+    expect(trade.cancel).not.toHaveBeenCalled()
+  })
+
+  it('cancels only an execution session when the controller unmounts', async () => {
+    trade.quote.mockResolvedValue({ ok: true, quoteId: 'unmount', quote: quote('unmount', '1') })
+    const { unmount } = render(
+      <Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} capability={trade} />
+    )
+
+    expect(trade.cancel).not.toHaveBeenCalled()
+    fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '1' } })
+    await act(async () => timers.advanceTimersByTime(250))
+    fireEvent.click(await screen.findByRole('button', { name: 'Review/sign' }))
+    unmount()
+    expect(trade.cancel.mock.calls).toEqual([[{ operationId: trade.submit.mock.calls[0]?.[0].operationId }]])
+  })
+
+  it('derives permit, order, submit, and close progress only from projected canonical state', async () => {
+    const permitQuote = quote('permit-quote', '1')
+    permitQuote.requiresPermit = true
+    trade.quote.mockResolvedValue({ ok: true, quoteId: permitQuote.id, quote: permitQuote })
+
+    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} capability={trade} />)
+    fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '1' } })
+    await act(async () => timers.advanceTimersByTime(250))
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Review/sign' }))
+    const command = trade.submit.mock.calls.at(0)?.[0]
+    if (!command) {
+      throw new Error('Expected trade submit command')
+    }
+    expect(command).toEqual({
+      operationId: expect.any(String) as string,
+      quoteId: 'permit-quote'
+    })
+    expect(JSON.stringify(command)).not.toMatch(/signature|typedData|payload|transaction|calldata/i)
+
+    const projectOperation = async (phase: string, status: 'pending' | 'succeeded' = 'pending') => {
+      await act(async () => {
+        updateTradeState({
+          operations: {
+            [command.operationId]: {
+              id: command.operationId,
+              type: 'trade.execute',
+              status,
+              phase,
+              entityRefs: status === 'succeeded' ? [{ type: 'order', id: 'permit-order' }] : [],
+              startedAt: 1,
+              updatedAt: 2,
+              ...(status === 'succeeded' ? { finishedAt: 2 } : {})
+            }
+          }
+        })
+      })
+    }
+
+    await projectOperation('signing_permit')
+    expect(screen.getByText('Review permit in Newframe')).toBeTruthy()
+    await projectOperation('signing_order')
+    expect(screen.getByText('Review order in Newframe')).toBeTruthy()
+    await projectOperation('submitting')
+    expect(screen.getByText('Submitting order')).toBeTruthy()
+    await projectOperation('submitted', 'succeeded')
+    expect(trade.close).not.toHaveBeenCalled()
+
+    await act(async () => {
+      updateTradeState({
+        orders: {
+          'permit-order': {
+            orderId: 'permit-order',
+            accountAddress: sender.address,
+            provider: 'flash',
+            status: 'open',
+            orderType: 'market',
+            side: 'sell',
+            targetAsset: FLASH_WETH_ASSET,
+            contraAsset: FLASH_USDC_ASSET,
+            spentAsset: FLASH_WETH_ASSET,
+            receiveAsset: FLASH_USDC_ASSET,
+            qty: '1',
+            spentAmount: '1',
+            outputAmount: '2400',
+            estimatedOutputAmount: '2400',
+            filledOutputAmount: '0',
+            averageFillPrice: null,
+            createdAt: 1,
+            updatedAt: 2,
+            terminalAt: null,
+            open: true,
+            cancellable: true
+          }
+        }
+      })
+    })
+    await waitFor(() => expect(trade.close).toHaveBeenCalled())
+  })
+
+  it('stays mounted when a newly created account is selected before balances exist', async () => {
+    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} capability={trade} />)
+
+    await act(async () => {
+      const state = fixture.state.sideTray.getState()
+      updateTradeState({
+        accounts: {
+          ...state.accounts,
+          [newAccount.id]: newAccount
+        },
+        accountOrder: [sender.id, other.id, newAccount.id],
+        currentAccount: newAccount.id
+      })
+    })
+
+    expect(screen.getByText('Trade')).toBeTruthy()
+    expect(screen.getByLabelText('Close Trade')).toBeTruthy()
+  })
+})

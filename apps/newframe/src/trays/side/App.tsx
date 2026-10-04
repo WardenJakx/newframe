@@ -1,0 +1,43 @@
+import React from 'react'
+
+import { parseSideTrayHashRoute } from '../../shared/domain/sideTray.ts'
+import Send from '../features/send/index.tsx'
+import type { SendCapability } from '../features/send/sendService.ts'
+import Trade from '../features/trading/index.tsx'
+import type { TradeCapability } from '../features/trading/tradeService.ts'
+
+function useHashRoute() {
+  const [hash, setHash] = React.useState(() => window.location.hash)
+
+  React.useEffect(() => {
+    const updateHash = () => setHash(window.location.hash)
+
+    window.addEventListener('hashchange', updateHash)
+
+    return () => window.removeEventListener('hashchange', updateHash)
+  }, [])
+
+  return parseSideTrayHashRoute(hash)
+}
+
+function App({ send, trade }: { send: SendCapability; trade: TradeCapability }) {
+  const route = useHashRoute()
+  const assetId = route.searchParams.get('assetId')
+  const chainIdValue = Number(route.searchParams.get('chainId'))
+  const chainId = Number.isInteger(chainIdValue) && chainIdValue > 0 ? chainIdValue : undefined
+
+  if (route.name === 'trade') {
+    return (
+      <Trade
+        assetId={assetId}
+        capability={trade}
+        chainId={chainId}
+        key={`trade:${assetId ?? ''}:${chainId ?? ''}`}
+      />
+    )
+  }
+
+  return <Send assetId={assetId} capability={send} key={`send:${assetId ?? ''}`} />
+}
+
+export default App

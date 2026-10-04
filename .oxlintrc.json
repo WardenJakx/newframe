@@ -154,10 +154,7 @@
       "env": {
         "node": true
       },
-      "excludeFiles": [
-        "apps/newframe/src/renderer/**/*.{js,ts,tsx}",
-        "apps/newframe/src/**/renderer/**/*.{js,ts,tsx}"
-      ]
+      "excludeFiles": ["apps/newframe/src/trays/**/*.{js,ts,tsx}"]
     },
     {
       "files": ["**/*.{ts,tsx}"],
@@ -284,8 +281,7 @@
       "files": [
         "packages/ui/src/**/*.tsx",
         "packages/ui/test/**/*.tsx",
-        "apps/newframe/src/renderer/**/*.{ts,tsx}",
-        "apps/newframe/src/**/renderer/**/*.{ts,tsx}",
+        "apps/newframe/src/trays/**/*.{ts,tsx}",
         "apps/newframe/test/support/componentSetup.tsx",
         "apps/newframe-extension/src/**/*.{ts,tsx}"
       ],
@@ -365,11 +361,7 @@
       }
     },
     {
-      "files": [
-        "apps/newframe/src/renderer/**/*.{ts,tsx}",
-        "apps/newframe/src/**/renderer/**/*.{ts,tsx}",
-        "apps/newframe/test/support/componentSetup.tsx"
-      ],
+      "files": ["apps/newframe/src/trays/**/*.{ts,tsx}", "apps/newframe/test/support/componentSetup.tsx"],
       "globals": {
         "AsyncDisposableStack": "readonly",
         "DisposableStack": "readonly",
@@ -381,16 +373,15 @@
       }
     },
     {
-      "files": ["apps/newframe/src/renderer/*/index.tsx"],
+      "files": ["apps/newframe/src/trays/{main,side}/index.tsx"],
       "globals": {
         "process": "writable"
       }
     },
     {
       "files": [
-        "apps/newframe/src/renderer/**/*.{test,spec}.{ts,tsx}",
-        "apps/newframe/src/**/renderer/**/*.{test,spec}.{ts,tsx}",
-        "apps/newframe/src/**/renderer/**/__mocks__/**/*.ts",
+        "apps/newframe/src/trays/**/*.{test,spec}.{ts,tsx}",
+        "apps/newframe/src/trays/**/__mocks__/**/*.ts",
         "apps/newframe/test/extension/**/*.{test,spec}.{ts,tsx}"
       ],
       "rules": {
@@ -468,8 +459,7 @@
       "excludeFiles": [
         "apps/newframe/src/platform/internet/**",
         "apps/newframe/src/**/*.test.ts",
-        "apps/newframe/src/renderer/**",
-        "apps/newframe/src/**/renderer/**"
+        "apps/newframe/src/trays/**"
       ],
       "rules": {
         "no-restricted-globals": [

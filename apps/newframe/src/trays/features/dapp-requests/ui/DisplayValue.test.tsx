@@ -1,0 +1,42 @@
+import { expect, it } from 'bun:test'
+
+import { render, screen } from '../../../../../test/support/componentSetup.tsx'
+import { MAX_HEX } from '../../../../features/transactions/domain/constants.ts'
+import { displayValueData } from '../format/displayValue.ts'
+import { DisplayValue } from './DisplayValue.tsx'
+
+it('should render the expected content when provided with valueData', () => {
+  const valueData = displayValueData(356e28)
+  render(<DisplayValue value={valueData} />)
+
+  const displayValue = screen.getByTestId('display-value')
+  expect(displayValue.textContent).toBe('3.56T')
+})
+
+it('should render the expected content when provided with a value and valueDataParams', () => {
+  render(<DisplayValue value={356e24} valueDataParams={{ decimals: 12 }} />)
+
+  const displayValue = screen.getByTestId('display-value')
+  expect(displayValue.textContent).toBe('356T')
+})
+
+it('should render a currency symbol before the value when specified', () => {
+  render(<DisplayValue value={356e18} currencySymbol={'MYTOKEN'} />)
+
+  const displayValue = screen.getByTestId('display-value')
+  expect(displayValue.textContent).toBe('MYTOKEN356')
+})
+
+it('should render a currency symbol after the value when specified with currencySymbolPosition', () => {
+  render(<DisplayValue value={356e18} currencySymbol={'MYTOKEN'} currencySymbolPosition='last' />)
+
+  const displayValue = screen.getByTestId('display-value')
+  expect(displayValue.textContent).toBe('356MYTOKEN')
+})
+
+it('should render an unlimited value', () => {
+  render(<DisplayValue value={MAX_HEX} currencySymbol='ETH' currencySymbolPosition='last' />)
+
+  const displayValue = screen.getByTestId('display-value')
+  expect(displayValue.textContent).toBe('UnlimitedETH')
+})

@@ -3,7 +3,7 @@ import type { SideTrayRendererState, WalletRendererState } from '@newframe/schem
 import type { ComponentType, PropsWithChildren } from 'react'
 import { createStore, type StoreApi } from 'zustand/vanilla'
 
-import { RendererStateProvider } from '../../src/platform/state-sync/renderer/useAppSelector.tsx'
+import { RendererStateProvider } from '../../src/trays/shared/projection/useAppSelector.tsx'
 
 export interface RendererStateFixtureOptions {
   initialState?: RendererState

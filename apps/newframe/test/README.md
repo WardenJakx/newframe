@@ -31,8 +31,8 @@ focused capability fakes. Controller tests provide a fresh scoped store/client a
 capability calls plus projected-state behavior. Integration tests may connect those pieces, but still
 own and dispose their store and client per test fixture.
 
-The same one-way dependency rule applies in tests: app renderer composition may import features,
-but feature renderer tests and fixtures may not import app renderer modules. Capability fakes stay
+The same one-way dependency rule applies in tests: main and side tray composition may import tray features,
+but tray feature tests and fixtures may not import main or side tray modules. Capability fakes stay
 with their owning feature (or in explicitly test-only shared support), and captured calls retain the
 catalog-derived input types instead of using `any`.
 
@@ -48,7 +48,7 @@ Safe confirmations: `src/features/accounts/main/safeTransaction.test.ts` covers
 exact proposal data, Safe scope changes, publication reconciliation, and retained-signature
 retry. Generic signing guards belong to Account tests. The AirGap integration suite
 connects Safe approval through account signing, QR response verification, and the local
-Safe client. It never submits to a production service. `src/features/requests/renderer/SafeQueue.test.tsx` covers the
+Safe client. It never submits to a production service. `src/trays/features/dapp-requests/SafeQueue.test.tsx` covers the
 Sign controls, unavailable simulation, disconnected owners, and publication states.
 
 Unsigned Safe simulation: `bun run test:integration:safe-simulation` builds the existing

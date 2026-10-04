@@ -1,0 +1,602 @@
+import type { AirGapRequestReference } from '@newframe/schema/airgap'
+import type { WalletRendererState } from '@newframe/schema/projections'
+import type {
+  SafeMessageProgress,
+  SignatureRequest,
+  SigningCapability,
+  TransactionRequest
+} from '@newframe/schema/request-records'
+import type { TransactionApprovalAdjustments } from '@newframe/schema/transaction-approval'
+import { Button } from '@newframe/ui/button'
+import { Inline } from '@newframe/ui/inline'
+import { Spinner } from '@newframe/ui/spinner'
+import { Stack } from '@newframe/ui/stack'
+import { Surface } from '@newframe/ui/surface'
+import { Text } from '@newframe/ui/text'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
+
+import { isCancelableRequest, isSignatureRequest } from '../../../../features/requests/domain/index.ts'
+import { useWalletSelector } from '../../../shared/projection/useAppSelector.tsx'
+import StatusGlyph from '../../../shared/ui/StatusGlyph.tsx'
+import { useAccountIdentity } from '../Account/Requests/state.ts'
+import type { RequestRendererCapabilities, RequestReviewCapability } from '../requestCapabilities.ts'
+import { useRequestView, type RequestViewStep } from '../requestView.tsx'
+import { RequestActions } from '../ui/RequestActions.tsx'
+import { SafeOwnerSelector } from '../ui/SafeOwnerSelector.tsx'
+import { SigningAccount } from '../ui/SigningAccount.tsx'
+import TxApproval from './TxApproval/index.tsx'
+
+type RequestReference = { handlerId: string }
+
+interface RequestCommandSharedState {
+  airgapSigning?: AirGapRequestReference
+  appLocked: boolean
+  chain: { explorer?: string; isTestnet?: boolean; name?: string }
+  explorerWarningMuted: boolean
+  transactionSignerAttached: boolean
+  step: RequestViewStep
+}
+
+export type RequestCommandRequest = {
+  account?: string
+  handlerId: string
+  type: string
+  status?: string
+  notice?: string
+  mode?: string
+  signingCapability?: SigningCapability
+  safeMessageProgress?: SafeMessageProgress
+  safeTxHash?: string
+}
+
+export interface RequestCommandProps {
+  adjustments?: TransactionApprovalAdjustments
+  feeNoticeDismissed?: boolean
+  dismissFeeNotice?: () => void
+  capabilities: Pick<RequestRendererCapabilities, 'external' | 'review' | 'transaction'>
+  notify: RequestCommandNotifier
+  req: RequestCommandRequest
+  shared: RequestCommandSharedState
+}
+
+type RequestCommandNotification =
+  | { type: 'airgapSigning'; data: AirGapRequestReference }
+  | {
+      type: 'gasFeeWarning'
+      data: {
+        req: TransactionRequest | SignatureRequest
+        feeUSD: string
+        currentSymbol: string
+      }
+    }
+  | {
+      type: 'signerCompatibilityWarning'
+      data: {
+        req: TransactionRequest | SignatureRequest
+        compatibility: { signer: string; tx: string; compatible: false }
+        chain: { type: 'ethereum'; id: number }
+      }
+    }
+  | {
+      type: 'signerRecovery'
+      data: { req?: TransactionRequest | SignatureRequest; signerIds: string[] }
+    }
+  | {
+      type: 'openExplorer'
+      data: { hash: string; chain: { type: 'ethereum'; id: number } }
+    }
+
+export type RequestCommandNotifier = (notification: RequestCommandNotification) => void
+
+const EMPTY_CHAIN = {}
+
+export const approveRequest = (
+  capability: Pick<RequestReviewCapability, 'approve'>,
+  requestId: string,
+  ownerId?: string
+) => void capability.approve({ requestId, ...(ownerId ? { ownerId } : {}) })
+
+export const declineRequest = (capability: Pick<RequestReviewCapability, 'reject'>, req: RequestReference) =>
+  void capability.reject({ requestId: req.handlerId })
+
+export const runWhenAppUnlocked = (appLocked: boolean, next: () => void) => {
+  if (!appLocked) {
+    next()
+  }
+}
+
+export function RequestCommand(props: RequestCommandProps) {
+  const [approvalError, setApprovalError] = useState('')
+  const [noticeDismissed, setNoticeDismissed] = useState(false)
+  const request = props.req as TransactionRequest | SignatureRequest
+  const [ownerSelection, setOwnerSelection] = useState<{ requestId: string; ownerId?: string }>({
+    requestId: request.handlerId
+  })
+  const { notify } = props
+  const notifiedSession = useRef('')
+  const airgap = props.shared.airgapSigning
+  const safeCapability =
+    isSignatureRequest(request) && request.signingCapability?.type === 'safe'
+      ? request.signingCapability
+      : undefined
+  const safeProgress = isSignatureRequest(request) ? request.safeMessageProgress : undefined
+  const safeConfirmations = safeProgress?.confirmations
+  const safeConfirmed = new Set(safeConfirmations?.map((address) => address.toLowerCase()) ?? [])
+  const explicitOwnerId = ownerSelection.requestId === request.handlerId ? ownerSelection.ownerId : undefined
+  const explicitOwner = safeCapability?.candidates.find(
+    (candidate) => candidate.accountId === explicitOwnerId
+  )
+  const explicitOwnerEligible =
+    explicitOwner?.status === 'ready' &&
+    (!safeConfirmed.has(explicitOwner.address.toLowerCase()) || safeProgress?.status === 'failed')
+  const unconfirmedEligibleOwners =
+    safeCapability?.candidates.filter(
+      (candidate) => candidate.status === 'ready' && !safeConfirmed.has(candidate.address.toLowerCase())
+    ) ?? []
+  let selectedOwnerId = explicitOwnerEligible ? explicitOwnerId : undefined
+  if (!selectedOwnerId && unconfirmedEligibleOwners.length === 1) {
+    selectedOwnerId = unconfirmedEligibleOwners[0].accountId
+  }
+  useEffect(() => {
+    if (
+      props.shared.appLocked ||
+      request.status !== 'pending' ||
+      !airgap ||
+      airgap.requestId !== request.handlerId
+    ) {
+      return
+    }
+    const key = `${airgap.signerId}:${airgap.requestId}:${airgap.sessionId}`
+    if (notifiedSession.current === key) {
+      return
+    }
+    notifiedSession.current = key
+    notify({ type: 'airgapSigning', data: airgap })
+  }, [notify, airgap, request.handlerId, request.status, props.shared.appLocked])
+  const [state, setCommandState] = useState({
+    showHashDetails: false,
+    txHashCopied: false
+  })
+  const setState = (update: Partial<typeof state>) =>
+    setCommandState((current) => ({ ...current, ...update }))
+
+  useEffect(() => {
+    const gate = request.approvalGate
+    if (!gate) {
+      return
+    }
+    if (gate.type === 'gas-fee') {
+      notify({
+        type: 'gasFeeWarning',
+        data: { req: request, feeUSD: gate.feeUSD, currentSymbol: gate.currentSymbol }
+      })
+    } else if (gate.reason === 'incompatible') {
+      notify({
+        type: 'signerCompatibilityWarning',
+        data: {
+          req: request,
+          compatibility: { signer: gate.signer, tx: gate.tx, compatible: false },
+          chain: gate.chain
+        }
+      })
+    } else if (gate.reason === 'signer-unavailable') {
+      notify({ type: 'signerRecovery', data: { req: request, signerIds: gate.signerIds } })
+    }
+  }, [notify, request, request.approvalGate])
+
+  function submittedCommand(req: TransactionRequest) {
+    const chain = { type: 'ethereum' as const, id: parseInt(req.data.chainId, 16) }
+    const displayNotice = (req.notice ?? '').toLowerCase()
+    let displayStatus = (req.status ?? 'pending').toLowerCase()
+    if (displayStatus === 'pending' && displayNotice === 'see signer') {
+      displayStatus = 'waiting for device signature'
+    } else if (displayStatus === 'verifying') {
+      displayStatus = 'waiting for block'
+    }
+    const hash = req.tx?.hash
+
+    const copyHash = () => {
+      if (!hash) {
+        return
+      }
+      void props.capabilities.external.copy({ text: hash })
+      setState({ txHashCopied: true, showHashDetails: false })
+      setTimeout(() => setState({ txHashCopied: false }), 3000)
+    }
+    const hashActions = () => {
+      if (!hash) {
+        return null
+      }
+      if (state.txHashCopied) {
+        return (
+          <Surface padding='small' radius='pill' tone='raised'>
+            <Text align='center' variant='caption'>
+              Transaction hash copied
+            </Text>
+          </Surface>
+        )
+      }
+      if (state.showHashDetails || req.status === 'confirming' || req.status === 'confirmed') {
+        return (
+          <Stack direction='row' equal gap='xsmall'>
+            <Button
+              appearance='control'
+              disabled={!props.shared.chain.explorer}
+              label='Open transaction explorer'
+              onPress={() => {
+                if (!props.shared.chain.explorer) {
+                  return
+                }
+                if (props.shared.explorerWarningMuted) {
+                  void props.capabilities.external.openExplorer({
+                    chainId: chain.id,
+                    transactionHash: hash
+                  })
+                } else {
+                  props.notify({ type: 'openExplorer', data: { hash, chain } })
+                }
+              }}
+              size='small'
+            >
+              <Text variant='caption'>Open explorer</Text>
+            </Button>
+            <Button appearance='control' label='Copy transaction hash' onPress={copyHash} size='small'>
+              <Text variant='caption'>Copy hash</Text>
+            </Button>
+          </Stack>
+        )
+      }
+      return (
+        <Stack direction='row' equal gap='xsmall'>
+          <Button
+            appearance='danger'
+            label='Cancel transaction'
+            onPress={() =>
+              void props.capabilities.transaction.replace({
+                requestId: req.handlerId,
+                replacement: 'cancel',
+                idempotencyKey: crypto.randomUUID()
+              })
+            }
+            size='small'
+          >
+            <Text variant='caption'>Cancel</Text>
+          </Button>
+          <Button
+            appearance='control'
+            label='View transaction details'
+            onPress={() => setState({ showHashDetails: true })}
+            size='small'
+          >
+            <Text variant='caption'>Details</Text>
+          </Button>
+          <Button
+            appearance='subtle'
+            label='Speed up transaction'
+            onPress={() =>
+              void props.capabilities.transaction.replace({
+                requestId: req.handlerId,
+                replacement: 'speed',
+                idempotencyKey: crypto.randomUUID()
+              })
+            }
+            size='small'
+          >
+            <Text variant='caption'>Speed up</Text>
+          </Button>
+        </Stack>
+      )
+    }
+
+    return (
+      <Stack align='center' gap='small'>
+        <Text align='center' tone='accent' variant='overline'>
+          {displayStatus}
+        </Text>
+        {hashActions()}
+        {isCancelableRequest(req.status ?? '') ? (
+          <Button
+            appearance='ghost'
+            onPress={() => declineRequest(props.capabilities.review, req)}
+            size='compact'
+            tone='danger'
+          >
+            <Text variant='caption'>Cancel request</Text>
+          </Button>
+        ) : null}
+      </Stack>
+    )
+  }
+
+  function transactionActions(req: TransactionRequest) {
+    const sign = () => {
+      runWhenAppUnlocked(props.shared.appLocked, () => {
+        setApprovalError('')
+        void props.capabilities.review
+          .approve({
+            requestId: req.handlerId,
+            ...(props.adjustments ? { adjustments: props.adjustments } : {})
+          })
+          .then(
+            (result) => {
+              if (!result.ok) {
+                setApprovalError(result.message ?? 'Could not approve request')
+              }
+            },
+            () => setApprovalError('Could not approve request')
+          )
+      })
+    }
+
+    return (
+      <Stack gap='xsmall'>
+        {approvalError ? (
+          <div role='alert'>
+            <Text tone='danger' variant='caption'>
+              {approvalError}
+            </Text>
+          </div>
+        ) : null}
+        {req.automaticFeeUpdateNotice && !props.feeNoticeDismissed && !noticeDismissed ? (
+          <Surface padding='xsmall' radius='pill' tone='card'>
+            <Inline align='center' gap='small' justify='between'>
+              <Text tone='accent' variant='caption'>
+                Fee updated
+              </Text>
+              <Button
+                appearance='subtle'
+                onPress={() => {
+                  setNoticeDismissed(true)
+                  props.dismissFeeNotice?.()
+                }}
+                size='compact'
+              >
+                <Text variant='caption'>Ok</Text>
+              </Button>
+            </Inline>
+          </Surface>
+        ) : null}
+        <RequestActions
+          primary={{
+            disabled: !props.shared.transactionSignerAttached,
+            label: props.shared.transactionSignerAttached ? 'Sign' : 'No signer attached',
+            onPress: sign
+          }}
+          secondary={{
+            label: 'Decline',
+            onPress: () => declineRequest(props.capabilities.review, req)
+          }}
+        />
+      </Stack>
+    )
+  }
+
+  function transactionCommand(req: TransactionRequest) {
+    if (req.safeTxHash) {
+      return null
+    }
+    const requiredApproval =
+      !req.status && req.mode !== 'monitor' ? req.approvals.find((approval) => !approval.approved) : undefined
+    if (requiredApproval) {
+      return (
+        <TxApproval
+          capability={props.capabilities.review}
+          req={req}
+          approval={
+            requiredApproval as { type: 'approveOtherChain' | 'approveGasLimit'; data?: { message?: string } }
+          }
+        />
+      )
+    }
+    return req.notice ? submittedCommand(req) : transactionActions(req)
+  }
+
+  function signatureCommand(req: SignatureRequest) {
+    const capability = req.signingCapability
+    if (capability?.type === 'safe') {
+      const progress = req.safeMessageProgress
+      const confirmed = new Set(progress?.confirmations.map((address) => address.toLowerCase()) ?? [])
+      const chainDescription = props.shared.chain.name
+        ? `${props.shared.chain.name} (chain ${capability.chainId})`
+        : `chain ${capability.chainId}`
+      const retryPublication = progress?.status === 'failed'
+      const selectedOwner = capability.candidates.find((candidate) => candidate.accountId === selectedOwnerId)
+      const selectedConfirmed = selectedOwner ? confirmed.has(selectedOwner.address.toLowerCase()) : false
+      const selectedReady =
+        capability.status === 'ready' &&
+        selectedOwner?.status === 'ready' &&
+        (retryPublication || !selectedConfirmed)
+      let actionLabel = 'Choose an owner'
+      if (retryPublication) {
+        actionLabel = 'Retry publication'
+      } else if (selectedOwner) {
+        actionLabel = 'Sign as owner'
+      }
+
+      return (
+        <Stack gap='xsmall'>
+          {capability.configured ? (
+            <>
+              <SigningAccount label='Owner signer'>
+                <SafeOwnerSelector
+                  owners={capability.candidates}
+                  label='Owner signer'
+                  placeholder='Choose an owner'
+                  emptyLabel='No available owner signer'
+                  selectedOwnerId={selectedOwnerId}
+                  onSelectOwner={(ownerId) => setOwnerSelection({ requestId: request.handlerId, ownerId })}
+                  ownerDisabled={(owner) =>
+                    owner.status !== 'ready' ||
+                    (!retryPublication && confirmed.has(owner.address.toLowerCase()))
+                  }
+                />
+              </SigningAccount>
+              <Text tone='secondary' variant='caption'>
+                {confirmed.size} / {capability.threshold} verified confirmations
+              </Text>
+            </>
+          ) : (
+            <div aria-label='Safe network unavailable' role='alert'>
+              <Text tone='danger' variant='caption'>
+                This Safe is not configured on {chainDescription}.
+              </Text>
+            </div>
+          )}
+          {progress?.message ? (
+            <div role={progress.status === 'failed' ? 'alert' : 'status'}>
+              <Text tone={progress.status === 'failed' ? 'danger' : 'secondary'} variant='caption'>
+                {progress.message}
+              </Text>
+            </div>
+          ) : null}
+          {approvalError ? (
+            <div role='alert'>
+              <Text tone='danger' variant='caption'>
+                {approvalError}
+              </Text>
+            </div>
+          ) : null}
+          <RequestActions
+            primary={{
+              disabled: !selectedReady,
+              label: capability.configured ? actionLabel : 'Safe unavailable',
+              onPress: () => {
+                if (!selectedOwner) {
+                  return
+                }
+                setOwnerSelection({ requestId: request.handlerId, ownerId: selectedOwner.accountId })
+                setApprovalError('')
+                runWhenAppUnlocked(props.shared.appLocked, () => {
+                  void props.capabilities.review
+                    .approve({ requestId: req.handlerId, ownerId: selectedOwner.accountId })
+                    .then(
+                      (result) => {
+                        if (!result.ok) {
+                          setApprovalError(result.message ?? 'Could not approve request')
+                        }
+                      },
+                      () => setApprovalError('Could not approve request')
+                    )
+                })
+              }
+            }}
+            secondary={{
+              label: 'Decline',
+              onPress: () => declineRequest(props.capabilities.review, req)
+            }}
+          />
+        </Stack>
+      )
+    }
+
+    if (req.notice) {
+      const pending = req.status === 'pending'
+      const failed = req.status === 'error' || req.status === 'declined'
+      let statusState: 'failed' | 'completed' | 'idle' = 'idle'
+      let noticeTone: 'danger' | 'success' | 'primary' = 'primary'
+      if (failed) {
+        statusState = 'failed'
+        noticeTone = 'danger'
+      } else if (req.status === 'success') {
+        statusState = 'completed'
+        noticeTone = 'success'
+      }
+      return (
+        <Stack align='center' gap='small'>
+          {pending ? (
+            <Spinner label='Waiting for signer' size='large' />
+          ) : (
+            <StatusGlyph state={statusState} />
+          )}
+          <Text align='center' tone={noticeTone} variant='overline'>
+            {req.notice}
+          </Text>
+          {pending ? (
+            <Button
+              appearance='ghost'
+              onPress={() => declineRequest(props.capabilities.review, req)}
+              size='compact'
+              tone='danger'
+            >
+              <Text variant='caption'>Cancel</Text>
+            </Button>
+          ) : null}
+        </Stack>
+      )
+    }
+
+    return (
+      <RequestActions
+        primary={{
+          disabled: capability?.status !== 'ready',
+          label: capability?.status === 'ready' ? 'Sign' : 'No signer attached',
+          onPress: () => {
+            runWhenAppUnlocked(props.shared.appLocked, () =>
+              approveRequest(props.capabilities.review, req.handlerId)
+            )
+          }
+        }}
+        secondary={{
+          label: 'Decline',
+          onPress: () => declineRequest(props.capabilities.review, req)
+        }}
+      />
+    )
+  }
+
+  if (request.type === 'transaction' && props.shared.step === 'confirm') {
+    return transactionCommand(request)
+  }
+  if (isSignatureRequest(request)) {
+    return signatureCommand(request)
+  }
+  return null
+}
+
+export default function RequestCommandContainer(props: Omit<RequestCommandProps, 'shared'>) {
+  const request = props.req as TransactionRequest | SignatureRequest
+  const chainId = request.type === 'transaction' ? parseInt(request.data.chainId || '0', 16) : request.chainId
+  const signingAccount = useAccountIdentity(request.account)
+  const accountId = signingAccount?.id ?? request.account
+  const { step, adjustments, feeNoticeDismissed, dismissFeeNotice } = useRequestView()
+  const selector = useMemo(
+    () =>
+      (
+        state: WalletRendererState
+      ): Omit<RequestCommandSharedState, 'step' | 'airgapSigning'> & Partial<AirGapRequestReference> => {
+        const account = (state.accounts as Partial<typeof state.accounts>)[accountId]
+        const signers: Partial<typeof state.signers> = state.signers
+        const signer = account?.signer ? signers[account.signer] : undefined
+        const pending = signer?.airgapRequest
+        const matching = state.currentAccount === accountId && pending?.requestId === request.handlerId
+        return {
+          signerId: matching ? signer?.id : undefined,
+          requestId: matching ? pending.requestId : undefined,
+          sessionId: matching ? pending.sessionId : undefined,
+          appLocked: state.appLock.locked,
+          chain: (state.chains.ethereum as Partial<typeof state.chains.ethereum>)[chainId] ?? EMPTY_CHAIN,
+          explorerWarningMuted: !!state.mute.explorerWarning,
+          transactionSignerAttached: Boolean(account?.signer && signers[account.signer])
+        }
+      },
+    [accountId, chainId, request.handlerId]
+  )
+  const { signerId, requestId, sessionId, ...synchronized } = useWalletSelector(useShallow(selector))
+  // A new nested object inside the store selector would invalidate every snapshot.
+  const airgapSigning = useMemo(
+    () => (signerId && requestId && sessionId ? { signerId, requestId, sessionId } : undefined),
+    [signerId, requestId, sessionId]
+  )
+  return (
+    <RequestCommand
+      {...props}
+      adjustments={
+        request.type === 'transaction' && !request.status && !request.locked ? adjustments : undefined
+      }
+      feeNoticeDismissed={feeNoticeDismissed}
+      dismissFeeNotice={dismissFeeNotice}
+      shared={{ ...synchronized, airgapSigning, step }}
+    />
+  )
+}

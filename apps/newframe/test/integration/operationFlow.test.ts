@@ -7,12 +7,12 @@ import { DEFAULT_PROFILE_ID } from '@newframe/schema/wallet-state'
 
 import type { OperationServices } from '../../src/app/main/ipc-handlers/renderer.ts'
 import { createRequestService } from '../../src/features/requests/main/service.ts'
-import { createRequestRendererCapabilities } from '../../src/features/requests/renderer/requestCapabilities.ts'
 import { createTokenService } from '../../src/features/tokens/main/service.ts'
 import { createOperationDispatcher } from '../../src/platform/ipc/main/operations.ts'
 import { createOperationService } from '../../src/platform/operations/service.ts'
 import createInitialState from '../../src/platform/state-store/state/index.ts'
 import { projectRendererState } from '../../src/platform/state-sync/main/projections.ts'
+import { createRequestRendererCapabilities } from '../../src/trays/features/dapp-requests/requestCapabilities.ts'
 import { createTestStore } from '../support/createTestStore.ts'
 
 const owner = { clientType: 'wallet-ui', entrypoint: 'tray', windowInstanceId: 'wallet-window' } as const

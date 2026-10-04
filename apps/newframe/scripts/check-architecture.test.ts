@@ -14,7 +14,7 @@ import {
 type Check = (file: string, source: string) => string[]
 type RejectCase = readonly [name: string, check: Check, file: string, source: string, message: string]
 
-const renderer = 'apps/newframe/src/features/example/renderer/view.ts'
+const renderer = 'apps/newframe/src/trays/features/example/view.ts'
 const contracts = 'apps/newframe/src/features/example/contract/schema.ts'
 const domain = 'apps/newframe/src/features/example/domain/model.ts'
 const mainService = 'apps/newframe/src/features/security/main/service.ts'
@@ -49,18 +49,18 @@ const authorityCases: RejectCase[] = [
   ['asset-rate writer', checkAssetRateMutationAuthority, 'apps/newframe/src/features/connections/main/provider/rates.ts', 'store.getState().setAssetRates(batch)', 'canonical asset-rate mutation is restricted'],
   ['duplicate operation catalog', checkOperationContractAuthority, 'apps/newframe/src/features/example/contract/operations.ts', 'export const querySchemas = {}', 'schema catalogs must be defined in packages/schema/src/tray-operations.ts'],
   ['generic renderer RPC', checkOperationContractAuthority, 'apps/newframe/src/platform/ipc/contract/ipc.ts', "export const RpcChannel = 'newframe:rpc'", 'generic renderer RPC channels are forbidden'],
-  ['command-specific results', checkOperationContractAuthority, 'apps/newframe/src/platform/ipc/renderer/link.ts', 'type Legacy = CommandResultMap', 'command-specific result maps are forbidden'],
-  ['erased operation input', checkOperationContractAuthority, 'apps/newframe/src/features/settings/renderer/Settings.tsx', "link.executeCommand({ type: 'settings.update' } as any)", 'casting command or query payloads to any is forbidden'],
+  ['command-specific results', checkOperationContractAuthority, 'apps/newframe/src/trays/shared/host/link.ts', 'type Legacy = CommandResultMap', 'command-specific result maps are forbidden'],
+  ['erased operation input', checkOperationContractAuthority, 'apps/newframe/src/trays/features/settings/Settings.tsx', "link.executeCommand({ type: 'settings.update' } as any)", 'casting command or query payloads to any is forbidden'],
   ['wallet workflow import', checkOperationContractAuthority, 'apps/newframe/src/features/accounts/main/service.ts', "import { workflows } from '../../operations/walletWorkflows'", 'walletWorkflows facade imports and definitions are forbidden'],
   ['wallet workflow definition', checkOperationContractAuthority, 'apps/newframe/src/platform/operations/walletWorkflows.ts', 'export const workflows = {}', 'walletWorkflows facade imports and definitions are forbidden'],
   ['generic workflow', checkOperationContractAuthority, 'apps/newframe/src/platform/operations/sideTrayTransactions.ts', 'export const submit = () => undefined', 'generic operation workflow helpers are forbidden'],
-  ['legacy context menu', checkPlatformCommandAuthority, 'apps/newframe/src/renderer/tray/index.tsx', "link.executeCommand({ type: 'tray.context-menu' })", 'renderer context menus must use renderer.context-menu'],
+  ['legacy context menu', checkPlatformCommandAuthority, 'apps/newframe/src/trays/main/index.tsx', "link.executeCommand({ type: 'tray.context-menu' })", 'renderer context menus must use renderer.context-menu'],
   ['migrated workflow forwarder', checkPlatformCommandAuthority, 'apps/newframe/src/platform/operations/walletWorkflows.ts', 'return { refreshPortfolio: () => refreshBalances() }', 'migrated passive and platform commands cannot return'],
   ['legacy account selection port', checkPlatformCommandAuthority, 'apps/newframe/src/platform/ipc/main/operations.ts', 'type OperationServices = { selectAccount: () => void }', 'account selection must be owned by the account service'],
-  ['renderer execution', checkPlatformCommandAuthority, 'apps/newframe/src/features/transactions/send/renderer/index.tsx', "link.executeCommand({ type: 'transaction.submit' })", 'renderer execution capabilities are forbidden'],
-  ['private Trade execution', checkPlatformCommandAuthority, 'apps/newframe/src/features/transactions/trade/renderer/tradeService.ts', 'const request = buildTradeSubmitRequest()', 'Trade renderer may retain only ticket, safe quote, review correlation'],
-  ['legacy Send chain', checkPlatformCommandAuthority, 'apps/newframe/src/features/transactions/send/renderer/sendService.ts', "link.executeQuery({ type: 'name.resolve' })", 'Send must issue one request.create intent'],
-  ['renderer IPC', checkRawIpcAuthority, 'apps/newframe/src/app/renderer/tray/view.ts', 'ipcRenderer.invoke(channel)', 'raw ipcRenderer is restricted to the preload bridge'],
+  ['renderer execution', checkPlatformCommandAuthority, 'apps/newframe/src/trays/features/send/index.tsx', "link.executeCommand({ type: 'transaction.submit' })", 'renderer execution capabilities are forbidden'],
+  ['private Trade execution', checkPlatformCommandAuthority, 'apps/newframe/src/trays/features/trading/tradeService.ts', 'const request = buildTradeSubmitRequest()', 'Trade renderer may retain only ticket, safe quote, review correlation'],
+  ['legacy Send chain', checkPlatformCommandAuthority, 'apps/newframe/src/trays/features/send/sendService.ts', "link.executeQuery({ type: 'name.resolve' })", 'Send must issue one request.create intent'],
+  ['renderer IPC', checkRawIpcAuthority, 'apps/newframe/src/trays/main/view.ts', 'ipcRenderer.invoke(channel)', 'raw ipcRenderer is restricted to the preload bridge'],
   ['main IPC', checkRawIpcAuthority, 'apps/newframe/src/features/accounts/main/service.ts', 'ipcMain.on(channel)', 'raw ipcMain access is restricted to typed IPC modules'],
   ['state publication', checkRawIpcAuthority, 'apps/newframe/src/features/accounts/main/service.ts', 'webContents.send(channel)', 'webContents.send is restricted to the typed state stream']
 ]
@@ -77,8 +77,8 @@ test('allows each canonical authority', () => {
     [checkOperationContractAuthority, 'packages/schema/src/tray-operations.ts', 'export const commandContracts = {}'],
     [checkOperationContractAuthority, 'apps/newframe/src/features/accounts/contract/profile/schema.ts', 'export const ProfileCreateCommandSchema = z.object({})'],
     [checkPlatformCommandAuthority, 'apps/newframe/src/app/main/platform/service.ts', "command.type = 'renderer.context-menu'"],
-    [checkPlatformCommandAuthority, 'apps/newframe/src/features/transactions/trade/renderer/index.tsx', 'const review = { safeQuote, operationId }'],
-    [checkPlatformCommandAuthority, 'apps/newframe/src/features/transactions/send/renderer/index.tsx', "link.executeCommand({ type: 'request.create' })"],
+    [checkPlatformCommandAuthority, 'apps/newframe/src/trays/features/trading/index.tsx', 'const review = { safeQuote, operationId }'],
+    [checkPlatformCommandAuthority, 'apps/newframe/src/trays/features/send/index.tsx', "link.executeCommand({ type: 'request.create' })"],
     [checkRawIpcAuthority, 'apps/newframe/src/preload/index.ts', 'ipcRenderer.invoke(channel)'],
     [checkRawIpcAuthority, 'apps/newframe/src/platform/ipc/main/operations.ts', 'ipcMain.handle(channel)'],
     [checkRawIpcAuthority, 'apps/newframe/src/platform/ipc/main/stateStream.ts', 'webContents.send(channel)']
@@ -102,9 +102,9 @@ const sourceCases: SourceCase[] = [
   ['synchronous main IPC', 'apps/newframe/src/features/example/main/service.ts', 'ipcMain.on(channel)', 'application IPC must use typed asynchronous handlers', 'apps/newframe/src/platform/ipc/main/operations.ts', 'ipcMain.handle(channel)'],
   ['direct account request', 'apps/newframe/src/features/connections/main/provider/service.ts', 'account.addRequest(request)', 'production account requests must pass through accounts.routeRequest', 'apps/newframe/src/features/accounts/main/service.ts', 'account.addRequest(request)'],
   ['production test import', domain, "import value from './model.test.ts'", 'production code cannot import test files', domain, "import type { State } from './state'"],
-  ['component CSS', 'apps/newframe/src/app/renderer/tray/View.css', '.view {}', 'component styles must be authored with Panda', 'apps/newframe/src/shared/legacy/View.css', '.view {}'],
-  ['migrated raw element', 'apps/newframe/src/features/transactions/send/renderer/View.tsx', 'const view = <div />', 'migrated UI must render through packages/ui', 'apps/newframe/src/features/transactions/send/renderer/View.tsx', 'const view = <Stack />'],
-  ['migrated style escape', 'apps/newframe/src/features/transactions/send/renderer/View.tsx', "const view = <Stack className='x' />", 'migrated UI cannot pass styling escape hatches', 'apps/newframe/src/features/transactions/send/renderer/View.tsx', "const view = <Stack gap='small' />"],
+  ['component CSS', 'apps/newframe/src/trays/main/View.css', '.view {}', 'component styles must be authored with Panda', 'apps/newframe/src/shared/legacy/View.css', '.view {}'],
+  ['migrated raw element', 'apps/newframe/src/trays/features/send/View.tsx', 'const view = <div />', 'migrated UI must render through packages/ui', 'apps/newframe/src/trays/features/send/View.tsx', 'const view = <Stack />'],
+  ['migrated style escape', 'apps/newframe/src/trays/features/send/View.tsx', "const view = <Stack className='x' />", 'migrated UI cannot pass styling escape hatches', 'apps/newframe/src/trays/features/send/View.tsx', "const view = <Stack gap='small' />"],
   ['composed UI directory', 'packages/ui/src/components/Panel.tsx', 'export const Panel = 1', 'packages/ui is reserved for primitives', 'packages/ui/src/primitives/Panel.tsx', 'export const Panel = 1'],
   ['UI application import', 'packages/ui/src/primitives/Button.tsx', "import App from '../../../apps/newframe/App'", 'packages/ui cannot import an application', 'packages/ui/src/primitives/Button.tsx', "import { Text } from './Text'"],
   ['nested primitive', 'packages/ui/src/primitives/forms/Button.tsx', 'export const Button = 1', 'UI primitives must be directly discoverable', 'packages/ui/src/primitives/Button.tsx', 'export const Button = 1'],
@@ -115,7 +115,7 @@ const sourceCases: SourceCase[] = [
   ['legacy recipe runtime', 'packages/ui/src/primitives/Button.tsx', "import { cva } from 'class-variance-authority'", 'UI recipes must use the token-aware Panda runtime', 'packages/ui/src/primitives/Button.tsx', "import { cva } from '../styled-system/css'"],
   ['raw design unit', 'packages/ui/src/primitives/Button.tsx', "const style = { width: '12px' }", 'UI recipes must reference typed design tokens', 'packages/ui/src/primitives/Icon.tsx', "const style = { width: '12px' }"],
   ['local primitive typography', 'packages/ui/src/primitives/Button.tsx', "const style = { fontWeight: 'bold' }", 'primitives must compose the shared Text recipe', 'packages/ui/src/primitives/Text.tsx', "const style = { fontWeight: 'bold' }"],
-  ['Stylus source', 'apps/newframe/src/app/renderer/legacy.styl', '.view\n  color red', 'Stylus is forbidden', 'apps/newframe/src/app/renderer/legacy.ts', 'export const view = true']
+  ['Stylus source', 'apps/newframe/src/trays/main/legacy.styl', '.view\n  color red', 'Stylus is forbidden', 'apps/newframe/src/trays/main/legacy.ts', 'export const view = true']
 ]
 
 test.each(sourceCases)(
@@ -129,16 +129,16 @@ test.each(sourceCases)(
 // The matrix is easier to audit with one process boundary per row.
 // oxfmt-ignore
 const layerCases = [
-  [renderer, "import '../main/service'", 'renderer cannot import main'],
+  [renderer, "import '../../../features/example/main/service'", 'renderer cannot import main'],
   [renderer, "export * from '../../../preload/bridge'", 'renderer cannot import preload'],
-  ['apps/newframe/src/features/example/main/service.ts', "import '../renderer/view'", 'main cannot import renderer'],
+  ['apps/newframe/src/features/example/main/service.ts', "import '../../../trays/features/example/view'", 'main cannot import renderer'],
   ['apps/newframe/src/features/example/main/service.ts', "export * from '../../../../generated/styles'", 'main cannot import generated'],
   ['apps/newframe/src/features/example/main/service.ts', "import '../../../preload/bridge'", 'main cannot import preload'],
   ['apps/newframe/src/preload/bridge.ts', "import '../features/example/domain/model'", 'preload may only import contracts'],
   ['apps/newframe/src/preload/bridge.ts', "import '../features/example/main/service'", 'preload may only import contracts'],
-  ['apps/newframe/src/preload/bridge.ts', "import '../features/example/renderer/view'", 'preload may only import contracts'],
+  ['apps/newframe/src/preload/bridge.ts', "import '../trays/features/example/view'", 'preload may only import contracts'],
   [contracts, "import '../main/service'", 'contracts cannot import main'],
-  [contracts, "import '../renderer/view'", 'contracts cannot import renderer'],
+  [contracts, "import '../../../trays/features/example/view'", 'contracts cannot import renderer'],
   [domain, "import '../../../preload/bridge'", 'domain cannot import preload'],
   [domain, "import '../../../../generated/styles'", 'domain cannot import generated']
 ] as const
@@ -149,8 +149,8 @@ test.each(layerCases)('rejects process-layer dependency direction from %s', (fil
 
 test('rejects every supported renderer boundary bypass form and test fixture', () => {
   for (const source of [
-    "void import('../main/service')",
-    "require('../main/service')",
+    "void import('../../../features/example/main/service')",
+    "require('../../../features/example/main/service')",
     "import 'apps/newframe/src/features/example/main/service'",
     "import '/workspace/apps/newframe/src/preload/bridge'",
     "import '@newframe/src/features/example/main/service'",
@@ -164,9 +164,9 @@ test('rejects every supported renderer boundary bypass form and test fixture', (
     )
   }
   for (const file of [
-    'apps/newframe/src/features/example/renderer/view.test.ts',
-    'apps/newframe/src/platform/state-sync/renderer/fixtures.test-support.ts',
-    'apps/newframe/src/features/example/renderer/__tests__/view.ts'
+    'apps/newframe/src/trays/features/example/view.test.ts',
+    'apps/newframe/src/trays/shared/projection/fixtures.test-support.ts',
+    'apps/newframe/src/trays/features/example/__tests__/view.ts'
   ]) {
     rejects(
       checkDependencyDirection,
@@ -179,12 +179,12 @@ test('rejects every supported renderer boundary bypass form and test fixture', (
 
 test('rejects feature renderer dependencies on app renderer modules in production and tests', () => {
   const sources = [
-    "import '../../../app/renderer/tray/state'",
-    "export * from 'apps/newframe/src/app/renderer/tray/notification'",
-    "void import('/workspace/apps/newframe/src/app/renderer/tray/Home/state/HomeUiProvider')",
-    "require('@newframe/src/app/renderer/tray/ui/HeaderBar')"
+    "import '../../main/state'",
+    "export * from 'apps/newframe/src/trays/main/notification'",
+    "void import('/workspace/apps/newframe/src/trays/main/Home/state/HomeUiProvider')",
+    "require('@newframe/src/trays/main/ui/HeaderBar')"
   ]
-  for (const file of [renderer, 'apps/newframe/src/features/example/renderer/view.test.tsx']) {
+  for (const file of [renderer, 'apps/newframe/src/trays/features/example/view.test.tsx']) {
     for (const source of sources) {
       rejects(checkDependencyDirection, file, source, 'feature renderers cannot import app renderer modules')
     }
@@ -194,26 +194,26 @@ test('rejects feature renderer dependencies on app renderer modules in productio
 test('allows app renderer composition to import feature renderers', () => {
   allows(
     checkDependencyDirection,
-    'apps/newframe/src/app/renderer/tray/Home/HomeOverlayRouter.tsx',
-    "import { Accounts } from '../../../../features/accounts/renderer/Accounts'"
+    'apps/newframe/src/trays/main/Home/HomeOverlayRouter.tsx',
+    "import { Accounts } from '../../features/accounts/Accounts'"
   )
 })
 
 test('restricts raw renderer link imports to focused composition boundaries', () => {
-  const source = "import link from '@newframe/src/platform/ipc/renderer/link'"
+  const source = "import link from '@newframe/src/trays/shared/host/link'"
   for (const file of [
     renderer,
-    'apps/newframe/src/shared/renderer/ui/CopyButton.tsx',
-    'apps/newframe/src/app/renderer/tray/Footer/index.tsx',
-    'apps/newframe/src/platform/example/renderer/production.ts'
+    'apps/newframe/src/trays/shared/ui/CopyButton.tsx',
+    'apps/newframe/src/trays/main/Footer/index.tsx',
+    'apps/newframe/src/trays/shared/example/production.ts'
   ]) {
     rejects(checkRendererTransportAuthority, file, source, 'raw renderer IPC link imports are restricted')
   }
 
   for (const file of [
-    'apps/newframe/src/renderer/tray/index.tsx',
-    'apps/newframe/src/app/renderer/capabilities/requests.ts',
-    'apps/newframe/src/platform/app-update/renderer/production.ts'
+    'apps/newframe/src/trays/main/index.tsx',
+    'apps/newframe/src/trays/main/capabilities/requests.ts',
+    'apps/newframe/src/trays/features/update/production.ts'
   ]) {
     allows(checkRendererTransportAuthority, file, source)
   }

@@ -1,7 +1,7 @@
 {
   "entry": [
-    "src/renderer/tray/bootstrap.ts!",
-    "src/renderer/sidetray/bootstrap.ts!",
+    "src/trays/main/bootstrap.ts!",
+    "src/trays/side/bootstrap.ts!",
     "src/preload/index.ts!",
     "src/features/asset-data/main/externalData/balances/worker.ts!",
     "scripts/*.ts",

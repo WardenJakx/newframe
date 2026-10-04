@@ -17,8 +17,7 @@
   "include": ["package.json", "./src/**/*.d.ts", "./src/**/*.ts"],
   "exclude": [
     "./src/preload/**",
-    "./src/renderer/**",
-    "./src/**/renderer/**",
+    "./src/trays/**",
     "**/*.test.ts",
     "**/*.test.tsx",
     "**/*.spec.ts",
