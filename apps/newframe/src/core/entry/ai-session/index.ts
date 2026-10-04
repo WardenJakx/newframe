@@ -6,12 +6,12 @@ import { TRPCError } from '@trpc/server'
 
 import { createAiSessionClientSource, createLocalApiSource } from '../../../app/main/gateway/requestSource.ts'
 import type { RpcIpcHandlers } from '../../../app/main/ipc-handlers/rpc.ts'
-import { rpcCall } from '../../../platform/local-rpc/trpc.ts'
+import type { Accounts } from '../../../features/accounts/main/index.ts'
+import type { AiSessionRequest } from '../../../features/requests/contract/requests.ts'
+import type { PromptedRequestContinuationPort } from '../../../features/requests/main/service.ts'
+import type { FlashService } from '../../../features/transactions/trade/main/index.ts'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
-import type { Accounts } from '../../accounts/main/index.ts'
-import type { AiSessionRequest } from '../../requests/contract/requests.ts'
-import type { PromptedRequestContinuationPort } from '../../requests/main/service.ts'
-import type { FlashService } from '../../transactions/trade/main/index.ts'
+import { rpcCall } from '../local-api/trpc.ts'
 import { AiSessionStore } from './sessionStore.ts'
 
 const CONNECTION_TIMEOUT_MS = 2 * 60 * 1_000

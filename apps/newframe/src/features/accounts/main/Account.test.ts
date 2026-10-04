@@ -7,7 +7,7 @@ import {
   createNewframeInternalSource,
   authorizeGatewayOperation
 } from '../../../app/main/gateway/requestSource.ts'
-import { createTrayAuthorizationRegistry } from '../../../platform/ipc/main/authorization.ts'
+import { createTrayAuthorizationRegistry } from '../../../core/entry/tray/authorization.ts'
 import type {
   SigningApprovalContext,
   SignerRequestContext

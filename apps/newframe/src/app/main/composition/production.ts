@@ -1,5 +1,12 @@
 import log from 'electron-log'
 
+import { createAiSessionService, type AiSessionService } from '../../../core/entry/ai-session/index.ts'
+import {
+  createTrayAuthorizationRegistry,
+  type TrayAuthorizationRegistry
+} from '../../../core/entry/tray/authorization.ts'
+import { createOperationDispatcher, type IpcMainHandlerPort } from '../../../core/entry/tray/operations.ts'
+import { createStateStream } from '../../../core/entry/tray/stateStream.ts'
 import { internet } from '../../../core/internet/index.ts'
 import { Chains } from '../../../core/services/chains/index.ts'
 import {
@@ -34,7 +41,6 @@ import { createDeferredSafeMessageApprovalPort } from '../../../features/account
 import { simulateSafeProposal } from '../../../features/accounts/main/safeSimulation.ts'
 import type { SafeTransactionPort } from '../../../features/accounts/main/safeTransactionPort.ts'
 import { createAccountService, type AccountService } from '../../../features/accounts/main/service.ts'
-import { createAiSessionService, type AiSessionService } from '../../../features/ai-session/main/index.ts'
 import { createAssetRateService } from '../../../features/asset-data/main/assetRates/service.ts'
 import createExternalDataScanner from '../../../features/asset-data/main/externalData/index.ts'
 import {
@@ -96,12 +102,6 @@ import {
 import type { FlashService } from '../../../features/transactions/trade/main/index.ts'
 import { createProductionFlashService } from '../../../features/transactions/trade/main/instance.ts'
 import { createTradeService, type TradeService } from '../../../features/transactions/trade/main/service.ts'
-import {
-  createTrayAuthorizationRegistry,
-  type TrayAuthorizationRegistry
-} from '../../../platform/ipc/main/authorization.ts'
-import { createOperationDispatcher, type IpcMainHandlerPort } from '../../../platform/ipc/main/operations.ts'
-import { createStateStream } from '../../../platform/ipc/main/stateStream.ts'
 import { createOperationService } from '../../../platform/operations/service.ts'
 import type { PersistenceLifecycle } from '../../../platform/persistence/ports.ts'
 import { createSafeClient, safeServiceChains } from '../../../platform/safe/client.ts'

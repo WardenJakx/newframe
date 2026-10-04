@@ -6,9 +6,9 @@ import { app as electronApp, screen, globalShortcut, type WebContents } from 'el
 import log from 'electron-log'
 import { shallow } from 'zustand/vanilla/shallow'
 
+import type { TrayAuthorizationRegistry } from '../../../core/entry/tray/authorization.ts'
 import type { Shortcut } from '../../../features/settings/domain/state/shortcuts.ts'
 import { hexToInt, roundGwei } from '../../../shared/domain/hex.ts'
-import type { TrayAuthorizationRegistry } from '../../ipc/main/authorization.ts'
 import { isVisualHarness } from '../../runtime/visualHarness.ts'
 import type canonicalStore from '../../state-store/index.ts'
 import { registerShortcut } from '../keyboardShortcuts.ts'

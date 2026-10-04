@@ -4,8 +4,8 @@
       "name": "authorization-and-ipc",
       "rationale": "Tray identity, operation authorization, and cross-process validation are security boundaries.",
       "patterns": [
-        "src/platform/ipc/main/authorization.ts",
-        "src/platform/ipc/main/operations.ts",
+        "src/core/entry/tray/authorization.ts",
+        "src/core/entry/tray/operations.ts",
         "src/**/contract/**/*.ts",
         "src/app/contracts/**/*.ts",
         "src/app/main/gateway/*.ts",
@@ -23,7 +23,7 @@
         "src/platform/signing/signatures/digests.ts",
         "src/platform/signing/signatures/erc7730.ts",
         "src/platform/secrets/vault.ts",
-        "src/features/ai-session/main/sessionStore.ts",
+        "src/core/entry/ai-session/sessionStore.ts",
         "src/app/main/protected-operations/*.ts"
       ],
       "minimum": {

@@ -1,15 +1,15 @@
 import { randomUUID } from 'node:crypto'
 
 import type {
+  AuthorizationContext,
+  TrayEntrypoint,
+  TrayRole
+} from '../../../core/entry/tray/authorization.ts'
+import type {
   AccountRequest,
   RequestAuthorization,
   RequestType
 } from '../../../features/requests/contract/requests.ts'
-import type {
-  AuthorizationContext,
-  TrayEntrypoint,
-  TrayRole
-} from '../../../platform/ipc/main/authorization.ts'
 
 const requestSourceBrand = Symbol('newframe.request-source')
 const admittedSources = new WeakSet<object>()

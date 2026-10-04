@@ -13,16 +13,16 @@ import log from 'electron-log'
 import { v4 as uuid } from 'uuid'
 import type WebSocket from 'ws'
 
-import { createExtensionGateway } from '../../app/main/gateway/extension.ts'
-import { embeddedImageSource } from '../../features/asset-data/domain/image/index.ts'
-import type { ExtensionAccessService } from '../../features/connections/main/extensionAccess.ts'
+import { createExtensionGateway } from '../../../app/main/gateway/extension.ts'
+import { embeddedImageSource } from '../../../features/asset-data/domain/image/index.ts'
+import type { ExtensionAccessService } from '../../../features/connections/main/extensionAccess.ts'
 import {
   parseOrigin,
   parseRequestChainId,
   type FrameExtension,
   type OriginsService
-} from '../../features/connections/main/origins.ts'
-import type { JSONRPCRequestPayload, RPC, RPCResponsePayload } from '../../shared/domain/rpc.ts'
+} from '../../../features/connections/main/origins.ts'
+import type { JSONRPCRequestPayload, RPC, RPCResponsePayload } from '../../../shared/domain/rpc.ts'
 import {
   createOriginSessionMonitor,
   type ApiTimerPort,

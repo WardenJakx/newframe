@@ -1,24 +1,24 @@
 import type { IpcMainInvokeEvent, WebContents } from 'electron'
 import log from 'electron-log'
 
-import type { CanonicalStoreReader } from '../../state-store/actions.ts'
+import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
 import {
   projectionStateChangeSchemas,
   projectionStateSchemas
-} from '../../state-sync/contract/projections.ts'
+} from '../../../platform/state-sync/contract/projections.ts'
 import {
   StateConnectChannel,
   StateDisconnectChannel,
   StateMessageChannel,
   type TrayState,
   type StateMessage
-} from '../../state-sync/contract/protocol.ts'
+} from '../../../platform/state-sync/contract/protocol.ts'
 import type { TrayAuthorizationRegistry, TrayRole } from './authorization.ts'
 
 export interface StateStreamDependencies {
   store: CanonicalStoreReader
   authorizeTray: TrayAuthorizationRegistry['authorizeTray']
-  projectTrayState: typeof import('../../state-sync/main/projections.ts').projectTrayState
+  projectTrayState: typeof import('../../../platform/state-sync/main/projections.ts').projectTrayState
 }
 
 interface StateStreamIpcPort {

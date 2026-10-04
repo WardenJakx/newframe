@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { EventEmitter } from 'node:events'
 
-import { createOperationDispatcher } from '../../../platform/ipc/main/operations.ts'
+import { createOperationDispatcher } from '../../../core/entry/tray/operations.ts'
 import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.ts'
 import { commandContracts, queryContracts } from '../../contracts/operations.ts'
 import { createOperationRegistry, type OperationServices } from '../ipc-handlers/tray.ts'

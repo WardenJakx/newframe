@@ -4,7 +4,7 @@ import type {
   AuthorizationContext,
   TrayEntrypoint,
   TrayRole
-} from '../../../platform/ipc/main/authorization.ts'
+} from '../../../core/entry/tray/authorization.ts'
 import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.ts'
 import {
   FlashQuoteResultSchema,
@@ -42,7 +42,7 @@ export interface OperationServices {
   accountMutations: import('../../../features/accounts/main/service.ts').AccountService
   safes: import('../../../features/accounts/main/safe.ts').SafeService
   accountOnboarding: import('../../../features/accounts/main/accountOnboarding/service.ts').AccountOnboardingService
-  aiSession: import('../../../features/ai-session/main/index.ts').AiSessionService
+  aiSession: import('../../../core/entry/ai-session/index.ts').AiSessionService
   chains: import('../../../core/services/chains/service.ts').ChainService
   portfolio: import('../../../features/portfolio/main/service.ts').PortfolioService
   profiles: import('../../../features/accounts/main/profiles/service.ts').ProfileService

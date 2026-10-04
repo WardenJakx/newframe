@@ -4,9 +4,13 @@ import {
   createLocalApiSource,
   type LocalApiSource,
   type RequestSource
-} from '../../app/main/gateway/requestSource.ts'
-import type { OriginsService } from '../../features/connections/main/origins.ts'
-import type { JSONRPCRequestPayload, RPCRequestPayload, RPCResponsePayload } from '../../shared/domain/rpc.ts'
+} from '../../../app/main/gateway/requestSource.ts'
+import type { OriginsService } from '../../../features/connections/main/origins.ts'
+import type {
+  JSONRPCRequestPayload,
+  RPCRequestPayload,
+  RPCResponsePayload
+} from '../../../shared/domain/rpc.ts'
 
 export interface RpcProviderSendPort {
   send(

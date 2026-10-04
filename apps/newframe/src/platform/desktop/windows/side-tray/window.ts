@@ -3,7 +3,7 @@ import path from 'path'
 import type { BrowserWindow } from 'electron'
 import log from 'electron-log'
 
-import type { TrayAuthorizationRegistry } from '../../../ipc/main/authorization.ts'
+import type { TrayAuthorizationRegistry } from '../../../../core/entry/tray/authorization.ts'
 import type { Frame } from '../../../state-store/state/index.ts'
 import { constrainTraySize, sideTrayPosition } from '../trayGeometry.ts'
 import { createWindow } from '../window.ts'

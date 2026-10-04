@@ -2,7 +2,7 @@
 // it does not own the Electron lifecycle.
 import { shallow } from 'zustand/vanilla/shallow'
 
-import type { TrayAuthorizationRegistry } from '../../../ipc/main/authorization.ts'
+import type { TrayAuthorizationRegistry } from '../../../../core/entry/tray/authorization.ts'
 import type canonicalStore from '../../../state-store/index.ts'
 import type { Frame } from '../../../state-store/state/index.ts'
 import type { SideTray } from './window.ts'

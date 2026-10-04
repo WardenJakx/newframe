@@ -10,7 +10,7 @@ const riskTests = [
   /^src\/app\/main\/(?:gateway|protected-operations)\//,
   /^src\/features\/transactions\/domain\//,
   /^src\/features\/accounts\/main\/(?:Account|index|providerPort)\.test\./,
-  /^src\/features\/ai-session\/main\/sessionStore\.test\./,
+  /^src\/core\/entry\/ai-session\/sessionStore\.test\./,
   /^src\/features\/transactions\/main\/(?:accountPolicyPort|sideTrayService)\.test\./,
   /^src\/platform\/persistence\//,
   /^src\/platform\/ipc\/main\//,
