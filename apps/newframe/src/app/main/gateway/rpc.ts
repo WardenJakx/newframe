@@ -90,16 +90,16 @@ export function createRpcGateway(ports: RpcGatewayPorts) {
           if (!policy) {
             return false
           }
-          if (policy.permission === 'public') {
+          if (policy.authority === 'public') {
             return true
           }
-          if (policy.permission === 'internal') {
+          if (policy.authority === 'internal') {
             return source?.kind === 'main'
           }
           if (!source) {
             return false
           }
-          if (policy.permission === 'account' && source.kind === 'rpc') {
+          if (policy.authority === 'account' && source.kind === 'rpc') {
             return (await ports.origins?.hasAccountAccessGrant(payload, source)) ?? false
           }
           return true

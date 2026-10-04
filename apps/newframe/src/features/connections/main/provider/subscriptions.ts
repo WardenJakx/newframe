@@ -16,7 +16,7 @@ export type Subscription = {
   extensionId?: string
 }
 
-export function hasSubscriptionPermission(
+export function hasSubscriptionGrant(
   subType: string,
   address: string,
   subscription: Subscription,
@@ -35,17 +35,17 @@ export function hasSubscriptionPermission(
   }
 
   const state = canonicalStore.getState()
-  const permissionsByAddress = state.main.permissions as Record<
+  const grantsByAddress = state.main.permissions as Record<
     string,
     (typeof state.main.permissions)[string] | undefined
   >
-  const permissions = permissionsByAddress[address]
-  if (!permissions) {
+  const grants = grantsByAddress[address]
+  if (!grants) {
     return false
   }
-  const permission = Object.values(permissions).find(({ origin }) => {
+  const grant = Object.values(grants).find(({ origin }) => {
     return uuid(origin, uuid.DNS) === subscription.originId
   })
 
-  return !!permission?.provider
+  return !!grant?.provider
 }

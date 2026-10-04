@@ -203,8 +203,8 @@ describe('origin authorization rule', () => {
       ],
       [{ ...base, originName: '!invalid origin' }, 'deny'],
       [{ ...base, accountSelected: false }, 'deny'],
-      [{ ...base, providerPermission: true }, 'allow'],
-      [{ ...base, providerPermission: false }, 'deny'],
+      [{ ...base, accessGranted: true }, 'allow'],
+      [{ ...base, accessGranted: false }, 'deny'],
       [base, 'deny'],
       [{ ...base, method: 'eth_requestAccounts' }, 'prompt'],
       [{ ...base, method: 'personal_sign' }, 'prompt']

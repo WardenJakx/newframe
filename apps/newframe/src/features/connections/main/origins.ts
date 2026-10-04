@@ -5,7 +5,7 @@ import { v5 as uuidv5 } from 'uuid'
 
 import { hasSourceCapability, type LocalApiSource } from '../../../app/main/gateway/requestSource.ts'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
-import type { Permission } from '../../../platform/state-store/state/index.ts'
+import type { AccountAccessGrant } from '../../../platform/state-store/state/index.ts'
 import type { Address } from '../../../shared/domain/address.ts'
 import type { JSONRPCRequestPayload, RPCRequestPayload } from '../../../shared/domain/rpc.ts'
 import type { Accounts } from '../../accounts/main/index.ts'
@@ -35,7 +35,7 @@ interface OriginStorePort {
   setOriginFavicon(id: string, source: string): void
   touchOrigin(id: string): void
   switchOriginChain(id: string, chainId: number): void
-  getPermission(address: Address, origin: string): Permission | undefined
+  getAccountAccessGrant(address: Address, origin: string): AccountAccessGrant | undefined
   getKnownExtension(id: string): boolean | undefined
   clearKnownExtension(id: string): void
   subscribeKnownExtension(id: string, handler: (allowed: boolean) => void): () => void
@@ -79,7 +79,7 @@ export interface OriginsServiceDependencies {
 
 export function createOriginsService(dependencies: OriginsServiceDependencies) {
   const activeExtensionChecks = new Map<string, Promise<boolean>>()
-  const activePermissionChecks = new Map<string, Promise<Address | undefined>>()
+  const activeGrantChecks = new Map<string, Promise<Address | undefined>>()
 
   const updateOrigin = (
     requestPayload: JSONRPCRequestPayload,
@@ -129,7 +129,7 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
     return !fromBrowser || (transport === 'websocket' && Boolean(parseFrameExtension(req)))
   }
 
-  const requestExtensionPermission = (extension: FrameExtension) => {
+  const requestExtensionApproval = (extension: FrameExtension) => {
     const activeCheck = activeExtensionChecks.get(extension.id)
     if (activeCheck) {
       return activeCheck
@@ -156,27 +156,27 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
       return true
     }
 
-    const extensionPermission = dependencies.store.getKnownExtension(extension.id)
-    if (extensionPermission === true) {
+    const extensionApproval = dependencies.store.getKnownExtension(extension.id)
+    if (extensionApproval === true) {
       return true
     }
-    if (extensionPermission === false) {
+    if (extensionApproval === false) {
       if (!requestApproval) {
         return false
       }
       dependencies.store.clearKnownExtension(extension.id)
     }
-    return requestExtensionPermission(extension)
+    return requestExtensionApproval(extension)
   }
 
-  const requestPermission = (
+  const requestAccountAccess = (
     address: Address,
     fullPayload: RPCRequestPayload,
     requestSource: LocalApiSource
   ) => {
     const { _origin: originId, ...payload } = fullPayload
-    const permissionCheckId = `${address}:${originId}`
-    const activeCheck = activePermissionChecks.get(permissionCheckId)
+    const grantCheckId = `${address}:${originId}`
+    const activeCheck = activeGrantChecks.get(grantCheckId)
     if (activeCheck) {
       return activeCheck
     }
@@ -187,7 +187,7 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
       resolveCheck = resolve
       rejectCheck = reject
     })
-    activePermissionChecks.set(permissionCheckId, result)
+    activeGrantChecks.set(grantCheckId, result)
     const request: AccessRequest = {
       payload,
       requestId: originId,
@@ -200,13 +200,13 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
       dependencies.requests.create((response) => {
         const grantedAddress =
           'result' in response && typeof response.result === 'string' ? response.result : undefined
-        activePermissionChecks.delete(permissionCheckId)
+        activeGrantChecks.delete(grantCheckId)
         resolveCheck(grantedAddress)
       }, request.requestId)
       dependencies.accounts.routeRequest(requestSource, request)
     } catch (error) {
       dependencies.requests.cancel(request.requestId)
-      activePermissionChecks.delete(permissionCheckId)
+      activeGrantChecks.delete(grantCheckId)
       rejectCheck(error)
     }
     return result
@@ -229,14 +229,14 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
     if (namedAccount && namedAccount.toLowerCase() !== currentAccount?.address.toLowerCase()) {
       return false
     }
-    const permission = currentAccount
-      ? dependencies.store.getPermission(currentAccount.address, originName)
+    const grant = currentAccount
+      ? dependencies.store.getAccountAccessGrant(currentAccount.address, originName)
       : undefined
     const decision = decideOriginAuthorization({
       method: payload.method,
       originName,
       accountSelected: Boolean(currentAccount),
-      providerPermission: permission?.provider,
+      accessGranted: grant?.provider,
       hasInternalStateCapability: dependencies.hasInternalStateCapability(requestSource)
     })
 
@@ -253,7 +253,7 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
     if (extensionId) {
       dependencies.accounts.select(currentAccount.address)
     }
-    const grantedAddress = await requestPermission(currentAccount.address, payload, requestSource).catch(
+    const grantedAddress = await requestAccountAccess(currentAccount.address, payload, requestSource).catch(
       () => undefined
     )
     if (!grantedAddress) {
@@ -265,7 +265,7 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
     return Boolean(
       requiredAddress &&
       requiredAddress.toLowerCase() === grantedAddress.toLowerCase() &&
-      dependencies.store.getPermission(grantedAddress, originName)?.provider
+      dependencies.store.getAccountAccessGrant(grantedAddress, originName)?.provider
     )
   }
 
@@ -287,14 +287,14 @@ export function createProductionOriginsService(
     setOriginFavicon: (id, source) => store.getState().setOriginFavicon(id, source),
     touchOrigin: (id) => store.getState().addOriginRequest(id),
     switchOriginChain: (id, chainId) => store.getState().switchOriginChain(id, chainId, 'ethereum'),
-    getPermission: (address, origin) => {
+    getAccountAccessGrant: (address, origin) => {
       const state = store.getState()
-      const permissionsByAddress = state.main.permissions as Record<
+      const grantsByAddress = state.main.permissions as Record<
         string,
-        Record<string, Permission> | undefined
+        Record<string, AccountAccessGrant> | undefined
       >
-      const permissions = permissionsByAddress[address] ?? {}
-      return Object.values(permissions).find((permission) => permission.origin === origin)
+      const grants = grantsByAddress[address] ?? {}
+      return Object.values(grants).find((grant) => grant.origin === origin)
     },
     getKnownExtension: (id) => store.getState().main.knownExtensions[id],
     clearKnownExtension: (id) => store.getState().trustExtension(id, undefined),

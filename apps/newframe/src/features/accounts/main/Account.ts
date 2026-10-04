@@ -251,9 +251,9 @@ class FrameAccount {
         const { name } = this.store.getState().main.origins[origin]
         this.store
           .getState()
-          .setPermission(targetAddress, { handlerId: requestId, origin: name, provider: true })
+          .setAccountAccessGrant(targetAddress, { handlerId: requestId, origin: name, provider: true })
       } else {
-        this.store.getState().revokePermission(this.address, requestId)
+        this.store.getState().revokeAccountAccessGrant(this.address, requestId)
       }
     }
 

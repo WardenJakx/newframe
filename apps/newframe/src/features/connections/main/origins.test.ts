@@ -3,7 +3,7 @@ import { describe, expect, it } from 'bun:test'
 import { v5 as uuidv5 } from 'uuid'
 
 import { createLocalApiSource } from '../../../app/main/gateway/requestSource.ts'
-import type { Permission } from '../../../platform/state-store/state/index.ts'
+import type { AccountAccessGrant } from '../../../platform/state-store/state/index.ts'
 import type { Address } from '../../../shared/domain/address.ts'
 import type { RPCRequestCallback, RPCRequestPayload, RPCResponsePayload } from '../../../shared/domain/rpc.ts'
 import type { AccessRequest } from '../../requests/contract/requests.ts'
@@ -42,7 +42,7 @@ type StoredOrigin = {
 
 function createOriginHarness() {
   const origins: Record<string, StoredOrigin> = {}
-  const permissions: Record<string, Permission[]> = {}
+  const grants: Record<string, AccountAccessGrant[]> = {}
   const knownExtensions: Record<string, boolean> = {}
   const extensionListeners = new Map<string, Set<(allowed: boolean) => void>>()
   const notifications: FrameExtension[] = []
@@ -78,8 +78,8 @@ function createOriginHarness() {
         switchedOriginChains.push({ id, chainId })
         origins[id].chain = { id: chainId, type: 'ethereum' }
       },
-      getPermission: (accountAddress, origin) =>
-        permissions[accountAddress]?.find((permission) => permission.origin === origin),
+      getAccountAccessGrant: (accountAddress, origin) =>
+        grants[accountAddress]?.find((grant) => grant.origin === origin),
       getKnownExtension: (id) => knownExtensions[id],
       clearKnownExtension: (id) => {
         delete knownExtensions[id]
@@ -163,8 +163,8 @@ function createOriginHarness() {
     setOrigin(id: string, origin: StoredOrigin) {
       origins[id] = origin
     },
-    setPermission(origin: string, provider: boolean, accountAddress: Address = address) {
-      permissions[accountAddress] = [{ origin, provider, handlerId: uuidv5(origin, uuidv5.DNS) }]
+    setAccountAccessGrant(origin: string, provider: boolean, accountAddress: Address = address) {
+      grants[accountAddress] = [{ origin, provider, handlerId: uuidv5(origin, uuidv5.DNS) }]
     },
     setKnownExtension(id: string, allowed: boolean) {
       knownExtensions[id] = allowed
@@ -398,7 +398,7 @@ describe('origin authorization service', () => {
     for (const provider of [true, false]) {
       const harness = createOriginHarness()
       harness.setOrigin(originId, { name: 'test.frame.eth' })
-      harness.setPermission('test.frame.eth', provider)
+      harness.setAccountAccessGrant('test.frame.eth', provider)
       results.push(
         await harness.service.hasAccountAccessGrant(requestPayload({ _origin: originId }), requestSource)
       )
@@ -413,7 +413,11 @@ describe('origin authorization service', () => {
     ungrantedHarness.setOrigin(originId, { name: 'test.frame.eth' })
     const otherAccountHarness = createOriginHarness()
     otherAccountHarness.setOrigin(originId, { name: 'test.frame.eth' })
-    otherAccountHarness.setPermission('test.frame.eth', true, '0x0000000000000000000000000000000000000002')
+    otherAccountHarness.setAccountAccessGrant(
+      'test.frame.eth',
+      true,
+      '0x0000000000000000000000000000000000000002'
+    )
 
     const results = await Promise.all([
       ungrantedHarness.service.hasAccountAccessGrant(requestPayload({ _origin: originId }), requestSource),
@@ -431,7 +435,7 @@ describe('origin authorization service', () => {
       const harness = createOriginHarness()
       harness.setOrigin(originId, { name: 'test.frame.eth' })
       harness.onRoute((_request, complete) => {
-        harness.setPermission('test.frame.eth', provider)
+        harness.setAccountAccessGrant('test.frame.eth', provider)
         complete()
       })
 
@@ -485,7 +489,7 @@ describe('origin authorization service', () => {
     )
 
     expect(harness.routedRequests).toHaveLength(1)
-    harness.setPermission('test.frame.eth', true)
+    harness.setAccountAccessGrant('test.frame.eth', true)
     completions[0]()
 
     expect(Promise.all([first, second])).resolves.toStrictEqual([true, true])
@@ -514,7 +518,7 @@ for (const firstMethod of ['eth_requestAccounts', 'personal_sign']) {
     // Only a connect-owned prompt permits choosing the global account.
     const granted = firstMethod === 'eth_requestAccounts' ? other : address
     harness.setAccount(other)
-    harness.setPermission('test.frame.eth', true, granted)
+    harness.setAccountAccessGrant('test.frame.eth', true, granted)
     complete(granted)
     expect(await Promise.all(pending)).toEqual(
       methods.map((method) => {
@@ -528,7 +532,7 @@ for (const firstMethod of ['eth_requestAccounts', 'personal_sign']) {
 }
 
 it('denies a discovery waiter if selected account changes again or the returned grant is absent', async () => {
-  for (const permissionPresent of [true, false]) {
+  for (const grantPresent of [true, false]) {
     const harness = createOriginHarness()
     const originId = uuidv5('test.frame.eth', uuidv5.DNS)
     let complete!: (grantedAddress?: Address) => void
@@ -540,8 +544,8 @@ it('denies a discovery waiter if selected account changes again or the returned 
       requestPayload({ method: 'eth_requestAccounts', _origin: originId }),
       requestSource
     )
-    if (permissionPresent) {
-      harness.setPermission('test.frame.eth', true)
+    if (grantPresent) {
+      harness.setAccountAccessGrant('test.frame.eth', true)
       harness.setAccount()
     }
     complete(address)
@@ -559,7 +563,7 @@ it.each([false, true])(
       requestPayload({ method: 'eth_requestAccounts', _origin: originId }),
       requestSource
     )
-    harness.setPermission('test.frame.eth', true)
+    harness.setAccountAccessGrant('test.frame.eth', true)
     harness.respond(
       originId,
       error
@@ -586,7 +590,7 @@ describe('extension account authorization', () => {
     const harness = createOriginHarness()
     harness.setOrigin(originId, { name: 'test.frame.eth' })
     harness.setExtensionAccount(extensionAddress)
-    harness.setPermission('test.frame.eth', true, extensionAddress)
+    harness.setAccountAccessGrant('test.frame.eth', true, extensionAddress)
 
     const lookup = await harness.service.hasAccountAccessGrant(requestPayload({ _origin: originId }), relayed)
     expect(lookup).toBe(true)
@@ -610,8 +614,8 @@ describe('extension account authorization', () => {
     const harness = createOriginHarness()
     harness.setOrigin(originId, { name: 'test.frame.eth' })
     harness.setExtensionAccount(extensionAddress)
-    harness.setPermission('test.frame.eth', true, extensionAddress)
-    harness.setPermission('test.frame.eth', true, address)
+    harness.setAccountAccessGrant('test.frame.eth', true, extensionAddress)
+    harness.setAccountAccessGrant('test.frame.eth', true, address)
 
     for (const source of [relayed, requestSource]) {
       for (const payload of signingRequests) {
@@ -635,7 +639,7 @@ describe('extension account authorization', () => {
   it('ignores a dapp grant for the app account the extension may not see', async () => {
     const harness = createOriginHarness()
     harness.setOrigin(originId, { name: 'test.frame.eth' })
-    harness.setPermission('test.frame.eth', true)
+    harness.setAccountAccessGrant('test.frame.eth', true)
 
     const result = await harness.service.hasAccountAccessGrant(
       requestPayload({ method: 'personal_sign', _origin: originId }),
@@ -652,7 +656,7 @@ describe('extension account authorization', () => {
     harness.setOrigin(originId, { name: 'test.frame.eth' })
     harness.onExtensionAccessRequest(() => harness.setExtensionAccount(extensionAddress))
     harness.onRoute((_request, complete) => {
-      harness.setPermission('test.frame.eth', true, extensionAddress)
+      harness.setAccountAccessGrant('test.frame.eth', true, extensionAddress)
       complete()
     })
 

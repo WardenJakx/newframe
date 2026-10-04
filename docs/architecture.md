@@ -314,6 +314,6 @@ The code predates the glossary. Counts are occurrences outside tests.
 | Tray, main tray         | `renderer` in folder, tsconfig and script names            | About 450   |
 | AI session              | `agentEnabled`, the stored account flag                    | 18          |
 | Request                 | `handlerId`, the stored key on activity records and grants | 12          |
-| Account access grant    | `permission`                                               | 250         |
+| Account access grant    | `permissions`, the stored key                              | 36          |
 | Request source          | `origin` for any request source, not just dapps            | About 1,200 |
 | Local API message names | `frame_*`, `__frame*`, the `agent` route and header        | 65          |

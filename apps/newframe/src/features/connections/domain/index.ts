@@ -144,13 +144,13 @@ export function decideOriginAuthorization({
   method,
   originName,
   accountSelected,
-  providerPermission,
+  accessGranted,
   hasInternalStateCapability
 }: {
   method?: string
   originName: string
   accountSelected: boolean
-  providerPermission?: boolean
+  accessGranted?: boolean
   hasInternalStateCapability: boolean
 }): OriginAuthorizationDecision {
   if (method === 'wallet_getEthereumChains' && hasInternalStateCapability) {
@@ -159,13 +159,13 @@ export function decideOriginAuthorization({
   if (!isValidOriginName(originName) || !accountSelected) {
     return 'deny'
   }
-  if (method === 'eth_accounts' && providerPermission !== true) {
+  if (method === 'eth_accounts' && accessGranted !== true) {
     return 'deny'
   }
-  if (providerPermission === undefined) {
+  if (accessGranted === undefined) {
     return 'prompt'
   }
-  return providerPermission ? 'allow' : 'deny'
+  return accessGranted ? 'allow' : 'deny'
 }
 
 const isAddressValue = (value: unknown): value is string =>

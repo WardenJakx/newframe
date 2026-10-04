@@ -4,7 +4,7 @@ import type { NewframeHost } from '../../../platform/ipc/contract/ipc.ts'
 type Input<TType extends keyof CommandMap> = Omit<CommandMap[TType], 'type'>
 
 export interface ConnectionsCapability {
-  clearPermission(input: Input<'permission.clear'>): Promise<CommandResult>
+  clearAccountAccessGrant(input: Input<'account-access-grant.clear'>): Promise<CommandResult>
   respondToExtension(input: Input<'extension.respond'>): Promise<CommandResult>
   forgetExtension(input: Input<'extension.forget'>): Promise<CommandResult>
   openExtensionAccess(input: Input<'extension.access-open'>): Promise<CommandResult>
@@ -16,7 +16,7 @@ export function createConnectionsCapability(
   host: Pick<NewframeHost, 'executeCommand'>
 ): ConnectionsCapability {
   return {
-    clearPermission: (input) => host.executeCommand({ type: 'permission.clear', ...input }),
+    clearAccountAccessGrant: (input) => host.executeCommand({ type: 'account-access-grant.clear', ...input }),
     respondToExtension: (input) => host.executeCommand({ type: 'extension.respond', ...input }),
     forgetExtension: (input) => host.executeCommand({ type: 'extension.forget', ...input }),
     openExtensionAccess: (input) => host.executeCommand({ type: 'extension.access-open', ...input }),

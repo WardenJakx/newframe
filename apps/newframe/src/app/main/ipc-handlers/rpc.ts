@@ -34,7 +34,7 @@ import type { ProviderStatePort } from '../../../features/connections/main/provi
 import type { Subscription } from '../../../features/connections/main/provider/subscriptions.ts'
 import {
   SubscriptionType,
-  hasSubscriptionPermission
+  hasSubscriptionGrant
 } from '../../../features/connections/main/provider/subscriptions.ts'
 import { getVersionFromTypedData } from '../../../features/connections/main/provider/typedData.ts'
 import type {
@@ -69,7 +69,7 @@ import { getSignerType, Type as SignerType } from '../../../platform/signing/dom
 import { getCalldataDigest, getEip712Digests } from '../../../platform/signing/signatures/digests.ts'
 import * as sigParser from '../../../platform/signing/signatures/index.ts'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
-import type { Permission } from '../../../platform/state-store/state/index.ts'
+import type { AccountAccessGrant } from '../../../platform/state-store/state/index.ts'
 import type { Callback } from '../../../shared/domain/async.ts'
 import { isNonZeroHex } from '../../../shared/domain/hex.ts'
 import type {
@@ -415,7 +415,7 @@ export class RpcIpcHandlers extends EventEmitter {
       .filter(
         (subscription) =>
           !subscription.extensionId &&
-          hasSubscriptionPermission(SubscriptionType.ACCOUNTS, address, subscription, this.store)
+          hasSubscriptionGrant(SubscriptionType.ACCOUNTS, address, subscription, this.store)
       )
       .forEach((subscription) => this.sendSubscriptionData(subscription.id, accounts))
   }
@@ -425,7 +425,7 @@ export class RpcIpcHandlers extends EventEmitter {
     const main = this.store.getState().main
     const accountId = subscription.extensionId ? activeExtensionAccountId(main, subscription.extensionId) : ''
     const address = accountId ? main.accounts[accountId].address.toLowerCase() : ''
-    return address && hasSubscriptionPermission(SubscriptionType.ACCOUNTS, address, subscription, this.store)
+    return address && hasSubscriptionGrant(SubscriptionType.ACCOUNTS, address, subscription, this.store)
       ? address
       : ''
   }
@@ -456,7 +456,7 @@ export class RpcIpcHandlers extends EventEmitter {
   assetsChanged(address: string, assets: RPC.GetAssets.Assets) {
     this.subscriptions.assetsChanged
       .filter((subscription) =>
-        hasSubscriptionPermission(SubscriptionType.ASSETS, address, subscription, this.store)
+        hasSubscriptionGrant(SubscriptionType.ASSETS, address, subscription, this.store)
       )
       .forEach((subscription) => this.sendSubscriptionData(subscription.id, { ...assets, account: address }))
   }
@@ -472,7 +472,7 @@ export class RpcIpcHandlers extends EventEmitter {
   // fires when the list of available chains changes
   chainsChanged(address: string, chains: RPC.GetEthereumChains.Chain[]) {
     this.subscriptions.chainsChanged
-      .filter((subscription) => hasSubscriptionPermission('chainsChanged', address, subscription, this.store))
+      .filter((subscription) => hasSubscriptionGrant('chainsChanged', address, subscription, this.store))
       .forEach((subscription) => this.sendSubscriptionData(subscription.id, chains))
   }
 
@@ -1361,30 +1361,30 @@ export class RpcIpcHandlers extends EventEmitter {
     const currentAccount = this.accountFor(requestSource)
     const rawAddress = currentAccount?.address ?? currentAccount?.id ?? ''
     const address = rawAddress ? rawAddress.toLowerCase() : ''
-    const permissionAddresses = Array.from(
+    const grantAddresses = Array.from(
       new Set([rawAddress, address].filter(Boolean).map((candidate) => candidate.toString()))
     )
 
-    let permissionAddress = ''
-    let permissionId = ''
-    let permission: Permission | undefined
+    let grantAddress = ''
+    let grantId = ''
+    let grant: AccountAccessGrant | undefined
 
-    for (const candidate of permissionAddresses) {
+    for (const candidate of grantAddresses) {
       const state = this.store.getState()
-      const permissionsByAddress = state.main.permissions as Record<
+      const grantsByAddress = state.main.permissions as Record<
         string,
         (typeof state.main.permissions)[string] | undefined
       >
-      const permissions = permissionsByAddress[candidate] ?? {}
-      const permissionEntry = Object.entries(permissions).find(([id, p]) => {
+      const grants = grantsByAddress[candidate] ?? {}
+      const grantEntry = Object.entries(grants).find(([id, p]) => {
         return id === originId || p.handlerId === originId || p.origin === origin?.name
       })
 
-      if (permissionEntry) {
-        const [id, foundPermission] = permissionEntry
-        permissionAddress = candidate
-        permissionId = id
-        permission = foundPermission
+      if (grantEntry) {
+        const [id, foundGrant] = grantEntry
+        grantAddress = candidate
+        grantId = id
+        grant = foundGrant
         break
       }
     }
@@ -1395,9 +1395,9 @@ export class RpcIpcHandlers extends EventEmitter {
       originId,
       originName: origin?.name ?? '',
       address,
-      permissionAddress,
-      permissionId,
-      connected: Boolean(address && permission?.provider),
+      grantAddress,
+      grantId,
+      connected: Boolean(address && grant?.provider),
       chainId
     }
   }
@@ -1438,11 +1438,13 @@ export class RpcIpcHandlers extends EventEmitter {
     res: RPCSuccessCallback,
     requestSource?: RequestSource
   ) {
-    const { originId, originName, address, permissionAddress, permissionId, chainId } =
-      this.getOriginConnection(payload, requestSource)
+    const { originId, originName, address, grantAddress, grantId, chainId } = this.getOriginConnection(
+      payload,
+      requestSource
+    )
 
-    if (permissionAddress && permissionId) {
-      this.store.getState().revokePermission(permissionAddress, permissionId)
+    if (grantAddress && grantId) {
+      this.store.getState().revokeAccountAccessGrant(grantAddress, grantId)
     }
 
     if (address) {
