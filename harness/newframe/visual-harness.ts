@@ -84,8 +84,8 @@ async function createContext(
   runtime: VisualHarnessRuntime,
   safeSeed: SafeSeedManifest
 ): Promise<VisualHarnessContext> {
-  runtime.currentStage = 'wait for tray renderer'
-  runtime.log('wait for tray renderer')
+  runtime.currentStage = 'wait for tray'
+  runtime.log('wait for tray')
   const tray = await waitForElectronPage(app, 'bundle/tray.html', runtime)
 
   const anvil = new AnvilClient()
@@ -120,7 +120,7 @@ export async function runVisualHarness() {
     await visual.startTrace(app)
 
     const context = await services.watch(createContext(app, services, visual, safeSeed))
-    visual.assertNoUnexpectedRendererErrors()
+    visual.assertNoUnexpectedTrayErrors()
     for (const stage of visualStages) {
       await services.watch(visual.runStage(context, stage))
     }

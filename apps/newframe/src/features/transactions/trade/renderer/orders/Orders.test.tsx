@@ -5,10 +5,10 @@ import { useState } from 'react'
 import type { ComponentProps } from 'react'
 
 import { act, render, screen } from '../../../../../../test/support/componentSetup.tsx'
-import { registerTestRuntimeFixture } from '../../../../../../test/support/rendererClient.ts'
+import { registerTestRuntimeFixture } from '../../../../../../test/support/trayClient.ts'
 import type { AppCommand, CommandMap, CommandResult } from '../../../../../app/contracts/operations.ts'
 import type { OperationRecord } from '../../../../../platform/operations/operation.ts'
-import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections.ts'
+import type { MainTrayProjection } from '../../../../../platform/state-sync/contract/projections.ts'
 import { walletState } from '../../../../../platform/state-sync/renderer/fixtures.test-support.ts'
 import { OrderDetails } from './OrderDetails.tsx'
 import { Orders as OrdersController, type OpenOrderInput } from './Orders.tsx'
@@ -50,7 +50,7 @@ function cancelButton(orderId: string) {
   return document.querySelector<HTMLButtonElement>(`[data-order-id="${orderId}"] button`)
 }
 
-function state(orders: WalletRendererState['orders'], operations: Record<string, OperationRecord> = {}) {
+function state(orders: MainTrayProjection['orders'], operations: Record<string, OperationRecord> = {}) {
   return walletState({
     currentAccount: 'account-1',
     accounts: {
@@ -59,7 +59,7 @@ function state(orders: WalletRendererState['orders'], operations: Record<string,
         address: accountAddress,
         name: 'Account 1',
         lastSignerType: 'address'
-      } as WalletRendererState['accounts'][string]
+      } as MainTrayProjection['accounts'][string]
     },
     accountOrder: ['account-1'],
     chains: {
@@ -69,7 +69,7 @@ function state(orders: WalletRendererState['orders'], operations: Record<string,
           name: 'Ethereum',
           isTestnet: false,
           on: true
-        } as WalletRendererState['chains']['ethereum'][number]
+        } as MainTrayProjection['chains']['ethereum'][number]
       }
     },
     orders,
@@ -243,7 +243,7 @@ describe('Orders display', () => {
       byId: {
         [`1:${address}`]: {
           image: { base64: 'd2V0aA==', mimeType: 'image/png' }
-        } as WalletRendererState['tokens']['byId'][string]
+        } as MainTrayProjection['tokens']['byId'][string]
       },
       accountTokenIds: {}
     }

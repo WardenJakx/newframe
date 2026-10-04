@@ -6,7 +6,7 @@ import { HomeMenuView } from './HomeMenuView.tsx'
 it('keeps requests out of the main menu', () => {
   render(
     <HomeMenuView
-      instanceId='renderer-test'
+      instanceId='tray-test'
       onClose={mock()}
       onOpenAbout={mock()}
       onOpenDapps={mock()}

@@ -2,7 +2,7 @@
 // it does not own the Electron lifecycle.
 import { shallow } from 'zustand/vanilla/shallow'
 
-import type { RendererAuthorizationRegistry } from '../../../ipc/main/authorization.ts'
+import type { TrayAuthorizationRegistry } from '../../../ipc/main/authorization.ts'
 import type canonicalStore from '../../../state-store/index.ts'
 import type { Frame } from '../../../state-store/state/index.ts'
 import type { SideTray } from './window.ts'
@@ -10,7 +10,7 @@ import sideTrayHost from './window.ts'
 
 export default class SideTrayManager {
   private sideTrays: Record<string, SideTray | undefined> = {}
-  private registerRenderer?: RendererAuthorizationRegistry['registerRenderer']
+  private registerTray?: TrayAuthorizationRegistry['registerTray']
 
   constructor(private readonly store: typeof canonicalStore) {}
 
@@ -18,8 +18,8 @@ export default class SideTrayManager {
     return this.store.getState().main.frames
   }
 
-  start(registerRenderer: RendererAuthorizationRegistry['registerRenderer']) {
-    this.registerRenderer = registerRenderer
+  start(registerTray: TrayAuthorizationRegistry['registerTray']) {
+    this.registerTray = registerTray
     const manageCurrentFrames = ([frames, inFocus]: [Record<string, Frame | undefined>, string]) => {
       this.manageFrames(frames, inFocus)
     }
@@ -49,10 +49,10 @@ export default class SideTrayManager {
         if (!frame) {
           return
         }
-        if (!this.registerRenderer) {
-          throw new Error('Renderer authorization must be configured before creating a side tray')
+        if (!this.registerTray) {
+          throw new Error('Tray authorization must be configured before creating a side tray')
         }
-        const sideTray = sideTrayHost.create(frame, this.registerRenderer)
+        const sideTray = sideTrayHost.create(frame, this.registerTray)
 
         this.sideTrays[frameId] = sideTray
 

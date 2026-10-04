@@ -3,7 +3,7 @@ import { expect, it } from 'bun:test'
 import { FLASH_USDC_ASSET, FLASH_WETH_ASSET } from '@newframe/flash/assets'
 import { FLASH_MARKET_ORDER_TYPE } from '@newframe/flash/constants'
 
-import { createRendererClient as createTypedClient } from '../../../../../test/support/rendererClient.ts'
+import { createTrayClient as createTypedClient } from '../../../../../test/support/trayClient.ts'
 import { createTradeCapability } from './tradeService.ts'
 
 it('maps semantic trade actions to their exact catalog operations', async () => {

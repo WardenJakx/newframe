@@ -13,7 +13,7 @@ export type HarnessSummary = {
   evidence: HarnessEvidence[]
   ok: boolean
   failedStage: string | null
-  rendererErrors: RendererError[]
+  trayErrors: TrayError[]
   screenshots: string[]
   stages: StageSummary[]
   startedAt: string
@@ -25,7 +25,7 @@ export type HarnessEvidence = {
   value: boolean | number | string | null
 }
 
-export type RendererError = {
+export type TrayError = {
   allowed: boolean
   allowance?: string
   kind: 'console' | 'crash' | 'pageerror'

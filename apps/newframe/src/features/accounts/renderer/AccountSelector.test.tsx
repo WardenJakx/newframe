@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { within } from '@testing-library/react'
 
 import { act, render, screen } from '../../../../test/support/componentSetup.tsx'
-import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient.ts'
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections.ts'
+import { registerTestRuntimeFixture } from '../../../../test/support/trayClient.ts'
+import type { MainTrayProjection } from '../../../platform/state-sync/contract/projections.ts'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
 import { createAccountsCapabilityFake } from './accountsCapability.test-support.ts'
 import { AccountSelector } from './AccountSelector.tsx'
@@ -21,7 +21,7 @@ const first = {
   signer: 'watch',
   requests: {},
   created: '2026-01-01'
-} satisfies WalletRendererState['accounts'][string]
+} satisfies MainTrayProjection['accounts'][string]
 const second = {
   ...first,
   id: 'account-b',

@@ -1,4 +1,4 @@
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections.ts'
+import type { MainTrayProjection } from '../../../platform/state-sync/contract/projections.ts'
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector.tsx'
 import { accountDisplayType } from '../../../shared/renderer/ui/signerPresentation.ts'
 import type { AccountsCapability } from './accountsCapability.ts'
@@ -15,7 +15,7 @@ export function Receive({
 }) {
   const account = useWalletSelector(
     (state) =>
-      (state.accounts as Record<string, WalletRendererState['accounts'][string] | undefined>)[accountId]
+      (state.accounts as Record<string, MainTrayProjection['accounts'][string] | undefined>)[accountId]
   )
   const showLocalNameWithENS = useWalletSelector((state) => !!state.showLocalNameWithENS)
 

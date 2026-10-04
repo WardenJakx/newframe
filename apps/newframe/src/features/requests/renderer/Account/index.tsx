@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
-import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections.ts'
+import type { MainTrayProjection } from '../../../../platform/state-sync/contract/projections.ts'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector.tsx'
-import type { RequestRendererCapabilities } from '../requestCapabilities.ts'
+import type { RequestTrayCapabilities } from '../requestCapabilities.ts'
 import Account from './Account.tsx'
 
-const selectCurrentAccount = (state: WalletRendererState) => {
+const selectCurrentAccount = (state: MainTrayProjection) => {
   const current = state.currentAccount
 
   return {
@@ -20,7 +20,7 @@ export default function Main({
   capabilities,
   accountSelector
 }: {
-  capabilities: RequestRendererCapabilities
+  capabilities: RequestTrayCapabilities
   accountSelector?: ReactNode
 }) {
   const { account, current, open } = useWalletSelector(useShallow(selectCurrentAccount))

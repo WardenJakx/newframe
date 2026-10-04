@@ -16,8 +16,8 @@ import { TokenCatalogSchema, TokenImageSchema } from '../../../features/tokens/d
 import { OperationCollectionSchema } from '../../operations/operation.ts'
 import { AirGapPendingSummarySchema } from '../../signing/domain/airgap.ts'
 
-export const RendererProjectionSchema = z.enum(['main-tray', 'side-tray'])
-export type RendererProjection = z.infer<typeof RendererProjectionSchema>
+export const TrayProjectionRoleSchema = z.enum(['main-tray', 'side-tray'])
+export type TrayProjectionRole = z.infer<typeof TrayProjectionRoleSchema>
 
 const WalletNavigationChainSchema = z
   .object({
@@ -222,9 +222,9 @@ const WalletRecognizedActionSchema = z
   })
   .strip()
 
-// Requests are canonical main-owned state, but renderers receive only the
+// Requests are canonical main-owned state, but trays receive only the
 // explicitly supported presentation fields. Unknown future fields are
-// discarded instead of silently becoming renderer capabilities.
+// discarded instead of silently becoming tray capabilities.
 export const WalletRequestSchema = z
   .object({
     type: z.enum([
@@ -522,10 +522,10 @@ const WalletProfileSummarySchema = z.strictObject({
   ])
 })
 
-// Wallet renderers receive explicit domain slices. Keeping canonical `main`
+// Wallet trays receive explicit domain slices. Keeping canonical `main`
 // out of this schema prevents one setting change from cloning every wallet
 // domain and prevents future Electron-only fields from crossing by default.
-const WalletRendererStateSchema = z.strictObject({
+const MainTrayProjectionSchema = z.strictObject({
   accounts: z.record(z.string(), WalletAccountSchema),
   accountOrder: MainSchema.shape.accountOrder,
   activity: WalletActivitySchema,
@@ -596,9 +596,9 @@ const SideTrayChainMetadataSchema = z.strictObject({
 })
 
 // `side-tray` is the restricted capability projection used by the bundled
-// Send/Trade renderer.
+// Send/Trade tray.
 // Origin-controlled web content must never be registered for this projection.
-const SideTrayRendererStateSchema = z.strictObject({
+const SideTrayProjectionSchema = z.strictObject({
   accounts: z.record(z.string(), SideTrayAccountSchema),
   accountOrder: z.array(z.string()),
   activity: SideTrayActivitySchema,
@@ -617,14 +617,14 @@ const SideTrayRendererStateSchema = z.strictObject({
   runtime: RuntimeSchema
 })
 
-export type WalletRendererState = z.infer<typeof WalletRendererStateSchema>
+export type MainTrayProjection = z.infer<typeof MainTrayProjectionSchema>
 export type WalletStatusNotification = z.infer<typeof WalletStatusNotificationSchema>
-export type SideTrayRendererState = z.infer<typeof SideTrayRendererStateSchema>
+export type SideTrayProjection = z.infer<typeof SideTrayProjectionSchema>
 export type WalletPanelNavigationEntry = z.infer<typeof WalletPanelNavigationEntrySchema>
 
 export const projectionStateSchemas = {
-  'main-tray': WalletRendererStateSchema,
-  'side-tray': SideTrayRendererStateSchema
+  'main-tray': MainTrayProjectionSchema,
+  'side-tray': SideTrayProjectionSchema
 } as const
 
 function createProjectionChangesSchema<TShape extends z.ZodRawShape>(schema: z.ZodObject<TShape>) {
@@ -639,7 +639,7 @@ function createProjectionChangesSchema<TShape extends z.ZodRawShape>(schema: z.Z
         context.addIssue({
           code: 'custom',
           path: [key],
-          message: 'Unknown renderer state slice'
+          message: 'Unknown tray state slice'
         })
         continue
       }
@@ -653,7 +653,7 @@ function createProjectionChangesSchema<TShape extends z.ZodRawShape>(schema: z.Z
         context.addIssue({
           code: 'custom',
           path: [key],
-          message: `Invalid renderer state slice: ${result.error.message}`
+          message: `Invalid tray state slice: ${result.error.message}`
         })
         continue
       }
@@ -668,6 +668,6 @@ function createProjectionChangesSchema<TShape extends z.ZodRawShape>(schema: z.Z
 // Zod defaults inside a normal `.partial()` populate omitted slices. Parse
 // only keys that are actually present so a one-slice update stays one slice.
 export const projectionStateChangeSchemas = {
-  'main-tray': createProjectionChangesSchema(WalletRendererStateSchema),
-  'side-tray': createProjectionChangesSchema(SideTrayRendererStateSchema)
+  'main-tray': createProjectionChangesSchema(MainTrayProjectionSchema),
+  'side-tray': createProjectionChangesSchema(SideTrayProjectionSchema)
 } as const

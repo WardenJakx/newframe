@@ -352,7 +352,7 @@ describe('#routeRequest', () => {
     const respond = mock()
     requestLifecycle.create(respond, request.requestId)
     const forgedRequestSource = {
-      kind: 'renderer',
+      kind: 'tray',
       role: 'main-tray',
       entrypoint: 'tray',
       webContentsId: 1,

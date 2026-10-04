@@ -2,14 +2,14 @@ import { expect, it } from 'bun:test'
 
 import type { Session, WebContents } from 'electron'
 
-import { createRendererAuthorizationRegistry } from '../../ipc/main/authorization.ts'
+import { createTrayAuthorizationRegistry } from '../../ipc/main/authorization.ts'
 import { installCameraPermissions } from './cameraPermissions.ts'
 
 type PermissionSession = Parameters<typeof installCameraPermissions>[0]
 function fixture() {
   process.env.BUNDLE_LOCATION = '/app/bundle'
   process.env.NODE_ENV = 'test'
-  const registry = createRendererAuthorizationRegistry()
+  const registry = createTrayAuthorizationRegistry()
   let check!: NonNullable<Parameters<Session['setPermissionCheckHandler']>[0]>
   let request!: NonNullable<Parameters<Session['setPermissionRequestHandler']>[0]>
   const session: PermissionSession = {
@@ -27,7 +27,7 @@ function fixture() {
     }
   }
   let id = 0
-  const renderer = (entrypoint: 'tray' | 'side-tray') => {
+  const tray = (entrypoint: 'tray' | 'side-tray') => {
     const frame = { parent: null, url: `file:///app/bundle/${entrypoint}.html` }
     let destroyed = () => {}
     const webContents = {
@@ -38,11 +38,11 @@ function fixture() {
         destroyed = handler
       }
     } as unknown as WebContents
-    registry.registerRenderer(webContents, entrypoint === 'tray' ? 'main-tray' : 'side-tray', entrypoint)
+    registry.registerTray(webContents, entrypoint === 'tray' ? 'main-tray' : 'side-tray', entrypoint)
     return { webContents, frame, destroy: () => destroyed() }
   }
-  const wallet = renderer('tray')
-  const side = renderer('side-tray')
+  const wallet = tray('tray')
+  const side = tray('side-tray')
   const dispose = installCameraPermissions(session, registry)
   const details = { requestingUrl: wallet.frame.url, isMainFrame: true, mediaType: 'video' as const }
   const allowed = () => check(wallet.webContents, 'media', 'file://', details)

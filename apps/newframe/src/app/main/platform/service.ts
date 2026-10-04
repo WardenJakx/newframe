@@ -31,7 +31,7 @@ type PlatformState = Pick<
   | 'view'
 >
 
-type RendererEvent = Pick<Electron.IpcMainInvokeEvent, 'sender'>
+type TrayEvent = Pick<Electron.IpcMainInvokeEvent, 'sender'>
 
 export interface PlatformServicePorts {
   accounts: {
@@ -55,16 +55,16 @@ export interface PlatformServicePorts {
     updateReady: boolean
   }
   windows: {
-    close(event: RendererEvent): void
+    close(event: TrayEvent): void
     handleTrayMouseout(): void
-    inspect(event: RendererEvent, x: number, y: number): void
+    inspect(event: TrayEvent, x: number, y: number): void
     refocusSideTray(frameId: string): void
   }
 }
 
 export function createPlatformService(ports: PlatformServicePorts) {
   return {
-    closeSideTray(event: RendererEvent) {
+    closeSideTray(event: TrayEvent) {
       ports.windows.close(event)
     },
 
@@ -78,7 +78,7 @@ export function createPlatformService(ports: PlatformServicePorts) {
       return true
     },
 
-    inspectRenderer(event: RendererEvent, x: number, y: number) {
+    inspectTray(event: TrayEvent, x: number, y: number) {
       ports.windows.inspect(event, x, y)
     },
 

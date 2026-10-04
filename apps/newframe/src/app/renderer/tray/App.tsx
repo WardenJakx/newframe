@@ -9,7 +9,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { cva } from '../../../../generated/styled-system/css/cva.js'
 import { AccountSelector } from '../../../features/accounts/renderer/AccountSelector.tsx'
 import Account from '../../../features/requests/renderer/Account/index.tsx'
-import type { RequestRendererCapabilities } from '../../../features/requests/renderer/requestCapabilities.ts'
+import type { RequestTrayCapabilities } from '../../../features/requests/renderer/requestCapabilities.ts'
 import type { RequestCommandNotifier } from '../../../features/requests/renderer/RequestCommand/index.tsx'
 import { RequestViewProvider } from '../../../features/requests/renderer/requestView.tsx'
 import {
@@ -21,6 +21,7 @@ import {
 import type { SecurityCapability } from '../../../features/security/renderer/securityCapability.ts'
 import Badge from '../../../platform/app-update/renderer/index.tsx'
 import { updaterCapability } from '../../../platform/app-update/renderer/production.ts'
+import type { MainTrayProjection } from '../../../platform/state-sync/contract/projections.ts'
 import { selectOperationById } from '../../../platform/state-sync/renderer/selectors/operation.ts'
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector.tsx'
 import { AppIcon } from '../../../shared/renderer/ui/appIcon.tsx'
@@ -42,7 +43,6 @@ import Home from './Home/Home.tsx'
 import type { HomeCapabilities } from './Home/Home.tsx'
 import { TrayNotificationProvider, useTrayNotification } from './notification.tsx'
 import Notify from './Notify/index.tsx'
-import type { TrayRendererState } from './state.ts'
 
 type BiometricsState = {
   enabled: boolean
@@ -52,7 +52,7 @@ type BiometricsState = {
 }
 
 type PanelCrumb =
-  | TrayRendererState['windows']['panel']['nav'][number]
+  | MainTrayProjection['windows']['panel']['nav'][number]
   | { view?: undefined; data?: undefined }
 
 type PanelProps = {
@@ -66,7 +66,7 @@ type PanelProps = {
   crumb: PanelCrumb
   initial: boolean
   notifyRequest: RequestCommandNotifier
-  requestCapabilities: RequestRendererCapabilities
+  requestCapabilities: RequestTrayCapabilities
   security: Pick<SecurityCapability, 'status' | 'unlock'>
 }
 type PanelState = {
@@ -118,7 +118,7 @@ const operationError = (code: string | undefined) => {
   return 'Could not unlock Newframe'
 }
 const selectPanelState = (
-  state: TrayRendererState
+  state: MainTrayProjection
 ): Omit<PanelProps, 'biometricRuntime' | 'notifyRequest' | 'requestCapabilities' | 'security'> => ({
   appLocked: isAppLocked(state.appLock),
   biometricUnlock: !!state.biometricUnlock,

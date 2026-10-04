@@ -166,9 +166,9 @@ To enable wallet portfolio discovery, enable token auto-discovery with Flash in 
 ## Architecture boundaries
 
 Newframe uses one typed operation catalog in `src/app/contracts/operations.ts`. A command expresses an
-intent and returns only the generic `CommandResult` acknowledgement. If a renderer needs data, it
+intent and returns only the generic `CommandResult` acknowledgement. If a tray needs data, it
 must issue a typed query with a query-specific result, or observe canonical projected state. Do not
-add command-specific result maps, generic renderer RPC channels, or renderer-owned mirrors of
+add command-specific result maps, generic tray RPC channels, or tray-owned mirrors of
 main-process truth.
 
 Transaction requests retain their original intent in main-owned canonical state. Fee edits and fee
@@ -192,17 +192,17 @@ visual reset harness may retain `chain.remove` and `origin.remove` commands beca
 real state-changing intents, not private reset shortcuts. Provider account requests depend on the
 `AccountRequestPort` interface supplied by composition; they do not use a deferred global port.
 
-Renderer dependencies flow one way from `src/app/renderer` composition into feature renderers.
-Feature renderers never import app renderer state, notification contexts, or other app modules.
+Tray dependencies flow one way from `src/app/renderer` composition into feature trays.
+Feature trays never import app tray state, notification contexts, or other app modules.
 App composition constructs focused feature capabilities around the typed host; feature controllers
 receive those capabilities and pass plain models, named events, and narrowly scoped clipboard or
-image capabilities to prop-driven views. Presentational components do not import the raw renderer
-IPC link. Renderer entry points retain document-event wiring and create each window's state
+image capabilities to prop-driven views. Presentational components do not import the raw tray
+IPC link. Tray entry points retain document-event wiring and create each window's state
 connection, while platform composition retains host-specific adapters such as updater responses.
 
-Each renderer root creates its own Zustand store with `createRendererStateStore` and supplies it via
-`RendererStateProvider`. Stores and clients are scoped instances, not resettable module singletons.
-Canonical main-process projections remain the source of shared state; renderer-local UI stores own
+Each tray root creates its own Zustand store with `createTrayStateStore` and supplies it via
+`TrayStateProvider`. Stores and clients are scoped instances, not resettable module singletons.
+Canonical main-process projections remain the source of shared state; tray-local UI stores own
 only transient interaction state such as an open menu or selected section.
 
 ## Related

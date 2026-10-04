@@ -4,10 +4,7 @@ type Schedule = (callback: () => void) => void
 
 const scheduleNextTurn: Schedule = (callback) => setTimeout(callback, 0)
 
-export function closeRendererWindow(
-  event: Pick<IpcMainEvent, 'sender'>,
-  schedule: Schedule = scheduleNextTurn
-) {
+export function closeTrayWindow(event: Pick<IpcMainEvent, 'sender'>, schedule: Schedule = scheduleNextTurn) {
   if (event.sender.isDestroyed()) {
     return
   }

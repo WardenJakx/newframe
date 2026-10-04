@@ -4,7 +4,7 @@ import type { ChainsCapability } from '../../../../features/chains/renderer/chai
 import type { ConnectionsCapability } from '../../../../features/connections/renderer/connectionsCapability.ts'
 import type { PortfolioCapability } from '../../../../features/portfolio/renderer/portfolioCapability.ts'
 import { PortfolioHero } from '../../../../features/portfolio/renderer/PortfolioHero.tsx'
-import type { RequestRendererCapabilities } from '../../../../features/requests/renderer/requestCapabilities.ts'
+import type { RequestTrayCapabilities } from '../../../../features/requests/renderer/requestCapabilities.ts'
 import type { SecurityCapability } from '../../../../features/security/renderer/securityCapability.ts'
 import type { SettingsCapability } from '../../../../features/settings/renderer/settingsCapability.ts'
 import type { TokensCapability } from '../../../../features/tokens/renderer/tokensCapability.ts'
@@ -36,7 +36,7 @@ export interface HomeCapabilities {
   chains: ChainsCapability
   orders: OrdersCapability
   portfolio: PortfolioCapability
-  requests: Pick<RequestRendererCapabilities, 'panel' | 'review' | 'safe' | 'external'>
+  requests: Pick<RequestTrayCapabilities, 'panel' | 'review' | 'safe' | 'external'>
   security: SecurityCapability
   settings: SettingsCapability
   tokens: TokensCapability

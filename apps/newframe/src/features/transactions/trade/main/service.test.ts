@@ -16,7 +16,7 @@ const account = {
   address: '0x1111111111111111111111111111111111111111'
 }
 const owner = { clientType: 'side-tray' as const, windowInstanceId: 'trade-window' }
-const requestSource = { kind: 'renderer' } as RequestSource
+const requestSource = { kind: 'tray' } as RequestSource
 const typedData = {
   domain: { chainId: 1 },
   message: { quoteId: 'quote-1' },

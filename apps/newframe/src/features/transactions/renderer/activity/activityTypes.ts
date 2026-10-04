@@ -1,8 +1,8 @@
-import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections.ts'
+import type { MainTrayProjection } from '../../../../platform/state-sync/contract/projections.ts'
 import type { ChainLike, ChainMetaLike } from '../../../../shared/renderer/ui/tokenSelectorTypes.ts'
 import type { TransactionEffect } from '../../domain/index.ts'
 
-export type WalletActivityRecord = WalletRendererState['activity'][string]
+export type WalletActivityRecord = MainTrayProjection['activity'][string]
 
 type ActivityData = {
   from?: string
@@ -50,8 +50,8 @@ export type ActivityChainMap = Record<
   ChainLike & { explorer?: string; isTestnet?: boolean; symbol?: string }
 >
 export type ActivityChainMetadataMap = Record<string | number, ChainMetaLike>
-export type ActivityDetailChainMetadata = WalletRendererState['chainsMeta']['ethereum'][number]
-export type ActivityTokenCatalog = WalletRendererState['tokens']
+export type ActivityDetailChainMetadata = MainTrayProjection['chainsMeta']['ethereum'][number]
+export type ActivityTokenCatalog = MainTrayProjection['tokens']
 export type ActivityViewRecord = ActivityRecord & { id: string }
 
 const recordValue = (value: unknown): Record<string, unknown> | undefined =>

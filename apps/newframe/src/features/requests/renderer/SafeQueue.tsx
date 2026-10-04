@@ -10,7 +10,7 @@ import type { SafeOwnerAccount } from '../../accounts/domain/safe.ts'
 import { persistedImageSource } from '../../asset-data/domain/image/index.ts'
 import { NATIVE_CURRENCY } from '../../tokens/domain/constants.ts'
 import { useAssetRate, useOrigins, useTokens } from './Account/Requests/state.ts'
-import type { RequestRendererCapabilities } from './requestCapabilities.ts'
+import type { RequestTrayCapabilities } from './requestCapabilities.ts'
 import {
   useSafeConfirmation,
   useSafeProposalSimulation,
@@ -24,7 +24,7 @@ export function useSafeQueue({
   onAirGapSigning
 }: {
   accountId: string
-  capabilities: Pick<RequestRendererCapabilities, 'safe' | 'external'>
+  capabilities: Pick<RequestTrayCapabilities, 'safe' | 'external'>
   onRecoverSigner?: (signerId: string) => void
   onAirGapSigning?: (reference: AirGapRequestReference) => void
 }) {
@@ -210,7 +210,7 @@ export function useSafeQueue({
       : { ok: false as const, error: 'Safe proposal unavailable.' }
   const executeWith = async (
     executorId: string,
-    adjustments: Parameters<RequestRendererCapabilities['safe']['execute']>[0]['adjustments'],
+    adjustments: Parameters<RequestTrayCapabilities['safe']['execute']>[0]['adjustments'],
     operationId: string
   ) =>
     actionChainId && actionSafeTxHash

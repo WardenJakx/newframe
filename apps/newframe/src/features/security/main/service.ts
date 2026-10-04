@@ -124,7 +124,7 @@ export function createSecurityService(ports: SecurityServicePorts) {
         ports.biometrics.enableWebAuthn(key, command.browser.credential, command.browser.secret)
         return
       } catch {
-        // The previous renderer-owned sequence fell back after either browser
+        // The previous tray-owned sequence fell back after either browser
         // enrollment or main-side WebAuthn configuration failed. Keep that
         // behavior, but make the capability decision from fresh trusted main state.
         if (!ports.biometrics.summary().nativeAvailable) {

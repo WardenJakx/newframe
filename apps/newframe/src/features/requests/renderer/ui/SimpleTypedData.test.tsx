@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
 import { screen, render, fireEvent } from '../../../../../test/support/componentSetup.tsx'
-import { createRendererStateFixture } from '../../../../../test/support/rendererState.tsx'
+import { createTrayStateFixture } from '../../../../../test/support/trayState.tsx'
 import SignTypedDataRequest from '../Account/Requests/SignTypedDataRequest.tsx'
 import { SimpleTypedData } from './SimpleTypedData.tsx'
 
@@ -20,7 +20,7 @@ describe('SimpleTypedData', () => {
         }}
       />,
       {
-        rendererState: createRendererStateFixture({
+        trayState: createTrayStateFixture({
           initialState: {
             origins: {
               'origin-1': {

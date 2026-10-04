@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'bun:test'
 
 import { render, screen } from '../../../../test/support/componentSetup.tsx'
-import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient.ts'
-import { createRendererUtilityCapabilities as createUtilityPorts } from '../../../shared/renderer/capabilities.test-support.ts'
+import { registerTestRuntimeFixture } from '../../../../test/support/trayClient.ts'
+import { createTrayUtilityCapabilities as createUtilityPorts } from '../../../shared/renderer/capabilities.test-support.ts'
 import { shortAddress } from '../../../shared/renderer/ui/AddressIdentity.tsx'
 import type { DisplayedBalance } from '../../asset-data/domain/balance/index.ts'
 import { NATIVE_CURRENCY } from '../../tokens/domain/constants.ts'

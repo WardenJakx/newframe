@@ -1,9 +1,9 @@
-import type { RendererProjection } from '../state-sync/contract/projections.ts'
+import type { TrayProjectionRole } from '../state-sync/contract/projections.ts'
 
-// Trusted, transport-neutral renderer identity. This remains private to main;
-// renderer schemas expose only the safe operation record.
+// Trusted, transport-neutral tray identity. This remains private to main;
+// tray schemas expose only the safe operation record.
 export interface OperationOwner {
-  clientType: RendererProjection
+  clientType: TrayProjectionRole
   windowInstanceId: string
 }
 

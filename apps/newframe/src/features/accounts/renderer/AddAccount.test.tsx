@@ -1,7 +1,7 @@
 import { expect, it, mock, spyOn } from 'bun:test'
 
 import { act, cleanup, render, screen, waitFor } from '../../../../test/support/componentSetup.tsx'
-import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient.ts'
+import { registerTestRuntimeFixture } from '../../../../test/support/trayClient.ts'
 import type { QueryResultMap } from '../../../app/contracts/operations.ts'
 import { createQrCameraFake } from '../../../platform/desktop/renderer/camera.test-support.ts'
 import type { OperationRecord } from '../../../platform/operations/operation.ts'

@@ -1,6 +1,6 @@
 import { expect, it } from 'bun:test'
 
-import { createRendererClient as createTypedClient } from '../../../../test/support/rendererClient.ts'
+import { createTrayClient as createTypedClient } from '../../../../test/support/trayClient.ts'
 import { createChainsCapability } from './chainsCapability.ts'
 
 it('maps chain removal to the command catalog', async () => {

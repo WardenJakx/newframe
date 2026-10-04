@@ -4,11 +4,7 @@ import { render, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactElement } from 'react'
 
-import {
-  createRendererStateWrapper,
-  getRendererStateFixtureForRender,
-  type RendererStateStore
-} from './rendererState.tsx'
+import { createTrayStateWrapper, getTrayStateFixtureForRender, type TrayStateStore } from './trayState.tsx'
 
 type TestingLibraryRenderOptions = NonNullable<Parameters<typeof render>[1]>
 type UserEventSetupOptions = NonNullable<Parameters<typeof userEvent.setup>[0]>
@@ -16,7 +12,7 @@ type UserEventSetupOptions = NonNullable<Parameters<typeof userEvent.setup>[0]>
 type ComponentRenderOptions = TestingLibraryRenderOptions &
   UserEventSetupOptions & {
     advanceTimersAfterInput?: boolean | number
-    rendererState?: RendererStateStore
+    trayState?: TrayStateStore
   }
 
 const advanceTimersByTime = async (ms = 0) => {
@@ -32,7 +28,7 @@ const runAllTimers = async () => {
 }
 
 function setupComponent(jsx: ReactElement, opts: ComponentRenderOptions = {}) {
-  const { advanceTimersAfterInput, rendererState, wrapper, ...options } = opts
+  const { advanceTimersAfterInput, trayState, wrapper, ...options } = opts
   let advanceTimers = options.advanceTimers
   if (!advanceTimers && advanceTimersAfterInput === true) {
     advanceTimers = runAllTimers
@@ -41,15 +37,13 @@ function setupComponent(jsx: ReactElement, opts: ComponentRenderOptions = {}) {
     advanceTimers = () => advanceTimersByTime(delay)
   }
 
-  const state = rendererState ?? getRendererStateFixtureForRender()
-  const RendererStateWrapper = createRendererStateWrapper(state)
+  const state = trayState ?? getTrayStateFixtureForRender()
+  const TrayStateWrapper = createTrayStateWrapper(state)
   const OuterWrapper = wrapper
   const rendered = render(jsx, {
     ...options,
     wrapper: ({ children }) => (
-      <RendererStateWrapper>
-        {OuterWrapper ? <OuterWrapper>{children}</OuterWrapper> : children}
-      </RendererStateWrapper>
+      <TrayStateWrapper>{OuterWrapper ? <OuterWrapper>{children}</OuterWrapper> : children}</TrayStateWrapper>
     )
   })
 

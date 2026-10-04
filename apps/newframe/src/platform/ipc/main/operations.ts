@@ -1,6 +1,6 @@
-import { createRendererGateway } from '../../../app/main/gateway/renderer.ts'
 import { createNewframeInternalSource } from '../../../app/main/gateway/requestSource.ts'
-import type { OperationServices } from '../../../app/main/ipc-handlers/renderer.ts'
+import { createTrayGateway } from '../../../app/main/gateway/tray.ts'
+import type { OperationServices } from '../../../app/main/ipc-handlers/tray.ts'
 import { ExecuteCommandChannel, ExecuteQueryChannel } from '../contract/ipc.ts'
 export interface OperationDispatcher {
   dispatchCommand(event: Electron.IpcMainInvokeEvent, command: unknown): Promise<unknown>
@@ -15,11 +15,11 @@ export interface IpcMainHandlerPort {
   removeHandler(channel: string): void
 }
 
-/** Entry point authorization: only registered, live renderer frames reach the Gateway. */
+/** Entry point authorization: only registered, live tray frames reach the Gateway. */
 export function createOperationDispatcher(services: OperationServices): OperationDispatcher {
-  const gateway = createRendererGateway(services)
+  const gateway = createTrayGateway(services)
   const dispatch = (kind: 'command' | 'query', event: Electron.IpcMainInvokeEvent, input: unknown) => {
-    const context = services.authorizeRenderer(event)
+    const context = services.authorizeTray(event)
     return gateway.dispatch(
       kind,
       input,

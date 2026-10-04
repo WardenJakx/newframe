@@ -81,7 +81,7 @@ const {
   provider,
   profileService,
   proxy,
-  rendererAuthorization,
+  trayAuthorization,
   requestEditService,
   requestService,
   securityService,
@@ -136,7 +136,7 @@ const mainApp = createProductionMainApp({
   portfolioService,
   profileService,
   proxy,
-  rendererAuthorization,
+  trayAuthorization,
   requestEditService,
   requestService,
   securityService,
@@ -268,7 +268,7 @@ void app.whenReady().then(async () => {
     { fireImmediately: true }
   )
   menu()
-  windows.init(rendererAuthorization, store)
+  windows.init(trayAuthorization, store)
   // Hiding the Dock icon would relax the harness's stricter 'prohibited' activation policy.
   if (app.dock && !isVisualHarness) {
     app.dock.hide()

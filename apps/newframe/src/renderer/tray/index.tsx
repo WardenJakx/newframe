@@ -2,24 +2,24 @@ import { UIRoot } from '@newframe/ui/root'
 import { createRoot } from 'react-dom/client'
 
 import App from '../../app/renderer/tray/App.tsx'
-import type { TrayRendererState } from '../../app/renderer/tray/state.ts'
 import link from '../../platform/ipc/renderer/link.ts'
-import { connectRendererState } from '../../platform/state-sync/renderer/connectState.ts'
-import { RendererStateProvider } from '../../platform/state-sync/renderer/useAppSelector.tsx'
+import type { MainTrayProjection } from '../../platform/state-sync/contract/projections.ts'
+import { connectTrayState } from '../../platform/state-sync/renderer/connectState.ts'
+import { TrayStateProvider } from '../../platform/state-sync/renderer/useAppSelector.tsx'
 
 import '../../../generated/styled-system/styles.css'
 
 document.addEventListener('dragover', (e) => e.preventDefault())
 document.addEventListener('drop', (e) => e.preventDefault())
 
-const selectTrayOpen = (state: TrayRendererState) => state.tray.open
+const selectTrayOpen = (state: MainTrayProjection) => state.tray.open
 
 function updateTrayVisibility(open: boolean) {
   document.body.classList.toggle('suspend', !open)
 }
 
 async function start() {
-  const { state, disconnect } = await connectRendererState<TrayRendererState>(link)
+  const { state, disconnect } = await connectTrayState<MainTrayProjection>(link)
   const stores = { wallet: state }
   const unsubscribe = state.subscribe((state, previous) => {
     const open = selectTrayOpen(state)
@@ -42,9 +42,9 @@ async function start() {
   const root = createRoot(document.getElementById('tray') as HTMLElement)
   root.render(
     <UIRoot>
-      <RendererStateProvider state={stores}>
+      <TrayStateProvider state={stores}>
         <App />
-      </RendererStateProvider>
+      </TrayStateProvider>
     </UIRoot>
   )
 }
@@ -56,5 +56,5 @@ document.addEventListener('mouseout', (e) => {
   }
 })
 document.addEventListener('contextmenu', (e) => {
-  void link.executeCommand({ type: 'renderer.context-menu', x: e.clientX, y: e.clientY })
+  void link.executeCommand({ type: 'tray.context-menu', x: e.clientX, y: e.clientY })
 })

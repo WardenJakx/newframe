@@ -2,7 +2,7 @@
 
 ## Goal
 
-Use the real `apps/newframe` Electron app with the developer's existing local user state, then attach automation to the live tray renderer for visual and interaction checks.
+Use the real `apps/newframe` Electron app with the developer's existing local user state, then attach automation to the live tray for visual and interaction checks.
 
 This V1 harness does not seed mock data or intercept RPC traffic. It is an agent-assist workflow for local
 visual review, not a deterministic CI test. New task checkouts start from the durable development-profile
@@ -57,7 +57,7 @@ Preferred durable approach:
 
 - Use Playwright from a checked-in or temporary script.
 - Connect with `chromium.connectOverCDP('http://127.0.0.1:9333')`.
-- Select the renderer whose URL includes `bundle/tray.html`.
+- Select the tray whose URL includes `bundle/tray.html`.
 
 Useful manual approach:
 
@@ -114,7 +114,7 @@ If automation needs a control that lacks a stable role/name, add an accessibilit
 
 Good default checks:
 
-- Tray renderer is present.
+- Tray is present.
 - Home screen is visible and screenshots are nonblank.
 - Main menu opens.
 - Dapps overlay opens from the menu.
@@ -149,10 +149,10 @@ The harness is split by responsibility:
 - `visual/runtime.ts` owns stages, screenshots, summaries, and failure artifacts.
 - `visual/stages/` contains one visual surface per file. `visual/stages/index.ts` defines their order.
 
-The visual driver is fully typed: every renderer-bound operation uses the application's command/query bridge,
+The visual driver is fully typed: every tray-bound operation uses the application's command/query bridge,
 with no generic channel or RPC fallback. State assertions run in Electron's main process against a read-only
 canonical snapshot; that getter exists only when the visual harness launches the dev profile with
-`NEWFRAME_VISUAL_HARNESS=true` and is never exposed to renderers.
+`NEWFRAME_VISUAL_HARNESS=true` and is never exposed to trays.
 
 The visual harness imports Anvil's third default account as its signer when needed. Set
 `NEWFRAME_HARNESS_PRIVATE_KEY` to use another local test key. It funds that account on the local chain.
@@ -184,11 +184,11 @@ The visual harness runs on the host, next to the developer's own Newframe and `b
 The visual harness writes `summary.json` to a new temporary directory per run, printed at preflight
 (`NEWFRAME_HARNESS_OUTPUT_DIR` overrides it). The summary records overall duration,
 per-stage duration, screenshots, contract evidence such as transaction/order/request identifiers, and
-renderer diagnostics. Each screenshot has a sibling `<name>.aria.yml` with the page's ARIA snapshot, a
+tray diagnostics. Each screenshot has a sibling `<name>.aria.yml` with the page's ARIA snapshot, a
 text view of the same state that diffs cleanly and is cheaper than reading the image. Failed runs also
 write a Playwright `trace.zip` (DOM snapshots, actions, console, and network up to the failure); open it
-with `bunx playwright-core show-trace <path>/trace.zip`. Unexpected renderer `console.error`, uncaught
-page errors, or renderer crashes fail the responsible stage. The source allowlist is intentionally empty by default; any future allowance must
+with `bunx playwright-core show-trace <path>/trace.zip`. Unexpected tray `console.error`, uncaught
+page errors, or tray crashes fail the responsible stage. The source allowlist is intentionally empty by default; any future allowance must
 use a narrow message pattern and document why the underlying browser diagnostic is understood and cannot
 reasonably be fixed.
 

@@ -18,29 +18,29 @@ import {
   WalletStatusNotificationSchema,
   WalletOrderRecordSchema,
   type WalletPanelNavigationEntry,
-  type SideTrayRendererState,
-  type RendererProjection,
-  type WalletRendererState
+  type SideTrayProjection,
+  type TrayProjectionRole,
+  type MainTrayProjection
 } from '../contract/projections.ts'
 
 type CanonicalMain = CanonicalState['main']
 
-export interface RendererProjectionAudience {
-  clientType: RendererProjection
+export interface TrayProjectionAudience {
+  clientType: TrayProjectionRole
   windowInstanceId: string
 }
 
 const sameTopLevelReferences = <T extends object>(previous: T | undefined, current: T) =>
   !!previous && Object.keys(current).every((key) => previous[key as keyof T] === current[key as keyof T])
 
-let previousWalletProjection: WalletRendererState | undefined
+let previousWalletProjection: MainTrayProjection | undefined
 let previousProjectedOrdersInput: CanonicalMain['orders'] | undefined
-const projectedOrdersByAccount = new Map<string, WalletRendererState['orders']>()
+const projectedOrdersByAccount = new Map<string, MainTrayProjection['orders']>()
 
 function projectOrders(
   orders: CanonicalMain['orders'],
   accountAddress?: string
-): WalletRendererState['orders'] {
+): MainTrayProjection['orders'] {
   const filterProvided = accountAddress !== undefined
   const normalizedAccount = accountAddress?.toLowerCase() ?? ''
   const cacheKey = filterProvided ? `account:${normalizedAccount}` : '*'
@@ -109,7 +109,7 @@ const EMPTY_OPERATIONS: OperationCollection = {}
 
 function projectOperations(
   operations: CanonicalState['operations'],
-  audience?: RendererProjectionAudience
+  audience?: TrayProjectionAudience
 ): OperationCollection {
   if (!audience?.windowInstanceId) {
     return EMPTY_OPERATIONS
@@ -149,9 +149,9 @@ let previousWalletWindowsInputs:
       panelNav: CanonicalState['windows']['panel']['nav']
     }
   | undefined
-let previousWalletWindows: WalletRendererState['windows'] | undefined
+let previousWalletWindows: MainTrayProjection['windows'] | undefined
 
-function projectWalletWindows(windows: CanonicalState['windows']): WalletRendererState['windows'] {
+function projectWalletWindows(windows: CanonicalState['windows']): MainTrayProjection['windows'] {
   const inputs = {
     panelShow: windows.panel.show,
     panelNav: windows.panel.nav
@@ -178,9 +178,9 @@ function projectWalletWindows(windows: CanonicalState['windows']): WalletRendere
 }
 
 let previousWalletViewInput: CanonicalState['view'] | undefined
-let previousWalletView: WalletRendererState['view'] | undefined
+let previousWalletView: MainTrayProjection['view'] | undefined
 
-function projectWalletView(view: CanonicalState['view']): WalletRendererState['view'] {
+function projectWalletView(view: CanonicalState['view']): MainTrayProjection['view'] {
   if (
     previousWalletViewInput?.notify === view.notify &&
     previousWalletViewInput.notifyData === view.notifyData &&
@@ -208,9 +208,9 @@ function projectWalletView(view: CanonicalState['view']): WalletRendererState['v
 }
 
 let previousWalletSelectedInput: CanonicalState['selected'] | undefined
-let previousWalletSelected: WalletRendererState['selected'] | undefined
+let previousWalletSelected: MainTrayProjection['selected'] | undefined
 
-function projectWalletSelected(selected: CanonicalState['selected']): WalletRendererState['selected'] {
+function projectWalletSelected(selected: CanonicalState['selected']): MainTrayProjection['selected'] {
   if (
     previousWalletSelectedInput?.minimized === selected.minimized &&
     previousWalletSelectedInput.open === selected.open &&
@@ -229,9 +229,9 @@ function projectWalletSelected(selected: CanonicalState['selected']): WalletRend
 
 type ProjectedTrayInput = Omit<CanonicalState['tray'], 'homeCommand'> & { homeCommand: unknown }
 let previousWalletTrayInput: ProjectedTrayInput | undefined
-let previousWalletTray: WalletRendererState['tray'] | undefined
+let previousWalletTray: MainTrayProjection['tray'] | undefined
 
-function projectWalletTray(tray: CanonicalState['tray']): WalletRendererState['tray'] {
+function projectWalletTray(tray: CanonicalState['tray']): MainTrayProjection['tray'] {
   const input: ProjectedTrayInput = tray
   if (
     previousWalletTrayInput?.open === input.open &&
@@ -266,10 +266,10 @@ let previousWalletProfileInputs:
       | 'tokens'
     >
   | undefined
-let previousWalletProfiles: WalletRendererState['profiles'] | undefined
+let previousWalletProfiles: MainTrayProjection['profiles'] | undefined
 const walletProfileBalanceSelectors = new Map<string, ReturnType<typeof createBalanceSummarySelector>>()
 
-function projectWalletProfiles(main: CanonicalMain): WalletRendererState['profiles'] {
+function projectWalletProfiles(main: CanonicalMain): MainTrayProjection['profiles'] {
   const inputs = {
     profiles: main.profiles,
     profileOrder: main.profileOrder,
@@ -290,7 +290,7 @@ function projectWalletProfiles(main: CanonicalMain): WalletRendererState['profil
   }
 
   previousWalletProfileInputs = inputs
-  const profiles: WalletRendererState['profiles'] = []
+  const profiles: MainTrayProjection['profiles'] = []
   main.profileOrder.forEach((profileId) => {
     const profilesById = main.profiles as Record<string, (typeof main.profiles)[string] | undefined>
     const profile = profilesById[profileId]
@@ -367,8 +367,8 @@ let previousWalletAccountOrderInput: CanonicalMain['accountOrder'] | undefined
 let previousWalletSignersInput: CanonicalMain['signers'] | undefined
 let previousWalletAppLockInput: CanonicalMain['appLock'] | undefined
 let previousWalletCurrentProfile = ''
-let previousWalletAccounts: WalletRendererState['accounts'] | undefined
-let previousWalletAccountOrder: WalletRendererState['accountOrder'] | undefined
+let previousWalletAccounts: MainTrayProjection['accounts'] | undefined
+let previousWalletAccountOrder: MainTrayProjection['accountOrder'] | undefined
 
 function projectWalletAccounts(main: CanonicalMain) {
   if (
@@ -511,17 +511,17 @@ function projectWalletAccounts(main: CanonicalMain) {
         }
       ]
     })
-  ) as WalletRendererState['accounts']
+  ) as MainTrayProjection['accounts']
   return { accounts: previousWalletAccounts, accountOrder }
 }
 
 export function projectWalletState(
   state: CanonicalState,
-  audience?: RendererProjectionAudience
-): WalletRendererState {
+  audience?: TrayProjectionAudience
+): MainTrayProjection {
   const { main } = state
   const { accounts, accountOrder } = projectWalletAccounts(main)
-  const projection: WalletRendererState = {
+  const projection: MainTrayProjection = {
     accounts,
     accountOrder,
     activity: main.activity,
@@ -577,8 +577,8 @@ export function projectWalletState(
 let previousSideTrayAccountsInput: CanonicalMain['accounts'] | undefined
 let previousSideTrayAccountOrderInput: CanonicalMain['accountOrder'] | undefined
 let previousSideTrayCurrentProfile = ''
-let previousSideTrayAccounts: SideTrayRendererState['accounts'] | undefined
-let previousSideTrayAccountOrder: SideTrayRendererState['accountOrder'] | undefined
+let previousSideTrayAccounts: SideTrayProjection['accounts'] | undefined
+let previousSideTrayAccountOrder: SideTrayProjection['accountOrder'] | undefined
 
 function projectSideTrayAccounts(main: CanonicalMain) {
   if (
@@ -616,9 +616,9 @@ function projectSideTrayAccounts(main: CanonicalMain) {
 }
 
 let previousSideTrayChainsInput: CanonicalMain['chains'] | undefined
-let previousSideTrayChains: SideTrayRendererState['chains'] | undefined
+let previousSideTrayChains: SideTrayProjection['chains'] | undefined
 
-function projectSideTrayChains(chains: CanonicalMain['chains']): SideTrayRendererState['chains'] {
+function projectSideTrayChains(chains: CanonicalMain['chains']): SideTrayProjection['chains'] {
   if (chains === previousSideTrayChainsInput && previousSideTrayChains) {
     return previousSideTrayChains
   }
@@ -645,13 +645,13 @@ function projectSideTrayChains(chains: CanonicalMain['chains']): SideTrayRendere
 }
 
 let previousSideTrayChainMetadataInput: CanonicalMain['chainsMeta'] | undefined
-let previousSideTrayChainMetadataChains: SideTrayRendererState['chains'] | undefined
-let previousSideTrayChainMetadata: SideTrayRendererState['chainsMeta'] | undefined
+let previousSideTrayChainMetadataChains: SideTrayProjection['chains'] | undefined
+let previousSideTrayChainMetadata: SideTrayProjection['chainsMeta'] | undefined
 
 function projectSideTrayChainMetadata(
   metadata: CanonicalMain['chainsMeta'],
-  chains: SideTrayRendererState['chains']
-): SideTrayRendererState['chainsMeta'] {
+  chains: SideTrayProjection['chains']
+): SideTrayProjection['chainsMeta'] {
   if (
     metadata === previousSideTrayChainMetadataInput &&
     chains === previousSideTrayChainMetadataChains &&
@@ -692,14 +692,14 @@ function projectSideTrayChainMetadata(
 
 let previousSideTrayBalancesInput: CanonicalMain['balances'] | undefined
 let previousSideTrayBalancesAccount = ''
-let previousSideTrayBalancesAccounts: SideTrayRendererState['accounts'] | undefined
-let previousSideTrayBalances: SideTrayRendererState['balances'] | undefined
+let previousSideTrayBalancesAccounts: SideTrayProjection['accounts'] | undefined
+let previousSideTrayBalances: SideTrayProjection['balances'] | undefined
 
 function projectSideTrayBalances(
   balances: CanonicalMain['balances'],
   currentAccount: string,
-  accounts: SideTrayRendererState['accounts']
-): SideTrayRendererState['balances'] {
+  accounts: SideTrayProjection['accounts']
+): SideTrayProjection['balances'] {
   if (
     balances === previousSideTrayBalancesInput &&
     currentAccount === previousSideTrayBalancesAccount &&
@@ -723,7 +723,7 @@ function projectSideTrayBalances(
 
 let previousSideTrayActivityInput: CanonicalMain['activity'] | undefined
 let previousSideTrayActivityAccount = ''
-let previousSideTrayActivity: SideTrayRendererState['activity'] | undefined
+let previousSideTrayActivity: SideTrayProjection['activity'] | undefined
 
 function objectValue(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
@@ -732,7 +732,7 @@ function objectValue(value: unknown): Record<string, unknown> {
 function projectSideTrayActivity(
   activity: CanonicalMain['activity'],
   account: string
-): SideTrayRendererState['activity'] {
+): SideTrayProjection['activity'] {
   if (
     activity === previousSideTrayActivityInput &&
     account === previousSideTrayActivityAccount &&
@@ -797,15 +797,15 @@ function projectSideTrayActivity(
   return previousSideTrayActivity
 }
 
-let previousSideTrayProjection: SideTrayRendererState | undefined
+let previousSideTrayProjection: SideTrayProjection | undefined
 let previousSideTrayTokensInput: CanonicalMain['tokens'] | undefined
 let previousSideTrayTokensAccount = ''
-let previousSideTrayTokens: SideTrayRendererState['tokens'] | undefined
+let previousSideTrayTokens: SideTrayProjection['tokens'] | undefined
 
 function projectSideTrayTokens(
   tokens: CanonicalMain['tokens'],
   account: string
-): SideTrayRendererState['tokens'] {
+): SideTrayProjection['tokens'] {
   if (
     tokens === previousSideTrayTokensInput &&
     account === previousSideTrayTokensAccount &&
@@ -840,13 +840,13 @@ function projectSideTrayTokens(
 
 export function projectSideTrayState(
   state: CanonicalState,
-  audience?: RendererProjectionAudience
-): SideTrayRendererState {
+  audience?: TrayProjectionAudience
+): SideTrayProjection {
   const { main } = state
   const { accounts, accountOrder } = projectSideTrayAccounts(main)
   const chains = projectSideTrayChains(main.chains)
   const currentAddress = accounts[main.currentAccount]?.address || ''
-  const projection: SideTrayRendererState = {
+  const projection: SideTrayProjection = {
     accounts,
     accountOrder,
     activity: projectSideTrayActivity(main.activity, currentAddress),
@@ -868,7 +868,7 @@ export function projectSideTrayState(
   return projection
 }
 
-export function projectRendererState(state: CanonicalState, audience: RendererProjectionAudience) {
+export function projectTrayState(state: CanonicalState, audience: TrayProjectionAudience) {
   return audience.clientType === 'side-tray'
     ? projectSideTrayState(state, audience)
     : projectWalletState(state, audience)

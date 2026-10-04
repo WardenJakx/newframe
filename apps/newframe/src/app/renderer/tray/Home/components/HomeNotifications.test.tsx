@@ -1,9 +1,9 @@
 import { beforeEach, expect, it } from 'bun:test'
 
 import { render, screen } from '../../../../../../test/support/componentSetup.tsx'
-import { registerTestRuntimeFixture } from '../../../../../../test/support/rendererClient.ts'
+import { registerTestRuntimeFixture } from '../../../../../../test/support/trayClient.ts'
 import type {
-  WalletRendererState,
+  MainTrayProjection,
   WalletStatusNotification
 } from '../../../../../platform/state-sync/contract/projections.ts'
 import { walletState } from '../../../../../platform/state-sync/renderer/fixtures.test-support.ts'
@@ -117,7 +117,7 @@ it('shows normal requests as a prominent home notification and opens the request
             monitor: { requestId: 'monitor', mode: 'monitor', type: 'transaction' }
           },
           created: '2026-01-01T00:00:00.000Z'
-        } as unknown as WalletRendererState['accounts'][string]
+        } as unknown as MainTrayProjection['accounts'][string]
       },
       currentAccount: accountId
     })
@@ -150,7 +150,7 @@ it('does not show a request notification when there are no actionable requests',
           signer: 'watch',
           requests: { monitor: { requestId: 'monitor', mode: 'monitor', type: 'transaction' } },
           created: '2026-01-01T00:00:00.000Z'
-        } as unknown as WalletRendererState['accounts'][string]
+        } as unknown as MainTrayProjection['accounts'][string]
       },
       currentAccount: accountId
     })
@@ -196,7 +196,7 @@ it('counts Safe proposals with RPC requests and opens failed queues from a separ
         ]
       }
     }
-  } as unknown as WalletRendererState['accounts'][string]
+  } as unknown as MainTrayProjection['accounts'][string]
   fixture.state.reset(walletState({ currentAccount: accountId, accounts: { [accountId]: account } }))
   const { user, unmount } = render(
     <HomeUiProvider>

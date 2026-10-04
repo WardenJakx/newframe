@@ -110,7 +110,7 @@ interface Request {
 
 type RequestSourceSummary =
   | {
-      kind: 'renderer'
+      kind: 'tray'
       role: 'main-tray' | 'side-tray'
       entrypoint: 'tray' | 'side-tray'
       webContentsId: number
@@ -278,7 +278,7 @@ export interface TransactionRequest extends AccountRequest<'transaction'> {
   data: TransactionData
   /** Durable reference to the canonical Safe proposal; never an RPC completion value. */
   safeTxHash?: string
-  /** Renderer-only authority and progress derived from canonical Safe state. */
+  /** Tray-only authority and progress derived from canonical Safe state. */
   safeTransactionProgress?: SafeTransactionProgress
   /** Reviewed/submitted outer executor transaction, projected from canonical Safe state. */
   safeExecution?: SafeExecutionMetadata

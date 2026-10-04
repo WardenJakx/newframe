@@ -581,12 +581,10 @@ export function checkPlatformCommandAuthority(file: string, source: string) {
       )
     }
   }
-  const legacyContextMenu = source.match(
-    /['"](?:tray|side-tray)\.context-menu['"]|\b(?:Tray|SideTray)ContextMenu/
-  )
+  const legacyContextMenu = source.match(/['"]side-tray\.context-menu['"]|\bSideTrayContextMenu/)
   if (legacyContextMenu?.index !== undefined) {
     violations.push(
-      `${file}:${lineNumber(source, legacyContextMenu.index)} renderer context menus must use renderer.context-menu`
+      `${file}:${lineNumber(source, legacyContextMenu.index)} tray context menus must use tray.context-menu`
     )
   }
 

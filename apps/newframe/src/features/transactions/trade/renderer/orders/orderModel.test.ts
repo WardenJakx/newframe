@@ -30,7 +30,7 @@ describe('orderModel', () => {
     expect(isOpenOrder({ status: 'unknown', terminalAt: Date.now() })).toBe(false)
   })
 
-  it('builds display values without renderer state', () => {
+  it('builds display values without tray state', () => {
     const order = {
       side: 'buy',
       status: 'partially_filled',

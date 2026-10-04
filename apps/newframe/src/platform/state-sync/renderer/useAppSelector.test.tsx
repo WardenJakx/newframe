@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'bun:test'
 import { useShallow } from 'zustand/react/shallow'
 
 import { act, render, screen } from '../../../../test/support/componentSetup.tsx'
-import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient.ts'
+import { registerTestRuntimeFixture } from '../../../../test/support/trayClient.ts'
 import { walletState } from './fixtures.test-support.ts'
 import { useWalletSelector } from './useAppSelector.tsx'
 
@@ -14,7 +14,7 @@ describe('useWalletSelector', () => {
     fixture.state.reset(walletState({ currentAccount: 'one' }))
   })
 
-  it('reads selected values from the renderer state mirror', () => {
+  it('reads selected values from the tray state mirror', () => {
     function SelectedAccount() {
       const current = useWalletSelector((state) => state.currentAccount)
       return <div>{current}</div>

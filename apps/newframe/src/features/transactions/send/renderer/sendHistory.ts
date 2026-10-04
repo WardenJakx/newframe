@@ -1,6 +1,6 @@
-import type { SideTrayRendererState } from '../../../../platform/state-sync/contract/projections.ts'
+import type { SideTrayProjection } from '../../../../platform/state-sync/contract/projections.ts'
 
-type SendActivity = SideTrayRendererState['activity'][string]
+type SendActivity = SideTrayProjection['activity'][string]
 
 function normalizeAddress(value: unknown) {
   return typeof value === 'string' ? value.trim().toLowerCase() : ''
@@ -29,7 +29,7 @@ export function hasSentToAddress({
   recipientAddress,
   senderAddress
 }: {
-  activity: SideTrayRendererState['activity']
+  activity: SideTrayProjection['activity']
   recipientAddress?: string
   senderAddress?: string
 }) {

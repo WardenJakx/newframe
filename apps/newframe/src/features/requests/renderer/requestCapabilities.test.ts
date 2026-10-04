@@ -7,7 +7,7 @@ import type {
   ResultForQuery
 } from '../../../app/contracts/operations.ts'
 import type { NewframeHost } from '../../../platform/ipc/contract/ipc.ts'
-import { createRequestRendererCapabilities as createRequestPorts } from './requestCapabilities.ts'
+import { createRequestTrayCapabilities as createRequestPorts } from './requestCapabilities.ts'
 
 it('maps each request surface to its exact host command and preserves failures', async () => {
   const executeCommand = mock(async (_command: unknown): Promise<CommandResult> => ({ ok: true }))

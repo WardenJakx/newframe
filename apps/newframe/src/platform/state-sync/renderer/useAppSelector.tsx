@@ -2,37 +2,31 @@ import { createContext, type ReactNode, useContext } from 'react'
 import { useStore } from 'zustand'
 import type { StoreApi } from 'zustand/vanilla'
 
-import type { SideTrayRendererState, WalletRendererState } from '../contract/projections.ts'
+import type { SideTrayProjection, MainTrayProjection } from '../contract/projections.ts'
 
-export type WalletSelector<T> = (state: WalletRendererState) => T
-export type SideTraySelector<T> = (state: SideTrayRendererState) => T
+export type WalletSelector<T> = (state: MainTrayProjection) => T
+export type SideTraySelector<T> = (state: SideTrayProjection) => T
 
-// Each renderer window provides the store for its own projection.
-export interface RendererStateStores {
-  wallet?: StoreApi<WalletRendererState>
-  sideTray?: StoreApi<SideTrayRendererState>
+// Each tray window provides the store for its own projection.
+export interface TrayStateStores {
+  wallet?: StoreApi<MainTrayProjection>
+  sideTray?: StoreApi<SideTrayProjection>
 }
 
-const RendererStateContext = createContext<RendererStateStores>({})
+const TrayStateContext = createContext<TrayStateStores>({})
 
-export function RendererStateProvider({
-  state,
-  children
-}: {
-  state: RendererStateStores
-  children: ReactNode
-}) {
-  return <RendererStateContext.Provider value={state}>{children}</RendererStateContext.Provider>
+export function TrayStateProvider({ state, children }: { state: TrayStateStores; children: ReactNode }) {
+  return <TrayStateContext.Provider value={state}>{children}</TrayStateContext.Provider>
 }
 
 function unavailable(): never {
-  throw new Error('Renderer state is unavailable: wrap this renderer root in <RendererStateProvider>.')
+  throw new Error('Tray state is unavailable: wrap this tray root in <TrayStateProvider>.')
 }
 
 export function useWalletSelector<T>(selector: WalletSelector<T>) {
-  return useStore(useContext(RendererStateContext).wallet ?? unavailable(), selector)
+  return useStore(useContext(TrayStateContext).wallet ?? unavailable(), selector)
 }
 
 export function useSideTraySelector<T>(selector: SideTraySelector<T>) {
-  return useStore(useContext(RendererStateContext).sideTray ?? unavailable(), selector)
+  return useStore(useContext(TrayStateContext).sideTray ?? unavailable(), selector)
 }

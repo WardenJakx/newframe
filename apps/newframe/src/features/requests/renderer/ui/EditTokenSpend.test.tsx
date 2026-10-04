@@ -2,12 +2,12 @@ import { describe, expect, it, mock } from 'bun:test'
 
 import { render, screen } from '../../../../../test/support/componentSetup.tsx'
 import { max } from '../../../../shared/domain/units.ts'
-import { createRequestRendererCapabilitiesFake } from '../requestCapabilities.test-support.ts'
+import { createRequestTrayCapabilitiesFake } from '../requestCapabilities.test-support.ts'
 import EditTokenSpend from './EditTokenSpend.tsx'
 import type { TokenSpendData } from './EditTokenSpend.tsx'
 
 const maxIntStr = max.toString(10)
-const clipboard = createRequestRendererCapabilitiesFake().external
+const clipboard = createRequestTrayCapabilitiesFake().external
 
 describe('changing approval amounts', () => {
   it('allows the user to set the token approval to a custom amount', async () => {

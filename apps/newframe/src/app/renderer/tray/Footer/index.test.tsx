@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, expect, it, mock } from 'bun:test'
 
 import { render, screen } from '../../../../../test/support/componentSetup.tsx'
-import { createRendererStateFixture } from '../../../../../test/support/rendererState.tsx'
-import { createRequestRendererCapabilitiesFake as createRequestPortsFake } from '../../../../features/requests/renderer/requestCapabilities.test-support.ts'
+import { createTrayStateFixture } from '../../../../../test/support/trayState.tsx'
+import { createRequestTrayCapabilitiesFake as createRequestPortsFake } from '../../../../features/requests/renderer/requestCapabilities.test-support.ts'
 import { RequestViewProvider } from '../../../../features/requests/renderer/requestView.tsx'
 import { Footer } from './index.tsx'
 
@@ -32,7 +32,7 @@ afterEach(() => {
   document.documentElement.style.removeProperty('--tray-footer-height')
 })
 
-it('publishes its measured height through renderer-local CSS', () => {
+it('publishes its measured height through tray-local CSS', () => {
   render(
     <Footer
       onContinue={mock()}
@@ -75,7 +75,7 @@ it('resolves access requests through the typed command using only the request ID
   ])
 })
 
-it('resolves switch-chain requests without sending the renderer request object', async () => {
+it('resolves switch-chain requests without sending the tray request object', async () => {
   const req = { requestId: 'switch-1', type: 'switchChain' }
   const { user } = render(
     <Footer
@@ -141,7 +141,7 @@ it('resolves add-chain requests directly through their canonical request ID', as
   ])
 })
 
-it('uses the renderer-local request step for confirm-only commands', () => {
+it('uses the tray-local request step for confirm-only commands', () => {
   const req = { requestId: 'transaction-1', type: 'transaction' }
 
   render(
@@ -159,7 +159,7 @@ it('uses the renderer-local request step for confirm-only commands', () => {
 
 const signingAddress = '0x0000000000000000000000000000000000000042'
 const signingState = () =>
-  createRendererStateFixture({
+  createTrayStateFixture({
     initialState: {
       currentAccount: 'other-wallet',
       accounts: {
@@ -223,7 +223,7 @@ it.each(['transaction', 'sign', 'signTypedData', 'signErc20Permit'])(
           step='confirm'
         />
       </RequestViewProvider>,
-      { rendererState: signingState() }
+      { trayState: signingState() }
     )
     const footer = screen.getByRole('contentinfo')
     const identity = screen.getByText('Signing with')
@@ -255,7 +255,7 @@ it.each(['adjustFee', 'adjustApproval', 'adjustPermit', 'viewRaw'] as const)(
         shared={requestState(req)}
         step={step}
       />,
-      { rendererState: signingState() }
+      { trayState: signingState() }
     )
     expect(screen.getByText('Signing wallet')).toBeTruthy()
     await user.click(screen.getByRole('button', { name: 'Continue' }))

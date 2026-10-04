@@ -2,8 +2,8 @@ import log from 'electron-log'
 
 import type {
   AuthorizationContext,
-  RendererEntrypoint,
-  RendererRole
+  TrayEntrypoint,
+  TrayRole
 } from '../../../platform/ipc/main/authorization.ts'
 import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.ts'
 import {
@@ -21,11 +21,11 @@ import {
   type QueryResultMap,
   type SecurityStatusQuery,
   type SeedGenerateQuery,
-  type RendererContextMenuCommand,
+  type TrayContextMenuCommand,
   type TokenLookupQuery
 } from '../../contracts/operations.ts'
 
-export type RendererOperationContext = AuthorizationContext & {
+export type TrayOperationContext = AuthorizationContext & {
   source: import('../gateway/requestSource.ts').NewframeInternalSource
 }
 
@@ -54,18 +54,18 @@ export interface OperationServices {
   trade: import('../../../features/transactions/trade/main/service.ts').TradeService
   settings: ReturnType<typeof import('../../../features/settings/main/service.ts').createSettingsService>
   tokens: import('../../../features/tokens/main/service.ts').TokenService
-  authorizeRenderer(event: Electron.IpcMainInvokeEvent): AuthorizationContext | undefined
+  authorizeTray(event: Electron.IpcMainInvokeEvent): AuthorizationContext | undefined
   requestTokenImage: import('../../../features/asset-data/main/images/index.ts').ImageService['requestTokenImage']
   resolveName(name: string): Promise<string>
 }
 
 type OperationDefinition = {
-  roles: readonly RendererRole[]
-  entrypoints?: readonly RendererEntrypoint[]
+  roles: readonly TrayRole[]
+  entrypoints?: readonly TrayEntrypoint[]
   handle(
     input: unknown,
     event: Electron.IpcMainInvokeEvent,
-    context: RendererOperationContext
+    context: TrayOperationContext
   ): Promise<unknown> | unknown
   failure: unknown
 }
@@ -75,13 +75,13 @@ function defineAcknowledgedCommand<TKey extends keyof CommandMap>(
   handle: (
     input: CommandMap[TKey],
     event: Electron.IpcMainInvokeEvent,
-    context: RendererOperationContext
+    context: TrayOperationContext
   ) => Promise<boolean | void> | boolean | void,
   missingError:
     | 'not_found'
     | 'request_not_found'
     | ((input: CommandMap[TKey]) => 'not_found' | 'request_not_found' | 'invalid_command') = 'not_found',
-  entrypoints: readonly RendererEntrypoint[] = ['tray']
+  entrypoints: readonly TrayEntrypoint[] = ['tray']
 ) {
   return defineOperation<CommandMap[TKey], unknown>({
     roles: ['main-tray'],
@@ -119,14 +119,14 @@ const isIdempotencyConflict = (value: unknown): value is typeof IdempotencyConfl
   value === IdempotencyConflict
 const maxIdempotencyEntries = 256
 
-const operationOwner = (context: RendererOperationContext) => ({
+const operationOwner = (context: TrayOperationContext) => ({
   clientType: context.clientType,
   windowInstanceId: context.windowInstanceId
 })
 
 function signingUiContext(
   event: Electron.IpcMainInvokeEvent,
-  context: RendererOperationContext
+  context: TrayOperationContext
 ): SigningUiContext {
   const sender = event.sender
   return {
@@ -155,12 +155,12 @@ const operationCommandAcknowledgement = (accepted: boolean | void) =>
 export type OperationRegistry = Record<string, OperationDefinition>
 
 function defineOperation<TInput, TResult>(definition: {
-  roles: readonly RendererRole[]
-  entrypoints?: readonly RendererEntrypoint[]
+  roles: readonly TrayRole[]
+  entrypoints?: readonly TrayEntrypoint[]
   handle(
     input: TInput,
     event: Electron.IpcMainInvokeEvent,
-    context: RendererOperationContext
+    context: TrayOperationContext
   ): Promise<TResult> | TResult
   failure: TResult
 }): OperationDefinition {
@@ -173,12 +173,12 @@ function defineOperation<TInput, TResult>(definition: {
 function defineCommand<TKey extends keyof CommandMap>(
   _operationType: TKey,
   definition: {
-    roles: readonly RendererRole[]
-    entrypoints?: readonly RendererEntrypoint[]
+    roles: readonly TrayRole[]
+    entrypoints?: readonly TrayEntrypoint[]
     handle(
       input: CommandMap[TKey],
       event: Electron.IpcMainInvokeEvent,
-      context: RendererOperationContext
+      context: TrayOperationContext
     ): Promise<CommandResult> | CommandResult
     failure: CommandResult
   }
@@ -188,10 +188,7 @@ function defineCommand<TKey extends keyof CommandMap>(
 
 function defineOwnedCommand<TKey extends keyof CommandMap>(
   operationType: TKey,
-  handle: (
-    input: CommandMap[TKey],
-    context: RendererOperationContext
-  ) => Promise<boolean | void> | boolean | void
+  handle: (input: CommandMap[TKey], context: TrayOperationContext) => Promise<boolean | void> | boolean | void
 ) {
   return defineCommand(operationType, {
     roles: ['main-tray'],
@@ -206,12 +203,12 @@ function defineOwnedCommand<TKey extends keyof CommandMap>(
 function defineQuery<TKey extends keyof QueryMap>(
   _operationType: TKey,
   definition: {
-    roles: readonly RendererRole[]
-    entrypoints?: readonly RendererEntrypoint[]
+    roles: readonly TrayRole[]
+    entrypoints?: readonly TrayEntrypoint[]
     handle(
       input: QueryMap[TKey],
       event: Electron.IpcMainInvokeEvent,
-      context: RendererOperationContext
+      context: TrayOperationContext
     ): Promise<QueryResultMap[TKey]> | QueryResultMap[TKey]
     failure: QueryResultMap[TKey]
   }
@@ -364,11 +361,11 @@ export function createOperationRegistry(services: OperationServices) {
       },
       failure: { ok: false, error: 'operation_failed' }
     }),
-    'renderer.context-menu': defineCommand('renderer.context-menu', {
+    'tray.context-menu': defineCommand('tray.context-menu', {
       roles: ['main-tray', 'side-tray'],
       entrypoints: ['tray', 'side-tray'],
-      handle({ x, y }: RendererContextMenuCommand, event) {
-        platform.inspectRenderer(event, x, y)
+      handle({ x, y }: TrayContextMenuCommand, event) {
+        platform.inspectTray(event, x, y)
         return { ok: true } as const
       },
       failure: { ok: false, error: 'operation_failed' }

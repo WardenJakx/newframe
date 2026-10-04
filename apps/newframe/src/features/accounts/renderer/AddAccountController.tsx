@@ -3,7 +3,7 @@ import { useShallow } from 'zustand/react/shallow'
 
 import type { CommandResult, QueryResultMap } from '../../../app/contracts/operations.ts'
 import type { QrCameraCapability } from '../../../platform/desktop/renderer/camera.ts'
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections.ts'
+import type { MainTrayProjection } from '../../../platform/state-sync/contract/projections.ts'
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector.tsx'
 import { shortAddress } from '../../../shared/renderer/ui/AddressIdentity.tsx'
 import { ChainIcon } from '../../../shared/renderer/ui/ChainIcon.tsx'
@@ -113,7 +113,7 @@ export function AddAccountController({
       ledger: state.ledger,
       chains: state.chains.ethereum,
       chainsMeta: state.chainsMeta.ethereum,
-      operations: state.operations as Record<string, WalletRendererState['operations'][string] | undefined>,
+      operations: state.operations as Record<string, MainTrayProjection['operations'][string] | undefined>,
       assetRates: state.assetRates,
       tokens: state.tokens,
       showLocalNameWithENS: !!state.showLocalNameWithENS,

@@ -7,7 +7,7 @@ import { Text } from '@newframe/ui/text'
 import { ToggleButton } from '@newframe/ui/toggle-button'
 import { useState } from 'react'
 
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections.ts'
+import type { MainTrayProjection } from '../../../platform/state-sync/contract/projections.ts'
 import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay.tsx'
 import KeyboardShortcutConfigurator from './KeyboardShortcutConfigurator.tsx'
 import { SettingsActionRow, SettingsSelectRow, SettingsToggleRow } from './SettingsRow.tsx'
@@ -37,7 +37,7 @@ export interface SettingsViewProps {
     portfolioApiKey: string
     portfolioApiKeyConfigured: boolean
     portfolioApiKeyRequired: boolean
-    togglePortfolioProvider: (provider: WalletRendererState['portfolioProvider'], enabled: boolean) => void
+    togglePortfolioProvider: (provider: MainTrayProjection['portfolioProvider'], enabled: boolean) => void
   }
   onBack: () => void
   onBiometricUnlockChange: (enabled: boolean) => void
@@ -49,14 +49,14 @@ export interface SettingsViewProps {
   settings: SettingsViewModel
 }
 
-type SummonShortcut = WalletRendererState['shortcuts']['summon']
+type SummonShortcut = MainTrayProjection['shortcuts']['summon']
 
 interface SettingsViewModel {
   autoDiscoverTokens: boolean
-  portfolioProvider: WalletRendererState['portfolioProvider']
+  portfolioProvider: MainTrayProjection['portfolioProvider']
   autohide: boolean
   torEnabled: boolean
-  tor: WalletRendererState['tor']
+  tor: MainTrayProjection['tor']
   biometricUnlock: boolean
   biometricsBusy: boolean
   biometricsError: string

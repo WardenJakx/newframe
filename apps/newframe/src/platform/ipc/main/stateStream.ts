@@ -10,15 +10,15 @@ import {
   StateConnectChannel,
   StateDisconnectChannel,
   StateMessageChannel,
-  type RendererState,
+  type TrayState,
   type StateMessage
 } from '../../state-sync/contract/protocol.ts'
-import type { RendererAuthorizationRegistry, RendererRole } from './authorization.ts'
+import type { TrayAuthorizationRegistry, TrayRole } from './authorization.ts'
 
 export interface StateStreamDependencies {
   store: CanonicalStoreReader
-  authorizeRenderer: RendererAuthorizationRegistry['authorizeRenderer']
-  projectRendererState: typeof import('../../state-sync/main/projections.ts').projectRendererState
+  authorizeTray: TrayAuthorizationRegistry['authorizeTray']
+  projectTrayState: typeof import('../../state-sync/main/projections.ts').projectTrayState
 }
 
 interface StateStreamIpcPort {
@@ -38,17 +38,17 @@ export interface StateStream {
 }
 
 type Connection = {
-  role: RendererRole
+  role: TrayRole
   windowInstanceId: string
-  projection: RendererState
+  projection: TrayState
   webContents: WebContents
 }
 
-function validatedSnapshot(role: RendererRole, projection: RendererState): RendererState | undefined {
+function validatedSnapshot(role: TrayRole, projection: TrayState): TrayState | undefined {
   const result = projectionStateSchemas[role].safeParse(projection)
 
   if (!result.success) {
-    log.error('Refused to publish an invalid renderer state projection', {
+    log.error('Refused to publish an invalid tray state projection', {
       role,
       issues: result.error.issues
     })
@@ -58,11 +58,11 @@ function validatedSnapshot(role: RendererRole, projection: RendererState): Rende
   return result.data
 }
 
-function validatedChanges(role: RendererRole, changes: RendererState): RendererState | undefined {
+function validatedChanges(role: TrayRole, changes: TrayState): TrayState | undefined {
   const result = projectionStateChangeSchemas[role].safeParse(changes)
 
   if (!result.success) {
-    log.error('Refused to publish invalid renderer state changes', {
+    log.error('Refused to publish invalid tray state changes', {
       role,
       issues: result.error.issues
     })
@@ -72,8 +72,8 @@ function validatedChanges(role: RendererRole, changes: RendererState): RendererS
   return result.data
 }
 
-function changedTopLevelSlices(previous: RendererState, current: RendererState) {
-  const changes: RendererState = {}
+function changedTopLevelSlices(previous: TrayState, current: TrayState) {
+  const changes: TrayState = {}
 
   for (const [key, value] of Object.entries(current)) {
     if (previous[key] !== value) {
@@ -86,14 +86,14 @@ function changedTopLevelSlices(previous: RendererState, current: RendererState) 
 
 export function createStateStream({
   store,
-  authorizeRenderer,
-  projectRendererState
+  authorizeTray,
+  projectTrayState
 }: StateStreamDependencies): StateStream {
   const connections = new Map<number, Connection>()
   let unregisterHandlers: (() => void) | undefined
 
-  const rawProjection = (connection: Pick<Connection, 'role' | 'windowInstanceId'>): RendererState =>
-    projectRendererState(store.getState(), {
+  const rawProjection = (connection: Pick<Connection, 'role' | 'windowInstanceId'>): TrayState =>
+    projectTrayState(store.getState(), {
       clientType: connection.role,
       windowInstanceId: connection.windowInstanceId
     })
@@ -109,7 +109,7 @@ export function createStateStream({
       return true
     } catch (error) {
       connections.delete(connection.webContents.id)
-      log.error('Failed to publish renderer state message', error)
+      log.error('Failed to publish tray state message', error)
       if (!connection.webContents.isDestroyed()) {
         connection.webContents.reload()
       }
@@ -118,9 +118,9 @@ export function createStateStream({
   }
 
   const connectState = (event: IpcMainInvokeEvent) => {
-    const context = authorizeRenderer(event)
+    const context = authorizeTray(event)
     if (!context) {
-      log.warn('Rejected state connection from an unregistered or invalid renderer')
+      log.warn('Rejected state connection from an unregistered or invalid tray')
       return { ok: false, error: 'unauthorized' } as const
     }
 
@@ -154,7 +154,7 @@ export function createStateStream({
   }
 
   const disconnectState = (event: IpcMainInvokeEvent) => {
-    const context = authorizeRenderer(event)
+    const context = authorizeTray(event)
     if (!context) {
       return { ok: false, error: 'unauthorized' } as const
     }

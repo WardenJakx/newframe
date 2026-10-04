@@ -78,9 +78,9 @@ export class NewframeDriver {
     return waitForElectronPage(this.app, urlPart, this.runtime, timeoutMs)
   }
 
-  async assertColorTokens(page: Page, renderer: string) {
+  async assertColorTokens(page: Page, tray: string) {
     const timeout = this.runtime.uiTimeoutMs
-    await withTimeout(page.waitForLoadState('load', { timeout }), `${renderer} load state`, timeout)
+    await withTimeout(page.waitForLoadState('load', { timeout }), `${tray} load state`, timeout)
     const evaluation = page.evaluate(() => {
       const rootStyle = getComputedStyle(document.documentElement)
       const semanticValue = rootStyle.getPropertyValue('--colors-bg-primary').trim()
@@ -116,16 +116,16 @@ export class NewframeDriver {
         semanticValue
       }
     })
-    const result = await withTimeout(evaluation, `${renderer} color-token evaluation`, timeout)
+    const result = await withTimeout(evaluation, `${tray} color-token evaluation`, timeout)
 
     if (!result.semanticValue || !result.primitiveValue || !result.actionValue) {
-      this.fail(`${renderer} is missing generated color custom properties: ${JSON.stringify(result)}`)
+      this.fail(`${tray} is missing generated color custom properties: ${JSON.stringify(result)}`)
     }
     if (result.semanticColor !== result.primitiveColor) {
-      this.fail(`${renderer} semantic background does not resolve to its primitive`)
+      this.fail(`${tray} semantic background does not resolve to its primitive`)
     }
     if (!result.colorMixSupported || !result.alphaColor || result.alphaColor === 'rgba(0, 0, 0, 0)') {
-      this.fail(`${renderer} does not resolve color-mix() alpha tokens`)
+      this.fail(`${tray} does not resolve color-mix() alpha tokens`)
     }
   }
 

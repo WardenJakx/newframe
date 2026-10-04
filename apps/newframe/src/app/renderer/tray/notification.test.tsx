@@ -15,7 +15,7 @@ function NotificationConsumer() {
   )
 }
 
-it('keeps overlay notification state within the tray renderer', async () => {
+it('keeps overlay notification state within the tray', async () => {
   const { user } = render(
     <TrayNotificationProvider>
       <NotificationConsumer />

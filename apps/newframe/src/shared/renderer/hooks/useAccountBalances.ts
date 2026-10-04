@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
 import { createBalanceSummarySelector } from '../../../features/asset-data/domain/balance/index.ts'
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections.ts'
+import type { MainTrayProjection } from '../../../platform/state-sync/contract/projections.ts'
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector.tsx'
 
-const EMPTY_BALANCES: WalletRendererState['balances'][string] = []
+const EMPTY_BALANCES: MainTrayProjection['balances'][string] = []
 
 export function useAccountBalances() {
   const shared = useWalletSelector(

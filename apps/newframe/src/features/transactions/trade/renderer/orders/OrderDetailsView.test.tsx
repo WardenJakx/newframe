@@ -1,8 +1,8 @@
 import { expect, it } from 'bun:test'
 
 import { render, screen } from '../../../../../../test/support/componentSetup.tsx'
-import { registerTestRuntimeFixture } from '../../../../../../test/support/rendererClient.ts'
-import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections.ts'
+import { registerTestRuntimeFixture } from '../../../../../../test/support/trayClient.ts'
+import type { MainTrayProjection } from '../../../../../platform/state-sync/contract/projections.ts'
 import { walletState } from '../../../../../platform/state-sync/renderer/fixtures.test-support.ts'
 import { OrderDetails } from './OrderDetails.tsx'
 import { OrderDetailsView } from './OrderDetailsView.tsx'
@@ -91,7 +91,7 @@ it('resolves catalog and native artwork from wallet state for real Flash asset i
     walletState({
       chains: {
         ethereum: {
-          1: { id: 1, name: 'Ethereum' } as WalletRendererState['chains']['ethereum'][number]
+          1: { id: 1, name: 'Ethereum' } as MainTrayProjection['chains']['ethereum'][number]
         }
       },
       chainsMeta: {
@@ -100,7 +100,7 @@ it('resolves catalog and native artwork from wallet state for real Flash asset i
             nativeCurrency: {
               image: { base64: 'ZXRo', mimeType: 'image/png' }
             }
-          } as WalletRendererState['chainsMeta']['ethereum'][number]
+          } as MainTrayProjection['chainsMeta']['ethereum'][number]
         }
       },
       orders: {
@@ -124,13 +124,13 @@ it('resolves catalog and native artwork from wallet state for real Flash asset i
             chainId: 1
           },
           qty: '1'
-        } as WalletRendererState['orders'][string]
+        } as MainTrayProjection['orders'][string]
       },
       tokens: {
         byId: {
           '1:0x1111111111111111111111111111111111111111': {
             image: { base64: 'd2V0aA==', mimeType: 'image/png' }
-          } as WalletRendererState['tokens']['byId'][string]
+          } as MainTrayProjection['tokens']['byId'][string]
         },
         accountTokenIds: {}
       }

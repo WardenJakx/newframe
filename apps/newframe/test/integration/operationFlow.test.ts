@@ -2,16 +2,16 @@ import { expect, it, mock } from 'bun:test'
 
 import { CommandResultSchema } from '../../src/app/contracts/operations.ts'
 import { DEFAULT_PROFILE_ID } from '../../src/app/contracts/state/main.ts'
-import type { OperationServices } from '../../src/app/main/ipc-handlers/renderer.ts'
+import type { OperationServices } from '../../src/app/main/ipc-handlers/tray.ts'
 import type { AccountRequest, TransactionRequest } from '../../src/features/requests/contract/requests.ts'
 import { createRequestService } from '../../src/features/requests/main/service.ts'
-import { createRequestRendererCapabilities } from '../../src/features/requests/renderer/requestCapabilities.ts'
+import { createRequestTrayCapabilities } from '../../src/features/requests/renderer/requestCapabilities.ts'
 import { createTokenService } from '../../src/features/tokens/main/service.ts'
 import { GasFeesSource } from '../../src/features/transactions/domain/index.ts'
 import { createOperationDispatcher } from '../../src/platform/ipc/main/operations.ts'
 import { createOperationService } from '../../src/platform/operations/service.ts'
 import createInitialState from '../../src/platform/state-store/state/index.ts'
-import { projectRendererState } from '../../src/platform/state-sync/main/projections.ts'
+import { projectTrayState } from '../../src/platform/state-sync/main/projections.ts'
 import { createTestStore } from '../support/createTestStore.ts'
 
 const owner = { clientType: 'main-tray', entrypoint: 'tray', windowInstanceId: 'wallet-window' } as const
@@ -123,9 +123,9 @@ it('authorizes and validates final adjustments against canonical state before si
   let authorized = true
   const dispatcher = createOperationDispatcher({
     requests,
-    authorizeRenderer: () => (authorized ? { ...owner, webContentsId: 1 } : undefined)
+    authorizeTray: () => (authorized ? { ...owner, webContentsId: 1 } : undefined)
   } as unknown as OperationServices)
-  const capabilities = createRequestRendererCapabilities({
+  const capabilities = createRequestTrayCapabilities({
     executeCommand: async (command) =>
       CommandResultSchema.parse(await dispatcher.dispatchCommand({} as never, command)),
     executeQuery: async () => ({ ok: false, error: 'unauthorized' })
@@ -196,7 +196,7 @@ it('acknowledges a real command and projects its completion only to the owning w
     settings: {} as OperationServices['settings'],
     trade: {} as OperationServices['trade'],
     tokens,
-    authorizeRenderer: () => ({ ...owner, webContentsId: 1 }),
+    authorizeTray: () => ({ ...owner, webContentsId: 1 }),
     requestTokenImage: () => undefined,
     resolveName: async () => ''
   } satisfies OperationServices
@@ -215,8 +215,8 @@ it('acknowledges a real command and projects its completion only to the owning w
 
   expect({
     result,
-    owned: projectRendererState(store.getState(), owner).operations['add-token'],
-    otherWindow: projectRendererState(store.getState(), {
+    owned: projectTrayState(store.getState(), owner).operations['add-token'],
+    otherWindow: projectTrayState(store.getState(), {
       clientType: 'main-tray',
       windowInstanceId: 'other-window'
     }).operations

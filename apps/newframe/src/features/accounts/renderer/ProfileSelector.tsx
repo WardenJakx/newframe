@@ -10,7 +10,7 @@ import React from 'react'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
 import { cx } from '../../../../generated/styled-system/css/cx.js'
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections.ts'
+import type { MainTrayProjection } from '../../../platform/state-sync/contract/projections.ts'
 import {
   selectOperationById,
   selectOperationEntityId
@@ -21,7 +21,7 @@ import { shortAddress } from '../../../shared/renderer/ui/AddressIdentity.tsx'
 import { formatUsdRate } from '../../asset-data/domain/balance/index.ts'
 import type { AccountsCapability } from './accountsCapability.ts'
 
-type ProfileSummary = WalletRendererState['profiles'][number]
+type ProfileSummary = MainTrayProjection['profiles'][number]
 type MovableAccount = {
   accountType?: string
   id: string

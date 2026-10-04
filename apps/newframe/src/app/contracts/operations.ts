@@ -210,12 +210,12 @@ export type OperationCancelCommand = z.infer<typeof OperationCancelCommandSchema
 
 const SideTrayCloseCommandSchema = z.strictObject({ type: z.literal('side-tray.close') })
 
-const RendererContextMenuCommandSchema = z.strictObject({
-  type: z.literal('renderer.context-menu'),
+const TrayContextMenuCommandSchema = z.strictObject({
+  type: z.literal('tray.context-menu'),
   x: z.number().nonnegative().max(100_000),
   y: z.number().nonnegative().max(100_000)
 })
-export type RendererContextMenuCommand = z.infer<typeof RendererContextMenuCommandSchema>
+export type TrayContextMenuCommand = z.infer<typeof TrayContextMenuCommandSchema>
 
 const NameResolveQuerySchema = z.strictObject({
   type: z.literal('name.resolve'),
@@ -1172,7 +1172,7 @@ export const commandContracts = defineOperationContracts({
   'clipboard.write': acknowledged(ClipboardWriteCommandSchema),
   'side-tray.open': acknowledged(SideTrayOpenCommandSchema),
   'side-tray.close': acknowledged(SideTrayCloseCommandSchema),
-  'renderer.context-menu': acknowledged(RendererContextMenuCommandSchema),
+  'tray.context-menu': acknowledged(TrayContextMenuCommandSchema),
   'explorer.open': acknowledged(ExplorerOpenCommandSchema),
   'external.open': acknowledged(ExternalOpenCommandSchema),
   'extension.respond': acknowledged(ExtensionRespondCommandSchema),

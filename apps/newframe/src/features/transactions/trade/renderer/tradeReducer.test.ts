@@ -284,7 +284,7 @@ describe('tradeReducer', () => {
     expect(changed.quoteLoading).toBe(true)
   })
 
-  it('does not create renderer-local non-market quotes', () => {
+  it('does not create tray-local non-market quotes', () => {
     const state = createInitialTradeState({
       assetId: `${FLASH_NATIVE_ETH_ASSET.chainId}:${NATIVE_CURRENCY}`
     })

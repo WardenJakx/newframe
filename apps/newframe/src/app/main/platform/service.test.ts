@@ -97,7 +97,7 @@ describe('platform service', () => {
     service.writeClipboard('copied')
     service.openExternal('https://newframe.sh')
     service.closeSideTray(event)
-    service.inspectRenderer(event, 12, 34)
+    service.inspectTray(event, 12, 34)
     service.handleTrayMouseout()
 
     expect(store.getState().main.updater.dontRemind).toContain('2.0.0')

@@ -2,11 +2,11 @@ import { afterEach, beforeEach, expect, it, jest as timers } from 'bun:test'
 
 import { render, screen } from '../../../../../test/support/componentSetup.tsx'
 import {
-  createRequestRendererCapabilitiesFake as createRequestPortsFake,
-  type RequestRendererCapabilitiesFake
+  createRequestTrayCapabilitiesFake as createRequestPortsFake,
+  type RequestTrayCapabilitiesFake
 } from '../../../../features/requests/renderer/requestCapabilities.test-support.ts'
 
-let capabilities: RequestRendererCapabilitiesFake
+let capabilities: RequestTrayCapabilitiesFake
 let useCopiedMessage: typeof import('../../../../features/requests/renderer/hooks/useCopiedMessage.ts').default
 
 const TestComponent = () => {

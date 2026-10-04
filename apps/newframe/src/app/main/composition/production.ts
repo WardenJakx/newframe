@@ -97,8 +97,8 @@ import { createProductionFlashService } from '../../../features/transactions/tra
 import { createTradeService, type TradeService } from '../../../features/transactions/trade/main/service.ts'
 import { internet } from '../../../platform/internet/index.ts'
 import {
-  createRendererAuthorizationRegistry,
-  type RendererAuthorizationRegistry
+  createTrayAuthorizationRegistry,
+  type TrayAuthorizationRegistry
 } from '../../../platform/ipc/main/authorization.ts'
 import { createOperationDispatcher, type IpcMainHandlerPort } from '../../../platform/ipc/main/operations.ts'
 import { createStateStream } from '../../../platform/ipc/main/stateStream.ts'
@@ -107,10 +107,10 @@ import type { PersistenceLifecycle } from '../../../platform/persistence/ports.t
 import { createSafeClient, safeServiceChains } from '../../../platform/safe/client.ts'
 import { createSafeSimulationRpc } from '../../../platform/safe/simulation.ts'
 import type store from '../../../platform/state-store/index.ts'
-import { projectRendererState } from '../../../platform/state-sync/main/projections.ts'
+import { projectTrayState } from '../../../platform/state-sync/main/projections.ts'
 import { createMainProcessSource } from '../gateway/requestSource.ts'
-import type { OperationServices } from '../ipc-handlers/renderer.ts'
 import { RpcIpcHandlers } from '../ipc-handlers/rpc.ts'
+import type { OperationServices } from '../ipc-handlers/tray.ts'
 import {
   createPlatformService,
   type PlatformService,
@@ -132,7 +132,7 @@ export interface ProductionMainAppDependencies {
   infrastructureCallbacks: { dispose(): void }
   aiSessionService: AiSessionService
   imageService: ImageService
-  rendererAuthorization: RendererAuthorizationRegistry
+  trayAuthorization: TrayAuthorizationRegistry
   sideTrayTransactions: SideTrayTransactionService
   profileService: ProfileService
   platformService: PlatformService
@@ -390,7 +390,7 @@ export function createProductionCapabilities(
   })
   const aiSessionService = createAiSessionService(accounts, flashService, store, requestService)
   const imageService = createImageService(store, adapters.images)
-  const rendererAuthorization = createRendererAuthorizationRegistry()
+  const trayAuthorization = createTrayAuthorizationRegistry()
   const providerRequests = createProviderRequestAdapter(provider)
   const sideTrayTransactions = createSideTrayTransactionService({
     accounts,
@@ -476,7 +476,7 @@ export function createProductionCapabilities(
     operationService,
     platformService,
     profileService,
-    rendererAuthorization,
+    trayAuthorization,
     sideTrayTransactions,
     sendService,
     tradeService,
@@ -500,7 +500,7 @@ function createProductionOperationServices(
   nameResolution: NameResolutionService,
   aiSessionService: AiSessionService,
   imageService: ImageService,
-  rendererAuthorization: RendererAuthorizationRegistry,
+  trayAuthorization: TrayAuthorizationRegistry,
   sideTrayTransactions: SideTrayTransactionService,
   profileService: ProfileService,
   platformService: PlatformService,
@@ -537,7 +537,7 @@ function createProductionOperationServices(
     settings: settingsService,
     tokens: tokenService,
     safes: safeService,
-    authorizeRenderer: (event) => rendererAuthorization.authorizeRenderer(event),
+    authorizeTray: (event) => trayAuthorization.authorizeTray(event),
     requestTokenImage: (tokenId) => imageService.requestTokenImage(tokenId),
     resolveName: (name) => nameResolution.resolveAddress(name)
   }
@@ -557,7 +557,7 @@ export function createProductionMainApp({
   infrastructureCallbacks,
   aiSessionService,
   imageService,
-  rendererAuthorization,
+  trayAuthorization,
   sideTrayTransactions,
   profileService,
   platformService,
@@ -582,7 +582,7 @@ export function createProductionMainApp({
       nameResolution,
       aiSessionService,
       imageService,
-      rendererAuthorization,
+      trayAuthorization,
       sideTrayTransactions,
       profileService,
       platformService,
@@ -603,8 +603,8 @@ export function createProductionMainApp({
   )
   const stateStream = createStateStream({
     store,
-    authorizeRenderer: (event) => rendererAuthorization.authorizeRenderer(event),
-    projectRendererState
+    authorizeTray: (event) => trayAuthorization.authorizeTray(event),
+    projectTrayState
   })
 
   const app = createMainApp({ ipc, operationDispatcher, stateStream })
@@ -662,7 +662,7 @@ export function createProductionMainApp({
         )
         app.start()
       } catch (error) {
-        rendererAuthorization.dispose()
+        trayAuthorization.dispose()
         tradeService.dispose()
         sendService.dispose()
         imageService.dispose()
@@ -683,7 +683,7 @@ export function createProductionMainApp({
     },
     dispose() {
       app.dispose()
-      rendererAuthorization.dispose()
+      trayAuthorization.dispose()
       tradeService.dispose()
       sendService.dispose()
       imageService.dispose()

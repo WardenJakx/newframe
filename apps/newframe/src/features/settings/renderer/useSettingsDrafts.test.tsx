@@ -26,7 +26,7 @@ it('persists the latest input value instead of a stale render value', async () =
   })
 })
 
-it('uses an already configured API key without exposing it to the renderer draft', () => {
+it('uses an already configured API key without exposing it to the tray draft', () => {
   const persist = mock()
   const { result } = renderHook(() =>
     useSettingsDrafts({

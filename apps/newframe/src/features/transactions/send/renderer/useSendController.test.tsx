@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
 
 import { act, fireEvent, render, screen, waitFor } from '../../../../../test/support/componentSetup.tsx'
-import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient.ts'
+import { registerTestRuntimeFixture } from '../../../../../test/support/trayClient.ts'
 import type { AppCommand, AppQuery, CommandResult } from '../../../../app/contracts/operations.ts'
 import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
 import Send from './index.tsx'

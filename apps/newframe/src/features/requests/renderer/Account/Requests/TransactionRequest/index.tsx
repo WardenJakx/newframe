@@ -7,7 +7,7 @@ import { persistedImageSource } from '../../../../../asset-data/domain/image/ind
 import { NATIVE_CURRENCY } from '../../../../../tokens/domain/constants.ts'
 import type { TransactionApprovalAdjustments } from '../../../../../transactions/domain/approval.ts'
 import type { TransactionFeeField } from '../../../../../transactions/domain/fees.ts'
-import type { RequestRendererCapabilities } from '../../../requestCapabilities.ts'
+import type { RequestTrayCapabilities } from '../../../requestCapabilities.ts'
 import { useRequestView } from '../../../requestView.tsx'
 import type { RequestViewStep } from '../../../requestView.tsx'
 import { SafeProposalDetailsView } from '../../../SafeProposalDetailsView.tsx'
@@ -27,7 +27,7 @@ import AdjustFee from './AdjustFee.tsx'
 import TxReview from './TxReview.tsx'
 
 type TransactionRequestProps = {
-  capabilities: Pick<RequestRendererCapabilities, 'external' | 'review' | 'safe' | 'transaction'>
+  capabilities: Pick<RequestTrayCapabilities, 'external' | 'review' | 'safe' | 'transaction'>
   req: TransactionRequestView
   identities?: AddressIdentities
   actionId?: string

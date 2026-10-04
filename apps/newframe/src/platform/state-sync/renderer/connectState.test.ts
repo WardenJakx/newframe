@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'bun:test'
 
-import { createTestRuntimeFixture } from '../../../../test/support/rendererClient.ts'
-import type { SideTrayRendererState } from '../contract/projections.ts'
+import { createTestRuntimeFixture } from '../../../../test/support/trayClient.ts'
+import type { SideTrayProjection } from '../contract/projections.ts'
 import type { StateMessage } from '../contract/protocol.ts'
-import { connectRendererState } from './connectState.ts'
+import { connectTrayState } from './connectState.ts'
 import { sideTrayState } from './fixtures.test-support.ts'
 
 function createClient() {
@@ -16,11 +16,11 @@ function createClient() {
   return { client, send: (message: StateMessage) => handler(message) }
 }
 
-describe('connectRendererState', () => {
+describe('connectTrayState', () => {
   it('resolves with the snapshot, mirrors updates, and disconnects', async () => {
     const { client, send } = createClient()
     let resolved = false
-    const connected = connectRendererState<SideTrayRendererState>(client).then((connection) => {
+    const connected = connectTrayState<SideTrayProjection>(client).then((connection) => {
       resolved = true
       return connection
     })
@@ -46,6 +46,6 @@ describe('connectRendererState', () => {
     const { client } = createTestRuntimeFixture()
     client.connectState.mockResolvedValue({ ok: false, error: 'unauthorized' })
 
-    expect(connectRendererState(client)).rejects.toThrow('State connection failed: unauthorized')
+    expect(connectTrayState(client)).rejects.toThrow('State connection failed: unauthorized')
   })
 })

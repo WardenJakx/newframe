@@ -18,12 +18,12 @@ import type {
   RequestReviewCapability
 } from '../../../../features/requests/renderer/requestCapabilities.ts'
 import type { QrCameraCapability } from '../../../../platform/desktop/renderer/camera.ts'
+import type { MainTrayProjection } from '../../../../platform/state-sync/contract/projections.ts'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector.tsx'
 import { capitalize } from '../../../../shared/domain/text.ts'
 import { connectionsCapability } from '../../capabilities/homeFeatures.ts'
 import type { HomeCapability } from '../Home/homeCapability.ts'
 import { useTrayNotification, type TrayNotifier } from '../notification.tsx'
-import type { TrayRendererState } from '../state.ts'
 
 const isNotificationData = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value)
@@ -41,10 +41,10 @@ type NotificationData = {
 type NotificationProps = {
   data: NotificationData
   dismiss: TrayNotifier
-  mute: TrayRendererState['mute']
-  chains: TrayRendererState['chains']
-  chainsMeta: TrayRendererState['chainsMeta']
-  assetRates: TrayRendererState['assetRates']
+  mute: MainTrayProjection['mute']
+  chains: MainTrayProjection['chains']
+  chainsMeta: MainTrayProjection['chainsMeta']
+  assetRates: MainTrayProjection['assetRates']
   external: Pick<RequestExternalCapability, 'openExplorer'>
   home: Pick<HomeCapability, 'toggleWarning'>
   review: Pick<RequestReviewCapability, 'confirmWarning'>
@@ -236,7 +236,7 @@ function OpenExplorer({ data, dismiss, external, home, mute, chains }: Notificat
   )
 }
 
-const selectNotificationState = (state: TrayRendererState) => ({
+const selectNotificationState = (state: MainTrayProjection) => ({
   extensionRequestData:
     state.view.notify === 'extensionConnect' && isNotificationData(state.view.notifyData)
       ? state.view.notifyData

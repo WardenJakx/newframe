@@ -22,7 +22,7 @@ import {
   typeSupportsBaseFee
 } from '../../../../../transactions/domain/index.ts'
 import { displayValueData } from '../../../format/displayValue.ts'
-import type { RequestRendererCapabilities } from '../../../requestCapabilities.ts'
+import type { RequestTrayCapabilities } from '../../../requestCapabilities.ts'
 import { useRequestView } from '../../../requestView.tsx'
 import { DisplayCoinBalance } from '../../../ui/DisplayValue.tsx'
 import type { TransactionDataView, TransactionRequestView } from '../requestViewTypes.ts'
@@ -78,7 +78,7 @@ export type TxReviewData = Pick<
 }
 
 export type TxReviewProps = {
-  capabilities: Pick<RequestRendererCapabilities, 'external'>
+  capabilities: Pick<RequestTrayCapabilities, 'external'>
   identities?: ReturnType<typeof useAddressIdentities>
   nativeCurrencyRate: ReturnType<typeof useAssetRate>
   req: TxReviewData
@@ -112,7 +112,7 @@ export type TxReviewProps = {
 }
 
 type TxReviewWithStateProps = {
-  capabilities: Pick<RequestRendererCapabilities, 'external' | 'transaction'>
+  capabilities: Pick<RequestTrayCapabilities, 'external' | 'transaction'>
   req: TransactionRequestView
 }
 

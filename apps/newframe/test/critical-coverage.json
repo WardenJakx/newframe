@@ -2,14 +2,14 @@
   "groups": [
     {
       "name": "authorization-and-ipc",
-      "rationale": "Renderer identity, operation authorization, and cross-process validation are security boundaries.",
+      "rationale": "Tray identity, operation authorization, and cross-process validation are security boundaries.",
       "patterns": [
         "src/platform/ipc/main/authorization.ts",
         "src/platform/ipc/main/operations.ts",
         "src/**/contract/**/*.ts",
         "src/app/contracts/**/*.ts",
         "src/app/main/gateway/*.ts",
-        "src/app/main/ipc-handlers/renderer.ts"
+        "src/app/main/ipc-handlers/tray.ts"
       ],
       "minimum": {
         "lines": 80,

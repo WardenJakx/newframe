@@ -7,26 +7,26 @@ import {
 import type { Balance } from '../../../../features/asset-data/domain/state/balance.ts'
 import { selectableTokens as selectGlobalTokens } from '../../../../features/tokens/domain/index.ts'
 import type { Token } from '../../../../features/tokens/domain/state/token.ts'
-import type { SideTrayRendererState } from '../../contract/projections.ts'
+import type { SideTrayProjection } from '../../contract/projections.ts'
 
-type SideTrayWalletAccount = SideTrayRendererState['accounts'][string]
-type SideTrayWalletEthereumChain = SideTrayRendererState['chains']['ethereum'][number]
-type SideTrayWalletEthereumChainMeta = SideTrayRendererState['chainsMeta']['ethereum'][number]
+type SideTrayWalletAccount = SideTrayProjection['accounts'][string]
+type SideTrayWalletEthereumChain = SideTrayProjection['chains']['ethereum'][number]
+type SideTrayWalletEthereumChainMeta = SideTrayProjection['chainsMeta']['ethereum'][number]
 
 export interface SideTrayWalletSelectorValue {
   accounts: SideTrayWalletAccount[]
-  activity: SideTrayRendererState['activity']
+  activity: SideTrayProjection['activity']
   balanceSummaries: BalanceSummary[]
   currentAccount: SideTrayWalletAccount | null
   chains: Record<string | number, SideTrayWalletEthereumChain>
   chainsMeta: Record<string | number, SideTrayWalletEthereumChainMeta>
-  operations: SideTrayRendererState['operations']
-  orders: NonNullable<SideTrayRendererState['orders']>
-  runtime: SideTrayRendererState['runtime']
+  operations: SideTrayProjection['operations']
+  orders: NonNullable<SideTrayProjection['orders']>
+  runtime: SideTrayProjection['runtime']
 }
 
 const EMPTY_BALANCES: Balance[] = []
-const EMPTY_ORDERS: NonNullable<SideTrayRendererState['orders']> = {}
+const EMPTY_ORDERS: NonNullable<SideTrayProjection['orders']> = {}
 
 function createSelectableBalancesSelector() {
   let previousBalances: Balance[] | undefined
@@ -79,11 +79,11 @@ export function createSideTrayWalletSelector() {
   const selectBalanceSummaries = createBalanceSummarySelector()
   const selectSelectableBalances = createSelectableBalancesSelector()
   const selectOrderedAccounts = createOrderedAccountsSelector()
-  let previousTokensById: SideTrayRendererState['tokens']['byId'] | undefined
+  let previousTokensById: SideTrayProjection['tokens']['byId'] | undefined
   let previousGlobalTokens: Token[] = []
   let previousResult: SideTrayWalletSelectorValue | null = null
 
-  return (state: SideTrayRendererState): SideTrayWalletSelectorValue => {
+  return (state: SideTrayProjection): SideTrayWalletSelectorValue => {
     const selectedAccountId = state.currentAccount
     const accountsById = state.accounts
     const currentAccount = (accountsById as Partial<typeof accountsById>)[selectedAccountId] ?? null

@@ -6,17 +6,17 @@ import {
   createOperationRegistry,
   type OperationServices,
   type OperationRegistry,
-  type RendererOperationContext
-} from '../ipc-handlers/renderer.ts'
+  type TrayOperationContext
+} from '../ipc-handlers/tray.ts'
 import { dispatchGatewayOperation } from './dispatch.ts'
 
 const OperationTypeSchema = z.looseObject({ type: z.string().max(128) })
-type RendererRequest = { event: Electron.IpcMainInvokeEvent; context: RendererOperationContext }
+type TrayRequest = { event: Electron.IpcMainInvokeEvent; context: TrayOperationContext }
 
-export function createRendererGateway(services: OperationServices) {
+export function createTrayGateway(services: OperationServices) {
   const { commandRegistry, queryRegistry } = createOperationRegistry(services)
   return {
-    async dispatch(kind: 'command' | 'query', input: unknown, request: RendererRequest | undefined) {
+    async dispatch(kind: 'command' | 'query', input: unknown, request: TrayRequest | undefined) {
       if (!request) {
         return { ok: false, error: 'unauthorized' }
       }
@@ -33,7 +33,7 @@ export function createRendererGateway(services: OperationServices) {
       const result = await dispatchGatewayOperation(
         {
           parse: (value) => contract.input.safeParse(value),
-          authorize: (_value, { context }: RendererRequest) =>
+          authorize: (_value, { context }: TrayRequest) =>
             operation.roles.includes(context.clientType) &&
             (!operation.entrypoints || operation.entrypoints.includes(context.entrypoint)),
           handle: (value, { event, context }) => operation.handle(value, event, context),

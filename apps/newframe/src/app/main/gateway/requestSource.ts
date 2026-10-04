@@ -7,8 +7,8 @@ import type {
 } from '../../../features/requests/contract/requests.ts'
 import type {
   AuthorizationContext,
-  RendererEntrypoint,
-  RendererRole
+  TrayEntrypoint,
+  TrayRole
 } from '../../../platform/ipc/main/authorization.ts'
 
 const requestSourceBrand = Symbol('newframe.request-source')
@@ -21,10 +21,10 @@ function admit<T extends object>(source: T): Readonly<T> {
 type RequestSourceBrand = { readonly [requestSourceBrand]: true }
 
 export type NewframeInternalSource = RequestSourceBrand & {
-  readonly kind: 'renderer'
+  readonly kind: 'tray'
   readonly participant: 'newframe-internal'
-  readonly role: RendererRole
-  readonly entrypoint: RendererEntrypoint
+  readonly role: TrayRole
+  readonly entrypoint: TrayEntrypoint
   readonly webContentsId: number
   readonly windowInstanceId: string
 }
@@ -102,9 +102,9 @@ export function isRequestSource(value: unknown): value is RequestSource {
 }
 
 function summarizeRequestSource(requestSource: RequestSource): RequestAuthorization['requestSource'] {
-  if (requestSource.kind === 'renderer') {
+  if (requestSource.kind === 'tray') {
     return {
-      kind: 'renderer',
+      kind: 'tray',
       role: requestSource.role,
       entrypoint: requestSource.entrypoint,
       webContentsId: requestSource.webContentsId,
@@ -136,7 +136,7 @@ function summarizeRequestSource(requestSource: RequestSource): RequestAuthorizat
 export function createNewframeInternalSource(context: AuthorizationContext): NewframeInternalSource {
   return admit({
     [requestSourceBrand]: true as const,
-    kind: 'renderer' as const,
+    kind: 'tray' as const,
     participant: 'newframe-internal' as const,
     role: context.clientType,
     entrypoint: context.entrypoint,
@@ -235,7 +235,7 @@ function sourceMayRequest(requestSource: RequestSource, requestType: RequestType
   if (requestSource.kind === 'ai-session') {
     return signingRequestTypes.has(requestType)
   }
-  if (requestSource.kind !== 'renderer') {
+  if (requestSource.kind !== 'tray') {
     return true
   }
   if (requestSource.role === 'side-tray') {
@@ -243,7 +243,7 @@ function sourceMayRequest(requestSource: RequestSource, requestType: RequestType
   }
 
   // Wallet UI requests are created by reviewed workflows such as replacement transactions.
-  // Access and chain requests originate at the RPC transports, never in the renderer.
+  // Access and chain requests originate at the RPC transports, never in the tray.
   return signingRequestTypes.has(requestType)
 }
 

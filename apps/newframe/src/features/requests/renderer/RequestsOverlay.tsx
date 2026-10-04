@@ -1,6 +1,6 @@
 import type { AirGapRequestReference } from '../../../platform/signing/domain/airgap.ts'
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector.tsx'
-import type { RequestRendererCapabilities } from './requestCapabilities.ts'
+import type { RequestTrayCapabilities } from './requestCapabilities.ts'
 import { RequestsOverlayView } from './RequestsOverlayView.tsx'
 
 export function RequestsOverlay({
@@ -9,7 +9,7 @@ export function RequestsOverlay({
   onRecoverSigner,
   onAirGapSigning
 }: {
-  capabilities: Pick<RequestRendererCapabilities, 'panel' | 'review' | 'safe' | 'external'>
+  capabilities: Pick<RequestTrayCapabilities, 'panel' | 'review' | 'safe' | 'external'>
   onBack: () => void
   onRecoverSigner?: (signerId: string) => void
   onAirGapSigning?: (reference: AirGapRequestReference) => void
