@@ -1,5 +1,6 @@
 import { isValidAddress } from '@ethereumjs/util'
 
+import type { CanonicalStore, CanonicalStoreReader } from '../../../core/state/store/actions.ts'
 import type { AccountsRuntime } from '../../../features/accounts/main/runtime.ts'
 import type { TypedMessage } from '../../../features/requests/contract/requests.ts'
 import type { TransactionData } from '../../../features/transactions/domain/index.ts'
@@ -10,7 +11,6 @@ import type {
   SigningApprovalContext,
   SignerRequestContext
 } from '../../../platform/signing/signers/Signer/index.ts'
-import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
 import type { Callback } from '../../../shared/domain/async.ts'
 
 /** Account-scoped signer execution, owned by the protected operations service. */

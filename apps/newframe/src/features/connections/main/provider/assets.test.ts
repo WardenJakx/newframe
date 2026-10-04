@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, jest as timers, mock } from 'bun:test'
 
-import store from '../../../../platform/state-store/index.ts'
+import store from '../../../../core/state/store/index.ts'
 import { AccountSchema } from '../../../accounts/domain/state/account.ts'
 import { createObserver, loadAssets } from './assets.ts'
 

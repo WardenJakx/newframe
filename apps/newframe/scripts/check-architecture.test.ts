@@ -280,30 +280,30 @@ test('rejects broad singleton access through every supported import form and ser
   const message = 'must receive canonical store and production services through capability ports'
   // oxfmt-ignore
   const sources = [
-    "import store from '../../../platform/state-store'",
-    "import store from '../../../platform/state-store/'",
-    "import type store from '../../../platform/state-store/index'",
-    "export { default as store } from '../../../platform/state-store'",
-    "export type { default as Store } from '../../../platform/state-store'",
+    "import store from '../../../core/state/store'",
+    "import store from '../../../core/state/store/'",
+    "import type store from '../../../core/state/store/index'",
+    "export { default as store } from '../../../core/state/store'",
+    "export type { default as Store } from '../../../core/state/store'",
     "void import('../../../platform/signing/signers')",
     "require('../../../platform/secrets/vault')",
     "import updater from 'apps/newframe/src/core/desktop-ui/app-update'",
     "import windows from '/workspace/apps/newframe/src/core/desktop-ui/windows'",
     "import biometrics from '@newframe/src/platform/secrets/biometrics'",
-    "import persistence from '#newframe/src/platform/state-store/persist'"
+    "import persistence from '#newframe/src/core/state/store/persist'"
   ]
   for (const source of sources) {
     rejects(checkDependencyDirection, mainService, source, message)
   }
   // oxfmt-ignore
   const cases = [
-    ['apps/newframe/src/core/services/assets/externalData/index.ts', "import type store from '../../../../platform/state-store'"],
+    ['apps/newframe/src/core/services/assets/externalData/index.ts', "import type store from '../../../../core/state/store'"],
     ['apps/newframe/src/core/services/assets/images/index.ts', "import { openExternal } from '../../../desktop-ui/windows/window'"],
     ['apps/newframe/src/core/entry/local-api/server.ts', "require('../../desktop-ui/windows/dialog')"],
     ['apps/newframe/src/features/transactions/main/simulation.ts', "void import('../../../platform/secrets/vault')"],
     ['apps/newframe/src/core/entry/tray/operations.ts', "import('@newframe/src/core/desktop-ui/windows/side-tray')"],
-    ['apps/newframe/src/features/accounts/main/service.ts', "import store from '../../../platform/state-store'"],
-    ['apps/newframe/src/core/features/trading/service.ts', "import type store from '../../../platform/state-store'"],
+    ['apps/newframe/src/features/accounts/main/service.ts', "import store from '../../../core/state/store'"],
+    ['apps/newframe/src/core/features/trading/service.ts', "import type store from '../../../core/state/store'"],
     ['apps/newframe/src/features/name-resolution/main/nameResolution.ts', "export * from '../../../core/desktop-ui/windows/window'"],
     ['apps/newframe/src/features/brand-new/main/service.ts', "import windows from '../../../core/desktop-ui/windows/window'"]
   ] as const
@@ -318,13 +318,13 @@ test('allows intended process dependencies and boundary owners', () => {
     [renderer, "import type { State } from '../../../platform/state-sync/contract/projections'\nimport React from 'react'"],
     ['apps/newframe/src/features/example/main/service.ts', "import type { Command } from '../../../app/contracts/operations'\nimport path from 'node:path'"],
     ['apps/newframe/src/preload/bridge.ts', "import { contextBridge } from 'electron'\nimport type { Command } from '../app/contracts/operations'"],
-    ['apps/newframe/src/features/security/main/service.test.ts', "import store from '../../../platform/state-store'"],
-    ['apps/newframe/src/features/security/main/ports.test-support.ts', "import store from '../../../platform/state-store'"],
-    ['apps/newframe/src/app/main/composition/production.ts', "import store from '../../../platform/state-store'\nimport signers from '../../../platform/signing'"],
+    ['apps/newframe/src/features/security/main/service.test.ts', "import store from '../../../core/state/store'"],
+    ['apps/newframe/src/features/security/main/ports.test-support.ts', "import store from '../../../core/state/store'"],
+    ['apps/newframe/src/app/main/composition/production.ts', "import store from '../../../core/state/store'\nimport signers from '../../../platform/signing'"],
     ['apps/newframe/src/features/connections/main/provider/infrastructure/production.ts', "import vault from '../../../../../platform/secrets/vault'\nimport windows from '../../../../../core/desktop-ui/windows'"],
-    [mainService, "import type { CanonicalStore } from '../../../platform/state-store/actions'\nimport type Signer from '../../../platform/signing/signers/Signer'"],
-    ['apps/newframe/src/app/main/index.ts', "import store from '../../platform/state-store'\nimport { openFileDialog } from '../../core/desktop-ui/windows/dialog'"],
-    ['apps/newframe/src/platform/signing/signers/ledger/adapter.ts', "import type store from '../../../state-store'\nimport windows from '../../../../core/desktop-ui/windows'"]
+    [mainService, "import type { CanonicalStore } from '../../../core/state/store/actions'\nimport type Signer from '../../../platform/signing/signers/Signer'"],
+    ['apps/newframe/src/app/main/index.ts', "import store from '../../core/state/store'\nimport { openFileDialog } from '../../core/desktop-ui/windows/dialog'"],
+    ['apps/newframe/src/platform/signing/signers/ledger/adapter.ts', "import type store from '../../../../core/state/store'\nimport windows from '../../../../core/desktop-ui/windows'"]
   ] as const
   for (const [file, source] of cases) {
     allows(checkDependencyDirection, file, source)

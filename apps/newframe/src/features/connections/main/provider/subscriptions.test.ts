@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'bun:test'
 
 import { v5 as uuid } from 'uuid'
 
-import store from '../../../../platform/state-store/index.ts'
+import store from '../../../../core/state/store/index.ts'
 import { hasSubscriptionGrant, SubscriptionType } from './subscriptions.ts'
 
 const address = '0x1111111111111111111111111111111111111111'

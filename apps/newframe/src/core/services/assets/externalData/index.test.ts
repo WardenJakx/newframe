@@ -2,9 +2,9 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, jest as timers,
 
 import { DEFAULT_PROFILE_ID } from '../../../../app/contracts/state/main.ts'
 import type { Account } from '../../../../features/accounts/domain/state/account.ts'
-import createCanonicalStore from '../../../../platform/state-store/createCanonicalStore.ts'
-import store from '../../../../platform/state-store/index.ts'
 import { createInternet } from '../../../internet/index.ts'
+import createCanonicalStore from '../../../state/store/createCanonicalStore.ts'
+import store from '../../../state/store/index.ts'
 
 const mockBalancesFactory = mock(() => mockBalances)
 

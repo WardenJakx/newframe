@@ -1,4 +1,4 @@
-import type { CanonicalStore } from '../../../platform/state-store/actions.ts'
+import type { CanonicalStore } from '../../state/store/actions.ts'
 
 type ChainState = Pick<
   CanonicalStore,

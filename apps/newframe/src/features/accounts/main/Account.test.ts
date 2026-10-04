@@ -67,7 +67,7 @@ await mock.module('../../name-resolution/main/nameResolution.ts', () => ({
 
 let account: InstanceType<typeof import('./Account.ts').default>
 let Account: typeof import('./Account.ts').default
-let store: typeof import('../../../platform/state-store/index.ts').default
+let store: typeof import('../../../core/state/store/index.ts').default
 const nameResolution = {
   started: true,
   start: mock(),
@@ -139,7 +139,7 @@ const validTypedMessage = (): TypedMessage => ({
 
 beforeAll(async () => {
   Account = (await import('./Account.ts')).default
-  store = (await import('../../../platform/state-store/index.ts')).default
+  store = (await import('../../../core/state/store/index.ts')).default
 })
 
 function createAccount(profileActive = true) {

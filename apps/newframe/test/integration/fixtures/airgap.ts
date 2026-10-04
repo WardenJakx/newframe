@@ -4,6 +4,7 @@ import { EventEmitter } from 'node:events'
 import { ETHSignature, EthSignRequest } from '@keystonehq/bc-ur-registry-eth'
 import { URDecoder, UREncoder } from '@ngraveio/bc-ur'
 
+import createCanonicalStore from '../../../src/core/state/store/createCanonicalStore.ts'
 import type {
   CanonicalAccountRequest,
   TypedMessage
@@ -17,7 +18,6 @@ import {
   decodePublicAccount
 } from '../../../src/platform/signing/signers/airgap/protocol.ts'
 import type { SignerRequestContext } from '../../../src/platform/signing/signers/Signer/index.ts'
-import createCanonicalStore from '../../../src/platform/state-store/createCanonicalStore.ts'
 import vectors from './airgap-vectors.json'
 
 export { vectors }

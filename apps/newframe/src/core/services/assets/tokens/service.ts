@@ -3,7 +3,7 @@ import { toTokenId } from '../../../../features/tokens/domain/index.ts'
 import type { Token, TokenSource } from '../../../../features/tokens/domain/state/token.ts'
 import type { OperationService } from '../../../../platform/operations/service.ts'
 import type { OperationOwner, OperationReference } from '../../../../platform/operations/types.ts'
-import type { CanonicalStore } from '../../../../platform/state-store/actions.ts'
+import type { CanonicalStore } from '../../../state/store/actions.ts'
 
 type TokenState = Pick<CanonicalStore, 'main' | 'removeCustomTokens' | 'upsertTokens'>
 

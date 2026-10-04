@@ -3,7 +3,7 @@ import log from 'electron-log'
 import type { Device } from 'node-hid'
 import { shallow } from 'zustand/vanilla/shallow'
 
-import type canonicalStore from '../../../state-store/index.ts'
+import type canonicalStore from '../../../../core/state/store/index.ts'
 import { SignerAdapter } from '../adapters.ts'
 import { Derivation } from '../Signer/derive.ts'
 import { getLedgerDevices, TransportNodeHidSingleton as TransportNodeHid } from './dependencies.ts'

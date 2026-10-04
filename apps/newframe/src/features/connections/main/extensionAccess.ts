@@ -1,6 +1,6 @@
 import type { ExtensionAccounts } from '@newframe/desktop-api/schemas'
 
-import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
+import type { CanonicalStore, CanonicalStoreReader } from '../../../core/state/store/actions.ts'
 import {
   activeExtensionAccountId,
   extensionAccess,

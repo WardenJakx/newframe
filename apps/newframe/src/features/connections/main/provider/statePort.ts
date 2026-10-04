@@ -1,4 +1,4 @@
-import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
+import type { CanonicalStoreReader } from '../../../../core/state/store/actions.ts'
 import type { Address } from '../../../../shared/domain/address.ts'
 import type { RPC } from '../../../../shared/domain/rpc.ts'
 import { createObserver as createAssetsObserver, loadAssets } from './assets.ts'

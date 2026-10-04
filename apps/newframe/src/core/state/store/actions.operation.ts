@@ -1,5 +1,5 @@
-import type { OperationRecord } from '../operations/operation.ts'
-import type { OperationOwner } from '../operations/types.ts'
+import type { OperationRecord } from '../../../platform/operations/operation.ts'
+import type { OperationOwner } from '../../../platform/operations/types.ts'
 import type { CanonicalGet, CanonicalSet } from './actions.panel.ts'
 
 export interface OwnedOperation {

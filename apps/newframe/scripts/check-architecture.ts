@@ -179,10 +179,10 @@ const singletonBoundaryExclusions = [
   path.join(sourceRoot, 'app', 'main', 'composition'),
   path.join(sourceRoot, 'features', 'connections', 'main', 'provider', 'infrastructure'),
   path.join(sourceRoot, 'platform', 'signing'),
-  path.join(sourceRoot, 'platform', 'state-store'),
+  path.join(sourceRoot, 'core', 'state', 'store'),
   path.join(sourceRoot, 'platform', 'callbacks'),
   desktopUiRoot,
-  path.join(sourceRoot, 'platform', 'persistence')
+  path.join(sourceRoot, 'core', 'state', 'storage')
 ]
 const applicationOwnedMainModule = (file: string) =>
   productionMain(file) &&
@@ -199,13 +199,13 @@ const applicationOwnedMainModule = (file: string) =>
 const broadProductionServiceRoots = [
   path.join(sourceRoot, 'platform', 'secrets'),
   path.join(sourceRoot, 'platform', 'signing', 'signers'),
-  path.join(sourceRoot, 'platform', 'state-store'),
+  path.join(sourceRoot, 'core', 'state', 'store'),
   desktopUiRoot
 ]
 const narrowProductionTypeRoots = [
   path.join(sourceRoot, 'platform', 'signing', 'signers', 'Signer'),
-  path.join(sourceRoot, 'platform', 'state-store', 'actions'),
-  path.join(sourceRoot, 'platform', 'state-store', 'state'),
+  path.join(sourceRoot, 'core', 'state', 'store', 'actions'),
+  path.join(sourceRoot, 'core', 'state', 'store', 'state'),
   desktopUiRuntimeRoot
 ]
 
@@ -403,7 +403,7 @@ export function checkAssetRateMutationAuthority(file: string, source: string) {
   }
 
   const allowed =
-    under(path.join('apps', 'newframe', 'src', 'platform', 'state-store'))(file) ||
+    under(path.join('apps', 'newframe', 'src', 'core', 'state', 'store'))(file) ||
     file === path.join('apps', 'newframe', 'src', 'core', 'services', 'assets', 'assetRates', 'service.ts')
 
   return allowed

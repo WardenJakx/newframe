@@ -1,7 +1,7 @@
 import { expect, it, spyOn } from 'bun:test'
 
-import store from '../../../platform/state-store/index.ts'
 import { createInternet } from '../../internet/index.ts'
+import store from '../../state/store/index.ts'
 import { Chains } from './index.ts'
 
 it('owns store and internet listeners through an idempotent lifecycle', () => {

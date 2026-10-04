@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import store from '../../../../platform/state-store/index.ts'
+import store from '../../../state/store/index.ts'
 import { getTokenDiscoveryProvider } from './index.ts'
 
 describe('#getTokenDiscoveryProvider', () => {

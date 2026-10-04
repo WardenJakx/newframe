@@ -10,7 +10,7 @@ import {
   type OriginalMessage
 } from '../../../platform/signing/signatures/digests.ts'
 import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.ts'
-import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
+import type { CanonicalStore, CanonicalStoreReader } from '../../state/store/actions.ts'
 import {
   getSafeMessageHash,
   getSafeMessageTypedData,

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'bun:test'
 import { v5 as uuidv5 } from 'uuid'
 
 import { createLocalApiSource } from '../../../app/main/gateway/requestSource.ts'
-import type { AccountAccessGrant } from '../../../platform/state-store/state/index.ts'
+import type { AccountAccessGrant } from '../../../core/state/store/state/index.ts'
 import type { Address } from '../../../shared/domain/address.ts'
 import type { RPCRequestCallback, RPCRequestPayload, RPCResponsePayload } from '../../../shared/domain/rpc.ts'
 import type { AccessRequest } from '../../requests/contract/requests.ts'

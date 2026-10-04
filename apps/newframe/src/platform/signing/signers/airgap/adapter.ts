@@ -1,4 +1,4 @@
-import type canonicalStore from '../../../state-store/index.ts'
+import type canonicalStore from '../../../../core/state/store/index.ts'
 import { AirGapPublicAccountSchema } from '../../domain/airgap.ts'
 import { SignerAdapter } from '../adapters.ts'
 import AirGapSigner from './AirGapSigner.ts'

@@ -5,8 +5,8 @@ import path from 'path'
 
 import log from 'electron-log'
 
-import type { Token } from '../../../../../platform/state-store/state/index.ts'
 import type { Address } from '../../../../../shared/domain/address.ts'
+import type { Token } from '../../../../state/store/state/index.ts'
 import type { CurrencyBalance, TokenBalance } from './scan.ts'
 
 const BOOTSTRAP_TIMEOUT_SECONDS = 20

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, jest as timers, mock } from 'bun:test'
 
-import store from '../../../../platform/state-store/index.ts'
+import store from '../../../../core/state/store/index.ts'
 import type { Chain, ChainMetadata } from '../../../chains/domain/state/chain.ts'
 import type { Origin } from '../../../connections/domain/state/origin.ts'
 import { createChainsObserver, createOriginChainObserver, getActiveChains } from './chains.ts'

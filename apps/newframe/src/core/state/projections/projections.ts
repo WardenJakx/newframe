@@ -1,6 +1,4 @@
 import { getProfileAccountIds } from '../../../app/contracts/state/main.ts'
-import { verifySafeConfirmation } from '../../../core/services/safe-wallets/integrity.ts'
-import { deriveSafeExecutors, deriveSafeOwners } from '../../../core/services/safe-wallets/safeOwners.ts'
 import { accountDisplayType } from '../../../features/accounts/domain/accountDisplayType.ts'
 import {
   deriveSigningCapability,
@@ -10,8 +8,7 @@ import {
 import { createBalanceSummarySelector } from '../../../features/asset-data/domain/balance/index.ts'
 import type { SignatureRequest, TransactionRequest } from '../../../features/requests/contract/requests.ts'
 import { isSignatureRequest, isTransactionRequest } from '../../../features/requests/domain/index.ts'
-import { OperationRecordSchema, type OperationCollection } from '../../operations/operation.ts'
-import type { CanonicalState } from '../../state-store/state/index.ts'
+import { OperationRecordSchema, type OperationCollection } from '../../../platform/operations/operation.ts'
 import {
   WalletHomeCommandSchema,
   WalletPanelNavigationEntrySchema,
@@ -21,7 +18,10 @@ import {
   type SideTrayProjection,
   type TrayProjectionRole,
   type MainTrayProjection
-} from '../contract/projections.ts'
+} from '../../../platform/state-sync/contract/projections.ts'
+import { verifySafeConfirmation } from '../../services/safe-wallets/integrity.ts'
+import { deriveSafeExecutors, deriveSafeOwners } from '../../services/safe-wallets/safeOwners.ts'
+import type { CanonicalState } from '../store/state/index.ts'
 
 type CanonicalMain = CanonicalState['main']
 

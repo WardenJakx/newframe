@@ -306,9 +306,9 @@ async function createOriginImageStore() {
   const { createStore } = await import('zustand/vanilla')
   const { subscribeWithSelector } = await import('zustand/middleware')
   const { immer } = await import('zustand/middleware/immer')
-  const { createCanonicalActions } = await import('../../../../platform/state-store/actions.ts')
-  const { default: createInitialState } = await import('../../../../platform/state-store/state/index.ts')
-  const canonical = createStore<import('../../../../platform/state-store/actions.ts').CanonicalStore>()(
+  const { createCanonicalActions } = await import('../../../state/store/actions.ts')
+  const { default: createInitialState } = await import('../../../state/store/state/index.ts')
+  const canonical = createStore<import('../../../state/store/actions.ts').CanonicalStore>()(
     subscribeWithSelector(
       immer((set, get) => ({ ...createInitialState(), ...createCanonicalActions(set, get) }))
     )

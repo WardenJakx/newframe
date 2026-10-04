@@ -21,8 +21,8 @@ import { GasFeesSource, type TransactionData } from '../../../features/transacti
 import type { OperationService } from '../../../platform/operations/service.ts'
 import type { OperationOwner } from '../../../platform/operations/types.ts'
 import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.ts'
-import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
 import type { RPC } from '../../../shared/domain/rpc.ts'
+import type { CanonicalStore, CanonicalStoreReader } from '../../state/store/actions.ts'
 import {
   getSafeTypedMessage,
   packSafeSignatures,

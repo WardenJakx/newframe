@@ -1,4 +1,4 @@
-import type { PersistenceAdapter } from '../../persistence/index.ts'
+import type { PersistenceAdapter } from '../../storage/index.ts'
 
 let activeAdapter: Pick<PersistenceAdapter, 'clear' | 'flush'> | undefined
 

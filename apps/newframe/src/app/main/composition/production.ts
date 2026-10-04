@@ -44,6 +44,9 @@ import { createDeferredSafeMessageApprovalPort } from '../../../core/services/sa
 import { simulateSafeProposal } from '../../../core/services/safe-wallets/safeSimulation.ts'
 import type { SafeTransactionPort } from '../../../core/services/safe-wallets/safeTransactionPort.ts'
 import { createSafeSimulationRpc } from '../../../core/services/safe-wallets/simulation.ts'
+import { projectTrayState } from '../../../core/state/projections/projections.ts'
+import type { PersistenceLifecycle } from '../../../core/state/storage/ports.ts'
+import type store from '../../../core/state/store/index.ts'
 import {
   createAccountOnboardingService,
   type AccountOnboardingPorts,
@@ -105,9 +108,6 @@ import {
 } from '../../../features/transactions/main/simulation.ts'
 import { createDeferredTransactionSimulationPort } from '../../../features/transactions/main/simulationPort.ts'
 import { createOperationService } from '../../../platform/operations/service.ts'
-import type { PersistenceLifecycle } from '../../../platform/persistence/ports.ts'
-import type store from '../../../platform/state-store/index.ts'
-import { projectTrayState } from '../../../platform/state-sync/main/projections.ts'
 import { createMainProcessSource } from '../gateway/requestSource.ts'
 import { RpcIpcHandlers } from '../ipc-handlers/rpc.ts'
 import type { OperationServices } from '../ipc-handlers/tray.ts'
@@ -173,7 +173,7 @@ export interface ProductionCapabilityAdapters {
 }
 
 function createProductionProvider(
-  store: typeof import('../../../platform/state-store/index.ts').default,
+  store: typeof import('../../../core/state/store/index.ts').default,
   accounts: Accounts,
   chains: Chains,
   lookupChainIcon: (chainId: number) => Promise<string>,
@@ -199,7 +199,7 @@ function createProductionProvider(
 }
 
 export function createProductionCapabilities(
-  store: typeof import('../../../platform/state-store/index.ts').default,
+  store: typeof import('../../../core/state/store/index.ts').default,
   adapters: ProductionCapabilityAdapters
 ) {
   const proxy = createProviderProxyConnection()

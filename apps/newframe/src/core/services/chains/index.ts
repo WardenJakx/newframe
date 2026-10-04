@@ -15,10 +15,10 @@ import {
   type EthersRpcProvider
 } from '../../../features/connections/main/provider/connection.ts'
 import GasMonitor from '../../../features/transactions/main/gasMonitor.ts'
-import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
-import type { GasFees } from '../../../platform/state-store/state/index.ts'
 import type { EVMError, JSONRPCRequestPayload, RPCRequestCallback } from '../../../shared/domain/rpc.ts'
 import type { InternetGate } from '../../internet/index.ts'
+import type { CanonicalStoreReader } from '../../state/store/actions.ts'
+import type { GasFees } from '../../state/store/state/index.ts'
 import chainConfig from './config.ts'
 import { createGasCalculator } from './gas.ts'
 

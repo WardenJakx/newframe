@@ -5,7 +5,7 @@ import log from 'electron-log'
 
 import { NATIVE_CURRENCY } from '../../../../../features/tokens/domain/constants.ts'
 import type { TokenRecord } from '../../../../../features/tokens/domain/state/token.ts'
-import store from '../../../../../platform/state-store/index.ts'
+import store from '../../../../state/store/index.ts'
 import BalancesScanner from './index.ts'
 
 const controllerEvents = new EventEmitter()

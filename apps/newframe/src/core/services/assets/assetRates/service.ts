@@ -12,7 +12,7 @@ import type {
   ResolvedAssetRate
 } from '../../../../features/asset-data/domain/state/rate.ts'
 import { NATIVE_CURRENCY } from '../../../../features/tokens/domain/constants.ts'
-import type { CanonicalStore } from '../../../../platform/state-store/actions.ts'
+import type { CanonicalStore } from '../../../state/store/actions.ts'
 
 type AssetRateStoreState = Pick<CanonicalStore, 'main' | 'setAssetRates'>
 

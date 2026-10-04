@@ -7,26 +7,26 @@ import {
   DEFAULT_PROFILE_NAME,
   MainSchema,
   type Main
-} from '../../../app/contracts/state/main.ts'
-import { getMainRuntime } from '../../../core/desktop-ui/runtime/index.ts'
+} from '../../../../app/contracts/state/main.ts'
 import {
   createBuiltInChainMetadata,
   createBuiltInChains
-} from '../../../features/chains/domain/chain/index.ts'
-import { OperationRecordSchema } from '../../operations/operation.ts'
-import { Derivation } from '../../signing/signers/Signer/derive.ts'
-import type { SignerSummary } from '../../signing/signers/Signer/index.ts'
+} from '../../../../features/chains/domain/chain/index.ts'
+import { OperationRecordSchema } from '../../../../platform/operations/operation.ts'
+import { Derivation } from '../../../../platform/signing/signers/Signer/derive.ts'
+import type { SignerSummary } from '../../../../platform/signing/signers/Signer/index.ts'
+import { getMainRuntime } from '../../../desktop-ui/runtime/index.ts'
 import type { OwnedOperation } from '../actions.operation.ts'
 
-export type { ChainId, Chain, ChainMetadata } from '../../../features/chains/domain/state/chain.ts'
-export type { Origin } from '../../../features/connections/domain/state/origin.ts'
-export type { AccountAccessGrant } from '../../../features/connections/domain/state/accountAccessGrant.ts'
-export type { Balance } from '../../../features/asset-data/domain/state/balance.ts'
-export type { Token, TokenImage, TokenRecord } from '../../../features/tokens/domain/state/token.ts'
-export type { NativeCurrency } from '../../../features/chains/domain/state/nativeCurrency.ts'
-export type { Gas, GasFees } from '../../../features/chains/domain/state/gas.ts'
+export type { ChainId, Chain, ChainMetadata } from '../../../../features/chains/domain/state/chain.ts'
+export type { Origin } from '../../../../features/connections/domain/state/origin.ts'
+export type { AccountAccessGrant } from '../../../../features/connections/domain/state/accountAccessGrant.ts'
+export type { Balance } from '../../../../features/asset-data/domain/state/balance.ts'
+export type { Token, TokenImage, TokenRecord } from '../../../../features/tokens/domain/state/token.ts'
+export type { NativeCurrency } from '../../../../features/chains/domain/state/nativeCurrency.ts'
+export type { Gas, GasFees } from '../../../../features/chains/domain/state/gas.ts'
 
-export type { ActivityRecord } from '../../../app/contracts/state/main.ts'
+export type { ActivityRecord } from '../../../../app/contracts/state/main.ts'
 
 const StatusNotificationSchema = z
   .object({

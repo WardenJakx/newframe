@@ -2,8 +2,8 @@ import { embeddedImageSource } from '../../../../features/asset-data/domain/imag
 import { builtInChainIconUrl } from '../../../../features/chains/domain/chain/index.ts'
 import type { Origin } from '../../../../features/connections/domain/state/origin.ts'
 import { toTokenId } from '../../../../features/tokens/domain/index.ts'
-import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
-import type { ChainMetadata, TokenRecord } from '../../../../platform/state-store/state/index.ts'
+import type { CanonicalStoreReader } from '../../../state/store/actions.ts'
+import type { ChainMetadata, TokenRecord } from '../../../state/store/state/index.ts'
 import type { getTokenDiscoveryProvider } from '../portfolio/index.ts'
 import type { downloadImage } from './download.ts'
 

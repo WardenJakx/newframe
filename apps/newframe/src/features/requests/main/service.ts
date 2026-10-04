@@ -7,14 +7,14 @@ import type {
 import type { RequestSource } from '../../../app/main/gateway/requestSource.ts'
 import type { SafeMessageApprovalResult } from '../../../core/services/safe-wallets/safeMessage.ts'
 import type { SafeTransactionPort } from '../../../core/services/safe-wallets/safeTransactionPort.ts'
+import type { CanonicalStoreReader } from '../../../core/state/store/actions.ts'
+import type { Chain } from '../../../core/state/store/state/index.ts'
 import {
   findUnavailableSigners,
   isHardwareSigner,
   isSignerReady
 } from '../../../platform/signing/domain/index.ts'
 import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.ts'
-import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
-import type { Chain } from '../../../platform/state-store/state/index.ts'
 import type { EVMError, RPCRequestCallback, RPCResponsePayload } from '../../../shared/domain/rpc.ts'
 import { toBigInt } from '../../../shared/domain/units.ts'
 import type { Accounts } from '../../accounts/main/index.ts'
