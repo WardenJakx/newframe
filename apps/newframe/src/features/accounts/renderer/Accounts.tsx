@@ -1,11 +1,11 @@
-import type { QrCameraCapability } from '../../../platform/desktop/renderer/camera'
-import type { AccountsCapability } from './accountsCapability'
-import { accountMatchesQuery } from './accountsModel'
-import { AccountsView } from './AccountsView'
-import { AddAccount } from './AddAccount'
-import { ProfileSelector } from './ProfileSelector'
-import { useAccountList } from './useAccountList'
-import { useAccountsController } from './useAccountsController'
+import type { QrCameraCapability } from '../../../platform/desktop/renderer/camera.ts'
+import type { AccountsCapability } from './accountsCapability.ts'
+import { accountMatchesQuery } from './accountsModel.ts'
+import { AccountsView } from './AccountsView.tsx'
+import { AddAccount } from './AddAccount.tsx'
+import { ProfileSelector } from './ProfileSelector.tsx'
+import { useAccountList } from './useAccountList.ts'
+import { useAccountsController } from './useAccountsController.ts'
 
 export interface AccountsProps {
   capability: AccountsCapability

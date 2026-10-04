@@ -1,4 +1,4 @@
-import type { Token } from '../../../../../platform/state-store/state/index.js'
+import type { Token } from '../../../../../platform/state-store/state/index.ts'
 
 export interface TokensByChain {
   [chainId: number]: Token[] | undefined

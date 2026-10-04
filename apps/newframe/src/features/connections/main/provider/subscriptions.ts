@@ -1,7 +1,7 @@
 import { v5 as uuid } from 'uuid'
 
-import type { TrustedCapability } from '../../../../app/main/gateway/requestSource.js'
-import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
+import type { TrustedCapability } from '../../../../app/main/gateway/requestSource.ts'
+import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
 
 export const enum SubscriptionType {
   ACCOUNTS = 'accountsChanged',

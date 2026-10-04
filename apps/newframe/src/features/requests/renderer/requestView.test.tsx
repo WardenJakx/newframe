@@ -2,10 +2,10 @@ import { afterEach, expect, it } from 'bun:test'
 
 import { useEffect } from 'react'
 
-import { act, cleanup, render } from '../../../../test/support/componentSetup'
-import { GasFeesSource } from '../../transactions/domain'
-import { RequestStatus } from '../contract/requests'
-import { RequestViewProvider, useRequestView } from './requestView'
+import { act, cleanup, render } from '../../../../test/support/componentSetup.tsx'
+import { GasFeesSource } from '../../transactions/domain/index.ts'
+import { RequestStatus } from '../contract/requests.ts'
+import { RequestViewProvider, useRequestView } from './requestView.tsx'
 
 afterEach(cleanup)
 const original = {

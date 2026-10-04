@@ -1,14 +1,14 @@
 import { beforeEach, expect, it, mock } from 'bun:test'
 
-import { act, fireEvent, render, screen } from '../../../../../test/support/componentSetup'
-import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
-import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support'
-import type { SigningCandidate } from '../../contract/requests'
+import { act, fireEvent, render, screen } from '../../../../../test/support/componentSetup.tsx'
+import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient.ts'
+import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support.ts'
+import type { SigningCandidate } from '../../contract/requests.ts'
 import {
   createRequestRendererCapabilitiesFake as createRequestPortsFake,
   type RequestRendererCapabilitiesFake
-} from '../requestCapabilities.test-support'
-import { RequestViewProvider } from '../requestView'
+} from '../requestCapabilities.test-support.ts'
+import { RequestViewProvider } from '../requestView.tsx'
 import RequestCommandContainer, {
   RequestCommand,
   approveRequest,
@@ -16,8 +16,8 @@ import RequestCommandContainer, {
   runWhenAppUnlocked,
   type RequestCommandNotifier,
   type RequestCommandRequest
-} from './index'
-import TxApproval from './TxApproval'
+} from './index.tsx'
+import TxApproval from './TxApproval/index.tsx'
 
 let capabilities: RequestRendererCapabilitiesFake
 const fixture = registerTestRuntimeFixture()

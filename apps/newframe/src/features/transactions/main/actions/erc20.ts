@@ -1,6 +1,6 @@
-import type { Address } from '../../../../shared/domain/address.js'
-import type { Identity } from '../../../requests/contract/requests.js'
-import type { Action } from './index.js'
+import type { Address } from '../../../../shared/domain/address.ts'
+import type { Identity } from '../../../requests/contract/requests.ts'
+import type { Action } from './index.ts'
 
 export type ActionType = 'erc20:approve' | 'erc20:revoke' | 'erc20:transfer'
 

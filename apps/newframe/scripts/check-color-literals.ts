@@ -1,8 +1,8 @@
 import { readdir, readFile } from 'node:fs/promises'
 import path from 'node:path'
 
-import { darkColorSemantics, systemColors } from '../../../packages/ui/src/tokens/colors'
-import { elevationTokens } from '../../../packages/ui/src/tokens/elevation'
+import { darkColorSemantics, systemColors } from '../../../packages/ui/src/tokens/colors.ts'
+import { elevationTokens } from '../../../packages/ui/src/tokens/elevation.ts'
 
 const repositoryRoot = path.resolve(import.meta.dirname, '../../..')
 const sourceRoots = ['apps', 'packages']

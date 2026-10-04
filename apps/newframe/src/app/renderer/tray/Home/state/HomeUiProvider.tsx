@@ -1,8 +1,8 @@
 import { createContext, useContext, useState, type PropsWithChildren } from 'react'
 import { useStore } from 'zustand'
 
-import { createHomeUiStore, type HomeUiStore } from './homeUiStore'
-import type { HomeUiState } from './homeUiTypes'
+import { createHomeUiStore, type HomeUiStore } from './homeUiStore.ts'
+import type { HomeUiState } from './homeUiTypes.ts'
 
 const HomeUiStoreContext = createContext<HomeUiStore | null>(null)
 

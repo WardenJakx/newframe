@@ -1,11 +1,11 @@
-import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
-import type { ChainMetadata, TokenRecord } from '../../../../platform/state-store/state/index.js'
-import type { Origin } from '../../../connections/domain/state/origin.js'
-import { builtInChainIconUrl } from '../../../networks/domain/chain/index.js'
-import type { getTokenDiscoveryProvider } from '../../../portfolio/main/index.js'
-import { toTokenId } from '../../../tokens/domain/index.js'
-import { embeddedImageSource } from '../../domain/image/index.js'
-import type { downloadImage } from './download.js'
+import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
+import type { ChainMetadata, TokenRecord } from '../../../../platform/state-store/state/index.ts'
+import type { Origin } from '../../../connections/domain/state/origin.ts'
+import { builtInChainIconUrl } from '../../../networks/domain/chain/index.ts'
+import type { getTokenDiscoveryProvider } from '../../../portfolio/main/index.ts'
+import { toTokenId } from '../../../tokens/domain/index.ts'
+import { embeddedImageSource } from '../../domain/image/index.ts'
+import type { downloadImage } from './download.ts'
 
 const MAX_CONCURRENT_HYDRATIONS = 2
 

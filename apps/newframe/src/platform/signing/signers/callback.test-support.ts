@@ -1,8 +1,8 @@
 import { expect } from 'bun:test'
 
-import { GasFeesSource } from '../../../features/transactions/domain'
-import type { Callback } from '../../../shared/domain/async.js'
-import type HotSigner from './hot/HotSigner'
+import { GasFeesSource } from '../../../features/transactions/domain/index.ts'
+import type { Callback } from '../../../shared/domain/async.ts'
+import type HotSigner from './hot/HotSigner/index.ts'
 
 export function callbackResult<T>(start: (done: Callback<T>) => void): Promise<T> {
   return new Promise((resolve, reject) =>

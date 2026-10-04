@@ -2,8 +2,8 @@ import { expect, test } from 'bun:test'
 
 import { getBytes, Wallet, ZeroAddress } from 'ethers'
 
-import type { SafeProposal } from '../../features/accounts/domain/safe.js'
-import { getEip712Digests } from '../signing/signatures/digests.js'
+import type { SafeProposal } from '../../features/accounts/domain/safe.ts'
+import { getEip712Digests } from '../signing/signatures/digests.ts'
 import {
   getSafeMessageHash,
   getSafeMessageTypedData,
@@ -14,7 +14,7 @@ import {
   verifySafeConfirmation,
   verifySafeHash,
   verifySafeMessageConfirmation
-} from './integrity.js'
+} from './integrity.ts'
 
 const owner = new Wallet(`0x${'12'.repeat(32)}`)
 const safe = '0x1111111111111111111111111111111111111111'

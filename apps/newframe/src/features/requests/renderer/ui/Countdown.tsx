@@ -2,7 +2,7 @@ import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 import React from 'react'
 
-import useCountdown from '../hooks/useCountdown'
+import useCountdown from '../hooks/useCountdown.ts'
 
 const Countdown = ({ end, title }: { end: string | number | Date; title?: React.ReactNode }) => {
   const ttl = useCountdown(end)

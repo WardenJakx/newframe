@@ -4,10 +4,10 @@ import type { BrowserWindow } from 'electron'
 import electron from 'electron'
 import log from 'electron-log'
 
-import type { RendererAuthorizationRegistry } from '../../../ipc/main/authorization.js'
-import type { Frame } from '../../../state-store/state/index.js'
-import { constrainTraySize, sideTrayPosition } from '../trayGeometry.js'
-import { createWindow } from '../window.js'
+import type { RendererAuthorizationRegistry } from '../../../ipc/main/authorization.ts'
+import type { Frame } from '../../../state-store/state/index.ts'
+import { constrainTraySize, sideTrayPosition } from '../trayGeometry.ts'
+import { createWindow } from '../window.ts'
 
 const isDev = process.env.NODE_ENV === 'development'
 

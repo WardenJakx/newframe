@@ -1,13 +1,17 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
-import { ExecuteCommandChannel, ExecuteQueryChannel, type NewframeHost } from '../platform/ipc/contract/ipc'
+import {
+  ExecuteCommandChannel,
+  ExecuteQueryChannel,
+  type NewframeHost
+} from '../platform/ipc/contract/ipc.ts'
 import {
   StateConnectChannel,
   StateConnectionResultSchema,
   StateDisconnectChannel,
   StateMessageChannel,
   type StateMessage
-} from '../platform/state-sync/contract/protocol'
+} from '../platform/state-sync/contract/protocol.ts'
 
 let stateHandler: ((message: StateMessage) => void) | undefined
 

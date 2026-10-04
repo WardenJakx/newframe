@@ -7,11 +7,11 @@ import { Text } from '@newframe/ui/text'
 import { ToggleButton } from '@newframe/ui/toggle-button'
 import { useState } from 'react'
 
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
-import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay'
-import KeyboardShortcutConfigurator from './KeyboardShortcutConfigurator'
-import { SettingsActionRow, SettingsSelectRow, SettingsToggleRow } from './SettingsRow'
-import type { PersistSetting, SettingsUpdateInput } from './types'
+import type { WalletRendererState } from '../../../platform/state-sync/contract/projections.ts'
+import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay.tsx'
+import KeyboardShortcutConfigurator from './KeyboardShortcutConfigurator.tsx'
+import { SettingsActionRow, SettingsSelectRow, SettingsToggleRow } from './SettingsRow.tsx'
+import type { PersistSetting, SettingsUpdateInput } from './types.ts'
 
 const shortcutKeyDisplay: Record<string, string> = {
   Slash: '/',

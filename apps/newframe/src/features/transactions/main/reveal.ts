@@ -3,28 +3,28 @@
 import { addHexPrefix } from '@ethereumjs/util'
 import log from 'electron-log'
 
-import ensContracts from '../../../platform/chain-rpc/contracts/deployments/ens/index.js'
-import Erc20Contract, { type Erc20ProviderPort } from '../../../platform/chain-rpc/contracts/erc20.js'
-import type { ContractSource } from '../../../platform/chain-rpc/contracts/index.js'
+import ensContracts from '../../../platform/chain-rpc/contracts/deployments/ens/index.ts'
+import Erc20Contract, { type Erc20ProviderPort } from '../../../platform/chain-rpc/contracts/erc20.ts'
+import type { ContractSource } from '../../../platform/chain-rpc/contracts/index.ts'
 import {
   decodeCallData,
   decodeCallDataWithSelectorRegistry,
   fetchContract,
   type DecodedCallData
-} from '../../../platform/chain-rpc/contracts/index.js'
-import type { Callback } from '../../../shared/domain/async.js'
+} from '../../../platform/chain-rpc/contracts/index.ts'
+import type { Callback } from '../../../shared/domain/async.ts'
 import type {
   JSONRPCRequestPayload,
   RPCRequestPayload,
   RPCResponsePayload
-} from '../../../shared/domain/rpc.js'
-import type { TransactionRequest } from '../../accounts/main/index.js'
-import { createProxyProvider } from '../../connections/main/provider/connection.js'
-import type { ProviderProxyConnection } from '../../connections/main/provider/proxy.js'
-import type { NameResolutionService } from '../../name-resolution/main/nameResolution.js'
-import { MAX_HEX } from '../domain/constants.js'
-import type { ApproveAction as Erc20Approval, TransferAction as Erc20Transfer } from './actions/erc20.js'
-import type { Action, DecodableContract, EntityType } from './actions/index.js'
+} from '../../../shared/domain/rpc.ts'
+import type { TransactionRequest } from '../../accounts/main/index.ts'
+import { createProxyProvider } from '../../connections/main/provider/connection.ts'
+import type { ProviderProxyConnection } from '../../connections/main/provider/proxy.ts'
+import type { NameResolutionService } from '../../name-resolution/main/nameResolution.ts'
+import { MAX_HEX } from '../domain/constants.ts'
+import type { ApproveAction as Erc20Approval, TransferAction as Erc20Transfer } from './actions/erc20.ts'
+import type { Action, DecodableContract, EntityType } from './actions/index.ts'
 
 // TODO: fix generic typing here
 const knownContracts: DecodableContract<unknown>[] = [...ensContracts]

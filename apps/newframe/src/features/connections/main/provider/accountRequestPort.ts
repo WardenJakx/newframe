@@ -1,4 +1,4 @@
-import type { Accounts } from '../../../accounts/main/index.js'
+import type { Accounts } from '../../../accounts/main/index.ts'
 
 export type AccountRequestPort = Pick<
   Accounts,

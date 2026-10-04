@@ -1,10 +1,10 @@
 import { expect, it, mock } from 'bun:test'
 import type { Mock } from 'bun:test'
 
-import { createTestStore } from '../../../../../test/support/createTestStore'
-import { createOperationService } from '../../../../platform/operations/service'
-import { createProductionAccountOnboardingAdapters } from './production'
-import { createAccountOnboardingService, type AccountOnboardingPorts } from './service'
+import { createTestStore } from '../../../../../test/support/createTestStore.ts'
+import { createOperationService } from '../../../../platform/operations/service.ts'
+import { createProductionAccountOnboardingAdapters } from './production.ts'
+import { createAccountOnboardingService, type AccountOnboardingPorts } from './service.ts'
 
 const owner = { clientType: 'wallet-ui' as const, windowInstanceId: 'onboarding-test' }
 const otherOwner = { ...owner, windowInstanceId: 'other-window' }

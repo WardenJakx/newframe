@@ -1,8 +1,8 @@
 import { describe, expect, it, mock } from 'bun:test'
 
-import { createTestStore } from '../../../../test/support/createTestStore'
-import { createBuiltInNetworks } from '../domain/chain/catalog'
-import { createNetworkService } from './service'
+import { createTestStore } from '../../../../test/support/createTestStore.ts'
+import { createBuiltInNetworks } from '../domain/chain/catalog.ts'
+import { createNetworkService } from './service.ts'
 
 describe('network mutation service', () => {
   it('verifies activation and RPC preconditions before canonical mutation', async () => {

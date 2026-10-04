@@ -1,20 +1,20 @@
 // New Tx
 import { useCallback } from 'react'
 
-import { useWalletSelector } from '../../../../../../platform/state-sync/renderer/useAppSelector'
-import { erc20Interface } from '../../../../../../shared/domain/evm'
-import { persistedImageSource } from '../../../../../asset-data/domain/image'
-import { NATIVE_CURRENCY } from '../../../../../tokens/domain/constants'
-import type { TransactionApprovalAdjustments } from '../../../../../transactions/domain/approval'
-import type { TransactionFeeField } from '../../../../../transactions/domain/fees'
-import type { RequestRendererCapabilities } from '../../../requestCapabilities'
-import { useRequestView } from '../../../requestView'
-import type { RequestViewStep } from '../../../requestView'
-import { SafeProposalDetailsView } from '../../../SafeProposalDetailsView'
-import EditTokenSpend from '../../../ui/EditTokenSpend'
-import type { TokenSpendData } from '../../../ui/EditTokenSpend'
-import { useSafeProposalSimulation, useSafeTransactionActions } from '../../../useSafeConfirmation'
-import type { TransactionRequestView } from '../requestViewTypes'
+import { useWalletSelector } from '../../../../../../platform/state-sync/renderer/useAppSelector.tsx'
+import { erc20Interface } from '../../../../../../shared/domain/evm.ts'
+import { persistedImageSource } from '../../../../../asset-data/domain/image/index.ts'
+import { NATIVE_CURRENCY } from '../../../../../tokens/domain/constants.ts'
+import type { TransactionApprovalAdjustments } from '../../../../../transactions/domain/approval.ts'
+import type { TransactionFeeField } from '../../../../../transactions/domain/fees.ts'
+import type { RequestRendererCapabilities } from '../../../requestCapabilities.ts'
+import { useRequestView } from '../../../requestView.tsx'
+import type { RequestViewStep } from '../../../requestView.tsx'
+import { SafeProposalDetailsView } from '../../../SafeProposalDetailsView.tsx'
+import EditTokenSpend from '../../../ui/EditTokenSpend.tsx'
+import type { TokenSpendData } from '../../../ui/EditTokenSpend.tsx'
+import { useSafeProposalSimulation, useSafeTransactionActions } from '../../../useSafeConfirmation.ts'
+import type { TransactionRequestView } from '../requestViewTypes.ts'
 import {
   useAddressIdentities,
   useAssetRate,
@@ -22,9 +22,9 @@ import {
   useOrigins,
   useTokens,
   type AddressIdentities
-} from '../state'
-import AdjustFee from './AdjustFee'
-import TxReview from './TxReview'
+} from '../state.ts'
+import AdjustFee from './AdjustFee.tsx'
+import TxReview from './TxReview.tsx'
 
 type TransactionRequestProps = {
   capabilities: Pick<RequestRendererCapabilities, 'external' | 'review' | 'safe' | 'transaction'>

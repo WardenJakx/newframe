@@ -4,11 +4,11 @@ import { readFile } from 'node:fs/promises'
 import {
   createOneResultCallbackBoundary,
   type OneResultCallback
-} from '../../../../platform/callbacks/oneResult.js'
-import { openFileDialog } from '../../../../platform/desktop/windows/dialog.js'
-import type Signer from '../../../../platform/signing/signers/Signer/index.js'
-import { randomLetters } from '../../../../shared/domain/text.js'
-import type { AccountOnboardingPorts, OnboardingSigner } from './service.js'
+} from '../../../../platform/callbacks/oneResult.ts'
+import { openFileDialog } from '../../../../platform/desktop/windows/dialog.ts'
+import type Signer from '../../../../platform/signing/signers/Signer/index.ts'
+import { randomLetters } from '../../../../shared/domain/text.ts'
+import type { AccountOnboardingPorts, OnboardingSigner } from './service.ts'
 
 interface PairingSigner {
   pair(pairCode: string): Promise<void>

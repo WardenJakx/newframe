@@ -1,8 +1,8 @@
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
-import { shortAddress } from '../../../shared/renderer/ui/AddressIdentity'
-import { accountDisplayType, signerTypeLabel } from '../../../shared/renderer/ui/signerPresentation'
-import type { createBalanceSummarySelector } from '../../asset-data/domain/balance'
-import { formatUsdRate } from '../../asset-data/domain/balance'
+import type { WalletRendererState } from '../../../platform/state-sync/contract/projections.ts'
+import { shortAddress } from '../../../shared/renderer/ui/AddressIdentity.tsx'
+import { accountDisplayType, signerTypeLabel } from '../../../shared/renderer/ui/signerPresentation.ts'
+import type { createBalanceSummarySelector } from '../../asset-data/domain/balance/index.ts'
+import { formatUsdRate } from '../../asset-data/domain/balance/index.ts'
 
 export type AccountProjection = WalletRendererState['accounts'][string]
 export type SignerProjection = WalletRendererState['signers'][string]

@@ -9,13 +9,13 @@ import {
   safeProposalSchema,
   type SafeConfiguration,
   type SafeProposal
-} from '../../features/accounts/domain/safe.js'
-import type { TypedData, TypedMessage } from '../../features/requests/contract/requests.js'
-import { decodeCallDataWithSignature, type DecodedCallData } from '../chain-rpc/contracts/index.js'
-import { getLocalFunctionSelectorSignatures } from '../chain-rpc/contracts/selectors.js'
-import { multicallAddress, type Call } from '../chain-rpc/multicall/constants.js'
-import { aggregate3 } from '../chain-rpc/multicall/index.js'
-import type { OriginalMessage } from '../signing/signatures/digests.js'
+} from '../../features/accounts/domain/safe.ts'
+import type { TypedData, TypedMessage } from '../../features/requests/contract/requests.ts'
+import { decodeCallDataWithSignature, type DecodedCallData } from '../chain-rpc/contracts/index.ts'
+import { getLocalFunctionSelectorSignatures } from '../chain-rpc/contracts/selectors.ts'
+import { multicallAddress, type Call } from '../chain-rpc/multicall/constants.ts'
+import { aggregate3 } from '../chain-rpc/multicall/index.ts'
+import type { OriginalMessage } from '../signing/signatures/digests.ts'
 import {
   EIP1271_SIGNATURE,
   getSafeMessageHash,
@@ -27,7 +27,7 @@ import {
   verifySafeMessageConfirmation,
   type SafeMessageConfirmationInput,
   type VerifiedSafeMessageConfirmation
-} from './integrity.js'
+} from './integrity.ts'
 
 const SAFE_TRANSACTION_SERVICE_URL = 'https://api.safe.global/tx-service'
 // Hosted Transaction Service resolver from @safe-global/api-kit@5.0.3, synced 2026-09-09.

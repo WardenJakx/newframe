@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { SafeDeploymentSchema } from '../safe.js'
+import { SafeDeploymentSchema } from '../safe.ts'
 
 export const AccountMetadataSchema = z
   .object({

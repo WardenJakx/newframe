@@ -7,25 +7,25 @@ import { Text } from '@newframe/ui/text'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
-import type { AirGapRequestReference } from '../../../../platform/signing/domain/airgap'
-import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
-import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
-import StatusGlyph from '../../../../shared/renderer/ui/StatusGlyph'
-import type { TransactionApprovalAdjustments } from '../../../transactions/domain/approval'
+import type { AirGapRequestReference } from '../../../../platform/signing/domain/airgap.ts'
+import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections.ts'
+import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector.tsx'
+import StatusGlyph from '../../../../shared/renderer/ui/StatusGlyph.tsx'
+import type { TransactionApprovalAdjustments } from '../../../transactions/domain/approval.ts'
 import type {
   SafeMessageProgress,
   SignatureRequest,
   SigningCapability,
   TransactionRequest
-} from '../../contract/requests'
-import { isCancelableRequest, isSignatureRequest } from '../../domain'
-import { useAccountIdentity } from '../Account/Requests/state'
-import type { RequestRendererCapabilities, RequestReviewCapability } from '../requestCapabilities'
-import { useRequestView, type RequestViewStep } from '../requestView'
-import { RequestActions } from '../ui/RequestActions'
-import { SafeOwnerSelector } from '../ui/SafeOwnerSelector'
-import { SigningAccount } from '../ui/SigningAccount'
-import TxApproval from './TxApproval'
+} from '../../contract/requests.ts'
+import { isCancelableRequest, isSignatureRequest } from '../../domain/index.ts'
+import { useAccountIdentity } from '../Account/Requests/state.ts'
+import type { RequestRendererCapabilities, RequestReviewCapability } from '../requestCapabilities.ts'
+import { useRequestView, type RequestViewStep } from '../requestView.tsx'
+import { RequestActions } from '../ui/RequestActions.tsx'
+import { SafeOwnerSelector } from '../ui/SafeOwnerSelector.tsx'
+import { SigningAccount } from '../ui/SigningAccount.tsx'
+import TxApproval from './TxApproval/index.tsx'
 
 type RequestReference = { handlerId: string }
 

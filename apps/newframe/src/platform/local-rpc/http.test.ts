@@ -3,9 +3,9 @@ import { EventEmitter } from 'events'
 
 import { MAX_RPC_REQUEST_BYTES } from '@newframe/desktop-api/protocol'
 
-import type { RPCResponsePayload } from '../../shared/domain/rpc.js'
-import { createHttpRpcTransport } from './http'
-import type { RpcRequestDescription } from './request'
+import type { RPCResponsePayload } from '../../shared/domain/rpc.ts'
+import { createHttpRpcTransport } from './http.ts'
+import type { RpcRequestDescription } from './request.ts'
 
 class FakeProvider extends EventEmitter {
   send() {

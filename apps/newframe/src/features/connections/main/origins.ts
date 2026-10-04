@@ -3,15 +3,15 @@ import type { IncomingMessage } from 'http'
 import log from 'electron-log'
 import { v5 as uuidv5 } from 'uuid'
 
-import { hasSourceCapability, type LocalApiSource } from '../../../app/main/gateway/requestSource.js'
-import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
-import type { Permission } from '../../../platform/state-store/state/index.js'
-import type { Address } from '../../../shared/domain/address.js'
-import type { JSONRPCRequestPayload, RPCRequestPayload } from '../../../shared/domain/rpc.js'
-import type { Accounts } from '../../accounts/main/index.js'
-import type { AccessRequest } from '../../requests/contract/requests.js'
-import type { PromptedRequestContinuationPort } from '../../requests/main/service.js'
-import { activeExtensionAccountId } from '../domain/extensionAccess.js'
+import { hasSourceCapability, type LocalApiSource } from '../../../app/main/gateway/requestSource.ts'
+import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
+import type { Permission } from '../../../platform/state-store/state/index.ts'
+import type { Address } from '../../../shared/domain/address.ts'
+import type { JSONRPCRequestPayload, RPCRequestPayload } from '../../../shared/domain/rpc.ts'
+import type { Accounts } from '../../accounts/main/index.ts'
+import type { AccessRequest } from '../../requests/contract/requests.ts'
+import type { PromptedRequestContinuationPort } from '../../requests/main/service.ts'
+import { activeExtensionAccountId } from '../domain/extensionAccess.ts'
 import {
   chainIdFromRequest,
   decideOriginAuthorization,
@@ -20,10 +20,10 @@ import {
   projectOriginUpdate,
   requestedAccount,
   type FrameExtension
-} from '../domain/index.js'
-import { createExtensionAccessService } from './extensionAccess.js'
+} from '../domain/index.ts'
+import { createExtensionAccessService } from './extensionAccess.ts'
 
-export type { FrameExtension } from '../domain/index.js'
+export type { FrameExtension } from '../domain/index.ts'
 
 type OriginRequestContinuationPort = Pick<PromptedRequestContinuationPort, 'create'> & {
   cancel(requestId: string): boolean

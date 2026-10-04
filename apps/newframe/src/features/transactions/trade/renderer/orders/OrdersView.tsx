@@ -3,9 +3,9 @@ import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 
 import { cva } from '../../../../../../generated/styled-system/css/cva.js'
-import type { TokenImageCapability } from '../../../../../shared/renderer/capabilities'
-import { activateOnKeyboard } from './keyboard'
-import { OrderAssetIcon } from './OrderAssetPosition'
+import type { TokenImageCapability } from '../../../../../shared/renderer/capabilities.ts'
+import { activateOnKeyboard } from './keyboard.ts'
+import { OrderAssetIcon } from './OrderAssetPosition.tsx'
 import {
   hasOrderFill,
   isOpenOrder,
@@ -19,8 +19,8 @@ import {
   orderStatus,
   orderStatusLabel,
   orderTypeLabel
-} from './orderModel'
-import type { OrderNetworkMap, OrderNetworkMetadataMap, OrderRow, OrderTokenCatalog } from './orderTypes'
+} from './orderModel.ts'
+import type { OrderNetworkMap, OrderNetworkMetadataMap, OrderRow, OrderTokenCatalog } from './orderTypes.ts'
 
 const orderListRecipe = cva({
   base: {

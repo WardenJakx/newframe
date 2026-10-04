@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
-import type { Token } from '../../../../tokens/domain/state/token'
-import { groupByChain, type TokensByChain } from './reducers'
+import type { Token } from '../../../../tokens/domain/state/token.ts'
+import { groupByChain, type TokensByChain } from './reducers.ts'
 
 describe('#groupByChain', () => {
   it('groups tokens by chain', () => {

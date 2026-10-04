@@ -3,10 +3,10 @@ import { recoverPersonalSignature } from '@metamask/eth-sig-util'
 import log from 'electron-log'
 import { isHexString } from 'ethers'
 
-import { accountAccessMethods } from '../../../../app/main/gateway/rpcPolicy.js'
-import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
-import { getAddress } from '../../../../shared/domain/address.js'
-import type { Callback } from '../../../../shared/domain/async.js'
+import { accountAccessMethods } from '../../../../app/main/gateway/rpcPolicy.ts'
+import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
+import { getAddress } from '../../../../shared/domain/address.ts'
+import type { Callback } from '../../../../shared/domain/async.ts'
 import type {
   EVMError,
   JSONRPCRequestPayload,
@@ -14,11 +14,11 @@ import type {
   RPCErrorCallback,
   RPCId,
   RPCRequestCallback
-} from '../../../../shared/domain/rpc.js'
-import type { TransactionRequest } from '../../../requests/contract/requests.js'
-import type { TransactionData } from '../../../transactions/domain/index.js'
-import { usesBaseFee, GasFeesSource } from '../../../transactions/domain/index.js'
-import isUtf8 from './isUtf8.js'
+} from '../../../../shared/domain/rpc.ts'
+import type { TransactionRequest } from '../../../requests/contract/requests.ts'
+import type { TransactionData } from '../../../transactions/domain/index.ts'
+import { usesBaseFee, GasFeesSource } from '../../../transactions/domain/index.ts'
+import isUtf8 from './isUtf8.ts'
 
 const permission = (date: number, method: string) => ({ parentCapability: method, date })
 

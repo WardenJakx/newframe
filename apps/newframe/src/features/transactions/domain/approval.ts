@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { MAX_FEE_COMPONENT, MAX_GAS_LIMIT, maxTotalTransactionFee, typeSupportsBaseFee } from './fees.js'
+import { MAX_FEE_COMPONENT, MAX_GAS_LIMIT, maxTotalTransactionFee, typeSupportsBaseFee } from './fees.ts'
 
 const HexQuantitySchema = z
   .string()

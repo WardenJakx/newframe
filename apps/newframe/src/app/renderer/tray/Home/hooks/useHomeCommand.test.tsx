@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
 
-import { render, screen, waitFor } from '../../../../../../test/support/componentSetup'
-import { registerTestRuntimeFixture } from '../../../../../../test/support/rendererClient'
+import { render, screen, waitFor } from '../../../../../../test/support/componentSetup.tsx'
+import { registerTestRuntimeFixture } from '../../../../../../test/support/rendererClient.ts'
 import { walletState } from '../../../../../platform/state-sync/renderer/fixtures.test-support.ts'
-import { createHomeCapability } from '../homeCapability'
-import { HomeUiProvider, useHomeUiStore } from '../state/HomeUiProvider'
-import { useHomeCommand } from './useHomeCommand'
+import { createHomeCapability } from '../homeCapability.ts'
+import { HomeUiProvider, useHomeUiStore } from '../state/HomeUiProvider.tsx'
+import { useHomeCommand } from './useHomeCommand.ts'
 
 const fixture = registerTestRuntimeFixture()
 const capability = createHomeCapability({

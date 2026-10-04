@@ -1,6 +1,6 @@
 import { expect, it } from 'bun:test'
 
-import { Derivation, getDerivationPath } from './derive'
+import { Derivation, getDerivationPath } from './derive.ts'
 
 it('builds every supported indexed and base derivation path', () => {
   const cases: Array<[Derivation, number | undefined, string]> = [

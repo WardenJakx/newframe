@@ -1,7 +1,7 @@
 import { expect, it, mock } from 'bun:test'
 
-import { render, screen } from '../../../../../../test/support/componentSetup'
-import { HomeMenuView } from './HomeMenuView'
+import { render, screen } from '../../../../../../test/support/componentSetup.tsx'
+import { HomeMenuView } from './HomeMenuView.tsx'
 
 it('keeps requests out of the main menu', () => {
   render(

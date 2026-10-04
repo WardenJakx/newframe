@@ -1,9 +1,9 @@
 import { useShallow } from 'zustand/react/shallow'
 
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
-import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
-import { ConnectedDappsView, type ConnectedExtensionRow } from './ConnectedDappsView'
-import type { ConnectionsCapability } from './connectionsCapability'
+import type { WalletRendererState } from '../../../platform/state-sync/contract/projections.ts'
+import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector.tsx'
+import { ConnectedDappsView, type ConnectedExtensionRow } from './ConnectedDappsView.tsx'
+import type { ConnectionsCapability } from './connectionsCapability.ts'
 
 const EMPTY_RECORD: WalletRendererState['permissions'][string] = {}
 

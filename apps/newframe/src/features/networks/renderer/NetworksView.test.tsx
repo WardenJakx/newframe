@@ -1,7 +1,7 @@
 import { expect, it, mock } from 'bun:test'
 
-import { render, screen } from '../../../../test/support/componentSetup'
-import { NetworksView, type NetworksViewProps } from './NetworksView'
+import { render, screen } from '../../../../test/support/componentSetup.tsx'
+import { NetworksView, type NetworksViewProps } from './NetworksView.tsx'
 
 const createProps = (overrides: Partial<NetworksViewProps> = {}): NetworksViewProps => ({
   allTotal: 0,

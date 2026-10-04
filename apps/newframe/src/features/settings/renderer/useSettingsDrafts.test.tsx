@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, it, jest as timers, mock } from 'bun:test'
 
-import { act, renderHook } from '../../../../test/support/componentSetup'
-import { useSettingsDrafts } from './useSettingsDrafts'
+import { act, renderHook } from '../../../../test/support/componentSetup.tsx'
+import { useSettingsDrafts } from './useSettingsDrafts.ts'
 
 beforeEach(() => timers.useFakeTimers())
 afterEach(() => timers.useRealTimers())

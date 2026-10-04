@@ -1,6 +1,6 @@
 import { expect, it } from 'bun:test'
 
-import { hardwarePageModel } from './addAccountModel'
+import { hardwarePageModel } from './addAccountModel.ts'
 
 it('clamps hardware pages and requests only missing live Ledger addresses', () => {
   const ledger = { type: 'ledger', addresses: ['one', 'two', 'three', 'four', 'five'] }

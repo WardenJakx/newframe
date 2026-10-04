@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'bun:test'
 
-import { render, screen } from '../../../../test/support/componentSetup'
-import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
-import { createRendererUtilityCapabilities as createUtilityPorts } from '../../../shared/renderer/capabilities.test-support'
-import { shortAddress } from '../../../shared/renderer/ui/AddressIdentity'
-import type { DisplayedBalance } from '../../asset-data/domain/balance'
-import { NATIVE_CURRENCY } from '../../tokens/domain/constants'
-import { AssetDetailsView } from './AssetDetailsView'
+import { render, screen } from '../../../../test/support/componentSetup.tsx'
+import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient.ts'
+import { createRendererUtilityCapabilities as createUtilityPorts } from '../../../shared/renderer/capabilities.test-support.ts'
+import { shortAddress } from '../../../shared/renderer/ui/AddressIdentity.tsx'
+import type { DisplayedBalance } from '../../asset-data/domain/balance/index.ts'
+import { NATIVE_CURRENCY } from '../../tokens/domain/constants.ts'
+import { AssetDetailsView } from './AssetDetailsView.tsx'
 
 const address = '0xaf88d065e77c8cc2239327c5edb3a432268e5831'
 const networks = { 42161: { name: 'Arbitrum' } }

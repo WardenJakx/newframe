@@ -5,8 +5,8 @@ import { ParsedMessage } from '@spruceid/siwe-parser'
 import { useMemo } from 'react'
 
 import { cva } from '../../../../../../generated/styled-system/css/cva.js'
-import { RequestOrigin } from '../../ui/RequestOrigin'
-import type { SignRequestView } from './requestViewTypes'
+import { RequestOrigin } from '../../ui/RequestOrigin.tsx'
+import type { SignRequestView } from './requestViewTypes.ts'
 
 const messageRecipe = cva({
   base: { margin: 0, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }

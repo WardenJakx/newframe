@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import type { Mock } from 'bun:test'
 
-import { render, screen } from '../../../../test/support/componentSetup'
+import { render, screen } from '../../../../test/support/componentSetup.tsx'
 
-let KeyboardShortcutConfigurator: typeof import('./KeyboardShortcutConfigurator').default
+let KeyboardShortcutConfigurator: typeof import('./KeyboardShortcutConfigurator.tsx').default
 let mockLayoutGetKey: Mock<(key: string) => string>
 const setShortcut = mock()
 
@@ -17,7 +17,7 @@ beforeEach(async () => {
   keyboard.keyboard.getLayoutMap = mock().mockResolvedValue({
     get: mockLayoutGetKey
   })
-  KeyboardShortcutConfigurator = (await import('./KeyboardShortcutConfigurator')).default
+  KeyboardShortcutConfigurator = (await import('./KeyboardShortcutConfigurator.tsx')).default
   mockLayoutGetKey.mockImplementation((key) => {
     const keyMap: Record<string, string> = {
       Slash: '/'

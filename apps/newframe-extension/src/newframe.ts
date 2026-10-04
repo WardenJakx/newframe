@@ -1,6 +1,6 @@
 import EventEmitter from 'events'
 
-import InjectedFrameProvider, { type JsonRpcPayload } from './provider'
+import InjectedFrameProvider, { type JsonRpcPayload } from './provider.ts'
 
 declare const __NEWFRAME_EIP6963_ICON__: string
 

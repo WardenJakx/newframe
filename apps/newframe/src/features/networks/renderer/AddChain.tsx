@@ -2,9 +2,9 @@ import { Button } from '@newframe/ui/button'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 
-import { AddChainDetails } from '../../../shared/renderer/ui/AddChainDetails'
-import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay'
-import type { NetworksCapability } from './networksCapability'
+import { AddChainDetails } from '../../../shared/renderer/ui/AddChainDetails.tsx'
+import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay.tsx'
+import type { NetworksCapability } from './networksCapability.ts'
 
 export interface PendingChainRequest {
   chain?: {

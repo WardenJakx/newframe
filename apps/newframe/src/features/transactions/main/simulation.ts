@@ -2,16 +2,16 @@ import { addHexPrefix } from '@ethereumjs/util'
 import log from 'electron-log'
 import { getAddress, isAddress } from 'ethers'
 
-import { getProfileAccountIds } from '../../../app/contracts/state/main.js'
-import type { RpcIpcHandlers } from '../../../app/main/ipc-handlers/rpc.js'
-import type { Erc20ProviderPort, TokenData } from '../../../platform/chain-rpc/contracts/erc20.js'
-import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
-import type { Token } from '../../../platform/state-store/state/index.js'
-import { persistedImageSource } from '../../asset-data/domain/image/index.js'
-import type { TransactionRequest } from '../../requests/contract/requests.js'
-import { NATIVE_CURRENCY } from '../../tokens/domain/constants.js'
-import { tokenImageSource } from '../../tokens/domain/index.js'
-import type { TransactionEffect, TransactionSimulation } from '../domain/index.js'
+import { getProfileAccountIds } from '../../../app/contracts/state/main.ts'
+import type { RpcIpcHandlers } from '../../../app/main/ipc-handlers/rpc.ts'
+import type { Erc20ProviderPort, TokenData } from '../../../platform/chain-rpc/contracts/erc20.ts'
+import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
+import type { Token } from '../../../platform/state-store/state/index.ts'
+import { persistedImageSource } from '../../asset-data/domain/image/index.ts'
+import type { TransactionRequest } from '../../requests/contract/requests.ts'
+import { NATIVE_CURRENCY } from '../../tokens/domain/constants.ts'
+import { tokenImageSource } from '../../tokens/domain/index.ts'
+import type { TransactionEffect, TransactionSimulation } from '../domain/index.ts'
 
 const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
 const APPROVAL_TOPIC = '0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925'
@@ -445,10 +445,10 @@ async function resolveTokenMetadata(
   }
 
   try {
-    const loaded = (await import('../../../platform/chain-rpc/contracts/erc20.js')).default as unknown
+    const loaded = (await import('../../../platform/chain-rpc/contracts/erc20.ts')).default as unknown
     const Erc20Contract = (
       loaded && typeof loaded === 'object' && 'default' in loaded ? loaded.default : loaded
-    ) as typeof import('../../../platform/chain-rpc/contracts/erc20.js').default
+    ) as typeof import('../../../platform/chain-rpc/contracts/erc20.ts').default
     const tokenData = await new Erc20Contract(address, chainId, provider).getTokenData()
     return {
       ...tokenData,

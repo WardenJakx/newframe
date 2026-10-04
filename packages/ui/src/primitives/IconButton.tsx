@@ -1,5 +1,5 @@
-import { Button, type ButtonProps } from './Button.js'
-import { Icon, type IconName } from './Icon.js'
+import { Button, type ButtonProps } from './Button.tsx'
+import { Icon, type IconName } from './Icon.tsx'
 
 export type IconButtonProps = Pick<ButtonProps, 'disabled' | 'expanded' | 'size' | 'title'> & {
   appearance?: 'control' | 'ghost' | 'menu' | 'subtle'

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 
 import { sva } from '../styled-system/css/sva.js'
 import type { RecipeVariantProps } from '../styled-system/types/recipe.js'
-import { Text } from './Text.js'
+import { Text } from './Text.tsx'
 
 const fieldRecipe = sva({
   slots: ['root', 'control'],

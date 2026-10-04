@@ -7,16 +7,19 @@ import { getContraPreposition, getDirectionLabel, isSameFlashAsset } from '@newf
 import type { FlashAsset } from '@newframe/flash/schemas'
 import React from 'react'
 
-import { createSideTrayWalletSelector } from '../../../../platform/state-sync/renderer/selectors/sideTrayWallet'
-import { useSideTraySelector } from '../../../../platform/state-sync/renderer/useAppSelector'
-import { formatUnits, toBigInt } from '../../../../shared/domain/units'
+import { createSideTrayWalletSelector } from '../../../../platform/state-sync/renderer/selectors/sideTrayWallet.ts'
+import { useSideTraySelector } from '../../../../platform/state-sync/renderer/useAppSelector.tsx'
+import { formatUnits, toBigInt } from '../../../../shared/domain/units.ts'
 import {
   getTokenSelectorPage,
   INITIAL_TOKEN_SELECTOR_ROWS,
   TOKEN_SELECTOR_ROWS_INCREMENT
-} from '../../../../shared/renderer/ui/tokenSelectorModel'
-import { createBalanceTokenSelectorItem, createDisplayBalance } from '../../../asset-data/domain/balance'
-import { persistedImageSource } from '../../../asset-data/domain/image'
+} from '../../../../shared/renderer/ui/tokenSelectorModel.ts'
+import {
+  createBalanceTokenSelectorItem,
+  createDisplayBalance
+} from '../../../asset-data/domain/balance/index.ts'
+import { persistedImageSource } from '../../../asset-data/domain/image/index.ts'
 import {
   createInitialTradeState,
   getTradeInputAmount,
@@ -24,8 +27,8 @@ import {
   getTradeSpentAsset,
   tradeReducer,
   type TradeAssetField
-} from './tradeReducer'
-import type { TradeCapability } from './tradeService'
+} from './tradeReducer.ts'
+import type { TradeCapability } from './tradeService.ts'
 import {
   buildTradeAssetOptions,
   buildVisualTradeSteps,
@@ -37,10 +40,10 @@ import {
   getTradeQuoteValidationError,
   getTradeTriggerDeltaPercent,
   getTradeValidationError
-} from './tradeTransaction'
-import type { TradeAssetViewModel, TradeViewEvents, TradeViewModel } from './tradeViewModel'
-import { useTradeExecution } from './useTradeExecution'
-import { useTradeQuote, useTradeQuoteRequest } from './useTradeQuote'
+} from './tradeTransaction.ts'
+import type { TradeAssetViewModel, TradeViewEvents, TradeViewModel } from './tradeViewModel.ts'
+import { useTradeExecution } from './useTradeExecution.ts'
+import { useTradeQuote, useTradeQuoteRequest } from './useTradeQuote.ts'
 
 const operationStatuses: Record<string, string> = {
   requesting: 'Starting trade',

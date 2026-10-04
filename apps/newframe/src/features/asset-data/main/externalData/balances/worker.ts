@@ -1,7 +1,7 @@
 import log from 'electron-log'
 
-import { localApiPort } from '../../../../../platform/local-rpc/endpoint.js'
-import createProvider from '../../../../connections/main/provider/connection.js'
+import { localApiPort } from '../../../../../platform/local-rpc/endpoint.ts'
+import createProvider from '../../../../connections/main/provider/connection.ts'
 
 log.transports.console.format = '[scanWorker] {h}:{i}:{s}.{ms} {text}'
 log.transports.console.level = process.env.LOG_WORKER ? 'debug' : 'info'
@@ -9,10 +9,10 @@ const nodeEnv = (process.env as Record<string, string | undefined>).NODE_ENV
 const runtimeEnvironment = nodeEnv === '' ? 'development' : (nodeEnv ?? 'development')
 log.transports.file.level = ['development', 'test'].includes(runtimeEnvironment) ? false : 'verbose'
 
-import type { Token } from '../../../../../platform/state-store/state/index.js'
-import type { Address } from '../../../../../shared/domain/address.js'
-import type { BalanceLoader } from './scan.js'
-import balancesLoader from './scan.js'
+import type { Token } from '../../../../../platform/state-store/state/index.ts'
+import type { Address } from '../../../../../shared/domain/address.ts'
+import type { BalanceLoader } from './scan.ts'
+import balancesLoader from './scan.ts'
 
 interface ExternalDataWorkerMessage {
   command: string

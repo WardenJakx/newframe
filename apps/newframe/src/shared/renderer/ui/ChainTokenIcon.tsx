@@ -4,10 +4,10 @@ import { StatusDot } from '@newframe/ui/status-dot'
 import { Text } from '@newframe/ui/text'
 import React from 'react'
 
-import { imageSource, persistedImageSource } from '../../../features/asset-data/domain/image'
-import type { TokenImageCapability } from '../capabilities'
-import { useTokenImageHydration } from '../hooks/useTokenImageHydration'
-import type { ChainTokenIconSize, NetworkLike, NetworkMetaLike } from './tokenSelectorTypes'
+import { imageSource, persistedImageSource } from '../../../features/asset-data/domain/image/index.ts'
+import type { TokenImageCapability } from '../capabilities.ts'
+import { useTokenImageHydration } from '../hooks/useTokenImageHydration.ts'
+import type { ChainTokenIconSize, NetworkLike, NetworkMetaLike } from './tokenSelectorTypes.ts'
 
 interface ChainTokenIconProps {
   chainId: number

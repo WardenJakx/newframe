@@ -6,11 +6,11 @@ import type {
   SafeApprovalCommand,
   SafeConfirmationStatusQuery,
   SafeSimulateQuery
-} from '../../../app/contracts/operations.js'
-import type { OperationService } from '../../../platform/operations/service.js'
-import type { OperationOwner } from '../../../platform/operations/types.js'
-import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.js'
-import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.js'
+} from '../../../app/contracts/operations.ts'
+import type { OperationService } from '../../../platform/operations/service.ts'
+import type { OperationOwner } from '../../../platform/operations/types.ts'
+import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.ts'
+import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
 import {
   safeConfigurationSchema,
   safeProposalSchema,
@@ -19,13 +19,13 @@ import {
   type SafeDeployment,
   type SafeProposal,
   type SafeProposalSimulation
-} from '../domain/safe.js'
-import type { SafeSimulationInput, SafeSimulationPorts } from './safeSimulation.js'
+} from '../domain/safe.ts'
+import type { SafeSimulationInput, SafeSimulationPorts } from './safeSimulation.ts'
 import {
   createSafeTransactionService,
   type SafeTransactionClient,
   type SafeTransactionProvider
-} from './safeTransaction.js'
+} from './safeTransaction.ts'
 
 export interface SafeServicePorts {
   accounts: { add(address: string, name: string, options: { type: string }): void }
@@ -62,7 +62,7 @@ export interface SafeServicePorts {
   ) => Promise<SafeProposalSimulation>
   now?: () => number
   transactions?: {
-    accounts: { getFrameAccount(id: string): import('./Account.js').default | null }
+    accounts: { getFrameAccount(id: string): import('./Account.ts').default | null }
     provider: SafeTransactionProvider
     submitted?: (result: { safeTxHash: string; outerTxHash: string }) => void
   }

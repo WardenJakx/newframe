@@ -1,9 +1,9 @@
 import log from 'electron-log'
 
-import type canonicalStore from '../../../state-store/index.js'
-import { SignerAdapter } from '../adapters.js'
-import type { Derivation } from '../Signer/derive.js'
-import Lattice from './Lattice.js'
+import type canonicalStore from '../../../state-store/index.ts'
+import { SignerAdapter } from '../adapters.ts'
+import type { Derivation } from '../Signer/derive.ts'
+import Lattice from './Lattice.ts'
 
 interface GlobalLatticeSettings {
   baseUrl: string

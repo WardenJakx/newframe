@@ -1,6 +1,6 @@
 import { expect, it } from 'bun:test'
 
-import { createProviderProxyConnection } from './proxy'
+import { createProviderProxyConnection } from './proxy.ts'
 
 it('owns connection and request events through an explicit lifecycle', async () => {
   const proxy = createProviderProxyConnection()

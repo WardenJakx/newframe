@@ -13,10 +13,10 @@ import { TextArea } from '@newframe/ui/text-area'
 import { ToggleButton } from '@newframe/ui/toggle-button'
 import type { ReactNode } from 'react'
 
-import { AddressAvatar } from '../../../shared/renderer/ui/AddressAvatar'
-import { AppIcon } from '../../../shared/renderer/ui/appIcon'
-import { SidePanelHeader } from '../../../shared/renderer/ui/SidePanel/SidePanelHeader'
-import { signerIconName } from '../../../shared/renderer/ui/signerPresentation'
+import { AddressAvatar } from '../../../shared/renderer/ui/AddressAvatar.tsx'
+import { AppIcon } from '../../../shared/renderer/ui/appIcon.tsx'
+import { SidePanelHeader } from '../../../shared/renderer/ui/SidePanel/SidePanelHeader.tsx'
+import { signerIconName } from '../../../shared/renderer/ui/signerPresentation.ts'
 
 export type AddAccountOption = { id: string; title: string; icon: IconName | 'file' }
 

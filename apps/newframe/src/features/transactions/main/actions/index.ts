@@ -1,7 +1,7 @@
-import type { Address } from '../../../../shared/domain/address.js'
-import type { AccountRequest } from '../../../accounts/main/index.js'
-import type { ActionType as EnsActions } from './ens.js'
-import type { ActionType as Erc20Actions } from './erc20.js'
+import type { Address } from '../../../../shared/domain/address.ts'
+import type { AccountRequest } from '../../../accounts/main/index.ts'
+import type { ActionType as EnsActions } from './ens.ts'
+import type { ActionType as Erc20Actions } from './erc20.ts'
 
 export type EntityType = 'unknown' | 'contract' | 'external'
 export type ActionType = Erc20Actions | EnsActions

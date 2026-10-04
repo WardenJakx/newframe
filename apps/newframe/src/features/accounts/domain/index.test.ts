@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
 
-import { accountSort as byCreation, hasAddress } from './index'
+import { accountSort as byCreation, hasAddress } from './index.ts'
 
 const makeMockAccount = (address: string, timestamp = Date.now(), block = 0, name = address) => ({
   id: address,

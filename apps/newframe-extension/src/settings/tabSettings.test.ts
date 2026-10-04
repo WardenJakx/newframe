@@ -7,7 +7,7 @@ import {
   refreshCurrentChain,
   switchOriginChain,
   toggleMetaMaskSetting
-} from './tabSettings'
+} from './tabSettings.ts'
 
 const originals = new Map<string, PropertyDescriptor | undefined>()
 function stubGlobal(name: string, value: unknown) {

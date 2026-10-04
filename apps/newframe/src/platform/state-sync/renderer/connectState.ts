@@ -1,6 +1,6 @@
 import { createStore, type StoreApi } from 'zustand/vanilla'
 
-import type { RendererState, StateConnectionResult, StateMessage } from '../contract/protocol'
+import type { RendererState, StateConnectionResult, StateMessage } from '../contract/protocol.ts'
 
 export interface RendererStateConnectionClient {
   connectState(handler: (message: StateMessage) => void): Promise<StateConnectionResult>

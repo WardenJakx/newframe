@@ -5,8 +5,8 @@ import {
   PERSISTENCE_VERSION,
   StoredEnvelopeSchema,
   type PersistedCanonicalState
-} from '../state-store/persist/schema.js'
-import type { PersistenceClockPort, PersistenceLoggerPort, PersistenceStoragePort } from './ports.js'
+} from '../state-store/persist/schema.ts'
+import type { PersistenceClockPort, PersistenceLoggerPort, PersistenceStoragePort } from './ports.ts'
 
 type PendingWrite = {
   key: string

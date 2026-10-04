@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
-import type { AccountsCapability } from './accountsCapability'
+import type { AccountsCapability } from './accountsCapability.ts'
 
 export interface HardwareSession {
   operationId: string

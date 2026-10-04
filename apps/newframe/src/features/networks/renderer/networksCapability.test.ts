@@ -1,7 +1,7 @@
 import { expect, it } from 'bun:test'
 
-import { createRendererClient as createTypedClient } from '../../../../test/support/rendererClient'
-import { createNetworksCapability } from './networksCapability'
+import { createRendererClient as createTypedClient } from '../../../../test/support/rendererClient.ts'
+import { createNetworksCapability } from './networksCapability.ts'
 
 it('maps network removal to the command catalog', async () => {
   const host = createTypedClient()

@@ -8,19 +8,19 @@ import { powerMonitor } from 'electron'
 import log from 'electron-log'
 import { shallow } from 'zustand/vanilla/shallow'
 
-import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
-import type { GasFees } from '../../../platform/state-store/state/index.js'
-import type { EVMError, JSONRPCRequestPayload, RPCRequestCallback } from '../../../shared/domain/rpc.js'
+import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
+import type { GasFees } from '../../../platform/state-store/state/index.ts'
+import type { EVMError, JSONRPCRequestPayload, RPCRequestCallback } from '../../../shared/domain/rpc.ts'
 import {
   createJsonRpcProvider,
   listenForProviderClose,
   sendRpcPayload,
   type EthersRpcProvider
-} from '../../connections/main/provider/connection.js'
-import GasMonitor from '../../transactions/main/gasMonitor.js'
-import { NETWORK_PRESETS } from '../domain/chain/presets.js'
-import chainConfig from './config.js'
-import { createGasCalculator } from './gas.js'
+} from '../../connections/main/provider/connection.ts'
+import GasMonitor from '../../transactions/main/gasMonitor.ts'
+import { NETWORK_PRESETS } from '../domain/chain/presets.ts'
+import chainConfig from './config.ts'
+import { createGasCalculator } from './gas.ts'
 
 type CanonicalStoreApi = CanonicalStoreReader
 

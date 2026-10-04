@@ -2,9 +2,9 @@ import { HoverSwapText } from '@newframe/ui/hover-swap-text'
 import { Text } from '@newframe/ui/text'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
-import type { ClipboardCapability } from '../capabilities'
-import { AddressAvatar } from './AddressAvatar'
-import { CopyButton } from './CopyButton'
+import type { ClipboardCapability } from '../capabilities.ts'
+import { AddressAvatar } from './AddressAvatar.tsx'
+import { CopyButton } from './CopyButton.tsx'
 
 const addressIdentityRecipe = cva({
   base: {

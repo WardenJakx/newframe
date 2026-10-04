@@ -2,10 +2,10 @@ import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
-import type { ClipboardCapability } from '../../../shared/renderer/capabilities'
-import { AddressIdentity } from '../../../shared/renderer/ui/AddressIdentity'
-import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay'
-import AddressQRCode from './AddressQRCode'
+import type { ClipboardCapability } from '../../../shared/renderer/capabilities.ts'
+import { AddressIdentity } from '../../../shared/renderer/ui/AddressIdentity.tsx'
+import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay.tsx'
+import AddressQRCode from './AddressQRCode.tsx'
 
 const receiveRecipe = cva({
   base: {

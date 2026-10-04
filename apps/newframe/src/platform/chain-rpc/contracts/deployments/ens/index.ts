@@ -1,9 +1,9 @@
 import { Interface } from 'ethers'
 import type { JsonFragment, Fragment } from 'ethers'
 
-import type { DecodableContract } from '../../../../../features/transactions/main/actions/index.js'
-import type { Address } from '../../../../../shared/domain/address.js'
-import { registrar as registrarAbi, registrarController as registrarControllerAbi } from './abi.js'
+import type { DecodableContract } from '../../../../../features/transactions/main/actions/index.ts'
+import type { Address } from '../../../../../shared/domain/address.ts'
+import { registrar as registrarAbi, registrarController as registrarControllerAbi } from './abi.ts'
 
 // TODO: fix typing on contract types
 type EnsContract = DecodableContract<unknown>

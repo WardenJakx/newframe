@@ -1,14 +1,14 @@
-import type { CanonicalStore } from '../../../platform/state-store/actions.js'
+import type { CanonicalStore } from '../../../platform/state-store/actions.ts'
 import type {
   SideTrayOpenCommand,
   UpdaterRespondCommand,
   WarningToggleCommand
-} from '../../contracts/operations.js'
+} from '../../contracts/operations.ts'
 import {
   buildSideTrayRoute,
   normalizeSideTrayFrameRequest,
   SIDE_TRAY_FRAME_ID
-} from '../../contracts/sidetray/index.js'
+} from '../../contracts/sidetray/index.ts'
 
 type PlatformState = Pick<
   CanonicalStore,

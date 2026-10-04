@@ -1,4 +1,4 @@
-import { Stack, type StackProps } from './Stack.js'
+import { Stack, type StackProps } from './Stack.tsx'
 
 export type InlineProps = Omit<StackProps, 'direction' | 'equal'>
 

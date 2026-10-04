@@ -6,7 +6,7 @@ import {
   getRecipientAddress,
   validateSendDraft,
   validateSendRequest
-} from './sendValidation'
+} from './sendValidation.ts'
 
 const validAddress = '0x00000000000000000000000000000000000000aa'
 

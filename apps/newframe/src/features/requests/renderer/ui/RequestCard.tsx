@@ -7,7 +7,7 @@ import { Text } from '@newframe/ui/text'
 import type { ReactNode } from 'react'
 
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
-import StatusGlyph from '../../../../shared/renderer/ui/StatusGlyph'
+import StatusGlyph from '../../../../shared/renderer/ui/StatusGlyph.tsx'
 
 const contentRecipe = cva({ base: { width: '100%', minWidth: 0 } })
 

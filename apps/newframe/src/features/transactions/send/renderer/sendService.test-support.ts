@@ -1,6 +1,6 @@
 import { mock } from 'bun:test'
 
-import type { SendCapability } from './sendService'
+import type { SendCapability } from './sendService.ts'
 
 export function createSendCapabilityFake() {
   return {

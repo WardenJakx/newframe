@@ -1,6 +1,6 @@
 import { forwardRef } from 'react'
 
-import { inputClasses } from './Input.js'
+import { inputClasses } from './Input.tsx'
 
 export type SelectOption = { disabled?: boolean; label: string; value: string }
 

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'bun:test'
 
 import { token } from '../src/styled-system/tokens/index'
-import { layerTokens } from '../src/tokens/layers'
-import { typographyTokens } from '../src/tokens/typography'
+import { layerTokens } from '../src/tokens/layers.ts'
+import { typographyTokens } from '../src/tokens/typography.ts'
 
 describe('design tokens', () => {
   it('preserves public color aliases alongside nested semantic roles', () => {

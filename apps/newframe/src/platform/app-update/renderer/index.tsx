@@ -3,9 +3,9 @@ import { Dialog } from '@newframe/ui/dialog'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 
-import type { TrayRendererState } from '../../../app/renderer/tray/state'
-import { useWalletSelector } from '../../state-sync/renderer/useAppSelector'
-import type { UpdaterCapability } from './updaterCapability'
+import type { TrayRendererState } from '../../../app/renderer/tray/state.ts'
+import { useWalletSelector } from '../../state-sync/renderer/useAppSelector.tsx'
+import type { UpdaterCapability } from './updaterCapability.ts'
 
 const EMPTY_BADGE = {}
 const selectBadge = (state: TrayRendererState) => state.view.badge ?? EMPTY_BADGE

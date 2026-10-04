@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["unicorn", "oxc"],
+  "plugins": ["unicorn", "oxc", "import"],
   "jsPlugins": ["./apps/newframe/scripts/oxlint-plugin-newframe.mjs"],
   "options": {
     "typeAware": true
@@ -162,6 +162,17 @@
     {
       "files": ["**/*.{ts,tsx}"],
       "rules": {
+        "import/extensions": [
+          "error",
+          "always",
+          {
+            "ignorePackages": true,
+            "checkTypeImports": true,
+            "js": "never",
+            "jsx": "never",
+            "pathGroupOverrides": [{ "pattern": "**/styled-system/**", "action": "ignore" }]
+          }
+        ],
         "constructor-super": "off",
         "getter-return": "off",
         "no-class-assign": "off",

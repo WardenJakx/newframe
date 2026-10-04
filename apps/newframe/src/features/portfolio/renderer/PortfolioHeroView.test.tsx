@@ -1,13 +1,13 @@
 import { describe, expect, it, jest as timers } from 'bun:test'
 
-import { act, render, screen } from '../../../../test/support/componentSetup'
-import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
-import type { AppCommand } from '../../../app/contracts/operations'
-import type { OperationRecord } from '../../../platform/operations/operation'
+import { act, render, screen } from '../../../../test/support/componentSetup.tsx'
+import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient.ts'
+import type { AppCommand } from '../../../app/contracts/operations.ts'
+import type { OperationRecord } from '../../../platform/operations/operation.ts'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
-import { createPortfolioCapability } from './portfolioCapability'
-import { formatPortfolioValue, PortfolioHero } from './PortfolioHero'
-import { PortfolioHeroView } from './PortfolioHeroView'
+import { createPortfolioCapability } from './portfolioCapability.ts'
+import { formatPortfolioValue, PortfolioHero } from './PortfolioHero.tsx'
+import { PortfolioHeroView } from './PortfolioHeroView.tsx'
 
 const noop = () => {}
 const fixture = registerTestRuntimeFixture()

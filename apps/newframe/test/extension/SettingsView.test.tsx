@@ -1,8 +1,11 @@
 import { describe, expect, it, mock } from 'bun:test'
 
-import { frameStateStore } from '../../../newframe-extension/src/frameState'
-import { SettingsView, type SettingsViewProps } from '../../../newframe-extension/src/settings/SettingsView'
-import { fireEvent, render, screen } from '../support/componentSetup'
+import { frameStateStore } from '../../../newframe-extension/src/frameState.ts'
+import {
+  SettingsView,
+  type SettingsViewProps
+} from '../../../newframe-extension/src/settings/SettingsView.tsx'
+import { fireEvent, render, screen } from '../support/componentSetup.tsx'
 
 function props(overrides: Partial<SettingsViewProps> = {}): SettingsViewProps {
   return {

@@ -6,10 +6,10 @@ import type {
 } from '@metamask/eth-sig-util'
 import type { AgentConnect } from '@newframe/desktop-api/schemas'
 
-import type { Address } from '../../../shared/domain/address.js'
-import type { JSONRPCRequestPayload, RPC } from '../../../shared/domain/rpc.js'
-import type { Token } from '../../tokens/domain/state/token.js'
-import type { TransactionData, TransactionSimulation } from '../../transactions/domain/index.js'
+import type { Address } from '../../../shared/domain/address.ts'
+import type { JSONRPCRequestPayload, RPC } from '../../../shared/domain/rpc.ts'
+import type { Token } from '../../tokens/domain/state/token.ts'
+import type { TransactionData, TransactionSimulation } from '../../transactions/domain/index.ts'
 
 interface DecodedCallData {
   contractAddress: string

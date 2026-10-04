@@ -5,9 +5,9 @@ import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 import { useState } from 'react'
 
-import { capitalize } from '../../../shared/domain/text'
-import { AppIcon } from '../../../shared/renderer/ui/appIcon'
-import type { ConnectionsCapability } from './connectionsCapability'
+import { capitalize } from '../../../shared/domain/text.ts'
+import { AppIcon } from '../../../shared/renderer/ui/appIcon.tsx'
+import type { ConnectionsCapability } from './connectionsCapability.ts'
 
 export type ExtensionConnectNotificationProps = {
   browser: string

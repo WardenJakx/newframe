@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, it, jest as timers } from 'bun:test'
 
-import { render, screen, act } from '../../../../../test/support/componentSetup'
-import useCountdown from './useCountdown'
+import { render, screen, act } from '../../../../../test/support/componentSetup.tsx'
+import useCountdown from './useCountdown.ts'
 
 const startDate = new Date('2023-01-01')
 const nextDay = new Date('2023-01-02')

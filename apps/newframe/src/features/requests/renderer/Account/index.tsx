@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
-import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
-import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
-import type { RequestRendererCapabilities } from '../requestCapabilities'
-import Account from './Account'
+import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections.ts'
+import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector.tsx'
+import type { RequestRendererCapabilities } from '../requestCapabilities.ts'
+import Account from './Account.tsx'
 
 const selectCurrentAccount = (state: WalletRendererState) => {
   const current = state.currentAccount

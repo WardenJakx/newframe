@@ -1,8 +1,8 @@
 import { z } from 'zod'
 
-import { getFlashAssetsForChain, toFlashApiAssetAddress } from './assets.js'
-import { getFlashChainIdFromSlug, getFlashChainSlug, isFlashChainSupported } from './chains.js'
-import { FLASH_MARKET_ORDER_TYPE } from './constants.js'
+import { getFlashAssetsForChain, toFlashApiAssetAddress } from './assets.ts'
+import { getFlashChainIdFromSlug, getFlashChainSlug, isFlashChainSupported } from './chains.ts'
+import { FLASH_MARKET_ORDER_TYPE } from './constants.ts'
 import {
   FlashBoundQuoteRequestSchema,
   FlashSubmitOrderRequestSchema,
@@ -10,9 +10,9 @@ import {
   type FlashPriceTriggerInput,
   type FlashQuoteRequest,
   type FlashSubmitOrderRequest
-} from './contracts.js'
-import { getFlashAssetPairChains, getReceiveAsset, getSpentAsset } from './pair.js'
-import { flashRuntimeFromEnv } from './runtime.js'
+} from './contracts.ts'
+import { getFlashAssetPairChains, getReceiveAsset, getSpentAsset } from './pair.ts'
+import { flashRuntimeFromEnv } from './runtime.ts'
 import {
   FlashQuoteSchema,
   FlashRuntimeSchema,
@@ -24,8 +24,8 @@ import {
   type FlashQuoteTransactionRequest,
   type FlashRuntime,
   type FlashStep
-} from './schemas.js'
-import { FlashQuoteResponseSchema } from './wire.js'
+} from './schemas.ts'
+import { FlashQuoteResponseSchema } from './wire.ts'
 
 function normalizeAddress(address?: unknown) {
   return typeof address === 'string' ? address.trim().toLowerCase() : ''

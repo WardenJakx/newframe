@@ -2,15 +2,18 @@ import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
 import { within } from '@testing-library/react'
 
-import { act, render, screen, waitFor } from '../../../../test/support/componentSetup'
-import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
-import { createQrCameraFake } from '../../../platform/desktop/renderer/camera.test-support'
-import type { OperationRecord } from '../../../platform/operations/operation'
+import { act, render, screen, waitFor } from '../../../../test/support/componentSetup.tsx'
+import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient.ts'
+import { createQrCameraFake } from '../../../platform/desktop/renderer/camera.test-support.ts'
+import type { OperationRecord } from '../../../platform/operations/operation.ts'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
-import { signerIconName } from '../../../shared/renderer/ui/signerPresentation'
-import { Accounts } from './Accounts'
-import { createAccountsCapabilityFake, type AccountsCapabilityFake } from './accountsCapability.test-support'
-import { AddAccount } from './AddAccount'
+import { signerIconName } from '../../../shared/renderer/ui/signerPresentation.ts'
+import { Accounts } from './Accounts.tsx'
+import {
+  createAccountsCapabilityFake,
+  type AccountsCapabilityFake
+} from './accountsCapability.test-support.ts'
+import { AddAccount } from './AddAccount.tsx'
 
 const fixture = registerTestRuntimeFixture()
 let capability: AccountsCapabilityFake

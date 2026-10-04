@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { FlashAssetSchema, FlashOrderTypeSchema, FlashQuoteSchema, FlashTradeSideSchema } from './schemas.js'
+import { FlashAssetSchema, FlashOrderTypeSchema, FlashQuoteSchema, FlashTradeSideSchema } from './schemas.ts'
 
 const NumberOrStringSchema = z.union([z.number(), z.string()])
 const FlashPriceTriggerInputSchema = z.object({

@@ -1,6 +1,6 @@
 import { expect, it } from 'bun:test'
 
-import { createSafeSimulationRpc } from './simulation'
+import { createSafeSimulationRpc } from './simulation.ts'
 
 it('routes reads to the selected chain and rejects write methods', async () => {
   const sent: unknown[] = []

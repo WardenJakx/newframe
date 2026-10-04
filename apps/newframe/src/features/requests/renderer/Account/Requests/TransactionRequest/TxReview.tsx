@@ -7,25 +7,25 @@ import { Text } from '@newframe/ui/text'
 import { formatUnits } from 'ethers'
 import { useState, type ReactNode } from 'react'
 
-import { getAddress } from '../../../../../../shared/domain/address'
-import { toBigInt } from '../../../../../../shared/domain/units'
-import { AddressIdentity, shortAddress } from '../../../../../../shared/renderer/ui/AddressIdentity'
-import { persistedImageSource } from '../../../../../asset-data/domain/image'
-import { chainUsesOptimismFees } from '../../../../../networks/domain/chain/fees'
-import { tokenForId, tokenImageSource } from '../../../../../tokens/domain'
-import { NATIVE_CURRENCY } from '../../../../../tokens/domain/constants'
+import { getAddress } from '../../../../../../shared/domain/address.ts'
+import { toBigInt } from '../../../../../../shared/domain/units.ts'
+import { AddressIdentity, shortAddress } from '../../../../../../shared/renderer/ui/AddressIdentity.tsx'
+import { persistedImageSource } from '../../../../../asset-data/domain/image/index.ts'
+import { chainUsesOptimismFees } from '../../../../../networks/domain/chain/fees.ts'
+import { NATIVE_CURRENCY } from '../../../../../tokens/domain/constants.ts'
+import { tokenForId, tokenImageSource } from '../../../../../tokens/domain/index.ts'
+import type { TransactionFeeLevel } from '../../../../../transactions/domain/fees.ts'
 import {
   getPaidTransactionFee,
   getTransactionEffects,
   getTransactionIntent,
   typeSupportsBaseFee
-} from '../../../../../transactions/domain'
-import type { TransactionFeeLevel } from '../../../../../transactions/domain/fees'
-import { displayValueData } from '../../../format/displayValue'
-import type { RequestRendererCapabilities } from '../../../requestCapabilities'
-import { useRequestView } from '../../../requestView'
-import { DisplayCoinBalance } from '../../../ui/DisplayValue'
-import type { TransactionDataView, TransactionRequestView } from '../requestViewTypes'
+} from '../../../../../transactions/domain/index.ts'
+import { displayValueData } from '../../../format/displayValue.ts'
+import type { RequestRendererCapabilities } from '../../../requestCapabilities.ts'
+import { useRequestView } from '../../../requestView.tsx'
+import { DisplayCoinBalance } from '../../../ui/DisplayValue.tsx'
+import type { TransactionDataView, TransactionRequestView } from '../requestViewTypes.ts'
 import {
   useAddressIdentities,
   useAssetRate,
@@ -34,9 +34,12 @@ import {
   useOriginName,
   useOrigins,
   useTokens
-} from '../state'
-import TransactionInformation from './TransactionInformation'
-import type { TransactionInformationDetailRow, TransactionInformationProps } from './TransactionInformation'
+} from '../state.ts'
+import TransactionInformation from './TransactionInformation.tsx'
+import type {
+  TransactionInformationDetailRow,
+  TransactionInformationProps
+} from './TransactionInformation.tsx'
 
 type NativeCurrency = {
   symbol: string

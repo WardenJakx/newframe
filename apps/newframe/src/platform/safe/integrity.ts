@@ -6,15 +6,15 @@ import {
   safeAddressSchema,
   safeProposalSchema,
   type SafeProposal
-} from '../../features/accounts/domain/safe.js'
-import type { TypedMessage } from '../../features/requests/contract/requests.js'
+} from '../../features/accounts/domain/safe.ts'
+import type { TypedMessage } from '../../features/requests/contract/requests.ts'
 import {
   getEip712Digests,
   getOriginalMessageDigest,
   type OriginalMessage
-} from '../signing/signatures/digests.js'
+} from '../signing/signatures/digests.ts'
 
-export { recoverSafeConfirmationOwner } from '../../features/accounts/domain/safe.js'
+export { recoverSafeConfirmationOwner } from '../../features/accounts/domain/safe.ts'
 
 export const EIP1271_MAGIC_VALUE = '0x1626ba7e'
 export const EIP1271_SIGNATURE =

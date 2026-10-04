@@ -7,13 +7,13 @@ import { Text } from '@newframe/ui/text'
 import type { ReactNode } from 'react'
 
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
-import type { ClipboardCapability, TokenImageCapability } from '../../../../shared/renderer/capabilities'
-import { ChainIcon } from '../../../../shared/renderer/ui/ChainIcon'
-import ChainTokenIcon from '../../../../shared/renderer/ui/ChainTokenIcon'
-import { CopyButton } from '../../../../shared/renderer/ui/CopyButton'
-import StatusGlyph from '../../../../shared/renderer/ui/StatusGlyph'
-import { persistedImageSource } from '../../../asset-data/domain/image'
-import { tokenForId, tokenImageSource } from '../../../tokens/domain'
+import type { ClipboardCapability, TokenImageCapability } from '../../../../shared/renderer/capabilities.ts'
+import { ChainIcon } from '../../../../shared/renderer/ui/ChainIcon.tsx'
+import ChainTokenIcon from '../../../../shared/renderer/ui/ChainTokenIcon.tsx'
+import { CopyButton } from '../../../../shared/renderer/ui/CopyButton.tsx'
+import StatusGlyph from '../../../../shared/renderer/ui/StatusGlyph.tsx'
+import { persistedImageSource } from '../../../asset-data/domain/image/index.ts'
+import { tokenForId, tokenImageSource } from '../../../tokens/domain/index.ts'
 import {
   activityAssetEffect,
   activityBalanceChangeLabel,
@@ -21,14 +21,14 @@ import {
   activityGlyphState,
   activityTimestampLabel,
   transactionStatusLabel
-} from './activityModel'
+} from './activityModel.ts'
 import type {
   ActivityNetworkMap,
   ActivityNetworkMetadataMap,
   ActivityRecord,
   ActivityViewRecord,
   ActivityTokenCatalog
-} from './activityTypes'
+} from './activityTypes.ts'
 
 const activityRowRecipe = cva({
   base: {

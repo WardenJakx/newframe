@@ -1,20 +1,20 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, jest as timers, mock } from 'bun:test'
 
-import { DEFAULT_PROFILE_ID } from '../../../../app/contracts/state/main'
-import store from '../../../../platform/state-store'
-import createCanonicalStore from '../../../../platform/state-store/createCanonicalStore'
-import type { Account } from '../../../accounts/domain/state/account'
+import { DEFAULT_PROFILE_ID } from '../../../../app/contracts/state/main.ts'
+import createCanonicalStore from '../../../../platform/state-store/createCanonicalStore.ts'
+import store from '../../../../platform/state-store/index.ts'
+import type { Account } from '../../../accounts/domain/state/account.ts'
 
 const mockBalancesFactory = mock(() => mockBalances)
 
-await mock.module('./balances', () => ({ default: mockBalancesFactory }))
+await mock.module('./balances/index.ts', () => ({ default: mockBalancesFactory }))
 
 let dataManager: ReturnType<typeof externalData>
-let externalData: typeof import('./index').default
+let externalData: typeof import('./index.ts').default
 let mockBalances: ReturnType<typeof createBalancesMock>
 
 beforeAll(async () => {
-  externalData = (await import('./index')).default
+  externalData = (await import('./index.ts')).default
 })
 
 beforeEach(() => {

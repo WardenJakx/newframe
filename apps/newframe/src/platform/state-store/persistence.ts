@@ -1,15 +1,15 @@
 import log from 'electron-log'
 
-import { DEFAULT_PROFILE_ID, DEFAULT_PROFILE_NAME } from '../../app/contracts/state/main.js'
-import { listCuratedAssets } from '../../features/asset-data/domain/asset/index.js'
-import { embeddedImageSource } from '../../features/asset-data/domain/image/index.js'
-import { CanonicalStatePersistenceError } from '../persistence/index.js'
-import type { CanonicalStore } from './actions.js'
+import { DEFAULT_PROFILE_ID, DEFAULT_PROFILE_NAME } from '../../app/contracts/state/main.ts'
+import { listCuratedAssets } from '../../features/asset-data/domain/asset/index.ts'
+import { embeddedImageSource } from '../../features/asset-data/domain/image/index.ts'
+import { CanonicalStatePersistenceError } from '../persistence/index.ts'
+import type { CanonicalStore } from './actions.ts'
 import {
   PERSISTENCE_VERSION,
   PersistedCanonicalStateSchema,
   type PersistedCanonicalState
-} from './persist/schema.js'
+} from './persist/schema.ts'
 
 type UnknownRecord = Record<string, unknown>
 

@@ -10,16 +10,16 @@ import React from 'react'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
 import { cx } from '../../../../generated/styled-system/css/cx.js'
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
+import type { WalletRendererState } from '../../../platform/state-sync/contract/projections.ts'
 import {
   selectOperationById,
   selectOperationEntityId
-} from '../../../platform/state-sync/renderer/selectors/operation'
-import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
-import { AddressAvatar } from '../../../shared/renderer/ui/AddressAvatar'
-import { shortAddress } from '../../../shared/renderer/ui/AddressIdentity'
-import { formatUsdRate } from '../../asset-data/domain/balance'
-import type { AccountsCapability } from './accountsCapability'
+} from '../../../platform/state-sync/renderer/selectors/operation.ts'
+import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector.tsx'
+import { AddressAvatar } from '../../../shared/renderer/ui/AddressAvatar.tsx'
+import { shortAddress } from '../../../shared/renderer/ui/AddressIdentity.tsx'
+import { formatUsdRate } from '../../asset-data/domain/balance/index.ts'
+import type { AccountsCapability } from './accountsCapability.ts'
 
 type ProfileSummary = WalletRendererState['profiles'][number]
 type MovableAccount = {

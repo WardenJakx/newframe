@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
-import { createTestStore } from '../../../test/support/createTestStore'
-import { createOperationService } from './service'
+import { createTestStore } from '../../../test/support/createTestStore.ts'
+import { createOperationService } from './service.ts'
 
 const owner = { clientType: 'wallet-ui', windowInstanceId: 'wallet-window' } as const
 const reference = (

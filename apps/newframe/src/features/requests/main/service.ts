@@ -3,30 +3,30 @@ import { randomUUID } from 'node:crypto'
 import type {
   NetworkRequestResolveCommand,
   TransactionReplaceCommand
-} from '../../../app/contracts/operations.js'
-import type { RequestSource } from '../../../app/main/gateway/requestSource.js'
+} from '../../../app/contracts/operations.ts'
+import type { RequestSource } from '../../../app/main/gateway/requestSource.ts'
 import {
   findUnavailableSigners,
   isHardwareSigner,
   isSignerReady
-} from '../../../platform/signing/domain/index.js'
-import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.js'
-import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
-import type { Chain } from '../../../platform/state-store/state/index.js'
-import type { EVMError, RPCRequestCallback, RPCResponsePayload } from '../../../shared/domain/rpc.js'
-import { toBigInt } from '../../../shared/domain/units.js'
-import type { Accounts } from '../../accounts/main/index.js'
-import type { SafeMessageApprovalResult } from '../../accounts/main/safeMessage.js'
-import type { SafeTransactionPort } from '../../accounts/main/safeTransactionPort.js'
-import { deriveSigningCapability } from '../../accounts/main/signingCapability.js'
-import { resolveAssetRate } from '../../asset-data/domain/asset/index.js'
-import { NATIVE_CURRENCY } from '../../tokens/domain/constants.js'
+} from '../../../platform/signing/domain/index.ts'
+import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.ts'
+import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
+import type { Chain } from '../../../platform/state-store/state/index.ts'
+import type { EVMError, RPCRequestCallback, RPCResponsePayload } from '../../../shared/domain/rpc.ts'
+import { toBigInt } from '../../../shared/domain/units.ts'
+import type { Accounts } from '../../accounts/main/index.ts'
+import type { SafeMessageApprovalResult } from '../../accounts/main/safeMessage.ts'
+import type { SafeTransactionPort } from '../../accounts/main/safeTransactionPort.ts'
+import { deriveSigningCapability } from '../../accounts/main/signingCapability.ts'
+import { resolveAssetRate } from '../../asset-data/domain/asset/index.ts'
+import { NATIVE_CURRENCY } from '../../tokens/domain/constants.ts'
 import {
   applyTransactionAdjustments,
   type TransactionApprovalAdjustments
-} from '../../transactions/domain/approval.js'
-import { usesBaseFee } from '../../transactions/domain/index.js'
-import type { AccountTransactionPolicyPort } from '../../transactions/main/accountPolicyPort.js'
+} from '../../transactions/domain/approval.ts'
+import { usesBaseFee } from '../../transactions/domain/index.ts'
+import type { AccountTransactionPolicyPort } from '../../transactions/main/accountPolicyPort.ts'
 import type {
   AccountRequest,
   AccessRequest,
@@ -36,10 +36,10 @@ import type {
   SignatureRequest,
   SignTypedDataRequest,
   TransactionRequest
-} from '../contract/requests.js'
-import { ReplacementType } from '../contract/requests.js'
-import type { ApprovalType } from '../domain/approval.js'
-import { isSignatureRequest, isTransactionRequest, isTypedMessageSignatureRequest } from '../domain/index.js'
+} from '../contract/requests.ts'
+import { ReplacementType } from '../contract/requests.ts'
+import type { ApprovalType } from '../domain/approval.ts'
+import { isSignatureRequest, isTransactionRequest, isTypedMessageSignatureRequest } from '../domain/index.ts'
 
 const FEE_WARNING_THRESHOLD_USD = 50
 

@@ -6,16 +6,16 @@ import {
 } from '@newframe/flash/schemas'
 import { z } from 'zod'
 
-import { SafeProposalSimulationSchema } from '../../features/accounts/domain/safe.js'
-import { TransactionApprovalAdjustmentsSchema } from '../../features/transactions/domain/approval.js'
+import { SafeProposalSimulationSchema } from '../../features/accounts/domain/safe.ts'
+import { TransactionApprovalAdjustmentsSchema } from '../../features/transactions/domain/approval.ts'
 import {
   FLASH_MAX_TWAP_BUCKET_COUNT,
   FLASH_MAX_TWAP_DURATION_SECONDS,
   FLASH_MIN_TWAP_BUCKET_COUNT,
   FLASH_MIN_TWAP_DURATION_SECONDS
-} from '../../features/transactions/trade/domain/policy.js'
-import { AirGapRequestReferenceSchema } from '../../platform/signing/domain/airgap.js'
-import { PortfolioProviderIdSchema } from './state/main.js'
+} from '../../features/transactions/trade/domain/policy.ts'
+import { AirGapRequestReferenceSchema } from '../../platform/signing/domain/airgap.ts'
+import { PortfolioProviderIdSchema } from './state/main.ts'
 
 const AddressSchema = z.string().regex(/^0x[0-9a-fA-F]{40}$/)
 const ChainIdSchema = z.number().int().positive()

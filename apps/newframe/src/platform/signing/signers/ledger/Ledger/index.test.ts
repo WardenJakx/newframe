@@ -13,12 +13,12 @@ import {
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import log from 'electron-log'
 
-import type { TypedMessage } from '../../../../../features/requests/contract/requests'
-import { GasFeesSource, type TransactionData } from '../../../../../features/transactions/domain'
-import type { Callback } from '../../../../../shared/domain/async.js'
+import type { TypedMessage } from '../../../../../features/requests/contract/requests.ts'
+import { GasFeesSource, type TransactionData } from '../../../../../features/transactions/domain/index.ts'
+import type { Callback } from '../../../../../shared/domain/async.ts'
 import { callbackResult } from '../../callback.test-support.ts'
-import { Derivation } from '../../Signer/derive'
-import type LedgerSigner from './index'
+import { Derivation } from '../../Signer/derive.ts'
+import type LedgerSigner from './index.ts'
 
 const createEthInstance = () => ({
   close: mock(async () => undefined),
@@ -41,11 +41,11 @@ const EthMock = mock(function () {
 })
 const TransportNodeHidMock = { open: mock(async () => ({ close: mock() })) }
 
-await mock.module('./eth.js', () => ({ default: EthMock }))
-await mock.module('../dependencies.js', () => ({ TransportNodeHidNoEvents: TransportNodeHidMock }))
+await mock.module('./eth.ts', () => ({ default: EthMock }))
+await mock.module('../dependencies.ts', () => ({ TransportNodeHidNoEvents: TransportNodeHidMock }))
 
 let Ledger: typeof LedgerSigner
-let Status: typeof import('./index').Status
+let Status: typeof import('./index.ts').Status
 let ledger: TestLedger
 const addresses = ['0xf10326c1c6884b094e03d616cc8c7b920e3f73e0', '0xa16002db5438b5862270a9e404346e3c3b059eeb']
 const signature =
@@ -105,7 +105,7 @@ async function connectEthApp() {
 beforeAll(async () => {
   timers.useFakeTimers()
   log.transports.console.level = false
-  const ledgerModule = await import('./index')
+  const ledgerModule = await import('./index.ts')
   Ledger = ledgerModule.default
   Status = ledgerModule.Status
 })

@@ -1,30 +1,30 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
-import type { CommandResult, QueryResultMap } from '../../../app/contracts/operations'
-import type { QrCameraCapability } from '../../../platform/desktop/renderer/camera'
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
-import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
-import { shortAddress } from '../../../shared/renderer/ui/AddressIdentity'
-import { ChainIcon } from '../../../shared/renderer/ui/ChainIcon'
+import type { CommandResult, QueryResultMap } from '../../../app/contracts/operations.ts'
+import type { QrCameraCapability } from '../../../platform/desktop/renderer/camera.ts'
+import type { WalletRendererState } from '../../../platform/state-sync/contract/projections.ts'
+import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector.tsx'
+import { shortAddress } from '../../../shared/renderer/ui/AddressIdentity.tsx'
+import { ChainIcon } from '../../../shared/renderer/ui/ChainIcon.tsx'
 import {
   accountDisplayType,
   signerIsLoading,
   signerTypeLabel
-} from '../../../shared/renderer/ui/signerPresentation'
-import { createBalanceSummarySelector, formatUsdRate } from '../../asset-data/domain/balance'
-import type { AccountsCapability } from './accountsCapability'
-import type { AccountProjection, SignerProjection } from './accountsModel'
-import { hardwarePageModel, onboardingStatusText } from './addAccountModel'
-import { addAccountReducer, createAddAccountState } from './addAccountReducer'
+} from '../../../shared/renderer/ui/signerPresentation.ts'
+import { createBalanceSummarySelector, formatUsdRate } from '../../asset-data/domain/balance/index.ts'
+import type { AccountsCapability } from './accountsCapability.ts'
+import type { AccountProjection, SignerProjection } from './accountsModel.ts'
+import { hardwarePageModel, onboardingStatusText } from './addAccountModel.ts'
+import { addAccountReducer, createAddAccountState } from './addAccountReducer.ts'
 import {
   AddAccountView,
   type AddAccountAddressRowModel,
   type AddAccountFlowModel,
   type AddAccountOption
-} from './AddAccountView'
-import { AirGapPairing } from './airgap/AirGapPairing'
-import { useHardwareSessionController } from './useHardwareSession'
+} from './AddAccountView.tsx'
+import { AirGapPairing } from './airgap/AirGapPairing.tsx'
+import { useHardwareSessionController } from './useHardwareSession.ts'
 
 const addOptions: Record<'root' | 'import' | 'hardware', AddAccountOption[]> = {
   root: [

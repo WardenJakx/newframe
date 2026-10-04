@@ -6,27 +6,27 @@ import { desktopRouter } from '@newframe/desktop-api/router'
 import { createHTTPHandler } from '@trpc/server/adapters/standalone'
 import WebSocket, { WebSocketServer } from 'ws'
 
-import type { Accounts } from '../../../features/accounts/main/index.js'
-import type { AgentService } from '../../../features/agent-access/main/index.js'
-import { createExtensionAccessService } from '../../../features/connections/main/extensionAccess.js'
+import type { Accounts } from '../../../features/accounts/main/index.ts'
+import type { AgentService } from '../../../features/agent-access/main/index.ts'
+import { createExtensionAccessService } from '../../../features/connections/main/extensionAccess.ts'
 import {
   parseOrigin,
   parseRequestChainId,
   createProductionOriginsService
-} from '../../../features/connections/main/origins.js'
-import type { RequestService } from '../../../features/requests/main/service.js'
-import type { FlashService } from '../../../features/transactions/trade/main/index.js'
-import { localApiPort } from '../../../platform/local-rpc/endpoint.js'
-import { createHttpRpcTransport } from '../../../platform/local-rpc/http.js'
-import { createOriginSessionMonitor, createRpcRequestHandler } from '../../../platform/local-rpc/request.js'
-import { createApiServer } from '../../../platform/local-rpc/server.js'
-import { rpcCall } from '../../../platform/local-rpc/trpc.js'
+} from '../../../features/connections/main/origins.ts'
+import type { RequestService } from '../../../features/requests/main/service.ts'
+import type { FlashService } from '../../../features/transactions/trade/main/index.ts'
+import { localApiPort } from '../../../platform/local-rpc/endpoint.ts'
+import { createHttpRpcTransport } from '../../../platform/local-rpc/http.ts'
+import { createOriginSessionMonitor, createRpcRequestHandler } from '../../../platform/local-rpc/request.ts'
+import { createApiServer } from '../../../platform/local-rpc/server.ts'
+import { rpcCall } from '../../../platform/local-rpc/trpc.ts'
 import {
   createWebSocketRpcTransport,
   type WebSocketRpcTransportDependencies
-} from '../../../platform/local-rpc/ws.js'
-import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
-import type { RpcIpcHandlers } from '../ipc-handlers/rpc.js'
+} from '../../../platform/local-rpc/ws.ts'
+import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
+import type { RpcIpcHandlers } from '../ipc-handlers/rpc.ts'
 
 export function createProductionApiServer(
   provider: RpcIpcHandlers,

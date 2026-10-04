@@ -1,6 +1,6 @@
-import { timestamp } from '../../../../shared/domain/timestamp'
-import { formatUnits, toBigInt } from '../../../../shared/domain/units'
-import { getPaidTransactionFee, getTransactionEffects, type TransactionEffect } from '../../domain'
+import { timestamp } from '../../../../shared/domain/timestamp.ts'
+import { formatUnits, toBigInt } from '../../../../shared/domain/units.ts'
+import { getPaidTransactionFee, getTransactionEffects, type TransactionEffect } from '../../domain/index.ts'
 import {
   projectActivityRecord,
   type ActivityNetworkMap,
@@ -8,7 +8,7 @@ import {
   type ActivityRecord,
   type ActivityViewRecord,
   type WalletActivityRecord
-} from './activityTypes'
+} from './activityTypes.ts'
 
 export function transactionStatusLabel(status?: string) {
   if (status === 'submitted') {

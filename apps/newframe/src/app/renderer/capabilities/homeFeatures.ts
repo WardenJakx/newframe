@@ -1,12 +1,12 @@
-import { createConnectionsCapability } from '../../../features/connections/renderer/connectionsCapability'
-import { createNetworksCapability } from '../../../features/networks/renderer/networksCapability'
-import { createPortfolioCapability } from '../../../features/portfolio/renderer/portfolioCapability'
-import { createSecurityCapability } from '../../../features/security/renderer/securityCapability'
-import { createSettingsCapability } from '../../../features/settings/renderer/settingsCapability'
-import { createTokensCapability } from '../../../features/tokens/renderer/tokensCapability'
-import { createActivityCapability } from '../../../features/transactions/renderer/activity/activityCapability'
-import { createOrdersCapability } from '../../../features/transactions/trade/renderer/orders/ordersCapability'
-import link from '../../../platform/ipc/renderer/link'
+import { createConnectionsCapability } from '../../../features/connections/renderer/connectionsCapability.ts'
+import { createNetworksCapability } from '../../../features/networks/renderer/networksCapability.ts'
+import { createPortfolioCapability } from '../../../features/portfolio/renderer/portfolioCapability.ts'
+import { createSecurityCapability } from '../../../features/security/renderer/securityCapability.ts'
+import { createSettingsCapability } from '../../../features/settings/renderer/settingsCapability.ts'
+import { createTokensCapability } from '../../../features/tokens/renderer/tokensCapability.ts'
+import { createActivityCapability } from '../../../features/transactions/renderer/activity/activityCapability.ts'
+import { createOrdersCapability } from '../../../features/transactions/trade/renderer/orders/ordersCapability.ts'
+import link from '../../../platform/ipc/renderer/link.ts'
 
 export const connectionsCapability = createConnectionsCapability(link)
 export const networksCapability = createNetworksCapability(link)

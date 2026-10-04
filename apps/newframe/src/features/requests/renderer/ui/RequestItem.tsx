@@ -3,10 +3,10 @@ import { Image } from '@newframe/ui/image'
 import { Text } from '@newframe/ui/text'
 import { useEffect, useState, type ReactNode } from 'react'
 
-import { imageSource } from '../../../asset-data/domain/image'
-import type { RequestItemRequestView } from '../Account/Requests/requestViewTypes'
-import type { RequestPanelCapability } from '../requestCapabilities'
-import { RequestCard } from './RequestCard'
+import { imageSource } from '../../../asset-data/domain/image/index.ts'
+import type { RequestItemRequestView } from '../Account/Requests/requestViewTypes.ts'
+import type { RequestPanelCapability } from '../requestCapabilities.ts'
+import { RequestCard } from './RequestCard.tsx'
 
 type RequestItemProps = {
   panel: Pick<RequestPanelCapability, 'openRequest'>

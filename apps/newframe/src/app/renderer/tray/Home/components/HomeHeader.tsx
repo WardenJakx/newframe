@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
-import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector'
-import { accountDisplayType } from '../../../../../shared/renderer/ui/signerPresentation'
-import type { HomeCapability } from '../homeCapability'
-import { useHomeUiStore } from '../state/HomeUiProvider'
-import { HomeHeaderView } from './HomeHeaderView'
+import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector.tsx'
+import { accountDisplayType } from '../../../../../shared/renderer/ui/signerPresentation.ts'
+import type { HomeCapability } from '../homeCapability.ts'
+import { useHomeUiStore } from '../state/HomeUiProvider.tsx'
+import { HomeHeaderView } from './HomeHeaderView.tsx'
 
 export function HomeHeader({ capability }: { capability: Pick<HomeCapability, 'copyText'> }) {
   const { account, showLocalNameWithENS } = useWalletSelector(

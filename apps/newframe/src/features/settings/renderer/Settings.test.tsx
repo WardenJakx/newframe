@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
-import { act, cleanup, render, screen, waitFor } from '../../../../test/support/componentSetup'
-import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
-import type { AppCommand, AppQuery } from '../../../app/contracts/operations'
-import type { OperationRecord } from '../../../platform/operations/operation'
+import { act, cleanup, render, screen, waitFor } from '../../../../test/support/componentSetup.tsx'
+import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient.ts'
+import type { AppCommand, AppQuery } from '../../../app/contracts/operations.ts'
+import type { OperationRecord } from '../../../platform/operations/operation.ts'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
-import { createSecurityCapability } from '../../security/renderer/securityCapability'
-import type { SettingsSecurityCapability } from './Settings'
-import { createSettingsCapability } from './settingsCapability'
+import { createSecurityCapability } from '../../security/renderer/securityCapability.ts'
+import type { SettingsSecurityCapability } from './Settings.tsx'
+import { createSettingsCapability } from './settingsCapability.ts'
 
 const anyString = expect.any(String) as string
 
@@ -16,7 +16,7 @@ Object.defineProperty(global.navigator, 'keyboard', {
   value: { getLayoutMap: async () => new Map() }
 })
 
-const { Settings } = await import('./Settings')
+const { Settings } = await import('./Settings.tsx')
 
 const fixture = registerTestRuntimeFixture()
 const settingsCapability = createSettingsCapability({

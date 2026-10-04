@@ -9,26 +9,26 @@ import {
   type ActivityRecord,
   type OrderRecord,
   type PortfolioProviderId
-} from '../../app/contracts/state/main.js'
-import { accountNS, isDefaultAccountName } from '../../features/accounts/domain/index.js'
-import type { Account } from '../../features/accounts/domain/state/account.js'
-import type { Balance } from '../../features/asset-data/domain/state/balance.js'
+} from '../../app/contracts/state/main.ts'
+import { accountNS, isDefaultAccountName } from '../../features/accounts/domain/index.ts'
+import type { Account } from '../../features/accounts/domain/state/account.ts'
+import type { Balance } from '../../features/asset-data/domain/state/balance.ts'
 import {
   canExtensionSee,
   grantExtensionAccess,
   visibleExtensionAccountIds
-} from '../../features/connections/domain/extensionAccess.js'
-import type { GasFees } from '../../features/networks/domain/state/gas.js'
-import type { NativeCurrency } from '../../features/networks/domain/state/nativeCurrency.js'
-import type { CanonicalAccountRequest } from '../../features/requests/contract/requests.js'
-import { NATIVE_CURRENCY } from '../../features/tokens/domain/constants.js'
-import { toTokenId } from '../../features/tokens/domain/index.js'
-import type { Token, TokenImage, TokenSource } from '../../features/tokens/domain/state/token.js'
-import { AirGapPublicAccountSchema, type AirGapPublicAccount } from '../signing/domain/airgap.js'
-import type { Derivation } from '../signing/signers/Signer/derive.js'
-import type { SignerSummary } from '../signing/signers/Signer/index.js'
-import { createOperationActions } from './actions.operation.js'
-import { createPanelActions, type CanonicalGet, type CanonicalSet } from './actions.panel.js'
+} from '../../features/connections/domain/extensionAccess.ts'
+import type { GasFees } from '../../features/networks/domain/state/gas.ts'
+import type { NativeCurrency } from '../../features/networks/domain/state/nativeCurrency.ts'
+import type { CanonicalAccountRequest } from '../../features/requests/contract/requests.ts'
+import { NATIVE_CURRENCY } from '../../features/tokens/domain/constants.ts'
+import { toTokenId } from '../../features/tokens/domain/index.ts'
+import type { Token, TokenImage, TokenSource } from '../../features/tokens/domain/state/token.ts'
+import { AirGapPublicAccountSchema, type AirGapPublicAccount } from '../signing/domain/airgap.ts'
+import type { Derivation } from '../signing/signers/Signer/derive.ts'
+import type { SignerSummary } from '../signing/signers/Signer/index.ts'
+import { createOperationActions } from './actions.operation.ts'
+import { createPanelActions, type CanonicalGet, type CanonicalSet } from './actions.panel.ts'
 import type {
   CanonicalState,
   Chain,
@@ -36,7 +36,7 @@ import type {
   NavigationEntry,
   Origin,
   Permission
-} from './state/index.js'
+} from './state/index.ts'
 
 type MutableRecord = Record<string, unknown>
 type AccountPatch = Partial<Omit<Account, 'id' | 'address' | 'profileId' | 'requests'>> & {

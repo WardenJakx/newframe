@@ -3,14 +3,14 @@ import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { useState } from 'react'
 import type { ComponentProps } from 'react'
 
-import { act, screen, render, waitFor } from '../../../../../test/support/componentSetup'
-import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
-import type { AppCommand, AppQuery } from '../../../../app/contracts/operations'
-import type { OperationRecord } from '../../../../platform/operations/operation'
+import { act, screen, render, waitFor } from '../../../../../test/support/componentSetup.tsx'
+import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient.ts'
+import type { AppCommand, AppQuery } from '../../../../app/contracts/operations.ts'
+import type { OperationRecord } from '../../../../platform/operations/operation.ts'
 import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support.ts'
-import { toTokenId } from '../../domain'
-import { createTokensCapability } from '../tokensCapability'
-import AddTokenController, { type AddTokenNotifyData } from './index'
+import { toTokenId } from '../../domain/index.ts'
+import { createTokensCapability } from '../tokensCapability.ts'
+import AddTokenController, { type AddTokenNotifyData } from './index.tsx'
 
 const fixture = registerTestRuntimeFixture()
 const tokensCapability = createTokensCapability({

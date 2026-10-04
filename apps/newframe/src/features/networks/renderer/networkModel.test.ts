@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { createNetworkRows } from './networkModel'
+import { createNetworkRows } from './networkModel.ts'
 
 describe('createNetworkRows', () => {
   it('filters testnets and orders enabled chains by value', () => {

@@ -1,6 +1,6 @@
 import type { Session } from 'electron'
 
-import type { RendererAuthorizationRegistry } from '../../ipc/main/authorization.js'
+import type { RendererAuthorizationRegistry } from '../../ipc/main/authorization.ts'
 
 type PermissionSession = Pick<Session, 'setPermissionCheckHandler' | 'setPermissionRequestHandler'>
 const installations = new WeakMap<PermissionSession, symbol>()

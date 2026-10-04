@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { addAccountReducer, createAddAccountState } from './addAccountReducer'
+import { addAccountReducer, createAddAccountState } from './addAccountReducer.ts'
 
 describe('add account reducer', () => {
   it('resets coupled flow drafts and preserves independent vault knowledge', () => {

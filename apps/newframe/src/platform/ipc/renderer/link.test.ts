@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
 
-import type { NewframeHost } from '../contract/ipc'
-import link from './link'
+import type { NewframeHost } from '../contract/ipc.ts'
+import link from './link.ts'
 
 const makeHost = (overrides: Partial<NewframeHost> = {}): NewframeHost => ({
   executeCommand: mock(async () => ({ ok: true })) as NewframeHost['executeCommand'],

@@ -2,18 +2,18 @@ import { afterEach, describe, expect, test } from 'bun:test'
 
 import { getBytes, Interface, Wallet, ZeroAddress } from 'ethers'
 
-import { createSafeHandler } from '../../../scripts/local-safe/handler.js'
-import type { SafeProposal } from '../../features/accounts/domain/safe.js'
-import { abi as multicallAbi, multicallAddress } from '../chain-rpc/multicall/constants.js'
-import { getEip712Digests } from '../signing/signatures/digests.js'
-import { createSafeClient, safeServiceNetworks } from './client.js'
+import { createSafeHandler } from '../../../scripts/local-safe/handler.ts'
+import type { SafeProposal } from '../../features/accounts/domain/safe.ts'
+import { abi as multicallAbi, multicallAddress } from '../chain-rpc/multicall/constants.ts'
+import { getEip712Digests } from '../signing/signatures/digests.ts'
+import { createSafeClient, safeServiceNetworks } from './client.ts'
 import {
   EIP1271_MAGIC_VALUE,
   EIP1271_SIGNATURE,
   getSafeMessageHash,
   getSafeTypedMessage,
   verifySafeHash
-} from './integrity.js'
+} from './integrity.ts'
 
 const safe = '0x1111111111111111111111111111111111111111'
 const owners = ['0x2222222222222222222222222222222222222222', '0x3333333333333333333333333333333333333333']

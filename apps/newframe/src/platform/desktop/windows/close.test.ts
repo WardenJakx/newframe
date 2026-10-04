@@ -2,7 +2,7 @@ import { beforeEach, expect, it, mock } from 'bun:test'
 
 import { BrowserWindow } from 'electron'
 
-import { closeRendererWindow } from './close'
+import { closeRendererWindow } from './close.ts'
 
 const fromWebContents = mock()
 

@@ -1,4 +1,4 @@
-import { MAX_HEX } from '../../features/transactions/domain/constants.js'
+import { MAX_HEX } from '../../features/transactions/domain/constants.ts'
 
 export const max = BigInt(MAX_HEX)
 

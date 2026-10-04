@@ -21,10 +21,10 @@ import {
 } from '@newframe/flash/protocol'
 import WebSocket from 'ws'
 
-import store from '../../../../platform/state-store'
-import createCanonicalStore from '../../../../platform/state-store/createCanonicalStore'
-import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
-import { createFlashService } from './index'
+import createCanonicalStore from '../../../../platform/state-store/createCanonicalStore.ts'
+import store from '../../../../platform/state-store/index.ts'
+import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
+import { createFlashService } from './index.ts'
 
 interface TestQuoteRaw {
   evm: {

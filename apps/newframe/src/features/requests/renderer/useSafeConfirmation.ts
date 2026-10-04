@@ -1,15 +1,15 @@
 import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
-import type { CommandResult, QueryMap, QueryResultMap } from '../../../app/contracts/operations'
-import type { AirGapRequestReference } from '../../../platform/signing/domain/airgap'
-import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
-import type { SafeDeployment, SafeProposal, SafeProposalSimulation } from '../../accounts/domain/safe'
-import type { TransactionApprovalAdjustments } from '../../transactions/domain/approval'
-import type { TransactionFeeField } from '../../transactions/domain/fees'
-import type { SafeTransactionProgress, SigningCandidate } from '../contract/requests'
-import type { RequestRendererCapabilities } from './requestCapabilities'
-import { updateTransactionFee } from './requestView'
-import type { SafePreview, SafeProposalActionModel } from './SafeProposalDetailsView'
+import type { CommandResult, QueryMap, QueryResultMap } from '../../../app/contracts/operations.ts'
+import type { AirGapRequestReference } from '../../../platform/signing/domain/airgap.ts'
+import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector.tsx'
+import type { SafeDeployment, SafeProposal, SafeProposalSimulation } from '../../accounts/domain/safe.ts'
+import type { TransactionApprovalAdjustments } from '../../transactions/domain/approval.ts'
+import type { TransactionFeeField } from '../../transactions/domain/fees.ts'
+import type { SafeTransactionProgress, SigningCandidate } from '../contract/requests.ts'
+import type { RequestRendererCapabilities } from './requestCapabilities.ts'
+import { updateTransactionFee } from './requestView.tsx'
+import type { SafePreview, SafeProposalActionModel } from './SafeProposalDetailsView.tsx'
 
 export function useSafeProposalSimulation({
   accountId,

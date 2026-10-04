@@ -1,6 +1,6 @@
-import type { QrCameraCapability } from '../../../platform/desktop/renderer/camera'
-import type { AccountsCapability } from './accountsCapability'
-import { AddAccountController } from './AddAccountController'
+import type { QrCameraCapability } from '../../../platform/desktop/renderer/camera.ts'
+import type { AccountsCapability } from './accountsCapability.ts'
+import { AddAccountController } from './AddAccountController.tsx'
 
 export interface AddAccountProps {
   capability: AccountsCapability

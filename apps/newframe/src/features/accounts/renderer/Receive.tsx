@@ -1,8 +1,8 @@
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
-import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
-import { accountDisplayType } from '../../../shared/renderer/ui/signerPresentation'
-import type { AccountsCapability } from './accountsCapability'
-import { ReceiveView } from './ReceiveView'
+import type { WalletRendererState } from '../../../platform/state-sync/contract/projections.ts'
+import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector.tsx'
+import { accountDisplayType } from '../../../shared/renderer/ui/signerPresentation.ts'
+import type { AccountsCapability } from './accountsCapability.ts'
+import { ReceiveView } from './ReceiveView.tsx'
 
 export function Receive({
   accountId,

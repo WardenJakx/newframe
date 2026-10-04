@@ -8,8 +8,8 @@ import { Text } from '@newframe/ui/text'
 import { ToggleButton } from '@newframe/ui/toggle-button'
 import { useState } from 'react'
 
-import { AddressAvatar } from '../../../shared/renderer/ui/AddressAvatar'
-import { shortAddress } from '../../../shared/renderer/ui/AddressIdentity'
+import { AddressAvatar } from '../../../shared/renderer/ui/AddressAvatar.tsx'
+import { shortAddress } from '../../../shared/renderer/ui/AddressIdentity.tsx'
 
 interface ExtensionAccessAccount {
   id: string

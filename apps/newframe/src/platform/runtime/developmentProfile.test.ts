@@ -4,7 +4,7 @@ import { lstat, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
-import { prepareDevelopmentProfile } from './developmentProfile'
+import { prepareDevelopmentProfile } from './developmentProfile.ts'
 
 const gitLocalEnvironmentVariables = [
   'GIT_ALTERNATE_OBJECT_DIRECTORIES',

@@ -36,12 +36,12 @@ import {
   type FlashWebSocketFactory
 } from '@newframe/flash/websocket'
 
-import { getMainRuntime } from '../../../../platform/runtime/index.js'
-import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
-import type { Token } from '../../../../platform/state-store/state/index.js'
-import type { AssetRateInput } from '../../../asset-data/domain/state/rate.js'
-import type { AssetRateService } from '../../../asset-data/main/assetRates/service.js'
-import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.js'
+import { getMainRuntime } from '../../../../platform/runtime/index.ts'
+import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
+import type { Token } from '../../../../platform/state-store/state/index.ts'
+import type { AssetRateInput } from '../../../asset-data/domain/state/rate.ts'
+import type { AssetRateService } from '../../../asset-data/main/assetRates/service.ts'
+import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
 
 const flashApi = () => createFlashApi({ runtime: runtime() })
 

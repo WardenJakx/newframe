@@ -3,15 +3,15 @@ import { EventEmitter } from 'events'
 
 import { createDesktopCaller } from '@newframe/desktop-api/router'
 
-import { createRpcGateway } from '../../../app/main/gateway/rpc'
+import { createRpcGateway } from '../../../app/main/gateway/rpc.ts'
 import type {
   EVMError,
   RPCRequestCallback,
   RPCRequestPayload,
   RPCResponsePayload
-} from '../../../shared/domain/rpc.js'
-import type { AccountRequest } from '../../requests/contract/requests'
-import { createAgentService } from './index'
+} from '../../../shared/domain/rpc.ts'
+import type { AccountRequest } from '../../requests/contract/requests.ts'
+import { createAgentService } from './index.ts'
 
 const accountId = '0x1111111111111111111111111111111111111111'
 

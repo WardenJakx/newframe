@@ -1,15 +1,15 @@
 import { beforeEach, expect, it } from 'bun:test'
 
-import { render, screen } from '../../../../../../test/support/componentSetup'
-import { registerTestRuntimeFixture } from '../../../../../../test/support/rendererClient'
+import { render, screen } from '../../../../../../test/support/componentSetup.tsx'
+import { registerTestRuntimeFixture } from '../../../../../../test/support/rendererClient.ts'
 import type {
   WalletRendererState,
   WalletStatusNotification
-} from '../../../../../platform/state-sync/contract/projections'
+} from '../../../../../platform/state-sync/contract/projections.ts'
 import { walletState } from '../../../../../platform/state-sync/renderer/fixtures.test-support.ts'
-import { createHomeCapability } from '../homeCapability'
-import { HomeUiProvider, useHomeUiStore } from '../state/HomeUiProvider'
-import { HomeNotifications as HomeNotificationsController } from './HomeNotifications'
+import { createHomeCapability } from '../homeCapability.ts'
+import { HomeUiProvider, useHomeUiStore } from '../state/HomeUiProvider.tsx'
+import { HomeNotifications as HomeNotificationsController } from './HomeNotifications.tsx'
 
 const fixture = registerTestRuntimeFixture()
 const capability = createHomeCapability({

@@ -1,8 +1,8 @@
 import { expect, it, mock } from 'bun:test'
 
-import { render, screen } from '../../../../test/support/componentSetup'
-import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
-import { PositionsView } from './PositionsView'
+import { render, screen } from '../../../../test/support/componentSetup.tsx'
+import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient.ts'
+import { PositionsView } from './PositionsView.tsx'
 
 registerTestRuntimeFixture()
 

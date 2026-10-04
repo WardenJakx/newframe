@@ -18,8 +18,11 @@ import {
 } from '@newframe/flash/pair'
 import { type FlashAsset, type FlashOrderType, type FlashTradeSide } from '@newframe/flash/schemas'
 
-import type { FlashQuoteDisplay } from '../../../../app/contracts/operations'
-import { parseCanonicalAssetId, resolveFlashAssetFromRouteAssetId } from '../../../../app/contracts/sidetray'
+import type { FlashQuoteDisplay } from '../../../../app/contracts/operations.ts'
+import {
+  parseCanonicalAssetId,
+  resolveFlashAssetFromRouteAssetId
+} from '../../../../app/contracts/sidetray/index.ts'
 import {
   TRADE_DEFAULT_DURATION_DAYS,
   TRADE_DEFAULT_DURATION_HOURS,
@@ -29,7 +32,7 @@ import {
   getTradeValidationError,
   tradeAmountNumber,
   type TradeOrderFields
-} from './tradeTransaction'
+} from './tradeTransaction.ts'
 
 export interface TradeWorkflowState {
   advancedOpen: boolean

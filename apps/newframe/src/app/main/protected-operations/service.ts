@@ -3,36 +3,36 @@ import crypto from 'crypto'
 import { recoverTypedSignature } from '@metamask/eth-sig-util'
 import log from 'electron-log'
 
-import type { AccountRequestPort } from '../../../features/connections/main/provider/accountRequestPort.js'
+import type { AccountRequestPort } from '../../../features/connections/main/provider/accountRequestPort.ts'
 import {
   feeTotalOverMax,
   getSignedAddress,
   resError,
   encodePersonalSignMessage
-} from '../../../features/connections/main/provider/helpers.js'
-import type { Chain, Chains } from '../../../features/networks/main/index.js'
+} from '../../../features/connections/main/provider/helpers.ts'
+import type { Chain, Chains } from '../../../features/networks/main/index.ts'
 import type {
   AccountRequest,
   TransactionRequest,
   SignTypedDataRequest,
   TypedMessage
-} from '../../../features/requests/contract/requests.js'
-import { isSignatureRequest } from '../../../features/requests/domain/index.js'
+} from '../../../features/requests/contract/requests.ts'
+import { isSignatureRequest } from '../../../features/requests/domain/index.ts'
 import {
   applyTransactionAdjustments,
   type TransactionApprovalAdjustments
-} from '../../../features/transactions/domain/approval.js'
-import type { TransactionData } from '../../../features/transactions/domain/index.js'
-import { maxFee } from '../../../features/transactions/main/index.js'
+} from '../../../features/transactions/domain/approval.ts'
+import type { TransactionData } from '../../../features/transactions/domain/index.ts'
+import { maxFee } from '../../../features/transactions/main/index.ts'
 import type {
   SigningApprovalContext,
   SigningUiContext
-} from '../../../platform/signing/signers/Signer/index.js'
-import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
-import type { Callback } from '../../../shared/domain/async.js'
-import type { RPCRequestCallback, RPCRequestPayload } from '../../../shared/domain/rpc.js'
-import { isAiSessionActive, type AiSessionClientSource } from '../gateway/requestSource.js'
-import { exportProtectedPrivateKey } from './secrets.js'
+} from '../../../platform/signing/signers/Signer/index.ts'
+import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
+import type { Callback } from '../../../shared/domain/async.ts'
+import type { RPCRequestCallback, RPCRequestPayload } from '../../../shared/domain/rpc.ts'
+import { isAiSessionActive, type AiSessionClientSource } from '../gateway/requestSource.ts'
+import { exportProtectedPrivateKey } from './secrets.ts'
 type AccountHandle = NonNullable<ReturnType<AccountRequestPort['getFrameAccount']>>
 const arrayValue = (value: unknown): unknown[] => (Array.isArray(value) ? value : [])
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
-import { getAddress } from './address'
-import { matchFilter } from './text'
+import { getAddress } from './address.ts'
+import { matchFilter } from './text.ts'
 
 describe('#matchFilter', () => {
   it('splits the filter and matches if every individual string matches any property', () => {

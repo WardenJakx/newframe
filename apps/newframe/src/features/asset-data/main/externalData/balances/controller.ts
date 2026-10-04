@@ -5,9 +5,9 @@ import path from 'path'
 
 import log from 'electron-log'
 
-import type { Token } from '../../../../../platform/state-store/state/index.js'
-import type { Address } from '../../../../../shared/domain/address.js'
-import type { CurrencyBalance, TokenBalance } from './scan.js'
+import type { Token } from '../../../../../platform/state-store/state/index.ts'
+import type { Address } from '../../../../../shared/domain/address.ts'
+import type { CurrencyBalance, TokenBalance } from './scan.ts'
 
 const BOOTSTRAP_TIMEOUT_SECONDS = 20
 const WORKER_EXT = import.meta.filename.endsWith('.ts') ? 'worker.ts' : 'worker.js'

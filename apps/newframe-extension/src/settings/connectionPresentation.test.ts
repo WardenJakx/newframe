@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { frameConnectionPresentation, siteConnectionPresentation } from './connectionPresentation'
+import { frameConnectionPresentation, siteConnectionPresentation } from './connectionPresentation.ts'
 
 describe('connection presentation', () => {
   it('distinguishes an unavailable desktop app from a pending extension approval', () => {

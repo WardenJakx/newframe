@@ -8,7 +8,7 @@ import {
   getEip712EncodeType,
   getEip712EncodeTypeHash,
   getErc7730TypedDataDisplay
-} from './erc7730'
+} from './erc7730.ts'
 
 const VERIFYING_CONTRACT = '0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC'
 const OWNER = '0xd8da6bf26964af9d7eed9e03e53415d37aa96045'

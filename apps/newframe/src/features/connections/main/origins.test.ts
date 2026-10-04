@@ -2,12 +2,12 @@ import { describe, expect, it } from 'bun:test'
 
 import { v5 as uuidv5 } from 'uuid'
 
-import { createLocalApiSource } from '../../../app/main/gateway/requestSource'
-import type { Permission } from '../../../platform/state-store/state'
-import type { Address } from '../../../shared/domain/address.js'
-import type { RPCRequestCallback, RPCRequestPayload, RPCResponsePayload } from '../../../shared/domain/rpc.js'
-import type { AccessRequest } from '../../requests/contract/requests'
-import { createOriginsService, type FrameExtension, type OriginsServiceDependencies } from './origins'
+import { createLocalApiSource } from '../../../app/main/gateway/requestSource.ts'
+import type { Permission } from '../../../platform/state-store/state/index.ts'
+import type { Address } from '../../../shared/domain/address.ts'
+import type { RPCRequestCallback, RPCRequestPayload, RPCResponsePayload } from '../../../shared/domain/rpc.ts'
+import type { AccessRequest } from '../../requests/contract/requests.ts'
+import { createOriginsService, type FrameExtension, type OriginsServiceDependencies } from './origins.ts'
 
 const address = '0xDAFEA492D9c6733ae3d56b7Ed1ADB60692c98Bc5'
 const principal = createLocalApiSource({

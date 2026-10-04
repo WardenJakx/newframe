@@ -1,6 +1,6 @@
-import type { SendCapability } from './sendService'
-import { SendView } from './SendView'
-import { useSendController } from './useSendController'
+import type { SendCapability } from './sendService.ts'
+import { SendView } from './SendView.tsx'
+import { useSendController } from './useSendController.ts'
 
 export interface SendProps {
   assetId?: string | null

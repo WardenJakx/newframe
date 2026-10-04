@@ -4,8 +4,8 @@ import { Icon } from '@newframe/ui/icon'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { renderToStaticMarkup } from 'react-dom/server'
 
-import { AddressAvatar } from './AddressAvatar'
-import { AddressIdentity, shortAddress } from './AddressIdentity'
+import { AddressAvatar } from './AddressAvatar.tsx'
+import { AddressIdentity, shortAddress } from './AddressIdentity.tsx'
 
 const address = '0x1234567890abcdef'
 

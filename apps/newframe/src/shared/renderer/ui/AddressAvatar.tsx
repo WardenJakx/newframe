@@ -5,7 +5,7 @@ import makeBlockie from 'ethereum-blockies-base64'
 import { useMemo } from 'react'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
-import { signerIconName } from './signerPresentation'
+import { signerIconName } from './signerPresentation.ts'
 
 // Keep the badge's protruding edge inside address rows that clip their content.
 const avatarRecipe = cva({

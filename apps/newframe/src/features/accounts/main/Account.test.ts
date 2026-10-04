@@ -6,21 +6,28 @@ import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import {
   createNewframeInternalSource,
   authorizeGatewayOperation
-} from '../../../app/main/gateway/requestSource'
-import { createRendererAuthorizationRegistry } from '../../../platform/ipc/main/authorization'
-import type { SigningApprovalContext, SignerRequestContext } from '../../../platform/signing/signers/Signer'
-import type { Callback } from '../../../shared/domain/async.js'
+} from '../../../app/main/gateway/requestSource.ts'
+import { createRendererAuthorizationRegistry } from '../../../platform/ipc/main/authorization.ts'
+import type {
+  SigningApprovalContext,
+  SignerRequestContext
+} from '../../../platform/signing/signers/Signer/index.ts'
+import type { Callback } from '../../../shared/domain/async.ts'
 import type {
   EVMError,
   RPCRequestCallback,
   RPCRequestPayload,
   RPCResponsePayload
-} from '../../../shared/domain/rpc.js'
-import type { AccountRequest, CanonicalAccountRequest, TypedMessage } from '../../requests/contract/requests'
-import { RequestMode, RequestStatus } from '../../requests/contract/requests'
-import { ApprovalType } from '../../requests/domain/approval'
-import { GasFeesSource, type TransactionData } from '../../transactions/domain'
-import type { RevealService } from '../../transactions/main/reveal'
+} from '../../../shared/domain/rpc.ts'
+import type {
+  AccountRequest,
+  CanonicalAccountRequest,
+  TypedMessage
+} from '../../requests/contract/requests.ts'
+import { RequestMode, RequestStatus } from '../../requests/contract/requests.ts'
+import { ApprovalType } from '../../requests/domain/approval.ts'
+import { GasFeesSource, type TransactionData } from '../../transactions/domain/index.ts'
+import type { RevealService } from '../../transactions/main/reveal.ts'
 
 const revealMock = {
   recog: mock(),
@@ -42,11 +49,13 @@ const signersMock = { get: mock() }
 const windowsMock = { showTray: mock() }
 const navMock = { forward: mock(), back: mock() }
 
-await mock.module('../../transactions/main/reveal', () => ({ ...revealMock }))
-await mock.module('../../../platform/chain-rpc/contracts', () => ({ fetchContract: fetchContractMock }))
-await mock.module('../../../platform/signing/signers', () => ({ default: signersMock }))
-await mock.module('../../../platform/desktop/windows', () => ({ default: windowsMock }))
-await mock.module('../../name-resolution/main/nameResolution', () => ({
+await mock.module('../../transactions/main/reveal.ts', () => ({ ...revealMock }))
+await mock.module('../../../platform/chain-rpc/contracts/index.ts', () => ({
+  fetchContract: fetchContractMock
+}))
+await mock.module('../../../platform/signing/signers/index.ts', () => ({ default: signersMock }))
+await mock.module('../../../platform/desktop/windows/index.ts', () => ({ default: windowsMock }))
+await mock.module('../../name-resolution/main/nameResolution.ts', () => ({
   __esModule: true,
   default: {
     off: mock(),
@@ -56,9 +65,9 @@ await mock.module('../../name-resolution/main/nameResolution', () => ({
   }
 }))
 
-let account: InstanceType<typeof import('./Account').default>
-let Account: typeof import('./Account').default
-let store: typeof import('../../../platform/state-store').default
+let account: InstanceType<typeof import('./Account.ts').default>
+let Account: typeof import('./Account.ts').default
+let store: typeof import('../../../platform/state-store/index.ts').default
 const nameResolution = {
   started: true,
   start: mock(),
@@ -129,8 +138,8 @@ const validTypedMessage = (): TypedMessage => ({
 })
 
 beforeAll(async () => {
-  Account = (await import('./Account')).default
-  store = (await import('../../../platform/state-store')).default
+  Account = (await import('./Account.ts')).default
+  store = (await import('../../../platform/state-store/index.ts')).default
 })
 
 function createAccount(profileActive = true) {
@@ -577,7 +586,7 @@ it.each([true, false])(
     const origin = 'selected-target-test'
     const respond = mock<RPCRequestCallback>()
     const handlerId = requestLifecycle.create(respond)
-    const request: import('../../requests/contract/requests').AccessRequest = {
+    const request: import('../../requests/contract/requests.ts').AccessRequest = {
       type: 'access',
       handlerId,
       origin,

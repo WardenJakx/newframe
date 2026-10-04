@@ -4,9 +4,9 @@ import type {
   QueryMap,
   QueryResultMap,
   ResultForQuery
-} from '../../../app/contracts/operations'
-import type { NewframeHost } from '../../../platform/ipc/contract/ipc'
-import type { ClipboardCapability } from '../../../shared/renderer/capabilities'
+} from '../../../app/contracts/operations.ts'
+import type { NewframeHost } from '../../../platform/ipc/contract/ipc.ts'
+import type { ClipboardCapability } from '../../../shared/renderer/capabilities.ts'
 
 type WithoutType<TInput> = TInput extends { type: string } ? Omit<TInput, 'type'> : never
 type CommandInput<TType extends keyof CommandMap> = WithoutType<CommandMap[TType]>

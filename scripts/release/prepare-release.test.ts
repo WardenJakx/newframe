@@ -10,7 +10,7 @@ import {
   releaseTagsFromRemoteOutput,
   utcCalVerDate,
   writeGithubOutput
-} from './prepare-release'
+} from './prepare-release.ts'
 
 const temporaryRoots: string[] = []
 

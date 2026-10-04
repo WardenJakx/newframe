@@ -1,6 +1,6 @@
-import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.js'
-import type { SignatureRequest } from '../../requests/contract/requests.js'
-import type { SafeMessageApprovalResult } from './safeMessage.js'
+import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.ts'
+import type { SignatureRequest } from '../../requests/contract/requests.ts'
+import type { SafeMessageApprovalResult } from './safeMessage.ts'
 
 export interface SafeMessageApprovalPort {
   approve(

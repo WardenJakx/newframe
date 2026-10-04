@@ -1,15 +1,15 @@
 import log from 'electron-log'
 
-import { createBindablePersistenceStorage } from '../persistence/bindableStorage.js'
+import { createBindablePersistenceStorage } from '../persistence/bindableStorage.ts'
 import {
   createPersistenceAdapter,
   createPersistenceService,
   type PersistenceLifecycle,
   type PersistenceSchedulerPort,
   type PersistenceStoragePort
-} from '../persistence/index.js'
-import createCanonicalStore from './createCanonicalStore.js'
-import { connectPersistenceControl } from './persist/index.js'
+} from '../persistence/index.ts'
+import createCanonicalStore from './createCanonicalStore.ts'
+import { connectPersistenceControl } from './persist/index.ts'
 
 const persistenceStorage = createBindablePersistenceStorage()
 const persistenceAdapter = createPersistenceAdapter({
@@ -60,6 +60,6 @@ export function createCanonicalPersistenceService({ storage, scheduler }: Canoni
   return persistenceService
 }
 
-export type { CanonicalActions, CanonicalStore } from './actions.js'
-export { default as createCanonicalStore } from './createCanonicalStore.js'
+export type { CanonicalActions, CanonicalStore } from './actions.ts'
+export { default as createCanonicalStore } from './createCanonicalStore.ts'
 export default store

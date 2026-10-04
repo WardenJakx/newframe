@@ -3,8 +3,8 @@ import type {
   AppQuery,
   CommandResult,
   ResultForQuery
-} from '../../../app/contracts/operations.js'
-import type { StateConnectionResult, StateMessage } from '../../state-sync/contract/protocol.js'
+} from '../../../app/contracts/operations.ts'
+import type { StateConnectionResult, StateMessage } from '../../state-sync/contract/protocol.ts'
 
 export const ExecuteCommandChannel = 'newframe:execute-command'
 export const ExecuteQueryChannel = 'newframe:execute-query'

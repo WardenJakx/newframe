@@ -4,11 +4,11 @@ import { Text } from '@newframe/ui/text'
 import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
-import type { QrCameraCapability } from '../../../../platform/desktop/renderer/camera'
-import type { OperationRecord } from '../../../../platform/operations/operation'
-import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
-import type { AccountsCapability } from '../accountsCapability'
-import { QrScanner } from './QrScanner'
+import type { QrCameraCapability } from '../../../../platform/desktop/renderer/camera.ts'
+import type { OperationRecord } from '../../../../platform/operations/operation.ts'
+import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector.tsx'
+import type { AccountsCapability } from '../accountsCapability.ts'
+import { QrScanner } from './QrScanner.tsx'
 
 export function AirGapPairing({
   capability,

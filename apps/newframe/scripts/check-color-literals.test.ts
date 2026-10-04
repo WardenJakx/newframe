@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { findColorLiteralViolations } from './check-color-literals'
+import { findColorLiteralViolations } from './check-color-literals.ts'
 
 describe('color literal enforcement', () => {
   it('detects CSS, Stylus, JSX, gradients, and SVG color literals', () => {

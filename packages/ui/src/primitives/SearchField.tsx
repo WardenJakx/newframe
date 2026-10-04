@@ -1,9 +1,9 @@
 import type { Ref } from 'react'
 
 import { css } from '../styled-system/css/css.js'
-import { Icon } from './Icon.js'
-import { IconButton } from './IconButton.js'
-import { Input } from './Input.js'
+import { Icon } from './Icon.tsx'
+import { IconButton } from './IconButton.tsx'
+import { Input } from './Input.tsx'
 
 const searchFieldClass = css({
   height: 'search-field',

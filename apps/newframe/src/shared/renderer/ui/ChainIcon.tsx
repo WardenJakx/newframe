@@ -3,9 +3,9 @@ import { Image } from '@newframe/ui/image'
 import { StatusDot } from '@newframe/ui/status-dot'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
-import { persistedImageSource } from '../../../features/asset-data/domain/image'
-import { chainColorValue } from '../../../features/networks/domain/chain/colors'
-import type { NetworkLike, NetworkMetaLike } from './tokenSelectorTypes'
+import { persistedImageSource } from '../../../features/asset-data/domain/image/index.ts'
+import { chainColorValue } from '../../../features/networks/domain/chain/colors.ts'
+import type { NetworkLike, NetworkMetaLike } from './tokenSelectorTypes.ts'
 
 const chainIconRecipe = cva({
   base: {

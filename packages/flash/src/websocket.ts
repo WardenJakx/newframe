@@ -1,6 +1,6 @@
 import WebSocket from 'ws'
 
-import { FlashWebSocketFrameSchema } from './wire.js'
+import { FlashWebSocketFrameSchema } from './wire.ts'
 
 export type FlashOrderFrameType = 'snapshot' | 'update'
 export type FlashWebSocketFactory = (url: string) => WebSocket

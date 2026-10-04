@@ -4,7 +4,7 @@ import path from 'path'
 import type { BrowserWindow, KeyboardEvent, Rectangle } from 'electron'
 import { app, screen, Menu, Tray as ElectronTray } from 'electron'
 
-import { capitalize } from '../../../shared/domain/text.js'
+import { capitalize } from '../../../shared/domain/text.ts'
 const isMacOS = process.platform === 'darwin'
 let isUbuntu23OrGreater = false
 

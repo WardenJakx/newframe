@@ -1,5 +1,5 @@
-import type { NewframeHost } from '../../platform/ipc/contract/ipc'
-import type { ClipboardCapability, TokenImageCapability } from './capabilities'
+import type { NewframeHost } from '../../platform/ipc/contract/ipc.ts'
+import type { ClipboardCapability, TokenImageCapability } from './capabilities.ts'
 
 export function createRendererUtilityCapabilities(
   host: Pick<NewframeHost, 'executeCommand'>

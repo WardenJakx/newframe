@@ -3,9 +3,9 @@ import {
   getFlashAssetsForChain,
   normalizeFlashAddress,
   toFlashApiAssetAddress
-} from './assets.js'
-import { FLASH_USDC_ASSET_SYMBOL, FLASH_WETH_ASSET_SYMBOL } from './constants.js'
-import type { FlashAsset, FlashTradeSide } from './schemas.js'
+} from './assets.ts'
+import { FLASH_USDC_ASSET_SYMBOL, FLASH_WETH_ASSET_SYMBOL } from './constants.ts'
+import type { FlashAsset, FlashTradeSide } from './schemas.ts'
 
 interface FlashAssetBalance {
   id?: string

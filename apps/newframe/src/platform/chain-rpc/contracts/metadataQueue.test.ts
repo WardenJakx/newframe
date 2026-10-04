@@ -1,6 +1,6 @@
 import { expect, it } from 'bun:test'
 
-import { queueTokenMetadata } from './metadataQueue'
+import { queueTokenMetadata } from './metadataQueue.ts'
 
 it('deduplicates token metadata work and limits starts and concurrency', async () => {
   const provider = {}

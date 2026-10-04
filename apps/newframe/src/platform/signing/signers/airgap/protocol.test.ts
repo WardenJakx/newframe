@@ -3,8 +3,8 @@ import { describe, expect, it } from 'bun:test'
 import { ETHSignature, EthSignRequest } from '@keystonehq/bc-ur-registry-eth'
 import { UR, URDecoder, UREncoder } from '@ngraveio/bc-ur'
 
-import { publicAccount, transaction, vectors } from '../../../../../test/integration/fixtures/airgap.js'
-import { createUnsignedTransaction, sign } from '../../../../features/transactions/main/index.js'
+import { publicAccount, transaction, vectors } from '../../../../../test/integration/fixtures/airgap.ts'
+import { createUnsignedTransaction, sign } from '../../../../features/transactions/main/index.ts'
 import {
   AirGapUrAssembler,
   airGapId,
@@ -15,7 +15,7 @@ import {
   deriveAirGapAddresses,
   requestFrames,
   transactionPreimage
-} from './protocol.js'
+} from './protocol.ts'
 
 function assemble(frames: string[], type: 'crypto-hdkey' | 'eth-signature') {
   const assembler = new AirGapUrAssembler(type)

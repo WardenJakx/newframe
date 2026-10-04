@@ -1,12 +1,12 @@
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
-import type { PortfolioCapability } from '../../../../features/portfolio/renderer/portfolioCapability'
-import { Positions } from '../../../../features/portfolio/renderer/Positions'
-import { Activity } from '../../../../features/transactions/renderer/activity/Activity'
-import type { ActivityCapability } from '../../../../features/transactions/renderer/activity/activityCapability'
-import { Orders } from '../../../../features/transactions/trade/renderer/orders/Orders'
-import type { OrdersCapability } from '../../../../features/transactions/trade/renderer/orders/ordersCapability'
-import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
-import { useHomeUiStore } from './state/HomeUiProvider'
+import type { PortfolioCapability } from '../../../../features/portfolio/renderer/portfolioCapability.ts'
+import { Positions } from '../../../../features/portfolio/renderer/Positions.tsx'
+import { Activity } from '../../../../features/transactions/renderer/activity/Activity.tsx'
+import type { ActivityCapability } from '../../../../features/transactions/renderer/activity/activityCapability.ts'
+import { Orders } from '../../../../features/transactions/trade/renderer/orders/Orders.tsx'
+import type { OrdersCapability } from '../../../../features/transactions/trade/renderer/orders/ordersCapability.ts'
+import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector.tsx'
+import { useHomeUiStore } from './state/HomeUiProvider.tsx'
 
 const mainRecipe = cva({
   base: {

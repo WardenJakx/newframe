@@ -1,10 +1,10 @@
-import { AddressIdentity, shortAddress } from '../../../../shared/renderer/ui/AddressIdentity'
-import { TrayOverlay } from '../../../../shared/renderer/ui/TrayOverlay'
-import { persistedImageSource } from '../../../asset-data/domain/image'
-import TransactionInformation from '../../../requests/renderer/Account/Requests/TransactionRequest/TransactionInformation'
-import type { ActivityCapability } from './activityCapability'
-import { activityBalanceChanges, transactionStatusLabel } from './activityModel'
-import type { ActivityDetailNetworkMetadata, ActivityNetworkMap, ActivityRecord } from './activityTypes'
+import { AddressIdentity, shortAddress } from '../../../../shared/renderer/ui/AddressIdentity.tsx'
+import { TrayOverlay } from '../../../../shared/renderer/ui/TrayOverlay.tsx'
+import { persistedImageSource } from '../../../asset-data/domain/image/index.ts'
+import TransactionInformation from '../../../requests/renderer/Account/Requests/TransactionRequest/TransactionInformation.tsx'
+import type { ActivityCapability } from './activityCapability.ts'
+import { activityBalanceChanges, transactionStatusLabel } from './activityModel.ts'
+import type { ActivityDetailNetworkMetadata, ActivityNetworkMap, ActivityRecord } from './activityTypes.ts'
 
 const shortHash = (address: string | null | undefined = '') =>
   address ? `${address.substring(0, 5)}…${address.substring(address.length - 4)}` : ''

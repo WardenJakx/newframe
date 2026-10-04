@@ -1,10 +1,10 @@
-import Erc20Contract, { type Erc20ProviderPort } from '../../../platform/chain-rpc/contracts/erc20.js'
+import Erc20Contract, { type Erc20ProviderPort } from '../../../platform/chain-rpc/contracts/erc20.ts'
 import {
   fetchRemoteResource,
   downloadImage,
   readBoundedResponse
-} from '../../asset-data/main/images/download.js'
-import type { Token } from '../domain/state/token.js'
+} from '../../asset-data/main/images/download.ts'
+import type { Token } from '../domain/state/token.ts'
 
 const MAX_METADATA_BYTES = 256 * 1024
 const METADATA_TIMEOUT_MS = 8000

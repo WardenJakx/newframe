@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { getMainRuntime } from './index'
+import { getMainRuntime } from './index.ts'
 
 describe('main runtime', () => {
   it('defaults an installed app without NODE_ENV to production', () => {

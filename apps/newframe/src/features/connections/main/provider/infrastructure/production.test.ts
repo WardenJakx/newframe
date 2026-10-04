@@ -1,14 +1,14 @@
 import { describe, expect, it, mock } from 'bun:test'
 
-import { createNewframeInternalSource } from '../../../../../app/main/gateway/requestSource'
-import type { Callback } from '../../../../../shared/domain/async.js'
-import type { RPCRequestPayload, RPCResponsePayload } from '../../../../../shared/domain/rpc.js'
-import { GasFeesSource } from '../../../../transactions/domain'
+import { createNewframeInternalSource } from '../../../../../app/main/gateway/requestSource.ts'
+import type { Callback } from '../../../../../shared/domain/async.ts'
+import type { RPCRequestPayload, RPCResponsePayload } from '../../../../../shared/domain/rpc.ts'
+import { GasFeesSource } from '../../../../transactions/domain/index.ts'
 import {
   createNamedAccountTransactionAdapter,
   createProviderRequestAdapter,
   createRequestApprovalAdapter
-} from './production'
+} from './production.ts'
 
 const principal = createNewframeInternalSource({
   clientType: 'sidetray',

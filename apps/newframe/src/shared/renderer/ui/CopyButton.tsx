@@ -1,7 +1,7 @@
 import { IconButton } from '@newframe/ui/icon-button'
 import { useEffect, useRef, useState } from 'react'
 
-import type { ClipboardCapability } from '../capabilities'
+import type { ClipboardCapability } from '../capabilities.ts'
 
 export type CopyButtonProps = {
   clipboard: ClipboardCapability

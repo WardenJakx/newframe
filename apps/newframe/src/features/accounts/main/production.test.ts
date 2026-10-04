@@ -1,6 +1,6 @@
 import { describe, expect, it, mock } from 'bun:test'
 
-import { createAccountSelectionAdapter, createAddressChainUsageAdapter } from './production'
+import { createAccountSelectionAdapter, createAddressChainUsageAdapter } from './production.ts'
 
 const address = '0x1111111111111111111111111111111111111111'
 

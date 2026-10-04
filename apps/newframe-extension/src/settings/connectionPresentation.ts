@@ -1,4 +1,4 @@
-import type { ConnectionStatus } from '../frameState'
+import type { ConnectionStatus } from '../frameState.ts'
 
 export function frameConnectionPresentation(connectionStatus: ConnectionStatus) {
   if (connectionStatus === 'connected') {

@@ -8,12 +8,12 @@ import type {
   SignerImportCommand,
   SignerRefreshCommand,
   SignerSessionInputCommand
-} from '../../../../app/contracts/operations.js'
-import type { OperationEntityRef } from '../../../../platform/operations/operation.js'
-import type { OperationService } from '../../../../platform/operations/service.js'
-import type { OperationOwner, OperationReference } from '../../../../platform/operations/types.js'
-import { getSignerDisplayType } from '../../../../platform/signing/domain/index.js'
-import { capitalize } from '../../../../shared/domain/text.js'
+} from '../../../../app/contracts/operations.ts'
+import type { OperationEntityRef } from '../../../../platform/operations/operation.ts'
+import type { OperationService } from '../../../../platform/operations/service.ts'
+import type { OperationOwner, OperationReference } from '../../../../platform/operations/types.ts'
+import { getSignerDisplayType } from '../../../../platform/signing/domain/index.ts'
+import { capitalize } from '../../../../shared/domain/text.ts'
 
 export type OnboardingSigner = {
   id: string

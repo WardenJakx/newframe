@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { BUILT_IN_CHAIN_ICON_URLS, builtInChainIconUrl, isBuiltInChain } from './index'
+import { BUILT_IN_CHAIN_ICON_URLS, builtInChainIconUrl, isBuiltInChain } from './index.ts'
 
 describe('built-in chain configuration', () => {
   it('provides HTTPS artwork for every built-in production chain', () => {

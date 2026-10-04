@@ -3,7 +3,7 @@ import { Text } from '@newframe/ui/text'
 import { useEffect, useRef, useState } from 'react'
 
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
-import type { QrCameraCapability } from '../../../../platform/desktop/renderer/camera'
+import type { QrCameraCapability } from '../../../../platform/desktop/renderer/camera.ts'
 
 function cameraErrorMessage(reason: Error) {
   if (reason.name === 'NotAllowedError' || reason.name === 'SecurityError') {

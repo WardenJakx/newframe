@@ -2,8 +2,8 @@ import { describe, expect, it, mock } from 'bun:test'
 
 import type { FlashTokenBalance } from '@newframe/flash/wire'
 
-import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
-import FlashPortfolioProvider from './flash'
+import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
+import FlashPortfolioProvider from './flash.ts'
 
 const wallet = '0x1111111111111111111111111111111111111111'
 const usdc = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'

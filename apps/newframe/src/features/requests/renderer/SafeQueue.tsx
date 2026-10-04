@@ -1,21 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
-import type { AirGapRequestReference } from '../../../platform/signing/domain/airgap'
-import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
-import { AddressIdentity, shortAddress } from '../../../shared/renderer/ui/AddressIdentity'
-import { ChainIcon } from '../../../shared/renderer/ui/ChainIcon'
-import { accountDisplayType } from '../../../shared/renderer/ui/signerPresentation'
-import type { SafeOwnerAccount } from '../../accounts/domain/safe'
-import { persistedImageSource } from '../../asset-data/domain/image'
-import { NATIVE_CURRENCY } from '../../tokens/domain/constants'
-import { useAssetRate, useOrigins, useTokens } from './Account/Requests/state'
-import type { RequestRendererCapabilities } from './requestCapabilities'
+import type { AirGapRequestReference } from '../../../platform/signing/domain/airgap.ts'
+import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector.tsx'
+import { AddressIdentity, shortAddress } from '../../../shared/renderer/ui/AddressIdentity.tsx'
+import { ChainIcon } from '../../../shared/renderer/ui/ChainIcon.tsx'
+import { accountDisplayType } from '../../../shared/renderer/ui/signerPresentation.ts'
+import type { SafeOwnerAccount } from '../../accounts/domain/safe.ts'
+import { persistedImageSource } from '../../asset-data/domain/image/index.ts'
+import { NATIVE_CURRENCY } from '../../tokens/domain/constants.ts'
+import { useAssetRate, useOrigins, useTokens } from './Account/Requests/state.ts'
+import type { RequestRendererCapabilities } from './requestCapabilities.ts'
 import {
   useSafeConfirmation,
   useSafeProposalSimulation,
   useSafeTransactionActions
-} from './useSafeConfirmation'
+} from './useSafeConfirmation.ts'
 
 export function useSafeQueue({
   accountId,

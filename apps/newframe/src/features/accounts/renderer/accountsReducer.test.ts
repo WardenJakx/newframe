@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { accountsReducer, createAccountsState } from './accountsReducer'
+import { accountsReducer, createAccountsState } from './accountsReducer.ts'
 
 describe('accounts reducer', () => {
   it('transitions coupled menu, move, export, and drag state through named events', () => {

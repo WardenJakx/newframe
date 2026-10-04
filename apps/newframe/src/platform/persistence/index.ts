@@ -2,7 +2,7 @@ export {
   CanonicalStatePersistenceError,
   createPersistenceAdapter,
   type PersistenceAdapter
-} from './createPersistenceAdapter.js'
-export { createPersistenceService } from './createPersistenceService.js'
-export { createProductionPersistencePorts } from './production.js'
-export type { PersistenceLifecycle, PersistenceSchedulerPort, PersistenceStoragePort } from './ports.js'
+} from './createPersistenceAdapter.ts'
+export { createPersistenceService } from './createPersistenceService.ts'
+export { createProductionPersistencePorts } from './production.ts'
+export type { PersistenceLifecycle, PersistenceSchedulerPort, PersistenceStoragePort } from './ports.ts'

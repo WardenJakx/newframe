@@ -1,6 +1,6 @@
-import { matchFilter } from '../../../shared/domain/text'
-import type { BalanceSummary } from '../../asset-data/domain/balance'
-import { isBuiltInChain } from '../domain/chain'
+import { matchFilter } from '../../../shared/domain/text.ts'
+import type { BalanceSummary } from '../../asset-data/domain/balance/index.ts'
+import { isBuiltInChain } from '../domain/chain/index.ts'
 interface NetworkListItem {
   isTestnet?: boolean
   name: string

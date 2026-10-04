@@ -1,6 +1,6 @@
 import { describe, expect, it, mock } from 'bun:test'
 
-import { createChainlistIconLookup } from './production'
+import { createChainlistIconLookup } from './production.ts'
 
 const image = (sourceUrl: string) => ({
   base64: 'aWNvbg==',

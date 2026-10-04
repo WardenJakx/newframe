@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
-import { act, cleanup, render, screen, waitFor } from '../../../../test/support/componentSetup'
-import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
-import { createRequestRendererCapabilitiesFake } from '../../../features/requests/renderer/requestCapabilities.test-support'
-import type { SecurityCapability } from '../../../features/security/renderer/securityCapability'
-import type { OperationRecord } from '../../../platform/operations/operation'
+import { act, cleanup, render, screen, waitFor } from '../../../../test/support/componentSetup.tsx'
+import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient.ts'
+import { createRequestRendererCapabilitiesFake } from '../../../features/requests/renderer/requestCapabilities.test-support.ts'
+import type { SecurityCapability } from '../../../features/security/renderer/securityCapability.ts'
+import type { OperationRecord } from '../../../platform/operations/operation.ts'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
 
 const anyString = expect.any(String) as string
@@ -14,8 +14,8 @@ Object.defineProperty(global.navigator, 'keyboard', {
   value: { getLayoutMap: async () => new Map() }
 })
 
-const { Panel } = await import('./App')
-const { TrayNotificationProvider } = await import('./notification')
+const { Panel } = await import('./App.tsx')
+const { TrayNotificationProvider } = await import('./notification.tsx')
 
 const fixture = registerTestRuntimeFixture()
 const unlock = mock<SecurityCapability['unlock']>(async () => ({ ok: true }))

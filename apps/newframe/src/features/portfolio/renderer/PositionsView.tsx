@@ -7,17 +7,17 @@ import { Text } from '@newframe/ui/text'
 import { Fragment } from 'react'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
-import type { TokenImageCapability } from '../../../shared/renderer/capabilities'
-import TokenOptionRow from '../../../shared/renderer/ui/TokenOptionRow'
-import type { NetworkLike, NetworkMetaLike } from '../../../shared/renderer/ui/tokenSelectorTypes'
+import type { TokenImageCapability } from '../../../shared/renderer/capabilities.ts'
+import TokenOptionRow from '../../../shared/renderer/ui/TokenOptionRow.tsx'
+import type { NetworkLike, NetworkMetaLike } from '../../../shared/renderer/ui/tokenSelectorTypes.ts'
 import {
   createDisplayBalance,
   formatBalanceNotionalValue,
   type BalanceSummary,
   type DisplayedBalance
-} from '../../asset-data/domain/balance'
-import { formatUsdRate } from '../../asset-data/domain/balance'
-import type { PositionGroups } from './positionModel'
+} from '../../asset-data/domain/balance/index.ts'
+import { formatUsdRate } from '../../asset-data/domain/balance/index.ts'
+import type { PositionGroups } from './positionModel.ts'
 
 type PortfolioNetworks = Record<string | number, NetworkLike>
 type PortfolioNetworkMetadata = Record<string | number, NetworkMetaLike>

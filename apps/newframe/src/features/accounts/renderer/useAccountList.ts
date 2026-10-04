@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
-import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
-import { createBalanceSummarySelector } from '../../asset-data/domain/balance'
-import { buildAccountListModel } from './accountsModel'
+import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector.tsx'
+import { createBalanceSummarySelector } from '../../asset-data/domain/balance/index.ts'
+import { buildAccountListModel } from './accountsModel.ts'
 
 export function useAccountList() {
   const projection = useWalletSelector(

@@ -1,6 +1,6 @@
-import type { OperationRecord } from '../operations/operation.js'
-import type { OperationOwner } from '../operations/types.js'
-import type { CanonicalGet, CanonicalSet } from './actions.panel.js'
+import type { OperationRecord } from '../operations/operation.ts'
+import type { OperationOwner } from '../operations/types.ts'
+import type { CanonicalGet, CanonicalSet } from './actions.panel.ts'
 
 export interface OwnedOperation {
   owner: OperationOwner

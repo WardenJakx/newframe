@@ -4,12 +4,12 @@ import { isIP } from 'net'
 
 import { net as electronNet } from 'electron'
 
-import type { TokenImage } from '../../../../platform/state-store/state/index.js'
+import type { TokenImage } from '../../../../platform/state-store/state/index.ts'
 import {
   embeddedImageSource,
   isSupportedImageMimeType,
   MAX_EMBEDDED_IMAGE_BYTES
-} from '../../domain/image/index.js'
+} from '../../domain/image/index.ts'
 
 const MAX_TARGET_LENGTH = 4096
 const MAX_IMAGE_BYTES = MAX_EMBEDDED_IMAGE_BYTES

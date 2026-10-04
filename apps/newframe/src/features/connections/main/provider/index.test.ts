@@ -23,37 +23,40 @@ import {
   createAiSessionClientSource,
   createLocalApiSource,
   type RequestSource
-} from '../../../../app/main/gateway/requestSource'
-import type { RpcIpcHandlers, TransactionRequestContext } from '../../../../app/main/ipc-handlers/rpc'
-import type { DecodedCallData } from '../../../../platform/chain-rpc/contracts'
-import { Type as SignerType } from '../../../../platform/signing/domain'
-import type { SigningApprovalContext, SigningUiContext } from '../../../../platform/signing/signers/Signer'
-import type { Chain as StoredChain, Gas, Permission } from '../../../../platform/state-store/state'
-import type { Callback } from '../../../../shared/domain/async.js'
-import { gweiToHex } from '../../../../shared/domain/hex'
+} from '../../../../app/main/gateway/requestSource.ts'
+import type { RpcIpcHandlers, TransactionRequestContext } from '../../../../app/main/ipc-handlers/rpc.ts'
+import type { DecodedCallData } from '../../../../platform/chain-rpc/contracts/index.ts'
+import { Type as SignerType } from '../../../../platform/signing/domain/index.ts'
+import type {
+  SigningApprovalContext,
+  SigningUiContext
+} from '../../../../platform/signing/signers/Signer/index.ts'
+import type { Chain as StoredChain, Gas, Permission } from '../../../../platform/state-store/state/index.ts'
+import type { Callback } from '../../../../shared/domain/async.ts'
+import { gweiToHex } from '../../../../shared/domain/hex.ts'
 import type {
   JSONRPCRequestPayload,
   RPCRequestCallback,
   RPCRequestPayload,
   RPCResponsePayload
-} from '../../../../shared/domain/rpc.js'
-import { AccountSchema } from '../../../accounts/domain/state/account'
-import type { SafeTransactionPort } from '../../../accounts/main/safeTransactionPort'
-import type { Origin } from '../../../connections/domain/state/origin'
-import type { Chains } from '../../../networks/main'
-import chainConfig from '../../../networks/main/config'
+} from '../../../../shared/domain/rpc.ts'
+import { AccountSchema } from '../../../accounts/domain/state/account.ts'
+import type { SafeTransactionPort } from '../../../accounts/main/safeTransactionPort.ts'
+import type { Origin } from '../../../connections/domain/state/origin.ts'
+import chainConfig from '../../../networks/main/config.ts'
+import type { Chains } from '../../../networks/main/index.ts'
 import type {
   AccountRequest,
   AddChainRequest,
   SignTypedDataRequest,
   TypedMessage,
   TransactionRequest
-} from '../../../requests/contract/requests'
-import { TxClassification } from '../../../requests/contract/requests'
-import { GasFeesSource, type TransactionData } from '../../../transactions/domain'
-import type { AccountRequestPort } from './accountRequestPort'
-import type { ProviderProxyConnection } from './proxy'
-import type { Subscription } from './subscriptions'
+} from '../../../requests/contract/requests.ts'
+import { TxClassification } from '../../../requests/contract/requests.ts'
+import { GasFeesSource, type TransactionData } from '../../../transactions/domain/index.ts'
+import type { AccountRequestPort } from './accountRequestPort.ts'
+import type { ProviderProxyConnection } from './proxy.ts'
+import type { Subscription } from './subscriptions.ts'
 
 const address = '0x22dd63c3619818fdbc262c78baee43cb61e9cccf'
 const principal = createLocalApiSource({
@@ -162,7 +165,7 @@ const accounts: TestAccounts = {
   trackAutonomousTransaction: createTrackAutonomousTransactionMock()
 }
 let connection: TestChains
-let store: typeof import('../../../../platform/state-store').default
+let store: typeof import('../../../../platform/state-store/index.ts').default
 let accountRequestHook:
   | ((request: AccountRequest, respond?: (response: RPCResponsePayload) => void) => void)
   | undefined
@@ -332,18 +335,18 @@ const expectQueuedRequestRejection = (sendRequest: (callback: RPCRequestCallback
     void sendRequest(callback)
   })
 
-await mock.module('../../../networks/main', () => {
+await mock.module('../../../networks/main/index.ts', () => {
   const chains = { send: mock(), syncDataEmit: mock(), on: mock(), off: mock(), refreshGasFees: mock() }
   return { default: chains, ...chains }
 })
-await mock.module('../../../transactions/main/reveal', () => {
+await mock.module('../../../transactions/main/reveal.ts', () => {
   const reveal = {
     resolveEntityType: mock().mockResolvedValue('external')
   }
   return { default: reveal, ...reveal }
 })
 
-await mock.module('./subscriptions', () => ({
+await mock.module('./subscriptions.ts', () => ({
   SubscriptionType: {
     ACCOUNTS: 'accountsChanged',
     ASSETS: 'assetsChanged',
@@ -355,11 +358,11 @@ await mock.module('./subscriptions', () => ({
 beforeAll(async () => {
   log.transports.console.level = false
 
-  const connectionModule = (await import('../../../networks/main')) as unknown as {
+  const connectionModule = (await import('../../../networks/main/index.ts')) as unknown as {
     default: TestChains
   }
   connection = connectionModule.default
-  store = (await import('../../../../platform/state-store')).default
+  store = (await import('../../../../platform/state-store/index.ts')).default
   accounts.getAccounts = () => [address]
   accounts.current = mock(() => ({ id: address, getAccounts: () => [address] }))
   accounts.get = createGetMock()
@@ -396,8 +399,8 @@ beforeAll(async () => {
     return true
   }
 
-  const { RpcIpcHandlers } = await import('../../../../app/main/ipc-handlers/rpc')
-  const { createProviderStatePort } = await import('./statePort')
+  const { RpcIpcHandlers } = await import('../../../../app/main/ipc-handlers/rpc.ts')
+  const { createProviderStatePort } = await import('./statePort.ts')
   provider = new RpcIpcHandlers({
     origins: { hasAccountAccessGrant: async () => true },
     accounts: accounts as unknown as AccountRequestPort,

@@ -7,7 +7,7 @@ import {
   WalletPanelNavigationEntrySchema,
   WalletRequestSchema,
   WalletStatusNotificationSchema
-} from './projections'
+} from './projections.ts'
 
 describe('wallet renderer projection records', () => {
   it('keeps supported request presentation data and strips unowned fields', () => {

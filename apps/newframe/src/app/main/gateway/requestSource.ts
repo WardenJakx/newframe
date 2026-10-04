@@ -4,12 +4,12 @@ import type {
   AccountRequest,
   RequestAuthorization,
   RequestType
-} from '../../../features/requests/contract/requests.js'
+} from '../../../features/requests/contract/requests.ts'
 import type {
   AuthorizationContext,
   RendererEntrypoint,
   RendererRole
-} from '../../../platform/ipc/main/authorization.js'
+} from '../../../platform/ipc/main/authorization.ts'
 
 const requestSourceBrand = Symbol('newframe.request-source')
 const admittedSources = new WeakSet<object>()

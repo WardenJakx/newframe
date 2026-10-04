@@ -1,9 +1,9 @@
 import { useShallow } from 'zustand/react/shallow'
 
-import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
-import type { ActivityCapability } from './activityCapability'
-import { createActivityRows } from './activityModel'
-import { ActivityView } from './ActivityView'
+import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector.tsx'
+import type { ActivityCapability } from './activityCapability.ts'
+import { createActivityRows } from './activityModel.ts'
+import { ActivityView } from './ActivityView.tsx'
 
 export function Activity({
   capability,

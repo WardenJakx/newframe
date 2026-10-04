@@ -7,16 +7,16 @@ import {
   safeConfigurationSchema,
   safeProposalSchema,
   type SafeProposal
-} from '../../src/features/accounts/domain/safe.js'
-import type { LegacyTypedData, TypedData } from '../../src/features/requests/contract/requests.js'
+} from '../../src/features/accounts/domain/safe.ts'
+import type { LegacyTypedData, TypedData } from '../../src/features/requests/contract/requests.ts'
 import {
   getSafeMessageHash,
   packSafeMessageSignatures,
   recoverSafeConfirmationOwner,
   verifySafeConfirmation,
   verifySafeHash
-} from '../../src/platform/safe/integrity.js'
-import type { OriginalMessage } from '../../src/platform/signing/signatures/digests.js'
+} from '../../src/platform/safe/integrity.ts'
+import type { OriginalMessage } from '../../src/platform/signing/signatures/digests.ts'
 
 const proposalPostSchema = z.strictObject({
   safe: safeAddressSchema,

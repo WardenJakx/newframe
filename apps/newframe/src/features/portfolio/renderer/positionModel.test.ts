@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { createPositionGroups } from './positionModel'
+import { createPositionGroups } from './positionModel.ts'
 
 const balance = (symbol: string, totalValue: number, address = symbol) => ({
   address,

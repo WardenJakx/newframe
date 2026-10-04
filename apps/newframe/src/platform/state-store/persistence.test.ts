@@ -2,27 +2,27 @@ import { describe, expect, it } from 'bun:test'
 
 import { Wallet } from 'ethers'
 
-import { createTestStore } from '../../../test/support/createTestStore'
-import { DEFAULT_PROFILE_ID, DEFAULT_PROFILE_NAME } from '../../app/contracts/state/main'
-import { builtInChainIconUrl } from '../../features/networks/domain/chain'
-import type { TokenImage } from '../../features/tokens/domain/state/token'
+import { createTestStore } from '../../../test/support/createTestStore.ts'
+import { DEFAULT_PROFILE_ID, DEFAULT_PROFILE_NAME } from '../../app/contracts/state/main.ts'
+import { builtInChainIconUrl } from '../../features/networks/domain/chain/index.ts'
+import type { TokenImage } from '../../features/tokens/domain/state/token.ts'
 import {
   CanonicalStatePersistenceError,
   createPersistenceAdapter,
   createPersistenceService,
   type PersistenceSchedulerPort,
   type PersistenceStoragePort
-} from '../persistence'
-import type { CanonicalStore } from './actions'
-import createCanonicalStore from './createCanonicalStore'
+} from '../persistence/index.ts'
+import type { CanonicalStore } from './actions.ts'
+import createCanonicalStore from './createCanonicalStore.ts'
 import {
   CANONICAL_STATE_STORAGE_NAME,
   PERSISTENCE_VERSION,
   PersistedCanonicalStateSchema,
   type PersistedCanonicalState
-} from './persist/schema'
-import { mergePersistedState, migratePersistedState, selectPersistedState } from './persistence'
-import createInitialState from './state'
+} from './persist/schema.ts'
+import { mergePersistedState, migratePersistedState, selectPersistedState } from './persistence.ts'
+import createInitialState from './state/index.ts'
 
 class MemoryPersistence implements PersistenceStoragePort {
   readonly values: Map<string, unknown>
@@ -739,8 +739,8 @@ describe('canonical persistence failure boundaries', () => {
 })
 
 it('retains Safe metadata through persistence and projects only the current profile', async () => {
-  const { projectRendererState } = await import('../state-sync/main/projections')
-  const { projectionStateSchemas } = await import('../state-sync/contract/projections')
+  const { projectRendererState } = await import('../state-sync/main/projections.ts')
+  const { projectionStateSchemas } = await import('../state-sync/contract/projections.ts')
   const store = createTestStore()
   const owner = new Wallet(`0x${'11'.repeat(32)}`)
   const address = owner.address
@@ -828,8 +828,8 @@ it('retains Safe metadata through persistence and projects only the current prof
 })
 
 it('persists AirGap public records, projects progress, and never restores an exchange', async () => {
-  const { projectWalletState } = await import('../state-sync/main/projections')
-  const { signerFixture, transaction } = await import('../../../test/integration/fixtures/airgap.js')
+  const { projectWalletState } = await import('../state-sync/main/projections.ts')
+  const { signerFixture, transaction } = await import('../../../test/integration/fixtures/airgap.ts')
   const f = signerFixture()
   try {
     f.store.getState().addAirGap(f.signer.id, f.signer.record)

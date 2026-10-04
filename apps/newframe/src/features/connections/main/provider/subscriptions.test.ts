@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it } from 'bun:test'
 
 import { v5 as uuid } from 'uuid'
 
-import store from '../../../../platform/state-store'
-import { hasSubscriptionPermission, SubscriptionType } from './subscriptions'
+import store from '../../../../platform/state-store/index.ts'
+import { hasSubscriptionPermission, SubscriptionType } from './subscriptions.ts'
 
 const address = '0x1111111111111111111111111111111111111111'
 

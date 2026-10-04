@@ -3,14 +3,14 @@ import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 import type { ReactNode } from 'react'
 
-import { isNonZeroHex } from '../../../../../../../shared/domain/hex'
-import { toBigInt } from '../../../../../../../shared/domain/units'
-import type { SourceValue } from '../../../../format/displayValue'
-import { Cluster, ClusterRow, ClusterValue } from '../../../../ui/Cluster'
-import { DisplayValue } from '../../../../ui/DisplayValue'
-import RequestHeader from '../../../../ui/RequestHeader'
-import EnsOverview from '../../Ens'
-import type { AddressIdentities } from '../../state'
+import { isNonZeroHex } from '../../../../../../../shared/domain/hex.ts'
+import { toBigInt } from '../../../../../../../shared/domain/units.ts'
+import type { SourceValue } from '../../../../format/displayValue.ts'
+import { Cluster, ClusterRow, ClusterValue } from '../../../../ui/Cluster.tsx'
+import { DisplayValue } from '../../../../ui/DisplayValue.tsx'
+import RequestHeader from '../../../../ui/RequestHeader.tsx'
+import EnsOverview from '../../Ens.tsx'
+import type { AddressIdentities } from '../../state.ts'
 
 type TxOverviewRequest = {
   data: {

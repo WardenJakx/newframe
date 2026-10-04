@@ -5,6 +5,7 @@
     "moduleResolution": "Bundler",
     "lib": ["ESNext", "DOM"],
     "types": ["bun", "node"],
+    "allowImportingTsExtensions": true,
     "noEmit": true
   },
   "include": ["src/**/*.ts", "test/**/*.ts"]

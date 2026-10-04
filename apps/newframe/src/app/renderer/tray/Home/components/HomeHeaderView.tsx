@@ -1,9 +1,9 @@
 import type { IconName } from '@newframe/ui/icon'
 import { IconButton } from '@newframe/ui/icon-button'
 
-import { shortAddress } from '../../../../../shared/renderer/ui/AddressIdentity'
-import { HeaderBar } from '../../../../../shared/renderer/ui/HeaderBar'
-import { IdentityControl } from '../../ui/IdentityControl'
+import { shortAddress } from '../../../../../shared/renderer/ui/AddressIdentity.tsx'
+import { HeaderBar } from '../../../../../shared/renderer/ui/HeaderBar.tsx'
+import { IdentityControl } from '../../ui/IdentityControl.tsx'
 
 export function HomeHeaderView({
   account,

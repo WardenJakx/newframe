@@ -2,7 +2,7 @@
 
 import type { Draft } from 'immer'
 
-import type { CanonicalState } from './state/index.js'
+import type { CanonicalState } from './state/index.ts'
 
 export type CanonicalSet = (update: (state: Draft<CanonicalState>) => void) => void
 export type CanonicalGet = () => CanonicalState

@@ -1,11 +1,11 @@
 import { useShallow } from 'zustand/react/shallow'
 
-import { chainColorValue } from '../../../../../features/networks/domain/chain/colors'
-import { ChainDot } from '../../../../../features/networks/renderer/ChainDot'
-import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector'
-import { ChainIcon } from '../../../../../shared/renderer/ui/ChainIcon'
-import { useHomeUiStore } from '../state/HomeUiProvider'
-import { HomeNavigationView } from './HomeNavigationView'
+import { chainColorValue } from '../../../../../features/networks/domain/chain/colors.ts'
+import { ChainDot } from '../../../../../features/networks/renderer/ChainDot.tsx'
+import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector.tsx'
+import { ChainIcon } from '../../../../../shared/renderer/ui/ChainIcon.tsx'
+import { useHomeUiStore } from '../state/HomeUiProvider.tsx'
+import { HomeNavigationView } from './HomeNavigationView.tsx'
 
 export function HomeNavigation() {
   const shared = useWalletSelector(

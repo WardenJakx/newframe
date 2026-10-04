@@ -1,7 +1,7 @@
 import { expect, it, mock } from 'bun:test'
 
-import { render, screen } from '../../../../test/support/componentSetup'
-import { AddAccountView, type AddAccountViewEvents } from './AddAccountView'
+import { render, screen } from '../../../../test/support/componentSetup.tsx'
+import { AddAccountView, type AddAccountViewEvents } from './AddAccountView.tsx'
 
 function events() {
   return {

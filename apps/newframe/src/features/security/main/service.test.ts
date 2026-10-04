@@ -1,10 +1,10 @@
 import { describe, expect, it, mock } from 'bun:test'
 
-import { createTestStore } from '../../../../test/support/createTestStore'
-import { createOperationService } from '../../../platform/operations/service'
-import { createProductionSecurityAdapters } from './production'
-import type { SecurityServicePorts } from './service'
-import { createSecurityService } from './service'
+import { createTestStore } from '../../../../test/support/createTestStore.ts'
+import { createOperationService } from '../../../platform/operations/service.ts'
+import { createProductionSecurityAdapters } from './production.ts'
+import type { SecurityServicePorts } from './service.ts'
+import { createSecurityService } from './service.ts'
 
 const owner = { clientType: 'wallet-ui' as const, windowInstanceId: 'security-test' }
 const flush = () => new Promise((resolve) => setImmediate(resolve))

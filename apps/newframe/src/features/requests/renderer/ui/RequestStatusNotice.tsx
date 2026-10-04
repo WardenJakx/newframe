@@ -1,7 +1,7 @@
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 
-import StatusGlyph from '../../../../shared/renderer/ui/StatusGlyph.js'
+import StatusGlyph from '../../../../shared/renderer/ui/StatusGlyph.tsx'
 
 export type RequestStatusNoticeProps = {
   notice?: string

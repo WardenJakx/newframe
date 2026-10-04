@@ -1,6 +1,6 @@
 import { expect, it, mock } from 'bun:test'
 
-import { createRequestEditService } from './service'
+import { createRequestEditService } from './service.ts'
 
 it('revalidates the selected token approval before updating it', () => {
   const request = { type: 'transaction', recognizedActions: [{ id: 'erc20:approve' }] }

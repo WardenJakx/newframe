@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { displayValueData } from './displayValue'
+import { displayValueData } from './displayValue.ts'
 
 describe('displayValueData', () => {
   it('formats atomic wei and gwei representations', () => {

@@ -1,7 +1,7 @@
-import { Inline } from './Inline.js'
-import { Surface } from './Surface.js'
-import { Tab } from './Tab.js'
-import { Text } from './Text.js'
+import { Inline } from './Inline.tsx'
+import { Surface } from './Surface.tsx'
+import { Tab } from './Tab.tsx'
+import { Text } from './Text.tsx'
 
 export type TabsItem<T extends string> = { active: boolean; id: T; label: string }
 

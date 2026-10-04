@@ -2,15 +2,15 @@ import { expect, it, mock } from 'bun:test'
 
 import { act, fireEvent, waitFor, within } from '@testing-library/react'
 
-import { render, screen } from '../../../../test/support/componentSetup'
-import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
-import type { SafeConfirmationStatus } from '../../../app/contracts/operations'
-import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support'
-import type { SafeDeployment, SafeOwnerAccount, SafeProposalSimulation } from '../../accounts/domain/safe'
-import { createRequestRendererCapabilitiesFake as createCapabilityFake } from './requestCapabilities.test-support'
-import { RequestsOverlay } from './RequestsOverlay'
-import { SafeProposalDetailsView } from './SafeProposalDetailsView'
-import { SafeQueueView } from './SafeQueueView'
+import { render, screen } from '../../../../test/support/componentSetup.tsx'
+import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient.ts'
+import type { SafeConfirmationStatus } from '../../../app/contracts/operations.ts'
+import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
+import type { SafeDeployment, SafeOwnerAccount, SafeProposalSimulation } from '../../accounts/domain/safe.ts'
+import { createRequestRendererCapabilitiesFake as createCapabilityFake } from './requestCapabilities.test-support.ts'
+import { RequestsOverlay } from './RequestsOverlay.tsx'
+import { SafeProposalDetailsView } from './SafeProposalDetailsView.tsx'
+import { SafeQueueView } from './SafeQueueView.tsx'
 
 const fixture = registerTestRuntimeFixture()
 const address = '0x1111111111111111111111111111111111111111'
@@ -1086,12 +1086,12 @@ it('shows a prominent mismatch, local interpretation and the shared calldata dig
   expect(screen.getByText('Call transfer')).toBeTruthy()
   expect(screen.queryByText('Unverified decoding')).toBeNull()
   expect(screen.queryByText('forged')).toBeNull()
-  const { getCalldataDigest } = await import('../../../shared/domain/calldata')
+  const { getCalldataDigest } = await import('../../../shared/domain/calldata.ts')
   expect(screen.getByText(getCalldataDigest('0x1234'))).toBeTruthy()
 })
 
 it('keeps RPC and Safe requests together and routes the single back button through review', async () => {
-  const { WalletRequestSchema } = await import('../../../platform/state-sync/contract/projections')
+  const { WalletRequestSchema } = await import('../../../platform/state-sync/contract/projections.ts')
   const mixed = state({ ...deployment, error: undefined })
   mixed.accounts[address].requests.access = WalletRequestSchema.parse({
     type: 'access',

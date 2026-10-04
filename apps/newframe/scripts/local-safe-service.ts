@@ -1,5 +1,5 @@
-import { safeProposalSchema } from '../src/features/accounts/domain/safe'
-import { createSafeHandler } from './local-safe/handler'
+import { safeProposalSchema } from '../src/features/accounts/domain/safe.ts'
+import { createSafeHandler } from './local-safe/handler.ts'
 
 const raw = process.env.NEWFRAME_SAFE_SEED
 if (!raw) {

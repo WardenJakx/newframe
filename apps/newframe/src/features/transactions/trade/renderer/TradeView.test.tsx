@@ -8,10 +8,10 @@ import {
   FLASH_TWAP_ORDER_TYPE
 } from '@newframe/flash/constants'
 
-import { fireEvent, render, screen } from '../../../../../test/support/componentSetup'
-import { createTradeCapabilityFake } from './tradeService.test-support'
-import { TradeView } from './TradeView'
-import type { TradeAssetViewModel, TradeViewEvents, TradeViewModel } from './tradeViewModel'
+import { fireEvent, render, screen } from '../../../../../test/support/componentSetup.tsx'
+import { createTradeCapabilityFake } from './tradeService.test-support.ts'
+import { TradeView } from './TradeView.tsx'
+import type { TradeAssetViewModel, TradeViewEvents, TradeViewModel } from './tradeViewModel.ts'
 
 function asset(field: 'target' | 'contra', symbol: string, editable: boolean): TradeAssetViewModel {
   const selectorItem = {

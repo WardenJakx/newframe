@@ -1,6 +1,6 @@
 import { cva } from '../styled-system/css/cva.js'
 import type { RecipeVariantProps } from '../styled-system/types/recipe.js'
-import { textColorVariants } from './Text.js'
+import { textColorVariants } from './Text.tsx'
 
 const icons = {
   warning: {

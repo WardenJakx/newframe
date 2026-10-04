@@ -4,8 +4,8 @@ import type {
   AuthorizationContext,
   RendererEntrypoint,
   RendererRole
-} from '../../../platform/ipc/main/authorization.js'
-import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.js'
+} from '../../../platform/ipc/main/authorization.ts'
+import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.ts'
 import {
   FlashQuoteResultSchema,
   KeystoreLocateResultSchema,
@@ -23,39 +23,39 @@ import {
   type SeedGenerateQuery,
   type RendererContextMenuCommand,
   type TokenLookupQuery
-} from '../../contracts/operations.js'
+} from '../../contracts/operations.ts'
 
 export type RendererOperationContext = AuthorizationContext & {
-  source: import('../gateway/requestSource.js').NewframeInternalSource
+  source: import('../gateway/requestSource.ts').NewframeInternalSource
 }
 
 export interface OperationServices {
   protectedOperations: Pick<
-    import('../protected-operations/service.js').ProtectedOperationsService,
+    import('../protected-operations/service.ts').ProtectedOperationsService,
     'exportPrivateKey'
   >
-  airgap: import('../../../features/accounts/main/airgap/service.js').AirGapService
+  airgap: import('../../../features/accounts/main/airgap/service.ts').AirGapService
   accounts: {
     current(): { id: string } | null | undefined
     get(accountId: string): unknown
   }
-  accountMutations: import('../../../features/accounts/main/service.js').AccountService
-  safes: import('../../../features/accounts/main/safe.js').SafeService
-  accountOnboarding: import('../../../features/accounts/main/accountOnboarding/service.js').AccountOnboardingService
-  agent: import('../../../features/agent-access/main/index.js').AgentService
-  networks: import('../../../features/networks/main/service.js').NetworkService
-  portfolio: import('../../../features/portfolio/main/service.js').PortfolioService
-  profiles: import('../../../features/accounts/main/profiles/service.js').ProfileService
-  platform: import('../platform/service.js').PlatformService
-  requestEdits: import('../../../features/requests/main/requestEdits/service.js').RequestEditService
-  requests: import('../../../features/requests/main/service.js').RequestService
-  security: import('../../../features/security/main/service.js').SecurityService
-  send: import('../../../features/transactions/send/main/service.js').SendService
-  trade: import('../../../features/transactions/trade/main/service.js').TradeService
-  settings: ReturnType<typeof import('../../../features/settings/main/service.js').createSettingsService>
-  tokens: import('../../../features/tokens/main/service.js').TokenService
+  accountMutations: import('../../../features/accounts/main/service.ts').AccountService
+  safes: import('../../../features/accounts/main/safe.ts').SafeService
+  accountOnboarding: import('../../../features/accounts/main/accountOnboarding/service.ts').AccountOnboardingService
+  agent: import('../../../features/agent-access/main/index.ts').AgentService
+  networks: import('../../../features/networks/main/service.ts').NetworkService
+  portfolio: import('../../../features/portfolio/main/service.ts').PortfolioService
+  profiles: import('../../../features/accounts/main/profiles/service.ts').ProfileService
+  platform: import('../platform/service.ts').PlatformService
+  requestEdits: import('../../../features/requests/main/requestEdits/service.ts').RequestEditService
+  requests: import('../../../features/requests/main/service.ts').RequestService
+  security: import('../../../features/security/main/service.ts').SecurityService
+  send: import('../../../features/transactions/send/main/service.ts').SendService
+  trade: import('../../../features/transactions/trade/main/service.ts').TradeService
+  settings: ReturnType<typeof import('../../../features/settings/main/service.ts').createSettingsService>
+  tokens: import('../../../features/tokens/main/service.ts').TokenService
   authorizeRenderer(event: Electron.IpcMainInvokeEvent): AuthorizationContext | undefined
-  requestTokenImage: import('../../../features/asset-data/main/images/index.js').ImageService['requestTokenImage']
+  requestTokenImage: import('../../../features/asset-data/main/images/index.ts').ImageService['requestTokenImage']
   resolveName(name: string): Promise<string>
 }
 

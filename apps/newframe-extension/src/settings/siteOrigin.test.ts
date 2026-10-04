@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { parseOrigin } from './siteOrigin'
+import { parseOrigin } from './siteOrigin.ts'
 
 describe('parseOrigin', () => {
   it('keeps colons in the path out of the displayed domain', () => {

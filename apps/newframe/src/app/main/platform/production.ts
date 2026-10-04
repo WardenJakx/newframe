@@ -1,6 +1,6 @@
-import { createBlockExplorerOpener, openExternal } from '../../../platform/desktop/windows/window.js'
-import type store from '../../../platform/state-store/index.js'
-import type { PlatformServicePorts } from './service.js'
+import { createBlockExplorerOpener, openExternal } from '../../../platform/desktop/windows/window.ts'
+import type store from '../../../platform/state-store/index.ts'
+import type { PlatformServicePorts } from './service.ts'
 
 export type ProductionPlatformExternalAdapters = Pick<
   PlatformServicePorts,

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-import { Button, type ButtonProps } from './Button.js'
+import { Button, type ButtonProps } from './Button.tsx'
 
 export type ToggleButtonProps = Pick<ButtonProps, 'disabled' | 'label' | 'pressed' | 'size'> & {
   appearance?: 'row' | 'segment' | 'switch' | null

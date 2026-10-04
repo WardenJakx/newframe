@@ -5,13 +5,13 @@ import { Text } from '@newframe/ui/text'
 import { useShallow } from 'zustand/react/shallow'
 
 import { cva } from '../../../../../../generated/styled-system/css/cva.js'
-import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections'
-import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector'
-import { ChainIcon } from '../../../../../shared/renderer/ui/ChainIcon'
-import StatusGlyph from '../../../../../shared/renderer/ui/StatusGlyph'
-import type { HomeCapability } from '../homeCapability'
-import { useHomeUiStore } from '../state/HomeUiProvider'
-import StatusNotifications from '../StatusNotifications'
+import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections.ts'
+import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector.tsx'
+import { ChainIcon } from '../../../../../shared/renderer/ui/ChainIcon.tsx'
+import StatusGlyph from '../../../../../shared/renderer/ui/StatusGlyph.tsx'
+import type { HomeCapability } from '../homeCapability.ts'
+import { useHomeUiStore } from '../state/HomeUiProvider.tsx'
+import StatusNotifications from '../StatusNotifications.tsx'
 
 const EMPTY_REQUESTS: WalletRendererState['accounts'][string]['requests'] = {}
 

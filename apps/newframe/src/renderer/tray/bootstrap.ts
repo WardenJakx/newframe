@@ -1,3 +1,3 @@
-import '../../shared/renderer/configure-zod'
+import '../../shared/renderer/configure-zod.ts'
 
-await import('./index')
+await import('./index.tsx')

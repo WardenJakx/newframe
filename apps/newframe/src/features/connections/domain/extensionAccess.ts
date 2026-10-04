@@ -1,5 +1,5 @@
-import { getProfileAccountIds, type Main } from '../../../app/contracts/state/main.js'
-import type { ExtensionAccess } from './state/extensionAccess.js'
+import { getProfileAccountIds, type Main } from '../../../app/contracts/state/main.ts'
+import type { ExtensionAccess } from './state/extensionAccess.ts'
 
 type AccessMain = Pick<
   Main,

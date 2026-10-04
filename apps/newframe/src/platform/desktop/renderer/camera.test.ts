@@ -2,7 +2,7 @@ import { expect, it } from 'bun:test'
 
 import QRCode from 'qrcode'
 
-import { createQrCameraCapability } from './camera'
+import { createQrCameraCapability } from './camera.ts'
 
 function cameraFixture() {
   let resolve!: (stream: MediaStream) => void

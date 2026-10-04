@@ -1,11 +1,11 @@
 import type { JSONTx } from '@ethereumjs/tx'
 import { addHexPrefix, isHexString } from '@ethereumjs/util'
 
-import type { RPC } from '../../../shared/domain/rpc.js'
-import { MAX_HEX } from './constants.js'
-import { typeSupportsBaseFee } from './fees.js'
+import type { RPC } from '../../../shared/domain/rpc.ts'
+import { MAX_HEX } from './constants.ts'
+import { typeSupportsBaseFee } from './fees.ts'
 
-export { limitTransactionFee, type TransactionFeeField, typeSupportsBaseFee } from './fees.js'
+export { limitTransactionFee, type TransactionFeeField, typeSupportsBaseFee } from './fees.ts'
 
 export enum GasFeesSource {
   Dapp = 'Dapp',

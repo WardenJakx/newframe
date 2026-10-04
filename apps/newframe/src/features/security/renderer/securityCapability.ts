@@ -1,11 +1,16 @@
-import type { CommandMap, CommandResult, QueryMap, ResultForQuery } from '../../../app/contracts/operations'
-import type { NewframeHost } from '../../../platform/ipc/contract/ipc'
+import type {
+  CommandMap,
+  CommandResult,
+  QueryMap,
+  ResultForQuery
+} from '../../../app/contracts/operations.ts'
+import type { NewframeHost } from '../../../platform/ipc/contract/ipc.ts'
 import {
   createWebAuthnBiometricCredential,
   isBiometricUserCanceledError,
   isWebAuthnBiometricsSupported,
   type WebAuthnEnrollment
-} from './biometrics'
+} from './biometrics.ts'
 
 type WithoutType<T> = T extends { type: string } ? Omit<T, 'type'> : never
 type Input<TType extends keyof CommandMap> = WithoutType<CommandMap[TType]>

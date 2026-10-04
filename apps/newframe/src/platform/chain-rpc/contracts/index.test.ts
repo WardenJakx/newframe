@@ -12,15 +12,15 @@ import {
 
 import log from 'electron-log'
 
-await mock.module('./sources/sourcify', () => ({ fetchSourcifyContract: mock() }))
-await mock.module('./sources/etherscan', () => ({ fetchEtherscanContract: mock() }))
+await mock.module('./sources/sourcify.ts', () => ({ fetchSourcifyContract: mock() }))
+await mock.module('./sources/etherscan.ts', () => ({ fetchEtherscanContract: mock() }))
 
-let fetchContract: typeof import('./index').fetchContract
-let decodeCallData: typeof import('./index').decodeCallData
-let decodeCallDataWithSelectorRegistry: typeof import('./index').decodeCallDataWithSelectorRegistry
-let clearFunctionSelectorCache: typeof import('./selectors').clearFunctionSelectorCache
-let fetchSourcifyContract: typeof import('./sources/sourcify').fetchSourcifyContract
-let fetchEtherscanContract: typeof import('./sources/etherscan').fetchEtherscanContract
+let fetchContract: typeof import('./index.ts').fetchContract
+let decodeCallData: typeof import('./index.ts').decodeCallData
+let decodeCallDataWithSelectorRegistry: typeof import('./index.ts').decodeCallDataWithSelectorRegistry
+let clearFunctionSelectorCache: typeof import('./selectors.ts').clearFunctionSelectorCache
+let fetchSourcifyContract: typeof import('./sources/sourcify.ts').fetchSourcifyContract
+let fetchEtherscanContract: typeof import('./sources/etherscan.ts').fetchEtherscanContract
 
 const originalFetch = globalThis.fetch
 
@@ -43,10 +43,10 @@ const mockAbi = [
 
 beforeAll(async () => {
   log.transports.console.level = false
-  ;({ decodeCallData, decodeCallDataWithSelectorRegistry, fetchContract } = await import('./index'))
-  ;({ clearFunctionSelectorCache } = await import('./selectors'))
-  ;({ fetchSourcifyContract } = await import('./sources/sourcify'))
-  ;({ fetchEtherscanContract } = await import('./sources/etherscan'))
+  ;({ decodeCallData, decodeCallDataWithSelectorRegistry, fetchContract } = await import('./index.ts'))
+  ;({ clearFunctionSelectorCache } = await import('./selectors.ts'))
+  ;({ fetchSourcifyContract } = await import('./sources/sourcify.ts'))
+  ;({ fetchEtherscanContract } = await import('./sources/etherscan.ts'))
 })
 
 afterEach(() => {

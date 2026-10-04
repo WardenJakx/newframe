@@ -8,13 +8,13 @@ import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 import { ToggleButton } from '@newframe/ui/toggle-button'
 
-import type { FrameState } from '../frameState'
-import { AccountSelector } from './AccountSelector'
-import { frameConnectionPresentation, siteConnectionPresentation } from './connectionPresentation'
-import { NetworkSelector } from './NetworkSelector'
-import { SettingsMessage } from './SettingsMessage'
-import { SettingsPanel } from './SettingsPanel'
-import { parseOrigin } from './siteOrigin'
+import type { FrameState } from '../frameState.ts'
+import { AccountSelector } from './AccountSelector.tsx'
+import { frameConnectionPresentation, siteConnectionPresentation } from './connectionPresentation.ts'
+import { NetworkSelector } from './NetworkSelector.tsx'
+import { SettingsMessage } from './SettingsMessage.tsx'
+import { SettingsPanel } from './SettingsPanel.tsx'
+import { parseOrigin } from './siteOrigin.ts'
 
 export interface SettingsViewProps {
   tab?: { url?: string; favIconUrl?: string }

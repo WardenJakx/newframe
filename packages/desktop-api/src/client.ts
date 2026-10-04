@@ -7,7 +7,7 @@ import {
   type TRPCClient
 } from '@trpc/client'
 
-import type { DesktopRouter } from './router.js'
+import type { DesktopRouter } from './router.ts'
 
 export function createDesktopClient(
   baseUrl: string,

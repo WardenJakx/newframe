@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'bun:test'
 
-import { createTestStore } from '../../../../test/support/createTestStore'
-import { DEFAULT_PROFILE_ID } from '../../../app/contracts/state/main'
-import { createExtensionAccessService } from './extensionAccess'
+import { createTestStore } from '../../../../test/support/createTestStore.ts'
+import { DEFAULT_PROFILE_ID } from '../../../app/contracts/state/main.ts'
+import { createExtensionAccessService } from './extensionAccess.ts'
 
 const extensionId = 'extension-id'
 const [one, two, three] = [

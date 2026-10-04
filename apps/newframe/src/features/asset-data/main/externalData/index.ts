@@ -1,13 +1,13 @@
 import { powerMonitor } from 'electron'
 import log from 'electron-log'
 
-import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
-import type { Token } from '../../../../platform/state-store/state/index.js'
-import type { Address } from '../../../../shared/domain/address.js'
-import { debounce } from '../../../../shared/domain/async.js'
-import { arraysMatch } from '../../../../shared/domain/collections.js'
-import { customTokens, tokensForAccount } from '../../../tokens/domain/index.js'
-import Balances from './balances/index.js'
+import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
+import type { Token } from '../../../../platform/state-store/state/index.ts'
+import type { Address } from '../../../../shared/domain/address.ts'
+import { debounce } from '../../../../shared/domain/async.ts'
+import { arraysMatch } from '../../../../shared/domain/collections.ts'
+import { customTokens, tokensForAccount } from '../../../tokens/domain/index.ts'
+import Balances from './balances/index.ts'
 
 export interface DataScanner {
   close: () => void

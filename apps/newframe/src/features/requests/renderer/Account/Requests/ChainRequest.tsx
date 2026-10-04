@@ -3,10 +3,10 @@ import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 
 import { cva } from '../../../../../../generated/styled-system/css/cva.js'
-import { AddChainDetails } from '../../../../../shared/renderer/ui/AddChainDetails'
-import { RequestStatusNotice } from '../../ui/RequestStatusNotice'
-import type { ChainRequestView } from './requestViewTypes'
-import { useNetwork, useOriginName } from './state'
+import { AddChainDetails } from '../../../../../shared/renderer/ui/AddChainDetails.tsx'
+import { RequestStatusNotice } from '../../ui/RequestStatusNotice.tsx'
+import type { ChainRequestView } from './requestViewTypes.ts'
+import { useNetwork, useOriginName } from './state.ts'
 
 type ChainRequestProps = {
   req: ChainRequestView

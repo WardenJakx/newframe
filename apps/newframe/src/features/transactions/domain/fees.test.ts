@@ -8,7 +8,7 @@ import {
   totalTransactionFee,
   transactionFeePreset,
   type TransactionFeeValues
-} from './fees'
+} from './fees.ts'
 
 const GWEI = 10n ** 9n
 const ETH = 10n ** 18n

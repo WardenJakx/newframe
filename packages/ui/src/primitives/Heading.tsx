@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-import { textRecipe, type TextRecipeProps } from './Text.js'
+import { textRecipe, type TextRecipeProps } from './Text.tsx'
 
 export type HeadingProps = Pick<TextRecipeProps, 'align' | 'tone' | 'truncate'> & {
   children: ReactNode

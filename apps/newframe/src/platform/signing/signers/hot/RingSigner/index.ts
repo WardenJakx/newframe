@@ -3,9 +3,9 @@ import { createDecipheriv, scrypt as scryptAsync, type ScryptOptions } from 'nod
 import log from 'electron-log'
 import { keccak256, Wallet } from 'ethers'
 
-import type { Callback } from '../../../../../shared/domain/async.js'
-import HotSigner, { type VaultAccess } from '../HotSigner/index.js'
-import { openSecret, sealSecret, type EncryptedSecret } from '../secret.js'
+import type { Callback } from '../../../../../shared/domain/async.ts'
+import HotSigner, { type VaultAccess } from '../HotSigner/index.ts'
+import { openSecret, sealSecret, type EncryptedSecret } from '../secret.ts'
 
 type V1Keystore = {
   Crypto: {

@@ -1,31 +1,31 @@
 import React from 'react'
 
-import { toCanonicalAssetId } from '../../../../app/contracts/sidetray'
-import { createSideTrayWalletSelector } from '../../../../platform/state-sync/renderer/selectors/sideTrayWallet'
-import { useSideTraySelector } from '../../../../platform/state-sync/renderer/useAppSelector'
-import { formatUnits, toBigInt } from '../../../../shared/domain/units'
-import { getTokenSelectorPage } from '../../../../shared/renderer/ui/tokenSelectorModel'
+import { toCanonicalAssetId } from '../../../../app/contracts/sidetray/index.ts'
+import { createSideTrayWalletSelector } from '../../../../platform/state-sync/renderer/selectors/sideTrayWallet.ts'
+import { useSideTraySelector } from '../../../../platform/state-sync/renderer/useAppSelector.tsx'
+import { formatUnits, toBigInt } from '../../../../shared/domain/units.ts'
+import { getTokenSelectorPage } from '../../../../shared/renderer/ui/tokenSelectorModel.ts'
 import {
   createBalanceTokenSelectorItem,
   createDisplayBalance,
   formatUsdRate
-} from '../../../asset-data/domain/balance'
-import { hasSentToAddress } from './sendHistory'
+} from '../../../asset-data/domain/balance/index.ts'
+import { hasSentToAddress } from './sendHistory.ts'
 import {
   filterSendRecipients,
   projectSendSubmission,
   resolveSendRouteAsset,
   selectSendAsset
-} from './sendModel'
-import { createInitialSendState, sendReducer } from './sendReducer'
-import type { SendCapability } from './sendService'
-import { canProceed, getAmountBaseUnits, validateSendDraft } from './sendValidation'
+} from './sendModel.ts'
+import { createInitialSendState, sendReducer } from './sendReducer.ts'
+import type { SendCapability } from './sendService.ts'
+import { canProceed, getAmountBaseUnits, validateSendDraft } from './sendValidation.ts'
 import type {
   SendAccountViewModel,
   SendSelectedAssetViewModel,
   SendViewEvents,
   SendViewModel
-} from './sendViewModel'
+} from './sendViewModel.ts'
 
 interface ActiveSubmission {
   accountId: string

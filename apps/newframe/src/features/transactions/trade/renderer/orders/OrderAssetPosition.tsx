@@ -2,13 +2,13 @@ import { FLASH_NATIVE_ETH_TOKEN_ADDRESS } from '@newframe/flash/constants'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 
-import type { TokenImageCapability } from '../../../../../shared/renderer/capabilities'
-import ChainTokenIcon from '../../../../../shared/renderer/ui/ChainTokenIcon'
-import { persistedImageSource } from '../../../../asset-data/domain/image'
-import { tokenForId, tokenImageSource } from '../../../../tokens/domain'
-import { NATIVE_CURRENCY } from '../../../../tokens/domain/constants'
-import { orderAssetName, orderAssetSymbol } from './orderModel'
-import type { OrderAsset, OrderNetworkMap, OrderNetworkMetadataMap, OrderTokenCatalog } from './orderTypes'
+import type { TokenImageCapability } from '../../../../../shared/renderer/capabilities.ts'
+import ChainTokenIcon from '../../../../../shared/renderer/ui/ChainTokenIcon.tsx'
+import { persistedImageSource } from '../../../../asset-data/domain/image/index.ts'
+import { NATIVE_CURRENCY } from '../../../../tokens/domain/constants.ts'
+import { tokenForId, tokenImageSource } from '../../../../tokens/domain/index.ts'
+import { orderAssetName, orderAssetSymbol } from './orderModel.ts'
+import type { OrderAsset, OrderNetworkMap, OrderNetworkMetadataMap, OrderTokenCatalog } from './orderTypes.ts'
 
 function orderAssetIdentity(asset?: OrderAsset) {
   const chainId = Number(asset?.chainId ?? 0)

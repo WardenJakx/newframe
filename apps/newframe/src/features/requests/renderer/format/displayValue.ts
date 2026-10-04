@@ -1,5 +1,5 @@
-import { formatUnits, parseUnits, toBigInt } from '../../../../shared/domain/units'
-import type { ResolvedAssetRate } from '../../../asset-data/domain/state/rate'
+import { formatUnits, parseUnits, toBigInt } from '../../../../shared/domain/units.ts'
+import type { ResolvedAssetRate } from '../../../asset-data/domain/state/rate.ts'
 
 const displayUnitMapping = [
   { fullName: 'million', shortName: 'M', magnitude: 6 },

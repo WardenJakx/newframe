@@ -3,17 +3,17 @@ import log from 'electron-log'
 import { Interface, toBeHex } from 'ethers'
 import type { BytesLike } from 'ethers'
 
-import type { Call } from '../../../../../platform/chain-rpc/multicall/index.js'
+import type { Call } from '../../../../../platform/chain-rpc/multicall/index.ts'
 import multicall, {
   supportsChain as multicallSupportsChain
-} from '../../../../../platform/chain-rpc/multicall/index.js'
-import type { Token } from '../../../../../platform/state-store/state/index.js'
-import type { Address } from '../../../../../shared/domain/address.js'
-import erc20TokenAbi from '../../../../../shared/domain/erc20-abi.js'
-import { formatUnits } from '../../../../../shared/domain/units.js'
-import type { Eip1193Provider } from '../../../../connections/main/provider/connection.js'
-import type { TokensByChain } from './reducers.js'
-import { groupByChain } from './reducers.js'
+} from '../../../../../platform/chain-rpc/multicall/index.ts'
+import type { Token } from '../../../../../platform/state-store/state/index.ts'
+import type { Address } from '../../../../../shared/domain/address.ts'
+import erc20TokenAbi from '../../../../../shared/domain/erc20-abi.ts'
+import { formatUnits } from '../../../../../shared/domain/units.ts'
+import type { Eip1193Provider } from '../../../../connections/main/provider/connection.ts'
+import type { TokensByChain } from './reducers.ts'
+import { groupByChain } from './reducers.ts'
 
 const erc20Interface = new Interface(erc20TokenAbi)
 

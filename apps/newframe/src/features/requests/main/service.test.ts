@@ -1,11 +1,16 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
-import type { EVMError, RPCRequestCallback, RPCResponsePayload } from '../../../shared/domain/rpc.js'
-import type { SafeTransactionPort } from '../../accounts/main/safeTransactionPort'
-import { GasFeesSource } from '../../transactions/domain'
-import type { AccessRequest, AccountRequest, AddChainRequest, TransactionRequest } from '../contract/requests'
-import { RequestStatus, TxClassification } from '../contract/requests'
-import { createRequestService, type RequestService } from './service'
+import type { EVMError, RPCRequestCallback, RPCResponsePayload } from '../../../shared/domain/rpc.ts'
+import type { SafeTransactionPort } from '../../accounts/main/safeTransactionPort.ts'
+import { GasFeesSource } from '../../transactions/domain/index.ts'
+import type {
+  AccessRequest,
+  AccountRequest,
+  AddChainRequest,
+  TransactionRequest
+} from '../contract/requests.ts'
+import { RequestStatus, TxClassification } from '../contract/requests.ts'
+import { createRequestService, type RequestService } from './service.ts'
 
 const accountId = '0x1111111111111111111111111111111111111111'
 const signerId = 'signer-1'

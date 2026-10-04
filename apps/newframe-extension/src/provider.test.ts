@@ -1,7 +1,7 @@
 import { expect, it } from 'bun:test'
 import { EventEmitter } from 'events'
 
-import InjectedFrameProvider, { type JsonRpcPayload, type ProviderConnection } from './provider'
+import InjectedFrameProvider, { type JsonRpcPayload, type ProviderConnection } from './provider.ts'
 
 const address = '0x1111111111111111111111111111111111111111'
 

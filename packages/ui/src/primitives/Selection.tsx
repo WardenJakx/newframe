@@ -2,9 +2,9 @@ import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent, ty
 
 import { cx } from '../styled-system/css/cx.js'
 import { sva } from '../styled-system/css/sva.js'
-import { Button } from './Button.js'
-import { Icon } from './Icon.js'
-import { surfaceRecipe } from './Surface.js'
+import { Button } from './Button.tsx'
+import { Icon } from './Icon.tsx'
+import { surfaceRecipe } from './Surface.tsx'
 
 const selectionRecipe = sva({
   slots: ['root', 'chevron', 'menu', 'header', 'list', 'empty', 'footer'],

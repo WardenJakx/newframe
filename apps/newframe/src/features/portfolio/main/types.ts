@@ -1,6 +1,6 @@
-import type { Balance, Token } from '../../../platform/state-store/state/index.js'
-import type { Address } from '../../../shared/domain/address.js'
-import type { AssetRateInput, AssetRateSource } from '../../asset-data/domain/state/rate.js'
+import type { Balance, Token } from '../../../platform/state-store/state/index.ts'
+import type { Address } from '../../../shared/domain/address.ts'
+import type { AssetRateInput, AssetRateSource } from '../../asset-data/domain/state/rate.ts'
 
 export interface PortfolioRefreshOptions {
   sync?: boolean

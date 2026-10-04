@@ -4,11 +4,11 @@ import { Text } from '@newframe/ui/text'
 import React from 'react'
 
 import { cva } from '../../../../../../generated/styled-system/css/cva.js'
-import type { TokenImageCapability } from '../../../../../shared/renderer/capabilities'
-import { AddressIdentity } from '../../../../../shared/renderer/ui/AddressIdentity'
-import { ChainIcon } from '../../../../../shared/renderer/ui/ChainIcon'
-import { DetailRow } from '../../../../../shared/renderer/ui/DetailRow'
-import { TrayOverlay } from '../../../../../shared/renderer/ui/TrayOverlay'
+import type { TokenImageCapability } from '../../../../../shared/renderer/capabilities.ts'
+import { AddressIdentity } from '../../../../../shared/renderer/ui/AddressIdentity.tsx'
+import { ChainIcon } from '../../../../../shared/renderer/ui/ChainIcon.tsx'
+import { DetailRow } from '../../../../../shared/renderer/ui/DetailRow.tsx'
+import { TrayOverlay } from '../../../../../shared/renderer/ui/TrayOverlay.tsx'
 import {
   formatOrderAmount,
   normalizeOrderSide,
@@ -18,9 +18,9 @@ import {
   orderSize,
   orderStatusLabel,
   orderTypeLabel
-} from './orderModel'
-import { OrderTradeFlow } from './OrderTradeFlow'
-import type { OrderNetworkMap, OrderNetworkMetadataMap, OrderModel, OrderTokenCatalog } from './orderTypes'
+} from './orderModel.ts'
+import { OrderTradeFlow } from './OrderTradeFlow.tsx'
+import type { OrderNetworkMap, OrderNetworkMetadataMap, OrderModel, OrderTokenCatalog } from './orderTypes.ts'
 
 const payloadRecipe = cva({
   base: {

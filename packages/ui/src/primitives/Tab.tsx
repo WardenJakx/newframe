@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-import { Button } from './Button.js'
+import { Button } from './Button.tsx'
 
 export type TabProps = {
   appearance?: 'segmented' | 'underline'

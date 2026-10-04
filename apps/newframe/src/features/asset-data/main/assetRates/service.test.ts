@@ -1,9 +1,9 @@
 import { describe, expect, it, mock } from 'bun:test'
 
-import { createTestStore } from '../../../../../test/support/createTestStore'
-import { createBuiltInNetworkMetadata } from '../../../networks/domain/chain/catalog'
-import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
-import { createAssetRateService } from './service'
+import { createTestStore } from '../../../../../test/support/createTestStore.ts'
+import { createBuiltInNetworkMetadata } from '../../../networks/domain/chain/catalog.ts'
+import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
+import { createAssetRateService } from './service.ts'
 
 const WETH_MAINNET = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
 const WETH_BASE = '0x4200000000000000000000000000000000000006'

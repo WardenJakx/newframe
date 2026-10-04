@@ -11,7 +11,7 @@ import {
   type QueryMap,
   type QueryResultMap,
   type ResultForQuery
-} from './operations'
+} from './operations.ts'
 
 type InputWithDiscriminants = {
   shape?: { type: z.ZodType }

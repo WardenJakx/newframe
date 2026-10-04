@@ -1,4 +1,4 @@
-import type { FlashOrderStatus } from './orders.js'
+import type { FlashOrderStatus } from './orders.ts'
 
 const terminal = new Set<FlashOrderStatus>(['filled', 'cancelled', 'rejected', 'terminated', 'expired'])
 const open = new Set<FlashOrderStatus>(['pending', 'accepted', 'partially-filled'])

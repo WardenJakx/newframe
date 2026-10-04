@@ -3,13 +3,13 @@ import { Input } from '@newframe/ui/input'
 import { Stack } from '@newframe/ui/stack'
 import { useState } from 'react'
 
-import { formatUnits, parseUnits, toBigInt } from '../../../../../../shared/domain/units'
+import { formatUnits, parseUnits, toBigInt } from '../../../../../../shared/domain/units.ts'
 import {
   limitTransactionFee,
   type TransactionFeeField,
   typeSupportsBaseFee
-} from '../../../../../transactions/domain'
-import type { AdjustFeeRequestView } from '../requestViewTypes'
+} from '../../../../../transactions/domain/index.ts'
+import type { AdjustFeeRequestView } from '../requestViewTypes.ts'
 
 // display a wei value as a decimal amount of gwei
 function toDisplayFromWei(wei: bigint) {

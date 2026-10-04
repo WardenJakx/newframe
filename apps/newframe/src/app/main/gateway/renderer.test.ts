@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { EventEmitter } from 'node:events'
 
-import { createOperationDispatcher } from '../../../platform/ipc/main/operations'
-import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.js'
-import { commandContracts, queryContracts } from '../../contracts/operations'
-import { createOperationRegistry, type OperationServices } from '../ipc-handlers/renderer'
+import { createOperationDispatcher } from '../../../platform/ipc/main/operations.ts'
+import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.ts'
+import { commandContracts, queryContracts } from '../../contracts/operations.ts'
+import { createOperationRegistry, type OperationServices } from '../ipc-handlers/renderer.ts'
 
 const fakes = (...names: string[]) =>
   Object.fromEntries(names.map((name) => [name, mock()])) as Record<string, ReturnType<typeof mock>>

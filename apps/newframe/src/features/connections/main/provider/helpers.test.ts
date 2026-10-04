@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
 import { fromUtf8 } from '@ethereumjs/util'
 import log from 'electron-log'
 
-import { decodeMessage, encodePersonalSignMessage, getRawTx, getSignedAddress } from './helpers'
+import { decodeMessage, encodePersonalSignMessage, getRawTx, getSignedAddress } from './helpers.ts'
 
 beforeAll(async () => {
   log.transports.console.level = false

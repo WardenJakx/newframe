@@ -16,8 +16,8 @@ import { getFlashAssetPairChains } from '@newframe/flash/pair'
 import type { FlashQuote } from '@newframe/flash/schemas'
 import { isFlashTerminalStatus, normalizeFlashStatus } from '@newframe/flash/status'
 
-import { readSubmitProgress, saveSubmitProgress, withSubmitLock } from './journal.js'
-import { clearSession, loadSession, saveSession, stateDirectory } from './storage.js'
+import { readSubmitProgress, saveSubmitProgress, withSubmitLock } from './journal.ts'
+import { clearSession, loadSession, saveSession, stateDirectory } from './storage.ts'
 
 const defaultRpcUrl = 'http://127.0.0.1:1248'
 const addressPattern = /^0x[0-9a-f]{40}$/i

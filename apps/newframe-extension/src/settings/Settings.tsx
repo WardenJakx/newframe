@@ -1,9 +1,14 @@
 import { useEffect } from 'react'
 import { useStore } from 'zustand'
 
-import { frameStateStore, type FrameState } from '../frameState'
-import { SettingsView } from './SettingsView'
-import { isSupportedTab, refreshCurrentChain, switchOriginChain, toggleMetaMaskSetting } from './tabSettings'
+import { frameStateStore, type FrameState } from '../frameState.ts'
+import { SettingsView } from './SettingsView.tsx'
+import {
+  isSupportedTab,
+  refreshCurrentChain,
+  switchOriginChain,
+  toggleMetaMaskSetting
+} from './tabSettings.ts'
 
 export function Settings({ tab, mmAppear }: { tab?: chrome.tabs.Tab; mmAppear: boolean }) {
   const settings = useStore(frameStateStore)

@@ -4,8 +4,8 @@ import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 
-import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay'
-import { SettingsActionRow } from './SettingsRow'
+import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay.tsx'
+import { SettingsActionRow } from './SettingsRow.tsx'
 
 export function AboutView({
   copied,

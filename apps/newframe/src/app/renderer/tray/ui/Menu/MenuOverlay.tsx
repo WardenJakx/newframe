@@ -1,8 +1,8 @@
 import { useLayoutEffect, useRef, type KeyboardEvent, type ReactNode } from 'react'
 
 import { cva } from '../../../../../../generated/styled-system/css/cva.js'
-import { SidePanelHeader } from '../../../../../shared/renderer/ui/SidePanel/SidePanelHeader'
-import { TrayOverlayFrame } from '../../../../../shared/renderer/ui/TrayOverlayFrame'
+import { SidePanelHeader } from '../../../../../shared/renderer/ui/SidePanel/SidePanelHeader.tsx'
+import { TrayOverlayFrame } from '../../../../../shared/renderer/ui/TrayOverlayFrame.tsx'
 
 const scrollRecipe = cva({
   base: { flex: 1, overflowX: 'hidden', overflowY: 'auto', paddingBlockStart: '1', paddingBlockEnd: '10' }

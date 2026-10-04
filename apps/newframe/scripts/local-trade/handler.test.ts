@@ -12,7 +12,7 @@ import {
 } from '@newframe/flash/constants'
 import { Interface, JsonRpcProvider, Wallet } from 'ethers'
 
-import { handleLocalTradeRequest, resetLocalTradeState, subscribeLocalTradeOrders } from './handler'
+import { handleLocalTradeRequest, resetLocalTradeState, subscribeLocalTradeOrders } from './handler.ts'
 
 const funderWallet = new Wallet('0x59c6995e998f97a5a0044976f094538a2f7d1c9f4e35b7b4a39e621ce6b38a13')
 const FUNDER_ADDRESS = funderWallet.address

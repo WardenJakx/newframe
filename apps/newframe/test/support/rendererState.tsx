@@ -4,9 +4,9 @@ import { createStore, type StoreApi } from 'zustand/vanilla'
 import type {
   SideTrayRendererState,
   WalletRendererState
-} from '../../src/platform/state-sync/contract/projections'
-import type { RendererState } from '../../src/platform/state-sync/contract/protocol'
-import { RendererStateProvider } from '../../src/platform/state-sync/renderer/useAppSelector'
+} from '../../src/platform/state-sync/contract/projections.ts'
+import type { RendererState } from '../../src/platform/state-sync/contract/protocol.ts'
+import { RendererStateProvider } from '../../src/platform/state-sync/renderer/useAppSelector.tsx'
 
 export interface RendererStateFixtureOptions {
   initialState?: RendererState

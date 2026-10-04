@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
-import { SidePanelFooter } from './SidePanel/SidePanelFooter.js'
-import { SidePanelHeader } from './SidePanel/SidePanelHeader.js'
-import { TrayOverlayFrame } from './TrayOverlayFrame.js'
+import { SidePanelFooter } from './SidePanel/SidePanelFooter.tsx'
+import { SidePanelHeader } from './SidePanel/SidePanelHeader.tsx'
+import { TrayOverlayFrame } from './TrayOverlayFrame.tsx'
 
 const bodyRecipe = cva({
   base: {

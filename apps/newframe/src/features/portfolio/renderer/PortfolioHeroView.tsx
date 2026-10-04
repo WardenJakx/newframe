@@ -5,7 +5,7 @@ import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
-import { TRADE_DISABLED_CHAIN_LABEL } from './usePortfolioActions'
+import { TRADE_DISABLED_CHAIN_LABEL } from './usePortfolioActions.ts'
 
 const heroRecipe = cva({
   base: { width: '100%', paddingBlockStart: '6', paddingBlockEnd: '10' }

@@ -4,9 +4,9 @@ import {
   DEFAULT_PROFILE_ID,
   DEFAULT_PROFILE_NAME,
   getProfileAccountIds
-} from '../../../app/contracts/state/main'
-import { builtInChainIconUrl } from '../../../features/networks/domain/chain'
-import createInitialState, { CanonicalStateSchema } from './index'
+} from '../../../app/contracts/state/main.ts'
+import { builtInChainIconUrl } from '../../../features/networks/domain/chain/index.ts'
+import createInitialState, { CanonicalStateSchema } from './index.ts'
 
 describe('canonical state defaults', () => {
   it('creates state that satisfies the canonical runtime schema', () => {

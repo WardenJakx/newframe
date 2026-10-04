@@ -1,10 +1,10 @@
-import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
-import type { Balance, NativeCurrency, Token } from '../../../../platform/state-store/state/index.js'
-import type { Address } from '../../../../shared/domain/address.js'
-import type { RPC } from '../../../../shared/domain/rpc.js'
-import { resolveAssetRate } from '../../../asset-data/domain/asset/index.js'
-import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.js'
-import { toTokenId } from '../../../tokens/domain/index.js'
+import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
+import type { Balance, NativeCurrency, Token } from '../../../../platform/state-store/state/index.ts'
+import type { Address } from '../../../../shared/domain/address.ts'
+import type { RPC } from '../../../../shared/domain/rpc.ts'
+import { resolveAssetRate } from '../../../asset-data/domain/asset/index.ts'
+import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
+import { toTokenId } from '../../../tokens/domain/index.ts'
 
 type UsdRate = { usd: { price: number; change24hr?: number } }
 type CanonicalStoreApi = CanonicalStoreReader

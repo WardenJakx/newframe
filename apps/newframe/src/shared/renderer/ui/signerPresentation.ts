@@ -1,6 +1,6 @@
 import type { IconName } from '@newframe/ui/icon'
 
-export { accountDisplayType } from '../../../features/accounts/domain/accountDisplayType'
+export { accountDisplayType } from '../../../features/accounts/domain/accountDisplayType.ts'
 
 const LABELS: Record<string, string> = {
   ring: 'Hot Signer',

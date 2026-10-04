@@ -3,7 +3,7 @@ import { pathToFileURL } from 'url'
 
 import type { IpcMainInvokeEvent, WebContents, WebFrameMain } from 'electron'
 
-import { createRendererAuthorizationRegistry, type RendererAuthorizationRegistry } from './authorization'
+import { createRendererAuthorizationRegistry, type RendererAuthorizationRegistry } from './authorization.ts'
 
 let nextId = 1
 let authorization: RendererAuthorizationRegistry

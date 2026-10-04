@@ -2,8 +2,8 @@ import { describe, expect, it } from 'bun:test'
 
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 
-import type { TypedData, TypedMessage } from '../../../requests/contract/requests'
-import { getVersionFromTypedData } from './typedData'
+import type { TypedData, TypedMessage } from '../../../requests/contract/requests.ts'
+import { getVersionFromTypedData } from './typedData.ts'
 
 describe('#getVersionFromTypedData', () => {
   const typedData: TypedData = {

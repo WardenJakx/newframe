@@ -1,5 +1,10 @@
-import type { AppCommand, AppQuery, CommandResult, ResultForQuery } from '../../../app/contracts/operations'
-import type { StateConnectionResult, StateMessage } from '../../state-sync/contract/protocol'
+import type {
+  AppCommand,
+  AppQuery,
+  CommandResult,
+  ResultForQuery
+} from '../../../app/contracts/operations.ts'
+import type { StateConnectionResult, StateMessage } from '../../state-sync/contract/protocol.ts'
 
 const getHost = () => {
   if (typeof window === 'undefined' || !window.__NEWFRAME_HOST__) {

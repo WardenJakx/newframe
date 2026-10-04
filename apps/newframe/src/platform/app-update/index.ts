@@ -1,6 +1,6 @@
 import log from 'electron-log'
 
-import type { CanonicalStore } from '../state-store/actions.js'
+import type { CanonicalStore } from '../state-store/actions.ts'
 
 export class Updater {
   constructor(store: { getState(): CanonicalStore }) {

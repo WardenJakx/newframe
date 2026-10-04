@@ -3,10 +3,10 @@ import { EventEmitter } from 'events'
 
 import log from 'electron-log'
 
-import store from '../../../../../platform/state-store'
-import { NATIVE_CURRENCY } from '../../../../tokens/domain/constants'
-import type { TokenRecord } from '../../../../tokens/domain/state/token'
-import BalancesScanner from './index'
+import store from '../../../../../platform/state-store/index.ts'
+import { NATIVE_CURRENCY } from '../../../../tokens/domain/constants.ts'
+import type { TokenRecord } from '../../../../tokens/domain/state/token.ts'
+import BalancesScanner from './index.ts'
 
 const controllerEvents = new EventEmitter()
 const balancesControllerMock = {
@@ -20,7 +20,7 @@ const balancesControllerMock = {
   updateKnownTokenBalances: mock((_address: string, _tokens: Array<ReturnType<typeof token>>) => {})
 }
 
-await mock.module('./controller', () => ({
+await mock.module('./controller.ts', () => ({
   __esModule: true,
   default: mock(() => balancesControllerMock),
   ...balancesControllerMock

@@ -1,6 +1,6 @@
-import type { CommandMap, CommandResult } from '../../../../../app/contracts/operations'
-import type { NewframeHost } from '../../../../../platform/ipc/contract/ipc'
-import type { TokenImageCapability } from '../../../../../shared/renderer/capabilities'
+import type { CommandMap, CommandResult } from '../../../../../app/contracts/operations.ts'
+import type { NewframeHost } from '../../../../../platform/ipc/contract/ipc.ts'
+import type { TokenImageCapability } from '../../../../../shared/renderer/capabilities.ts'
 
 type Input<TType extends keyof CommandMap> = Omit<CommandMap[TType], 'type'>
 

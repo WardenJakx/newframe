@@ -1,8 +1,8 @@
 import { describe, expect, it, mock } from 'bun:test'
 
-import { createTestStore } from '../../../../test/support/createTestStore'
-import { createOperationService } from '../../../platform/operations/service'
-import { createTokenService } from './service'
+import { createTestStore } from '../../../../test/support/createTestStore.ts'
+import { createOperationService } from '../../../platform/operations/service.ts'
+import { createTokenService } from './service.ts'
 
 const address = '0x1111111111111111111111111111111111111111'
 const owner = { clientType: 'wallet-ui' as const, windowInstanceId: 'tray-test' }

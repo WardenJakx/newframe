@@ -1,5 +1,5 @@
-import { persistedImageSource } from '../../asset-data/domain/image/index.js'
-import { downloadImage } from '../../asset-data/main/images/download.js'
+import { persistedImageSource } from '../../asset-data/domain/image/index.ts'
+import { downloadImage } from '../../asset-data/main/images/download.ts'
 
 const CHAINLIST_CATALOG_URL = 'https://chainlist.org/rpcs.json'
 const CHAINLIST_ICON_BASE_URL = 'https://icons.llamao.fi/icons/chains/'

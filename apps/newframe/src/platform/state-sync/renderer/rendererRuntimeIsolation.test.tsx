@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'bun:test'
 
-import { act, render, screen } from '../../../../test/support/componentSetup'
-import { createTestRuntimeFixture } from '../../../../test/support/rendererClient'
-import type { WalletRendererState } from '../contract/projections'
-import type { StateMessage } from '../contract/protocol'
-import { connectRendererState } from './connectState'
+import { act, render, screen } from '../../../../test/support/componentSetup.tsx'
+import { createTestRuntimeFixture } from '../../../../test/support/rendererClient.ts'
+import type { WalletRendererState } from '../contract/projections.ts'
+import type { StateMessage } from '../contract/protocol.ts'
+import { connectRendererState } from './connectState.ts'
 import { walletChanges, walletState } from './fixtures.test-support.ts'
-import { RendererStateProvider, useWalletSelector } from './useAppSelector'
+import { RendererStateProvider, useWalletSelector } from './useAppSelector.tsx'
 
 function Account({ label }: { label: string }) {
   const account = useWalletSelector((state) => state.currentAccount)

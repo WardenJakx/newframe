@@ -14,13 +14,13 @@ import type { DragEvent, ReactNode, RefObject } from 'react'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
 import { cx } from '../../../../generated/styled-system/css/cx.js'
-import { HeaderBar } from '../../../shared/renderer/ui/HeaderBar'
-import { SidePanelHeader } from '../../../shared/renderer/ui/SidePanel/SidePanelHeader'
-import { TrayOverlayFrame } from '../../../shared/renderer/ui/TrayOverlayFrame'
-import AccountRenameInput from './AccountRenameInput'
-import { AccountRow } from './AccountSelectorView'
-import type { AccountListItem, AccountListModel } from './accountsModel'
-import type { AccountsState } from './accountsReducer'
+import { HeaderBar } from '../../../shared/renderer/ui/HeaderBar.tsx'
+import { SidePanelHeader } from '../../../shared/renderer/ui/SidePanel/SidePanelHeader.tsx'
+import { TrayOverlayFrame } from '../../../shared/renderer/ui/TrayOverlayFrame.tsx'
+import AccountRenameInput from './AccountRenameInput.tsx'
+import { AccountRow } from './AccountSelectorView.tsx'
+import type { AccountListItem, AccountListModel } from './accountsModel.ts'
+import type { AccountsState } from './accountsReducer.ts'
 
 const headerRecipe = cva({
   base: { position: 'relative', zIndex: 'header' }
