@@ -1,9 +1,17 @@
-import { expect, it } from 'bun:test'
+import { afterEach, expect, it } from 'bun:test'
 
 import { electronMock } from '../../../test/support/electron.mock.ts'
 import biometrics from './biometrics.ts'
 
+const platform = process.platform
+
+afterEach(() => {
+  Object.defineProperty(process, 'platform', { value: platform })
+})
+
 it('checks native biometric support without opening Safe Storage', () => {
+  // Native biometrics are Touch ID, which exists only on macOS.
+  Object.defineProperty(process, 'platform', { value: 'darwin' })
   electronMock.systemPreferences.canPromptTouchID.mockImplementation(() => true)
   electronMock.safeStorage.isEncryptionAvailable.mockImplementation(() => {
     throw new Error('Safe Storage should stay lazy')

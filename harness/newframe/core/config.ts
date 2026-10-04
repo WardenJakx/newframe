@@ -1,3 +1,4 @@
+import { statSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import process from 'node:process'
@@ -103,4 +104,17 @@ export function newframeEnv(overrides: NodeJS.ProcessEnv = {}): Record<string, s
 
 export function electronExecutable() {
   return createRequire(path.join(appDir, 'package.json'))('electron') as string
+}
+
+/**
+ * Chromium's sandbox needs unprivileged user namespaces or a setuid-root `chrome-sandbox` helper. Ubuntu
+ * 23.10+ restricts the namespaces, and package installs never make the helper setuid, so Electron aborts at
+ * launch. Without the helper, run unsandboxed; `sudo chown root` and `chmod 4755` on it to keep the sandbox.
+ */
+export function electronSandboxArgs() {
+  if (process.platform !== 'linux') {
+    return []
+  }
+  const { mode, uid } = statSync(path.join(path.dirname(electronExecutable()), 'chrome-sandbox'))
+  return uid === 0 && mode & 0o4000 ? [] : ['--no-sandbox']
 }

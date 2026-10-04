@@ -24,7 +24,9 @@ if (isVisualHarness) {
     throw new Error('Visual harness requires an absolute NEWFRAME_HARNESS_PROFILE_DIR')
   }
   app.setPath('userData', profileDirectory)
-  app.setActivationPolicy('prohibited')
+  if (process.platform === 'darwin') {
+    app.setActivationPolicy('prohibited')
+  }
   app.commandLine.appendSwitch('use-mock-keychain')
 } else if (isDevApp) {
   const repositoryCheckoutDirectory = path.resolve(import.meta.dirname, '../../../../..')

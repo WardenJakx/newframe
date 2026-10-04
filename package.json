@@ -36,7 +36,7 @@
     "format:check": "oxfmt --check '**/*.{yml,json,md,html,ts,tsx,js,mjs}'",
     "check": "bun run format:check && bun run typecheck && bun run lint && bun run knip && bun run test",
     "dep:report": "bun scripts/dep-report.ts",
-    "visual:harness:newframe": "lockf -k node_modules/.visual-harness.lock bun run visual:harness:newframe:unlocked",
+    "visual:harness:newframe": "scripts/with-lock.sh node_modules/.visual-harness.lock bun run visual:harness:newframe:unlocked",
     "visual:harness:newframe:unlocked": "bun run flash:build && bun exec 'node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON harness/newframe/run-visual-harness.ts'",
     "scenario:newframe:provider": "bun harness/newframe/scenarios/provider-smoke.ts"
   },

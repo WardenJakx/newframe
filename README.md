@@ -71,12 +71,12 @@ bun run dev
 
 Everyday commands, run from the repo root:
 
-| Command                   | Purpose                                                                                            |
-| ------------------------- | -------------------------------------------------------------------------------------------------- |
-| `bun run dev`             | Build and launch the development profile; rebuild and restart on app, shared UI, or asset changes. |
-| `bun run extension:build` | Build the browser extension once.                                                                  |
-| `bun run extension:watch` | Build the browser extension and rebuild on changes. Reload it in the browser after a rebuild.      |
-| `bun run install:preview` | Build an unsigned macOS app and replace `/Applications/Newframe.app`. No publishing.               |
+| Command                   | Purpose                                                                                                        |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `bun run dev`             | Build and launch the development profile; rebuild and restart on app, shared UI, or asset changes.             |
+| `bun run extension:build` | Build the browser extension once.                                                                              |
+| `bun run extension:watch` | Build the browser extension and rebuild on changes. Reload it in the browser after a rebuild.                  |
+| `bun run install:preview` | Build an unsigned app and install it: `/Applications/Newframe.app` on macOS, a `.deb` on Linux. No publishing. |
 
 `dev` starts the local chain and trade service. These stay running when Electron restarts. A failed build waits for the next edit and retries. Closing Electron or pressing Ctrl+C stops the development session.
 
