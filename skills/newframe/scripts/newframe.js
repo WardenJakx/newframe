@@ -6989,7 +6989,7 @@ var CancelOrderFunction = _function({
   output: FlashCancelOrderResponseSchema
 });
 function flashBaseUrl(runtime = flashRuntimeFromEnv()) {
-  return runtime.isDev ? FLASH_DEV_BASE_URL : FLASH_PROD_BASE_URL;
+  return runtime.isDev ? process.env.NEWFRAME_FLASH_URL ?? FLASH_DEV_BASE_URL : FLASH_PROD_BASE_URL;
 }
 function flashHeaders(runtime = flashRuntimeFromEnv(), baseUrl = flashBaseUrl(runtime)) {
   const headers = { accept: "application/json", "content-type": "application/json" };

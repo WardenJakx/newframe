@@ -9,6 +9,7 @@ import { shallow } from 'zustand/vanilla/shallow'
 import type { Shortcut } from '../../../features/settings/domain/state/shortcuts.ts'
 import { hexToInt, roundGwei } from '../../../shared/domain/hex.ts'
 import type { RendererAuthorizationRegistry } from '../../ipc/main/authorization.ts'
+import { isVisualHarness } from '../../runtime/visualHarness.ts'
 import type canonicalStore from '../../state-store/index.ts'
 import { registerShortcut } from '../keyboardShortcuts.ts'
 import { installCameraPermissions } from './cameraPermissions.ts'
@@ -18,6 +19,7 @@ import type { SystemTrayEventHandlers } from './systemTray.ts'
 import { SystemTray } from './systemTray.ts'
 import { constrainTraySize, TRAY_WIDTH, trayPosition } from './trayGeometry.ts'
 import { createWindow } from './window.ts'
+import { cursorWorkArea } from './workArea.ts'
 
 type Windows = { [key: string]: BrowserWindow }
 type CanonicalStoreApi = typeof canonicalStore
@@ -96,6 +98,10 @@ const getDisplaySummonShortcut = () =>
   (getStore().getState().main.shortcuts as { altSlash: boolean }).altSlash
 
 const detectMouse = () => {
+  // The host's cursor must not reveal an invisible harness tray.
+  if (isVisualHarness) {
+    return
+  }
   const m1 = screen.getCursorScreenPoint()
   const display = screen.getDisplayNearestPoint(m1)
   const area = display.workArea
@@ -177,7 +183,7 @@ function initTrayWindow(rendererReady: () => void) {
   trayWindow.setResizable(false)
   trayWindow.setMovable(false)
 
-  const { width, height, x, y } = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea
+  const { width, height, x, y } = cursorWorkArea()
   trayWindow.setPosition(width + x, height + y)
 
   trayWindow.on('show', () => {
@@ -223,11 +229,13 @@ function initTrayWindow(rendererReady: () => void) {
     }
   })
 
-  setTimeout(() => {
-    screen.on('display-added', () => tray.hide())
-    screen.on('display-removed', () => tray.hide())
-    screen.on('display-metrics-changed', () => tray.hide())
-  }, 30 * 1000)
+  if (!isVisualHarness) {
+    setTimeout(() => {
+      screen.on('display-added', () => tray.hide())
+      screen.on('display-removed', () => tray.hide())
+      screen.on('display-metrics-changed', () => tray.hide())
+    }, 30 * 1000)
+  }
 
   return () => {
     removeRendererReady()
@@ -273,7 +281,10 @@ class Tray {
         return
       }
       this.ready = true
-      systemTray.init(currentWindow)
+      // The harness must not add a second icon to the host's menu bar.
+      if (!isVisualHarness) {
+        systemTray.init(currentWindow)
+      }
       systemTray.setContextMenu('hide', { displaySummonShortcut: getDisplaySummonShortcut() })
       getStore().getState().trayOpen(true)
     }
@@ -339,7 +350,7 @@ class Tray {
       visibleOnFullScreen: true,
       skipTransformProcessType: true
     })
-    const area = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea
+    const area = cursorWorkArea()
     constrainTraySize(windows.tray, area.height)
     const pos = trayPosition(area)
     windows.tray.setPosition(pos.x, pos.y)

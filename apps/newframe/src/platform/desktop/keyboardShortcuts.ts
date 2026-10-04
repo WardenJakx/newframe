@@ -3,6 +3,7 @@ import log from 'electron-log'
 
 import type { Shortcut } from '../../features/settings/domain/state/shortcuts.ts'
 import { shortcutKeyMap } from '../../shared/domain/keyboard.ts'
+import { isVisualHarness } from '../runtime/visualHarness.ts'
 
 const stringifyShortcut = ({ modifierKeys, shortcutKey }: Shortcut) => ({
   shortcutString: [...modifierKeys, shortcutKey].join('+'),
@@ -37,6 +38,10 @@ function register(shortcut: Shortcut, shortcutHandler: (accelerator: string) => 
 }
 
 export const registerShortcut = (shortcut: Shortcut, shortcutHandler: (accelerator: string) => void) => {
+  // Global shortcuts belong to the developer's own Newframe, not the harness.
+  if (isVisualHarness) {
+    return
+  }
   unregister(shortcut)
   register(shortcut, shortcutHandler)
 }

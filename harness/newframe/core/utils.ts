@@ -43,6 +43,18 @@ export function isPortFree(port: number) {
   })
 }
 
+export function freePort() {
+  return new Promise<number>((resolve, reject) => {
+    const server = net.createServer()
+
+    server.once('error', reject)
+    server.listen(0, '127.0.0.1', () => {
+      const { port } = server.address() as net.AddressInfo
+      server.close(() => resolve(port))
+    })
+  })
+}
+
 export async function assertPortFree(port: number, label: string) {
   if (!(await isPortFree(port))) {
     throw new Error(`${label} port ${port} is already in use`)

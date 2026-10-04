@@ -1,4 +1,3 @@
-import { spawn } from 'node:child_process'
 import { chmod, copyFile, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -7,6 +6,7 @@ import { FLASH_USDC_ADDRESS, FLASH_WETH_ADDRESS } from '@newframe/flash/constant
 import { verifyMessage, verifyTypedData } from 'ethers'
 
 import { anvilChainId, localTradeServiceUrl, newframeRpcUrl, rootDir } from '../../core/config.ts'
+import { spawnProcessGroup } from '../../core/reaper.ts'
 import type { VisualHarnessContext, VisualStage } from '../types.ts'
 import { requireAccounts } from './helpers.ts'
 
@@ -36,7 +36,7 @@ async function runCli(context: CliContext, args: string[]) {
 
 async function runCliResult(context: CliContext, args: string[]) {
   return new Promise<{ code: number; stdout: string; stderr: string }>((resolve, reject) => {
-    const child = spawn('bun', [cliPath, ...args], {
+    const child = spawnProcessGroup('bun', [cliPath, ...args], {
       cwd: rootDir,
       env: {
         ...process.env,
@@ -47,10 +47,10 @@ async function runCliResult(context: CliContext, args: string[]) {
     })
     let stdout = ''
     let stderr = ''
-    child.stdout.setEncoding('utf8').on('data', (chunk: string) => {
+    child.stdout!.setEncoding('utf8').on('data', (chunk: string) => {
       stdout += chunk
     })
-    child.stderr.setEncoding('utf8').on('data', (chunk: string) => {
+    child.stderr!.setEncoding('utf8').on('data', (chunk: string) => {
       stderr += chunk
     })
     child.on('error', reject)

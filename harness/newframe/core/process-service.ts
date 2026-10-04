@@ -1,6 +1,7 @@
-import { spawn, type ChildProcess, type SpawnOptions } from 'node:child_process'
+import type { ChildProcess, SpawnOptions } from 'node:child_process'
 
 import { commandOutputCollector, stopProcess } from './process.ts'
+import { spawnProcessGroup } from './reaper.ts'
 import type { HarnessService } from './service.ts'
 import { tail } from './utils.ts'
 
@@ -41,7 +42,7 @@ export class ProcessService implements HarnessService<ProcessHandle> {
 
     await this.options.beforeStart?.()
 
-    const child = spawn(this.options.command, this.options.args, this.options.spawn)
+    const child = spawnProcessGroup(this.options.command, this.options.args, this.options.spawn)
     this.child = child
     const output = commandOutputCollector(child)
     const exited = new Promise<number>((resolve, reject) => {

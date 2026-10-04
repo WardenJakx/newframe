@@ -1,6 +1,7 @@
-import { spawn, type ChildProcess, type SpawnOptions } from 'node:child_process'
+import type { ChildProcess, SpawnOptions } from 'node:child_process'
 
 import { rootDir } from './config.ts'
+import { killProcessGroup, spawnProcessGroup } from './reaper.ts'
 import { sleep, tail } from './utils.ts'
 
 export type RunningCommand = {
@@ -29,7 +30,7 @@ export function startCommand(
   cwd: string,
   options: Omit<SpawnOptions, 'cwd'> = {}
 ): RunningCommand {
-  const child = spawn(command, args, {
+  const child = spawnProcessGroup(command, args, {
     env: process.env,
     stdio: ['ignore', 'pipe', 'pipe'],
     ...options,
@@ -76,19 +77,15 @@ export async function ensureCommand(command: string, args = ['--version']) {
   })
 }
 
+/** Signals the child's whole process group, escalating to SIGKILL if it has not exited in 5 seconds. */
 export async function stopProcess(child: ChildProcess | undefined, signal: NodeJS.Signals = 'SIGTERM') {
-  if (!child || child.killed || child.exitCode !== null) {
+  if (!child?.pid || child.exitCode !== null || child.signalCode !== null) {
     return
   }
 
-  child.kill(signal)
-
-  await Promise.race([
-    new Promise((resolve) => child.once('exit', resolve)),
-    sleep(5_000).then(() => {
-      if (child.exitCode === null) {
-        child.kill('SIGKILL')
-      }
-    })
-  ])
+  const exited = new Promise((resolve) => child.once('exit', resolve))
+  killProcessGroup(child.pid, signal)
+  await Promise.race([exited, sleep(5_000)])
+  killProcessGroup(child.pid, 'SIGKILL')
+  await exited
 }

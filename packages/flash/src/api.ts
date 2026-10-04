@@ -61,7 +61,8 @@ export function flashApiKey() {
 }
 
 export function flashBaseUrl(runtime: FlashRuntime = flashRuntimeFromEnv()): string {
-  return runtime.isDev ? FLASH_DEV_BASE_URL : FLASH_PROD_BASE_URL
+  // The visual harness serves its local Flash service on a free port.
+  return runtime.isDev ? (process.env.NEWFRAME_FLASH_URL ?? FLASH_DEV_BASE_URL) : FLASH_PROD_BASE_URL
 }
 
 export function flashWebSocketUrl(runtime: FlashRuntime = flashRuntimeFromEnv()) {

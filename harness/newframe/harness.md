@@ -139,8 +139,11 @@ The harness is split by responsibility:
 - `core/` owns process execution, service lifecycle, configuration, health checks, and cleanup.
 - `services/` contains one factory per managed dependency (`electron.ts`, `anvil.ts`,
   `local-trade.ts`, and contract harness commands in `contracts.ts`).
+- `core/reaper.ts` starts every child as its own process group and guarantees those groups and the
+  harness's temporary files die with the harness, however it exits.
 - `live-harness.ts` is the regular live-local entrypoint.
-- `visual-harness.ts` is only the visual entrypoint and high-level orchestration.
+- `run-visual-harness.ts` is the visual entrypoint. It picks free ports, then runs `visual-harness.ts`.
+- `visual-harness.ts` is only the visual high-level orchestration.
 - `visual/driver.ts` owns reusable Newframe interactions and state polling.
 - `visual/anvil-client.ts` owns reusable Anvil RPC interactions.
 - `visual/runtime.ts` owns stages, screenshots, summaries, and failure artifacts.
@@ -152,12 +155,29 @@ canonical snapshot; that getter exists only when the visual harness launches the
 `NEWFRAME_VISUAL_HARNESS=true` and is never exposed to renderers.
 
 The visual harness imports Anvil's third default account as its signer when needed. Set
-`NEWFRAME_HARNESS_PRIVATE_KEY` to use another local test key. It funds that account on the local chain and
-serves the visual app RPC on port `1249` by default (`NEWFRAME_HARNESS_RPC_PORT` overrides it), separate
-from the regular development RPC on port `1248`.
+`NEWFRAME_HARNESS_PRIVATE_KEY` to use another local test key. It funds that account on the local chain.
 
-The visual harness writes `summary.json` under
-`${NEWFRAME_HARNESS_OUTPUT_DIR:-/tmp/newframe-visual-harness}`. The summary records overall duration,
+### Isolation from the developer's desktop
+
+The visual harness runs on the host, next to the developer's own Newframe and `bun run dev`:
+
+- **Profile.** Each run copies the durable files (`config.json`, `vault.json`, `signers/`) of the canonical
+  `Newframe dev` profile (`NEWFRAME_DEV_PROFILE` overrides the source) into a temporary profile, and points its
+  local Anvil chain at the run's Anvil. The developer's profiles are never opened, so the single-instance lock
+  never collides with a running Newframe.
+- **Ports.** Anvil, the local Flash and Safe services, and the app's local RPC each get a free port per run.
+- **Screen.** Windows render offscreen at 2x scale; Playwright screenshots read that buffer. The native window
+  that macOS still creates is fully transparent and ignores the mouse. Harness windows cannot take keyboard
+  focus, and the app has no Dock icon, menu bar icon, global shortcuts, or Keychain access. Tray placement
+  uses a fixed 1440x900 work area instead of the host's displays.
+- **Processes.** Every child leads its own process group. Services stop in reverse order; a synchronous
+  exit hook kills any group still running; and a detached reaper kills the remaining groups and deletes the
+  temporary profile if the harness itself is killed.
+- **Checkout.** Runs in one checkout share its build output, so a file lock queues them. Runs in different
+  worktrees proceed in parallel.
+
+The visual harness writes `summary.json` to a new temporary directory per run, printed at preflight
+(`NEWFRAME_HARNESS_OUTPUT_DIR` overrides it). The summary records overall duration,
 per-stage duration, screenshots, contract evidence such as transaction/order/request identifiers, and
 renderer diagnostics. Each screenshot has a sibling `<name>.aria.yml` with the page's ARIA snapshot, a
 text view of the same state that diffs cleanly and is cheaper than reading the image. Failed runs also
@@ -166,10 +186,6 @@ with `bunx playwright-core show-trace <path>/trace.zip`. Unexpected renderer `co
 page errors, or renderer crashes fail the responsible stage. The source allowlist is intentionally empty by default; any future allowance must
 use a narrow message pattern and document why the underlying browser diagnostic is understood and cannot
 reasonably be fixed.
-
-Visual-harness windows cannot take native keyboard focus, and screenshots do not bring them to the front.
-Playwright drives them through CDP, so typing in another app cannot alter harness inputs. Regular development
-windows keep their normal focus behavior.
 
 On macOS, open all screenshots from a successful run together in Preview after service cleanup:
 

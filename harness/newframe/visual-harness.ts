@@ -10,6 +10,7 @@ import { HarnessRuntime, installSignalHandlers } from './core/service.ts'
 import { createAnvilService } from './services/anvil.ts'
 import { createSeedAnvilService } from './services/contracts.ts'
 import { ElectronApplicationService } from './services/electron.ts'
+import { HarnessProfileService } from './services/harness-profile.ts'
 import { createLocalSafeService } from './services/local-safe.ts'
 import { createLocalTradeService } from './services/local-trade.ts'
 import type { SafeSeedManifest } from './services/safe-contracts.ts'
@@ -35,7 +36,7 @@ function buildCommand(name: string, args: string[], cwd: string) {
 
 async function bootstrap(services: HarnessRuntime, visual: VisualHarnessRuntime) {
   visual.currentStage = 'preflight'
-  visual.log('preflight')
+  visual.log(`preflight; artifacts: ${visual.outputDir}`)
   await visual.prepareOutput()
   electronExecutable()
 
@@ -102,7 +103,10 @@ export async function runVisualHarness() {
 
     visual.currentStage = 'launch electron'
     visual.log('launch electron')
-    app = await services.watch(services.start(new ElectronApplicationService(electron, visual.uiTimeoutMs)))
+    const profileDirectory = await services.start(new HarnessProfileService())
+    app = await services.watch(
+      services.start(new ElectronApplicationService(electron, profileDirectory, visual.uiTimeoutMs))
+    )
     visual.monitorElectron(app)
     await visual.startTrace(app)
 
@@ -144,8 +148,4 @@ export async function runVisualHarness() {
       visual.log(`could not open screenshots: ${err instanceof Error ? err.message : String(err)}`)
     )
   }
-}
-
-if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(import.meta.filename)) {
-  await runVisualHarness()
 }

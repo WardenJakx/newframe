@@ -1,13 +1,15 @@
 import type { Electron, ElectronApplication } from 'playwright-core'
 
-import { appDir, electronExecutable, newframeEnv, ports } from '../core/config.ts'
+import { appDir, electronExecutable, localTradeServiceUrl, newframeEnv, ports } from '../core/config.ts'
 import { ProcessService } from '../core/process-service.ts'
+import { stopProcess } from '../core/process.ts'
+import { trackProcessGroup } from '../core/reaper.ts'
 import type { HarnessService } from '../core/service.ts'
 import { assertPortFree, sleep } from '../core/utils.ts'
 
 type ElectronLaunchSettings = {
   remoteDebugging?: boolean
-  visualHarness?: boolean
+  visualHarnessProfile?: string
 }
 
 export function electronLaunchSettings(options: ElectronLaunchSettings = {}) {
@@ -20,8 +22,13 @@ export function electronLaunchSettings(options: ElectronLaunchSettings = {}) {
     args,
     cwd: appDir,
     env: newframeEnv(
-      options.visualHarness
-        ? { NEWFRAME_VISUAL_HARNESS: 'true', NEWFRAME_HARNESS_RPC_PORT: String(ports.visualRpc) }
+      options.visualHarnessProfile
+        ? {
+            NEWFRAME_VISUAL_HARNESS: 'true',
+            NEWFRAME_HARNESS_PROFILE_DIR: options.visualHarnessProfile,
+            NEWFRAME_HARNESS_RPC_PORT: String(ports.visualRpc),
+            NEWFRAME_FLASH_URL: `${localTradeServiceUrl}/v1`
+          }
         : {}
     ),
     executablePath: electronExecutable()
@@ -56,11 +63,13 @@ export class ElectronApplicationService implements HarnessService<ElectronApplic
 
   private app?: ElectronApplication
   private readonly launcher: Electron
+  private readonly profileDirectory: string
   private stopping = false
   private readonly timeoutMs: number
 
-  constructor(launcher: Electron, timeoutMs: number) {
+  constructor(launcher: Electron, profileDirectory: string, timeoutMs: number) {
     this.launcher = launcher
+    this.profileDirectory = profileDirectory
     this.timeoutMs = timeoutMs
   }
 
@@ -71,12 +80,14 @@ export class ElectronApplicationService implements HarnessService<ElectronApplic
 
     await assertPortFree(ports.visualRpc, 'Newframe visual RPC')
 
-    const settings = electronLaunchSettings({ visualHarness: true })
+    const settings = electronLaunchSettings({ visualHarnessProfile: this.profileDirectory })
     const app = await this.launcher.launch({
       ...settings,
       colorScheme: 'no-preference',
       timeout: 30_000
     })
+    // Playwright starts Electron as a process group leader; its helpers die with that group.
+    trackProcessGroup(app.process())
     app.context().setDefaultTimeout(this.timeoutMs)
     app.context().setDefaultNavigationTimeout(this.timeoutMs)
     this.app = app
@@ -102,13 +113,7 @@ export class ElectronApplicationService implements HarnessService<ElectronApplic
     this.app = undefined
     const child = app.process()
 
-    await Promise.race([
-      app.close().catch(() => undefined),
-      sleep(3_000).then(() => {
-        if (child.exitCode === null) {
-          child.kill('SIGKILL')
-        }
-      })
-    ])
+    await Promise.race([app.close().catch(() => undefined), sleep(3_000)])
+    await stopProcess(child, 'SIGKILL')
   }
 }

@@ -18,6 +18,7 @@ import { showUnhandledExceptionDialog } from '../../platform/desktop/windows/dia
 import windows from '../../platform/desktop/windows/index.ts'
 import { createProductionPersistencePorts } from '../../platform/persistence/index.ts'
 import { getErrorCode } from '../../platform/runtime/errors.ts'
+import { isVisualHarness } from '../../platform/runtime/visualHarness.ts'
 import biometrics from '../../platform/secrets/biometrics.ts'
 import vault from '../../platform/secrets/vault.ts'
 import { Signers } from '../../platform/signing/signers/index.ts'
@@ -294,7 +295,8 @@ void app.whenReady().then(async () => {
   startDomainServices()
   menu()
   windows.init(rendererAuthorization, store)
-  if (app.dock) {
+  // Hiding the Dock icon would relax the harness's stricter 'prohibited' activation policy.
+  if (app.dock && !isVisualHarness) {
     app.dock.hide()
   }
   if (isDev) {

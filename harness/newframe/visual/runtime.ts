@@ -1,4 +1,6 @@
+import { mkdtempSync } from 'node:fs'
 import fsp from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
 
@@ -39,7 +41,9 @@ type ElectronDiagnostics = {
 }
 
 export class VisualHarnessRuntime {
-  readonly outputDir = process.env.NEWFRAME_HARNESS_OUTPUT_DIR ?? '/tmp/newframe-visual-harness'
+  // Each run gets its own artifacts so concurrent runs cannot overwrite each other.
+  readonly outputDir =
+    process.env.NEWFRAME_HARNESS_OUTPUT_DIR ?? mkdtempSync(path.join(tmpdir(), 'newframe-visual-harness-'))
   readonly screenshotDir = path.join(this.outputDir, 'screenshots')
   readonly uiTimeoutMs = Number(process.env.NEWFRAME_HARNESS_UI_TIMEOUT_MS ?? 10_000)
   readonly startedAt = Date.now()

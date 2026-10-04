@@ -8,6 +8,7 @@ import {
   type PersistenceSchedulerPort,
   type PersistenceStoragePort
 } from '../persistence/index.ts'
+import { isVisualHarness } from '../runtime/visualHarness.ts'
 import createCanonicalStore from './createCanonicalStore.ts'
 import { connectPersistenceControl } from './persist/index.ts'
 
@@ -22,7 +23,7 @@ connectPersistenceControl(persistenceAdapter)
 const canonical = createCanonicalStore(persistenceAdapter)
 const store = canonical.store
 
-if (process.env.NEWFRAME_VISUAL_HARNESS === 'true' && process.env.FRAME_PROFILE === 'dev') {
+if (isVisualHarness) {
   Object.defineProperty(globalThis, '__NEWFRAME_VISUAL_HARNESS_GET_STATE__', {
     configurable: false,
     value: () => {
