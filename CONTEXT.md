@@ -205,7 +205,7 @@ One user-facing capability built on the primitives, such as sending, trading, or
 _Avoid_: Module, wallet service, primitive
 
 **Entry point**:
-The single door for one kind of channel into the core: trays, the extension, other local API clients, or AI session clients. It owns identifying who is on the channel and nothing about what they may do. For a tray that means confirming the message really came from a tray.
+The single way into the core for one kind of channel: trays, the extension, other local API clients, or AI session clients. It owns identifying who is on the channel and nothing about what they may do. For a tray that means confirming the message really came from a tray.
 _Avoid_: Transport, handler, server
 
 **Gateway**:
@@ -239,7 +239,7 @@ The built desktop app running against virtual services, driven through its trays
 _Avoid_: E2E suite, UI tests
 
 **Boundary test**:
-A test that sends hostile or malformed input through one boundary's real door and checks that the boundary's owner refuses it.
+A test that sends hostile or malformed input across one boundary and checks that the boundary's owner refuses it.
 _Avoid_: Unit test, security test
 
 **Integration test**:

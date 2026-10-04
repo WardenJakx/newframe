@@ -5,7 +5,7 @@ The endgame structure for Newframe. Every name here is defined in [CONTEXT.md](.
 ## Rules
 
 1. **One owner.** Every piece of state and every kind of decision has exactly one owner. Everything else reads or asks.
-2. **One door.** Each part exposes one narrow interface. Nothing reaches around it.
+2. **One interface.** Each part exposes one narrow interface. Nothing reaches around it.
 3. **Validate once, at the boundary.** Data moving into a more trusted zone is validated by that boundary's owner. Code behind the boundary does not re-check it.
 4. **Dependencies point inward.** Features know primitives; primitives never know features.
 5. **Authority is held, not claimed.** A request source can only be created by an entry point, and only the gateway can reach the vault. Neither can be copied, hand-built, or passed along.
@@ -52,7 +52,7 @@ flowchart LR
   features --> remote
 ```
 
-From least to most trusted: outside, the relay, the trays, the core. The vault is not a separate zone or a separate process; it is the hardened part of the core, reachable only from the gateway. The core is trusted, so the vault's protection is that nothing but the gateway holds its door.
+From least to most trusted: outside, the relay, the trays, the core. The vault is not a separate zone or a separate process; it is the hardened part of the core, reachable only from the gateway. The core is trusted, so the vault's protection is that nothing but the gateway is given its interface.
 
 Data becomes more trusted in two directions: requests coming in, and responses from remote services coming back. Both are boundaries.
 
@@ -74,7 +74,7 @@ Wallet services and features sit behind all of these. They check meaning (the ac
 
 Parts are either **primitives**, the shared building blocks every feature relies on and none can bypass, or **features** built on top of them.
 
-| Part                | Kind             | Owns                                                                                                                                                | Door                                                                 |
+| Part                | Kind             | Owns                                                                                                                                                | Interface                                                            |
 | ------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
 | **Entry points**    | Primitive        | Identifying who is on a channel and creating the request source. One each for trays, the extension, other local API clients, and AI session clients | Hands the gateway a request source and a request                     |
 | **Gateway**         | Primitive        | The operation catalog, the authority ledger, requests in progress and pending requests. The vault's only caller                                     | Accepts a request from an entry point                                |
@@ -87,7 +87,7 @@ Parts are either **primitives**, the shared building blocks every feature relies
 | **Extension**       | Separate program | Dapp origin, the injected Ethereum provider, the connection to the desktop app                                                                      | Reaches the core through its entry point only                        |
 | **Newframe CLI**    | Separate program | AI session credential storage, its commands, and its own conversation with the trading service                                                      | Reaches the core through the local API only, and only for signatures |
 
-One file, the composition root, constructs every part of the core and hands each one the doors it is allowed. Nothing else wires parts together.
+One file, the composition root, constructs every part of the core and hands each one the interfaces it is allowed. Nothing else wires parts together.
 
 ### State ownership
 
@@ -239,7 +239,7 @@ core/entry, trays, extension, cli
 ```
 
 - `trays` imports only `schema` and `ui`, never `core`. `core` never imports `trays`.
-- `entry`, `gateway` and `vault` are small, slow-changing and security-reviewed. Creating a request source is exported only to `entry`; the vault's door is exported only to `gateway`.
+- `entry`, `gateway` and `vault` are small, slow-changing and security-reviewed. Creating a request source is exported only to `entry`; the vault's interface is exported only to `gateway`.
 - A wallet service never imports `gateway`, `entry` or a feature. It imports another wallet service only if that one comes earlier in the order networks → accounts → Safe wallets → assets → transactions.
 - Features never import each other. A flow that spans two features goes through gateway operations.
 - Only `vault` imports key and hardware-wallet libraries, including the client for a hardware wallet relay. Only the owner of a remote service's data imports that remote service's client.
@@ -254,7 +254,7 @@ No entry point, the vault, or another feature changes.
 
 ## Tests
 
-Each boundary above is tested in one place, through its real door, with the core assembled and unmodified and everything outside it replaced by a virtual service. See [testing.md](testing.md).
+Each boundary above is tested in one place, by sending input across it for real, with the core assembled and unmodified and everything outside it replaced by a virtual service. See [testing.md](testing.md).
 
 ## Behaviour that changes
 
@@ -273,7 +273,7 @@ Most of the endgame is restructuring. These change what Newframe does:
 | Local API messages are named after the project Newframe was forked from (`frame_*`, `__frame*`)                                                                                             | Named to match the glossary                                                                                                                                                                                                                                           |
 | A tray is allowed to connect to any address                                                                                                                                                 | A tray connects to nothing but the core                                                                                                                                                                                                                               |
 | Secrets are kept in three places: the vault file, a signers folder, and general stored state                                                                                                | One store, owned by the vault                                                                                                                                                                                                                                         |
-| Switches that exist for tests live in the core: one exposes all state to the visual harness, others move the local API and point at virtual services                                        | One door at the composition root for pointing the core at virtual services, open only in a development profile                                                                                                                                                        |
+| Switches that exist for tests live in the core: one exposes all state to the visual harness, others move the local API and point at virtual services                                        | One setting at the composition root for pointing the core at virtual services, available only in a development profile                                                                                                                                                |
 | A Safe proposal's contents are re-verified, but the confirmations on it are shown as the Safe transaction service reports them. The count can be false; the contents the human signs cannot | Each confirmation is checked against the recomputed hash and the Safe wallet's owners read from the network. A plain signature is checked locally; a contract owner's or a pre-approved one needs a network read. One that cannot be checked is shown as not verified |
 | The extension has its own selected account, and the desktop app switches to it before prompting                                                                                             | There is one selected account. The extension acts as it when it is shared with the extension, and otherwise has no account. The extension's picker offers the accounts shared with it, and choosing one changes the selected account in the desktop app               |
 
