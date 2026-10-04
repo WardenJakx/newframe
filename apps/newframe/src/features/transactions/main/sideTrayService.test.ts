@@ -12,7 +12,7 @@ let chainAvailable = true
 
 const address = '0x1111111111111111111111111111111111111111'
 const target = '0x2222222222222222222222222222222222222222'
-const principal = createNewframeInternalSource({
+const requestSource = createNewframeInternalSource({
   clientType: 'sidetray',
   entrypoint: 'sidetray',
   webContentsId: 1,
@@ -50,7 +50,7 @@ describe('side tray transaction service', () => {
           idempotencyKey: '00000000-0000-4000-8000-000000000001',
           transaction: { to: target, data: '0x1234', value: '0x2' }
         },
-        principal
+        requestSource
       )
     ).resolves.toEqual({ ok: true, transactionHash: `0x${'a'.repeat(64)}` })
 
@@ -76,7 +76,7 @@ describe('side tray transaction service', () => {
           }
         ]
       }),
-      principal
+      requestSource
     )
   })
 
@@ -91,12 +91,12 @@ describe('side tray transaction service', () => {
         tokenData,
         transaction: { to: target, data: '0x1234', value: '0x0' }
       },
-      principal
+      requestSource
     )
 
     expect(providerSend).toHaveBeenCalledWith(
       expect.objectContaining({ method: 'eth_sendTransaction' }),
-      principal,
+      requestSource,
       { tokenData }
     )
   })
@@ -111,7 +111,7 @@ describe('side tray transaction service', () => {
           idempotencyKey: '00000000-0000-4000-8000-000000000002',
           transaction: { to: target }
         },
-        principal
+        requestSource
       )
     ).resolves.toEqual({ ok: false, error: 'provider_error', message: 'Chain is unavailable.' })
     expect(
@@ -120,7 +120,7 @@ describe('side tray transaction service', () => {
           chainId: 1,
           typedData: { domain: {}, message: {}, primaryType: 'Order', types: { Order: [] } }
         },
-        principal
+        requestSource
       )
     ).resolves.toEqual({ ok: false, error: 'provider_error', message: 'Chain is unavailable.' })
     expect(providerSend).not.toHaveBeenCalled()
@@ -135,7 +135,7 @@ describe('side tray transaction service', () => {
     }
     providerSend.mockResolvedValue({ result: `0x${'b'.repeat(130)}` })
 
-    expect(service.signCurrentAccountTypedData({ chainId: 1, typedData }, principal)).resolves.toEqual({
+    expect(service.signCurrentAccountTypedData({ chainId: 1, typedData }, requestSource)).resolves.toEqual({
       ok: true,
       signature: `0x${'b'.repeat(130)}`
     })
@@ -146,7 +146,7 @@ describe('side tray transaction service', () => {
         params: [address, typedData],
         _origin: expect.any(String) as unknown
       }),
-      principal
+      requestSource
     )
 
     providerSend.mockClear()
@@ -156,7 +156,7 @@ describe('side tray transaction service', () => {
           chainId: 10,
           typedData: { ...typedData, domain: { chainId: 1 } }
         },
-        principal
+        requestSource
       )
     ).resolves.toEqual({ ok: false, error: 'chain_mismatch' })
     expect(providerSend).not.toHaveBeenCalled()

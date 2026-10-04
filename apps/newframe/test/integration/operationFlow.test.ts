@@ -34,7 +34,7 @@ it('authorizes and validates final adjustments against canonical state before si
       actionId: 'action-1',
       decision: 'prompt',
       decidedAt: 1,
-      principal: { kind: 'rpc', transport: 'http', connectionId: 'connection-1', origin: 'app.example' },
+      requestSource: { kind: 'rpc', transport: 'http', connectionId: 'connection-1', origin: 'app.example' },
       intent: { requestType: 'transaction', account: accountId, method: 'eth_sendTransaction' }
     },
     data: {

@@ -127,7 +127,7 @@ describe('renderer state stream', () => {
                 handlerId: 'request',
                 authorization: {
                   decision: 'autonomous',
-                  principal: {
+                  requestSource: {
                     type: 'agent',
                     origin: 'https://sensitive.example',
                     sessionId: 'secret-session'
@@ -168,7 +168,7 @@ describe('renderer state stream', () => {
                 requestId: 'request',
                 request: {
                   origin: 'https://sensitive.example',
-                  authorization: { principal: { sessionId: 'secret-session' } }
+                  authorization: { requestSource: { sessionId: 'secret-session' } }
                 },
                 futureNavigationField: 'must-not-cross-ipc'
               }
@@ -192,7 +192,7 @@ describe('renderer state stream', () => {
             requestId: 'request',
             request: {
               origin: 'https://sensitive.example',
-              authorization: { principal: { sessionId: 'secret-session' } }
+              authorization: { requestSource: { sessionId: 'secret-session' } }
             },
             futureNavigationField: 'must-not-cross-ipc'
           }

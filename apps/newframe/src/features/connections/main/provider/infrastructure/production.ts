@@ -28,11 +28,11 @@ export function createProviderRequestAdapter(
   const callbacks = createOneResultCallbackBoundary()
   return {
     dispose: () => callbacks.dispose(),
-    request(payload: RPCRequestPayload, principal: RequestSource, context) {
+    request(payload: RPCRequestPayload, requestSource: RequestSource, context) {
       return callbacks.run<RPCResponsePayload>((done) => {
-        Promise.resolve(provider.send(payload, (response) => done(null, response), principal, context)).catch(
-          done
-        )
+        Promise.resolve(
+          provider.send(payload, (response) => done(null, response), requestSource, context)
+        ).catch(done)
       })
     }
   }

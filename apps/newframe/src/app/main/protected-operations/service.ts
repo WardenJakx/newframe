@@ -406,19 +406,19 @@ export class ProtectedOperationsService {
 
   executeAgentTransaction(
     request: TransactionRequest,
-    principal: AiSessionClientSource,
+    requestSource: AiSessionClientSource,
     res: RPCRequestCallback
   ) {
-    const account = this.aiSessionAccount(principal, request.account, request.payload, res)
+    const account = this.aiSessionAccount(requestSource, request.account, request.payload, res)
     if (!account) {
       return
     }
-    if (request.data.from?.toLowerCase() !== principal.aiSession.accountId) {
+    if (request.data.from?.toLowerCase() !== requestSource.aiSession.accountId) {
       resError('AI session is not authorized for the transaction account', request.payload, res)
       return
     }
     const signAndBroadcast = (data: TransactionData) => {
-      if (!this.requireAiSessionAccount(principal, account, request.payload, res)) {
+      if (!this.requireAiSessionAccount(requestSource, account, request.payload, res)) {
         return
       }
 
@@ -430,7 +430,7 @@ export class ProtectedOperationsService {
       account.signTransaction(
         data,
         (signingError, signedTransaction) => {
-          if (!this.requireAiSessionAccount(principal, account, request.payload, res)) {
+          if (!this.requireAiSessionAccount(requestSource, account, request.payload, res)) {
             return
           }
           if (signingError || !signedTransaction) {
@@ -448,7 +448,7 @@ export class ProtectedOperationsService {
         {
           requestId: request.handlerId,
           chainId: parseInt(data.chainId, 16),
-          isActive: () => this.aiSessionAccountIsActive(principal, account)
+          isActive: () => this.aiSessionAccountIsActive(requestSource, account)
         }
       )
     }
@@ -468,11 +468,11 @@ export class ProtectedOperationsService {
   signAiSessionMessage(
     message: string,
     normalizedPayload: RPCRequestPayload,
-    principal: AiSessionClientSource,
+    requestSource: AiSessionClientSource,
     respond: RPCRequestCallback
   ) {
     const account = this.aiSessionAccount(
-      principal,
+      requestSource,
       arrayValue(normalizedPayload.params)[0],
       normalizedPayload,
       respond
@@ -484,7 +484,7 @@ export class ProtectedOperationsService {
     account.signMessage(
       message,
       (signingError, signed) => {
-        if (!this.requireAiSessionAccount(principal, account, normalizedPayload, respond)) {
+        if (!this.requireAiSessionAccount(requestSource, account, normalizedPayload, respond)) {
           return
         }
         if (signingError || !signed) {
@@ -495,7 +495,7 @@ export class ProtectedOperationsService {
           if (verificationError) {
             return resError(verificationError, normalizedPayload, respond)
           }
-          if (!this.requireAiSessionAccount(principal, account, normalizedPayload, respond)) {
+          if (!this.requireAiSessionAccount(requestSource, account, normalizedPayload, respond)) {
             return
           }
           respond({ id: normalizedPayload.id, jsonrpc: normalizedPayload.jsonrpc, result: signed })
@@ -504,17 +504,17 @@ export class ProtectedOperationsService {
       {
         requestId: String(normalizedPayload.id),
         chainId: 1,
-        isActive: () => this.aiSessionAccountIsActive(principal, account)
+        isActive: () => this.aiSessionAccountIsActive(requestSource, account)
       }
     )
   }
   signAiSessionTypedData(
     typedMessage: TypedMessage,
     payload: RPCRequestPayload,
-    principal: AiSessionClientSource,
+    requestSource: AiSessionClientSource,
     respond: RPCRequestCallback
   ) {
-    const account = this.aiSessionAccount(principal, arrayValue(payload.params)[0], payload, respond)
+    const account = this.aiSessionAccount(requestSource, arrayValue(payload.params)[0], payload, respond)
     if (!account) {
       return
     }
@@ -522,7 +522,7 @@ export class ProtectedOperationsService {
     account.signTypedData(
       typedMessage,
       (signingError, signature = '') => {
-        if (!this.requireAiSessionAccount(principal, account, payload, respond)) {
+        if (!this.requireAiSessionAccount(requestSource, account, payload, respond)) {
           return
         }
         if (signingError || !signature) {
@@ -542,7 +542,7 @@ export class ProtectedOperationsService {
       {
         requestId: String(payload.id),
         chainId: 1,
-        isActive: () => this.aiSessionAccountIsActive(principal, account)
+        isActive: () => this.aiSessionAccountIsActive(requestSource, account)
       }
     )
   }

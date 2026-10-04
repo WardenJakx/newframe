@@ -67,12 +67,12 @@ it('characterizes agent prompt timeout, disconnect, approval idempotency, and di
       current: () => account,
       get: (id: string) => (id === accountId ? { ...account, lastSignerType: 'seed' } : undefined),
       getFrameAccount: (id: string) => (id === accountId ? account : undefined),
-      routeRequest: (_principal: unknown, routed: AccountRequest) => {
+      routeRequest: (_requestSource: unknown, routed: AccountRequest) => {
         routed.authorization = {
           actionId: `action-${routed.handlerId}`,
           decision: 'prompt',
           decidedAt: Date.now(),
-          principal: {
+          requestSource: {
             kind: 'rpc',
             transport: 'http',
             connectionId: routed.handlerId,

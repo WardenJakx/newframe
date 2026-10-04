@@ -52,7 +52,7 @@ export interface SendServicePorts {
         tokenData?: { decimals: number; name: string; symbol: string }
         transaction: SendTransaction
       },
-      principal: RequestSource
+      requestSource: RequestSource
     ): Promise<{ ok: true; transactionHash: string } | { ok: false; error: string; message?: string }>
   }
 }
@@ -184,7 +184,7 @@ export function createSendService(ports: SendServicePorts) {
 
   const execute = async (
     command: SendRequestCommand,
-    principal: RequestSource,
+    requestSource: RequestSource,
     reference: OperationReference,
     key: string
   ) => {
@@ -230,7 +230,7 @@ export function createSendService(ports: SendServicePorts) {
             recipientAddress: validated.recipientAddress
           })
         },
-        principal
+        requestSource
       )
       if (!result.ok) {
         throw new SendFailure('provider_error', result.message ?? 'Transaction failed.')
@@ -258,7 +258,7 @@ export function createSendService(ports: SendServicePorts) {
   }
 
   return {
-    submit(command: SendRequestCommand, principal: RequestSource, owner: OperationOwner) {
+    submit(command: SendRequestCommand, requestSource: RequestSource, owner: OperationOwner) {
       if (disposed) {
         return false
       }
@@ -291,7 +291,7 @@ export function createSendService(ports: SendServicePorts) {
         touchedAt: ports.clock.now()
       })
       pending.set(key, reference)
-      queueMicrotask(() => void execute(command, principal, reference, key))
+      queueMicrotask(() => void execute(command, requestSource, reference, key))
       return true
     },
 

@@ -10,7 +10,7 @@ import {
   createRequestApprovalAdapter
 } from './production.ts'
 
-const principal = createNewframeInternalSource({
+const requestSource = createNewframeInternalSource({
   clientType: 'sidetray',
   entrypoint: 'sidetray',
   webContentsId: 1,
@@ -64,17 +64,17 @@ describe('provider request infrastructure adapter', () => {
     const context = { tokenData: { decimals: 6, name: 'USD Coin', symbol: 'USDC' } }
     const first = adapter.request(
       { id: 1, jsonrpc: '2.0', method: 'eth_chainId', params: [], _origin: 'test-origin' },
-      principal,
+      requestSource,
       context
     )
-    expect(send).toHaveBeenCalledWith(expect.any(Object), expect.any(Function), principal, context)
+    expect(send).toHaveBeenCalledWith(expect.any(Object), expect.any(Function), requestSource, context)
     respond({ id: 1, jsonrpc: '2.0', result: '0x1' })
     respond({ id: 1, jsonrpc: '2.0', error: { code: -1, message: 'late' } })
     expect(first).resolves.toMatchObject({ result: '0x1' })
 
     const pending = adapter.request(
       { id: 2, jsonrpc: '2.0', method: 'eth_chainId', params: [], _origin: 'test-origin' },
-      principal
+      requestSource
     )
     adapter.dispose()
     expect(pending).rejects.toThrow('disposed before the operation completed')
@@ -119,8 +119,8 @@ it('rejects provider promise failures and ignores failures after callback settle
     params: [],
     _origin: 'test'
   }
-  expect(adapter.request(payload, principal)).rejects.toThrow('provider unavailable')
+  expect(adapter.request(payload, requestSource)).rejects.toThrow('provider unavailable')
   callbackFirst = true
-  expect(adapter.request(payload, principal)).resolves.toMatchObject({ result: '0x1' })
+  expect(adapter.request(payload, requestSource)).resolves.toMatchObject({ result: '0x1' })
   adapter.dispose()
 })

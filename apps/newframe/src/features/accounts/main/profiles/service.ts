@@ -119,7 +119,7 @@ export function createProfileService(ports: ProfileServicePorts) {
         entityRefs
       })
     } catch {
-      // An existing ID owned by another principal or semantic operation must
+      // An existing ID owned by another request source or semantic operation must
       // never be overwritten or used to mutate profile state.
       return false
     }

@@ -910,7 +910,7 @@ export function createRequestService(ports: RequestServicePorts) {
       return true
     },
 
-    async replaceTransaction(command: TransactionReplaceCommand, principal: RequestSource) {
+    async replaceTransaction(command: TransactionReplaceCommand, requestSource: RequestSource) {
       if (locate(command.requestId)?.request.type !== 'transaction') {
         return false
       }
@@ -919,7 +919,7 @@ export function createRequestService(ports: RequestServicePorts) {
       await ports.accounts.replaceTx(
         command.requestId,
         command.replacement === 'cancel' ? ReplacementType.Cancel : ReplacementType.Speed,
-        principal
+        requestSource
       )
       return true
     },

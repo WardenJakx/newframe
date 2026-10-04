@@ -325,18 +325,18 @@ afterEach(() => {
 
 describe('#routeRequest', () => {
   it('attaches a prompt decision from the trusted transport before queueing', () => {
-    const principal = createLocalApiSource({
+    const requestSource = createLocalApiSource({
       transport: 'http',
       connectionId: 'accounts-test',
       origin: 'app.example'
     })
     const routedRequest = { ...request, account: account.address }
 
-    expect(Accounts.routeRequest(principal, routedRequest)).toBe(true)
+    expect(Accounts.routeRequest(requestSource, routedRequest)).toBe(true)
     expect(canonicalRequest()).toMatchObject({
       authorization: {
         decision: 'prompt',
-        principal: {
+        requestSource: {
           kind: 'rpc',
           transport: 'http',
           connectionId: 'accounts-test',
@@ -348,10 +348,10 @@ describe('#routeRequest', () => {
     expect(typeof requiredCanonicalRequest().authorization?.decidedAt).toBe('number')
   })
 
-  it('rejects an unminted principal without queueing the request', () => {
+  it('rejects an unminted request source without queueing the request', () => {
     const respond = mock()
     requestLifecycle.create(respond, request.handlerId)
-    const forgedPrincipal = {
+    const forgedRequestSource = {
       kind: 'renderer',
       role: 'wallet-ui',
       entrypoint: 'tray',
@@ -360,7 +360,7 @@ describe('#routeRequest', () => {
     }
 
     expect(
-      Accounts.routeRequest(forgedPrincipal as unknown as RequestSource, {
+      Accounts.routeRequest(forgedRequestSource as unknown as RequestSource, {
         ...request,
         account: account.address
       })
@@ -375,7 +375,7 @@ describe('#routeRequest', () => {
 
   it('executes an authorized agent action without adding it to the prompt queue', () => {
     const execute = mock()
-    const principal = createAiSessionClientSource({
+    const requestSource = createAiSessionClientSource({
       sessionId: 'agent-session',
       accountId: account.address,
       expiresAt: Date.now() + 60_000,
@@ -384,7 +384,7 @@ describe('#routeRequest', () => {
     const routedRequest = { ...request, account: account.address }
     requestLifecycle.create(mock(), request.handlerId)
 
-    expect(Accounts.routeRequest(principal, routedRequest, execute)).toBe(true)
+    expect(Accounts.routeRequest(requestSource, routedRequest, execute)).toBe(true)
     expect(execute).toHaveBeenCalled()
     expect(execute.mock.calls[0]?.[0]).toMatchObject({ authorization: { decision: 'autonomous' } })
     expect(canonicalRequest()).toBeUndefined()
@@ -393,14 +393,14 @@ describe('#routeRequest', () => {
   it('fails closed when an autonomous action has no executor', () => {
     const respond = mock()
     requestLifecycle.create(respond, request.handlerId)
-    const principal = createAiSessionClientSource({
+    const requestSource = createAiSessionClientSource({
       sessionId: 'agent-session',
       accountId: account.address,
       expiresAt: Date.now() + 60_000,
       isActive: () => true
     })
 
-    expect(Accounts.routeRequest(principal, { ...request, account: account.address })).toBe(false)
+    expect(Accounts.routeRequest(requestSource, { ...request, account: account.address })).toBe(false)
     expect(respond).toHaveBeenCalledWith({
       id: request.payload.id,
       jsonrpc: request.payload.jsonrpc,

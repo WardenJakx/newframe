@@ -28,7 +28,7 @@ function setup({
     respond?: (response: RPCResponsePayload) => void
   ) => void | Promise<void>
 } = {}) {
-  const forwarded: Array<{ payload: RPCRequestPayload; principal?: unknown }> = []
+  const forwarded: Array<{ payload: RPCRequestPayload; requestSource?: unknown }> = []
   const responses: RPCResponsePayload[] = []
   const sessions: string[] = []
   const origins = {
@@ -44,8 +44,8 @@ function setup({
         isLocked: () => false,
         origins,
         selectedAddresses: () => ['0x1111111111111111111111111111111111111111'],
-        handle: (payload, respond, principal) => {
-          forwarded.push({ payload, principal })
+        handle: (payload, respond, requestSource) => {
+          forwarded.push({ payload, requestSource })
           if (send) {
             return send(payload, respond)
           }
@@ -93,7 +93,7 @@ it('normalizes one allowed request and applies its provider response', async () 
 
   expect(harness.forwarded[0]).toMatchObject({
     payload: { chainId: '0x5', method: 'eth_subscribe', _origin: 'app.example-id' },
-    principal: {
+    requestSource: {
       kind: 'rpc',
       transport: 'websocket',
       connectionId: 'socket-1',
