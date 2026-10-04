@@ -2,7 +2,7 @@ import crypto from 'crypto'
 import { lookup } from 'dns/promises'
 import { isIP } from 'net'
 
-import { internet } from '../../../../platform/internet/index.ts'
+import { internet } from '../../../../core/internet/index.ts'
 import type { TokenImage } from '../../../../platform/state-store/state/index.ts'
 import {
   embeddedImageSource,

@@ -301,7 +301,6 @@ Most of the endgame is restructuring. These change what Newframe does:
 | `platform/chain-rpc`, `features/chains`                                                                                                                                   | `core/services/chains`                                               |
 | `platform/state-store` (one store, about 100 mutators open to every holder), `platform/state-sync`, `platform/persistence`                                                | `core/state`, with each piece owned as above                         |
 | `platform/desktop`, `platform/app-update`, `platform/runtime`                                                                                                             | `core/desktop-ui`                                                    |
-| `platform/internet`                                                                                                                                                       | `core/internet`                                                      |
 | `app/renderer`, every `features/*/renderer`, `shared/renderer`                                                                                                            | `trays`                                                              |
 | `scripts/check-architecture.ts`                                                                                                                                           | Deleted as each rule becomes a compile error                         |
 

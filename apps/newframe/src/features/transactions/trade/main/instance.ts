@@ -1,4 +1,4 @@
-import { internet } from '../../../../platform/internet/index.ts'
+import { internet } from '../../../../core/internet/index.ts'
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
 import type { Accounts } from '../../../accounts/main/index.ts'
 import type { AssetRateService } from '../../../asset-data/main/assetRates/service.ts'

@@ -1,6 +1,6 @@
 import log from 'electron-log'
 
-import type { InternetGate } from '../../../../platform/internet/index.ts'
+import type { InternetGate } from '../../../../core/internet/index.ts'
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
 import type { Token } from '../../../../platform/state-store/state/index.ts'
 import type { Address } from '../../../../shared/domain/address.ts'

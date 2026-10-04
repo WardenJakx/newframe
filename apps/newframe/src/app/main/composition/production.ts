@@ -1,5 +1,6 @@
 import log from 'electron-log'
 
+import { internet } from '../../../core/internet/index.ts'
 import {
   createAccountOnboardingService,
   type AccountOnboardingPorts,
@@ -95,7 +96,6 @@ import {
 import type { FlashService } from '../../../features/transactions/trade/main/index.ts'
 import { createProductionFlashService } from '../../../features/transactions/trade/main/instance.ts'
 import { createTradeService, type TradeService } from '../../../features/transactions/trade/main/service.ts'
-import { internet } from '../../../platform/internet/index.ts'
 import {
   createTrayAuthorizationRegistry,
   type TrayAuthorizationRegistry

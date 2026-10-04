@@ -1,6 +1,6 @@
 import { createFlashApi } from '@newframe/flash/api'
 
-import { internet } from '../../../platform/internet/index.ts'
+import { internet } from '../../../core/internet/index.ts'
 import { getMainRuntime } from '../../../platform/runtime/index.ts'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
 import FlashPortfolioProvider from './providers/flash.ts'

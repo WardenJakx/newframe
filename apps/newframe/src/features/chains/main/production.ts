@@ -1,4 +1,4 @@
-import { internet } from '../../../platform/internet/index.ts'
+import { internet } from '../../../core/internet/index.ts'
 import { persistedImageSource } from '../../asset-data/domain/image/index.ts'
 import { downloadImage } from '../../asset-data/main/images/download.ts'
 

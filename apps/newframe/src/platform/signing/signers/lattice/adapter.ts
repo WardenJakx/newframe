@@ -1,6 +1,6 @@
 import log from 'electron-log'
 
-import { internet, type InternetGate } from '../../../internet/index.ts'
+import { internet, type InternetGate } from '../../../../core/internet/index.ts'
 import type canonicalStore from '../../../state-store/index.ts'
 import { SignerAdapter } from '../adapters.ts'
 import type { Derivation } from '../Signer/derive.ts'

@@ -21,7 +21,7 @@ import {
 } from '@newframe/flash/protocol'
 import WebSocket from 'ws'
 
-import { createInternet } from '../../../../platform/internet/index.ts'
+import { createInternet } from '../../../../core/internet/index.ts'
 import createCanonicalStore from '../../../../platform/state-store/createCanonicalStore.ts'
 import store from '../../../../platform/state-store/index.ts'
 import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
