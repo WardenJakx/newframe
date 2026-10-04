@@ -477,8 +477,8 @@ function addStateListeners() {
       method,
       params,
       chainId: typeof payload.chainId === 'string' ? payload.chainId : undefined,
-      __frameOrigin: source.origin,
-      __frameFavicon: source.favIconUrl
+      __dappOrigin: source.origin,
+      __dappFavicon: source.favIconUrl
     }
 
     dappConnection.send(load)
@@ -487,7 +487,7 @@ function addStateListeners() {
   async function handleSettingsMessage(payload: Omit<ExtensionPayload, 'tab'>, tab?: TabLike) {
     const { method, params = [] } = payload
 
-    if (method === 'frame_retry_connection') {
+    if (method === 'newframe_retry_connection') {
       if (retrying || frameStateStore.getState().connectionStatus === 'connected') {
         return
       }
@@ -510,17 +510,17 @@ function addStateListeners() {
       return
     }
 
-    if (method === 'frame_disconnect_current_site') {
+    if (method === 'newframe_disconnect_current_dapp') {
       await disconnectActiveOrigin(tab)
       return
     }
 
-    if (method === 'frame_refresh_origin_status') {
+    if (method === 'newframe_refresh_dapp_status') {
       await Promise.all([refreshExtensionAccounts(), refreshActiveOriginStatus(tab)])
       return
     }
 
-    if (method === 'frame_select_account') {
+    if (method === 'newframe_select_account') {
       const [address] = params
       if (typeof address !== 'string' || !provider?.isConnected()) {
         return
@@ -531,7 +531,7 @@ function addStateListeners() {
       return
     }
 
-    if (method === 'frame_request_accounts') {
+    if (method === 'newframe_request_accounts') {
       if (!provider?.isConnected()) {
         return
       }
@@ -541,12 +541,12 @@ function addStateListeners() {
       return
     }
 
-    if (method === 'frame_refresh_chains') {
+    if (method === 'newframe_refresh_chains') {
       await fetchAvailableChains()
       return
     }
 
-    if (method === 'frame_summon') {
+    if (method === 'newframe_summon') {
       return provider?.client.extension.summon.mutate({})
     }
 
@@ -578,7 +578,7 @@ function addStateListeners() {
       await provider.request({
         method: 'wallet_switchEthereumChain',
         params: [{ chainId }],
-        __frameOrigin: origin,
+        __dappOrigin: origin,
         __extensionConnecting: true
       })
       await refreshActiveOriginStatus(activeTab)
@@ -590,7 +590,7 @@ function addStateListeners() {
   })
 
   chrome.runtime.onConnect.addListener((port) => {
-    if (port.name !== 'frame_connect') {
+    if (port.name !== 'newframe_connect') {
       return
     }
 

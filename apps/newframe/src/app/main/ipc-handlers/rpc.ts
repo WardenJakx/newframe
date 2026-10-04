@@ -1818,10 +1818,10 @@ export class RpcIpcHandlers extends EventEmitter {
       return res({ id: payload.id, jsonrpc: '2.0', result: true })
     } // Subscription was ours
 
-    if (method === 'frame_getOriginStatus') {
+    if (method === 'newframe_getDappStatus') {
       return this.getOriginStatus(payload, res, requestSource)
     }
-    if (method === 'frame_disconnectOrigin') {
+    if (method === 'newframe_disconnectDapp') {
       return this.disconnectOrigin(payload, res, requestSource)
     }
 

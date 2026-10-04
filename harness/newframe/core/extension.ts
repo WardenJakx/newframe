@@ -105,7 +105,7 @@ export class HarnessExtension {
           method,
           params,
           ...(chainId ? { chainId: `0x${chainId.toString(16)}` } : {}),
-          ...(dappOrigin ? { __frameOrigin: dappOrigin } : {})
+          ...(dappOrigin ? { __dappOrigin: dappOrigin } : {})
         })
       )
     })

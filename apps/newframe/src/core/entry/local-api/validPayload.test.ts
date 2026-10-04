@@ -167,8 +167,8 @@ it('accepts extensions only through their transport schema', () => {
   const httpPayload = { ...payload, pollId: 'poll-1' }
   const webSocketPayload = {
     ...payload,
-    __frameOrigin: 'https://app.example',
-    __frameFavicon: 'https://app.example/favicon.png',
+    __dappOrigin: 'https://app.example',
+    __dappFavicon: 'https://app.example/favicon.png',
     __extensionConnecting: true
   }
 

@@ -15,7 +15,7 @@ export function Settings({ tab, mmAppear }: { tab?: chrome.tabs.Tab; mmAppear: b
   const supported = isSupportedTab(tab)
 
   useEffect(() => {
-    const port = chrome.runtime.connect({ name: 'frame_connect' })
+    const port = chrome.runtime.connect({ name: 'newframe_connect' })
     const updateSettings = (state: FrameState) => frameStateStore.setState(state, true)
     port.onMessage.addListener(updateSettings)
     return () => {
@@ -31,9 +31,9 @@ export function Settings({ tab, mmAppear }: { tab?: chrome.tabs.Tab; mmAppear: b
     const tabId = tab.id
     const refresh = () => {
       void refreshCurrentChain(tabId)
-      void chrome.runtime.sendMessage({ tab, method: 'frame_refresh_origin_status' })
+      void chrome.runtime.sendMessage({ tab, method: 'newframe_refresh_dapp_status' })
     }
-    void chrome.runtime.sendMessage({ method: 'frame_refresh_chains' })
+    void chrome.runtime.sendMessage({ method: 'newframe_refresh_chains' })
     refresh()
     const interval = setInterval(refresh, 1000)
     return () => clearInterval(interval)
@@ -45,18 +45,20 @@ export function Settings({ tab, mmAppear }: { tab?: chrome.tabs.Tab; mmAppear: b
       isSupportedTab={supported}
       mmAppear={mmAppear}
       settings={settings}
-      onSummon={() => void chrome.runtime.sendMessage({ method: 'frame_summon', params: [] })}
-      onRetryConnection={() => void chrome.runtime.sendMessage({ method: 'frame_retry_connection' })}
-      onDisconnect={() => void chrome.runtime.sendMessage({ tab, method: 'frame_disconnect_current_site' })}
+      onSummon={() => void chrome.runtime.sendMessage({ method: 'newframe_summon', params: [] })}
+      onRetryConnection={() => void chrome.runtime.sendMessage({ method: 'newframe_retry_connection' })}
+      onDisconnect={() =>
+        void chrome.runtime.sendMessage({ tab, method: 'newframe_disconnect_current_dapp' })
+      }
       onToggleMetaMask={() => {
         if (tab?.id !== undefined) {
           void toggleMetaMaskSetting(tab.id).catch(console.error)
         }
       }}
       onSelectAccount={(address) =>
-        void chrome.runtime.sendMessage({ tab, method: 'frame_select_account', params: [address] })
+        void chrome.runtime.sendMessage({ tab, method: 'newframe_select_account', params: [address] })
       }
-      onRequestAccounts={() => void chrome.runtime.sendMessage({ tab, method: 'frame_request_accounts' })}
+      onRequestAccounts={() => void chrome.runtime.sendMessage({ tab, method: 'newframe_request_accounts' })}
       onSelectChain={(chainId) => {
         const chain = settings.availableChains.find((candidate) => String(candidate.chainId) === chainId)
         if (!tab || !chain || chain.connected === false) {

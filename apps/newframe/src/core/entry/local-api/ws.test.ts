@@ -51,8 +51,8 @@ it('adapts a WebSocket message to the shared request contract', async () => {
     jsonrpc: '2.0',
     method: 'eth_blockNumber',
     params: [],
-    __frameOrigin: 'https://app.example',
-    __frameFavicon: 'https://cdn.example/icon.png',
+    __dappOrigin: 'https://app.example',
+    __dappFavicon: 'https://cdn.example/icon.png',
     __extensionConnecting: true
   }
 

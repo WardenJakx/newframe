@@ -214,16 +214,17 @@ export const safeWatchStage: VisualStage = {
 
       // The extension only sees the harness account, so it asks for more accounts to use the Safe.
       const extension = await HarnessExtension.connect(newframeRpcUrl)
-      const sharedAccounts = extension.request<ExtensionAccounts>('frame_requestExtensionAccounts')
+      const sharedAccounts = extension.request<ExtensionAccounts>('newframe_requestExtensionAccounts')
       void sharedAccounts.catch(() => undefined)
       await driver.shareExtensionAccounts([safeSeed.safe], '08f1-extension-request-more-accounts.png')
       const { accounts: extensionAccounts } = await sharedAccounts
       if (!extensionAccounts.some((account) => account.address.toLowerCase() === id)) {
         runtime.fail('Sharing the Safe did not disclose it to the extension')
       }
-      const extensionSelection = await extension.request<ExtensionAccounts>('frame_selectExtensionAccount', [
-        safeSeed.safe
-      ])
+      const extensionSelection = await extension.request<ExtensionAccounts>(
+        'newframe_selectExtensionAccount',
+        [safeSeed.safe]
+      )
       if (extensionSelection.selected.toLowerCase() !== id) {
         runtime.fail('The extension did not select the shared Safe')
       }

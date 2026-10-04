@@ -46,8 +46,8 @@ describe('JSON-RPC requests', () => {
         jsonrpc: '2.0',
         method: 'eth_chainId',
         params: [],
-        __frameOrigin: 'https://app.example',
-        __frameFavicon: 'https://app.example/favicon.png',
+        __dappOrigin: 'https://app.example',
+        __dappFavicon: 'https://app.example/favicon.png',
         __extensionConnecting: true
       }).success
     ).toBe(true)

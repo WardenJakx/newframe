@@ -69,7 +69,7 @@ export function createProductionApiServer(
     allowBatching: false,
     createContext({ req, res }) {
       const aiSession = aiSessionService.createContext(req, res, provider)
-      if (req.headers.authorization || req.headers['x-newframe-agent-session']) {
+      if (req.headers.authorization || req.headers['x-newframe-ai-session']) {
         return aiSession
       }
       const origin = parseOrigin(req.headers.origin)

@@ -582,7 +582,7 @@ describe('#send', () => {
     })
   })
 
-  describe('#frame_getOriginStatus', () => {
+  describe('#newframe_getDappStatus', () => {
     const originId = '8073729a-5e59-53b7-9e69-5d9bcff94087'
     const cases: Array<[string, RequestSource, number, boolean, string, string]> = [
       ['returns the permitted address', requestSource, 42161, true, address, ''],
@@ -596,7 +596,7 @@ describe('#send', () => {
           address,
           permitted ? { [originId]: { origin: 'frame.test', provider: true } } : {}
         )
-        expect((await sendResult({ method: 'frame_getOriginStatus' }, source)).result).toEqual({
+        expect((await sendResult({ method: 'newframe_getDappStatus' }, source)).result).toEqual({
           originId,
           origin: 'frame.test',
           connected: permitted,
@@ -608,7 +608,7 @@ describe('#send', () => {
     })
   })
 
-  describe('#frame_disconnectOrigin', () => {
+  describe('#newframe_disconnectDapp', () => {
     it('removes the selected account permission and notifies origin account subscribers', async (done) => {
       const originId = '8073729a-5e59-53b7-9e69-5d9bcff94087'
       const subscription = {
@@ -636,7 +636,7 @@ describe('#send', () => {
         subscriptionEvent = payload
       })
 
-      await send({ method: 'frame_disconnectOrigin' }, (response) => {
+      await send({ method: 'newframe_disconnectDapp' }, (response) => {
         expect(response.error).toBeUndefined()
         const result = rpcResult<{ connected: boolean; address: string }>(response)
         expect(result.connected).toBe(false)

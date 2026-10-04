@@ -42,18 +42,18 @@ export function createExtensionGateway(
           Boolean(admitted.extensionId) &&
           (!input.method.startsWith('frame_') || hasSourceCapability(admitted, 'wallet:internal-state')),
         handle(input: RPCRequestPayload, admitted: LocalApiSource) {
-          if (input.method === 'frame_summon') {
+          if (input.method === 'newframe_summon') {
             windows.toggleTray()
             return null
           }
           const extensionId = admitted.extensionId ?? ''
-          if (input.method === 'frame_getExtensionAccounts') {
+          if (input.method === 'newframe_getExtensionAccounts') {
             return extensionAccess.accounts(extensionId)
           }
-          if (input.method === 'frame_selectExtensionAccount') {
+          if (input.method === 'newframe_selectExtensionAccount') {
             return extensionAccess.select(extensionId, String(input.params[0]))
           }
-          if (input.method === 'frame_requestExtensionAccounts') {
+          if (input.method === 'newframe_requestExtensionAccounts') {
             return extensionAccess.request(extensionId)
           }
           return input.method === 'net_version' ? parseInt(chainId, 16) : chainId

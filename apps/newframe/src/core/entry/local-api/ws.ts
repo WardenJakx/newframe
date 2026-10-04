@@ -180,15 +180,15 @@ export function createWebSocketRpcTransport({
     }
 
     const processPayload = async (rawPayload: WebSocketJsonRpcRequest, respond = defaultRespond) => {
-      const faviconMetadata = rawPayload.__frameFavicon
-      delete rawPayload.__frameFavicon
+      const faviconMetadata = rawPayload.__dappFavicon
+      delete rawPayload.__dappFavicon
       try {
         let requestOrigin = socket.origin
-        const proxiedExtensionRequest = Boolean(socket.frameExtension && rawPayload.__frameOrigin)
+        const proxiedExtensionRequest = Boolean(socket.frameExtension && rawPayload.__dappOrigin)
         const requestExtensionConnection =
           socket.extensionInternal &&
           !proxiedExtensionRequest &&
-          rawPayload.method === 'frame_requestExtensionConnection'
+          rawPayload.method === 'newframe_requestExtensionApproval'
         if (socket.frameExtension) {
           const allowed = await origins.isKnownExtension(socket.frameExtension, requestExtensionConnection)
           if (!allowed) {
@@ -203,9 +203,9 @@ export function createWebSocketRpcTransport({
             return
           }
 
-          if (rawPayload.__frameOrigin) {
-            requestOrigin = rawPayload.__frameOrigin
-            delete rawPayload.__frameOrigin
+          if (rawPayload.__dappOrigin) {
+            requestOrigin = rawPayload.__dappOrigin
+            delete rawPayload.__dappOrigin
           } else {
             requestOrigin = 'newframe-extension'
           }
@@ -292,7 +292,7 @@ export function createWebSocketRpcTransport({
               method: input.method,
               params: input.params as WebSocketJsonRpcRequest['params'],
               ...(input.chainId === undefined ? {} : { chainId: input.chainId }),
-              __frameOrigin: input.origin,
+              __dappOrigin: input.origin,
               __extensionConnecting: input.connecting
             },
             respond
