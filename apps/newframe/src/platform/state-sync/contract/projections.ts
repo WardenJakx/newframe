@@ -232,7 +232,7 @@ export const WalletRequestSchema = z
       'signTypedData',
       'signErc20Permit',
       'transaction',
-      'agentAccess',
+      'aiSession',
       'access',
       'addChain',
       'switchChain',

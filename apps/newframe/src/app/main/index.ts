@@ -71,7 +71,7 @@ const {
   infrastructureCallbacks,
   accountService,
   accounts,
-  agentService,
+  aiSessionService,
   chains,
   flashService,
   imageService,
@@ -124,7 +124,7 @@ const mainApp = createProductionMainApp({
   infrastructureCallbacks,
   accountService,
   accounts,
-  agentService,
+  aiSessionService,
   chains,
   flashService,
   imageService,
@@ -156,7 +156,7 @@ const apiServer = createProductionApiServer(
   accounts,
   flashService,
   store,
-  agentService,
+  aiSessionService,
   requestService,
   windows
 )

@@ -30,7 +30,7 @@ test returned a boolean that Bun ignored, so both outcomes passed.
 
 ## Scenario ownership
 
-- `agent-usdc.ts`: operator-approved agent session and USDC transfer.
+- `ai-session-usdc.ts`: operator-approved AI session and USDC transfer.
 - `deploy-contract.ts`: contract deployment through the provider.
 - `provider-smoke.ts`: fixed-value send, personal signature, and raw signature recovery.
 - `sign-typed-data.ts`: EIP-712 v4 signing and signer recovery.

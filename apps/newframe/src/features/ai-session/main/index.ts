@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
 import type { DesktopContext } from '@newframe/desktop-api/router'
-import type { AgentConnect, AgentDescriptor } from '@newframe/desktop-api/schemas'
+import type { AiSessionConnect, AiSessionDescriptor } from '@newframe/desktop-api/schemas'
 import { TRPCError } from '@trpc/server'
 
 import { createAiSessionClientSource, createLocalApiSource } from '../../../app/main/gateway/requestSource.ts'
@@ -9,31 +9,31 @@ import type { RpcIpcHandlers } from '../../../app/main/ipc-handlers/rpc.ts'
 import { rpcCall } from '../../../platform/local-rpc/trpc.ts'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
 import type { Accounts } from '../../accounts/main/index.ts'
-import type { AgentAccessRequest } from '../../requests/contract/requests.ts'
+import type { AiSessionRequest } from '../../requests/contract/requests.ts'
 import type { PromptedRequestContinuationPort } from '../../requests/main/service.ts'
 import type { FlashService } from '../../transactions/trade/main/index.ts'
-import { AgentSessionStore } from './sessionStore.ts'
+import { AiSessionStore } from './sessionStore.ts'
 
 const CONNECTION_TIMEOUT_MS = 2 * 60 * 1_000
 const MAX_PENDING_CONNECTIONS = 8
-const AGENT_ORIGIN = 'newframe-agent'
+const AI_SESSION_ORIGIN = 'newframe-ai-session'
 
 type PendingConnection = {
   accountId: string
-  descriptor: AgentDescriptor
+  descriptor: AiSessionDescriptor
   durationSeconds: number
-  request: AgentAccessRequest
+  request: AiSessionRequest
   timer: NodeJS.Timeout
 }
 
-export function createAgentService(
+export function createAiSessionService(
   accounts: Accounts,
   flashService: FlashService,
   canonicalStore: CanonicalStoreReader,
   requests: PromptedRequestContinuationPort
 ) {
   const pendingConnections = new Map<string, PendingConnection>()
-  const sessionStore = new AgentSessionStore()
+  const sessionStore = new AiSessionStore()
 
   function isHotAccount(accountId: string) {
     const account = accounts.get(accountId)
@@ -42,7 +42,7 @@ export function createAgentService(
     )
   }
 
-  function isReadyAgentAccount(accountId: string) {
+  function isReadyAiSessionAccount(accountId: string) {
     const accountState = accounts.get(accountId)
     const account = accounts.getFrameAccount(accountId)
     const signer = account?.getSigner()
@@ -74,7 +74,7 @@ export function createAgentService(
     }
 
     const session = sessionStore.authenticate(sessionId, sessionToken)
-    if (!session || !isReadyAgentAccount(session.accountId)) {
+    if (!session || !isReadyAiSessionAccount(session.accountId)) {
       return
     }
 
@@ -86,7 +86,7 @@ export function createAgentService(
         expiresAt: session.expiresAt,
         isActive: () =>
           sessionStore.isActive(session.sessionId, session.accountId) &&
-          isReadyAgentAccount(session.accountId)
+          isReadyAiSessionAccount(session.accountId)
       })
     }
   }
@@ -100,11 +100,14 @@ export function createAgentService(
     pendingConnections.delete(requestId)
   }
 
-  function connectSession(input: AgentConnect, onClose: (callback: () => void) => void): Promise<unknown> {
+  function connectSession(
+    input: AiSessionConnect,
+    onClose: (callback: () => void) => void
+  ): Promise<unknown> {
     if (pendingConnections.size >= MAX_PENDING_CONNECTIONS) {
       throw new TRPCError({
         code: 'TOO_MANY_REQUESTS',
-        message: 'Too many pending agent connection requests'
+        message: 'Too many pending AI session requests'
       })
     }
     const account = accounts.current()
@@ -122,15 +125,15 @@ export function createAgentService(
         }
         resolve(response.result)
       })
-      const request: AgentAccessRequest = {
-        type: 'agentAccess',
+      const request: AiSessionRequest = {
+        type: 'aiSession',
         handlerId,
-        origin: AGENT_ORIGIN,
+        origin: AI_SESSION_ORIGIN,
         account: account.id,
         payload: {
           id: handlerId,
           jsonrpc: '2.0',
-          method: 'agent_connect',
+          method: 'ai_session_connect',
           params: []
         },
         data: input,
@@ -146,7 +149,7 @@ export function createAgentService(
         clearPending(handlerId)
         reject(new TRPCError({ code: 'FORBIDDEN', message }))
       }
-      const timer = setTimeout(() => cancel('Agent connection request expired'), CONNECTION_TIMEOUT_MS)
+      const timer = setTimeout(() => cancel('AI session request expired'), CONNECTION_TIMEOUT_MS)
 
       pendingConnections.set(handlerId, {
         accountId: account.id,
@@ -156,40 +159,40 @@ export function createAgentService(
         timer
       })
 
-      onClose(() => cancel('Agent disconnected before approval'))
+      onClose(() => cancel('AI session client disconnected before approval'))
 
       const requestSource = createLocalApiSource({
         transport: 'http',
         connectionId: handlerId,
-        origin: AGENT_ORIGIN
+        origin: AI_SESSION_ORIGIN
       })
 
       const routed = accounts.routeRequest(requestSource, request)
 
       if (!routed) {
         clearPending(handlerId)
-        reject(new TRPCError({ code: 'FORBIDDEN', message: 'Agent connection denied' }))
+        reject(new TRPCError({ code: 'FORBIDDEN', message: 'AI session denied' }))
       }
     })
   }
 
-  type AgentProviderPort = Pick<RpcIpcHandlers, 'send'>
+  type AiSessionProviderPort = Pick<RpcIpcHandlers, 'send'>
 
-  function agentContext(
+  function aiSessionContext(
     req: IncomingMessage,
-    provider: AgentProviderPort,
+    provider: AiSessionProviderPort,
     onClose: (callback: () => void) => void
   ): DesktopContext {
     const requireSession = () => {
       if (req.headers.origin) {
         throw new TRPCError({
           code: 'FORBIDDEN',
-          message: 'Agent API does not accept browser-originated requests'
+          message: 'AI session API does not accept browser-originated requests'
         })
       }
       const authenticated = authenticate(req)
       if (!authenticated) {
-        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid or expired agent session' })
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid or expired AI session' })
       }
       return authenticated
     }
@@ -206,14 +209,14 @@ export function createAgentService(
               method: input.method,
               params: input.params as readonly unknown[],
               ...(chainId === undefined ? {} : { chainId }),
-              _origin: AGENT_ORIGIN
+              _origin: AI_SESSION_ORIGIN
             },
             respond,
             authenticated.requestSource
           )
         )
       },
-      agent: req.headers.origin
+      aiSession: req.headers.origin
         ? undefined
         : {
             connect: (input, signal) =>
@@ -230,21 +233,21 @@ export function createAgentService(
                 throw new TRPCError({ code: 'UNAUTHORIZED' })
               }
               sessionStore.revoke(sessionId)
-              flashService.stopAgentSession(sessionId)
+              flashService.stopAiSession(sessionId)
             }
           }
     }
   }
 
-  function resolveAgentAccessRequest(requestId: string, approved: boolean) {
+  function resolveAiSessionRequest(requestId: string, approved: boolean) {
     const pending = pendingConnections.get(requestId)
     if (!pending) {
       return false
     }
 
     const account = accounts.getFrameAccount(pending.accountId)
-    const request = account?.getRequest<AgentAccessRequest>(requestId)
-    if (!account || request?.type !== 'agentAccess') {
+    const request = account?.getRequest<AiSessionRequest>(requestId)
+    if (!account || request?.type !== 'aiSession') {
       return false
     }
     if (request.authorization?.decision !== 'prompt') {
@@ -252,19 +255,19 @@ export function createAgentService(
     }
 
     if (!approved) {
-      account.rejectRequest(request, { code: 4001, message: 'User rejected the agent connection' })
+      account.rejectRequest(request, { code: 4001, message: 'User rejected the AI session' })
       clearPending(requestId)
       return true
     }
 
-    if (!isReadyAgentAccount(pending.accountId)) {
+    if (!isReadyAiSessionAccount(pending.accountId)) {
       account.rejectRequest(request, { code: 4100, message: 'AI wallet is locked or unavailable' })
       clearPending(requestId)
       return true
     }
 
     const credentials = sessionStore.create(pending.accountId, pending.descriptor, pending.durationSeconds)
-    flashService.startAgentSession({
+    flashService.startAiSession({
       sessionId: credentials.sessionId,
       accountAddress: credentials.account,
       expiresAt: credentials.expiresAt
@@ -274,7 +277,7 @@ export function createAgentService(
     return true
   }
 
-  function setAgentAccess(accountId: string, enabled: boolean) {
+  function setAiSessionsEnabled(accountId: string, enabled: boolean) {
     const account = accounts.getFrameAccount(accountId)
     if (!account || accounts.get(accountId)?.safe || (enabled && !isHotAccount(accountId))) {
       return false
@@ -283,35 +286,35 @@ export function createAgentService(
     account.patch({ agentEnabled: enabled })
     if (!enabled) {
       sessionStore.revokeAccount(accountId)
-      flashService.stopAgentSessionsForAccount(accountId)
+      flashService.stopAiSessionsForAccount(accountId)
     }
     return true
   }
 
-  function revokeAgentSessions(accountId: string) {
+  function revokeAiSessions(accountId: string) {
     if (!accounts.get(accountId)) {
       return false
     }
     sessionStore.revokeAccount(accountId)
-    flashService.stopAgentSessionsForAccount(accountId)
+    flashService.stopAiSessionsForAccount(accountId)
     return true
   }
 
   return {
-    createContext: (req: IncomingMessage, res: ServerResponse, provider: AgentProviderPort) =>
-      agentContext(req, provider, (callback) => res.once('close', callback)),
+    createContext: (req: IncomingMessage, res: ServerResponse, provider: AiSessionProviderPort) =>
+      aiSessionContext(req, provider, (callback) => res.once('close', callback)),
     dispose() {
       for (const pending of pendingConnections.values()) {
         accounts.getFrameAccount(pending.accountId)?.rejectRequest(pending.request, {
           code: 4001,
-          message: 'Agent service stopped before approval'
+          message: 'AI session service stopped before approval'
         })
       }
     },
-    resolveAgentAccessRequest,
-    revokeAgentSessions,
-    setAgentAccess
+    resolveAiSessionRequest,
+    revokeAiSessions,
+    setAiSessionsEnabled
   }
 }
 
-export type AgentService = ReturnType<typeof createAgentService>
+export type AiSessionService = ReturnType<typeof createAiSessionService>

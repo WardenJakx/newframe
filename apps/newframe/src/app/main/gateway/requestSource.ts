@@ -51,7 +51,7 @@ export type AiSessionAuthority = {
 }
 
 export type AiSessionClientSource = RequestSourceBrand & {
-  readonly kind: 'agent'
+  readonly kind: 'ai-session'
   readonly participant: 'local-api-client'
   readonly aiSession: AiSessionAuthority
 }
@@ -90,7 +90,7 @@ const requestTypes = new Set<RequestType>([
   'signTypedData',
   'signErc20Permit',
   'transaction',
-  'agentAccess',
+  'aiSession',
   'access',
   'addChain',
   'switchChain',
@@ -121,9 +121,9 @@ function summarizeRequestSource(requestSource: RequestSource): RequestAuthorizat
     }
   }
 
-  if (requestSource.kind === 'agent') {
+  if (requestSource.kind === 'ai-session') {
     return {
-      kind: 'agent',
+      kind: 'ai-session',
       sessionId: requestSource.aiSession.sessionId,
       accountId: requestSource.aiSession.accountId,
       expiresAt: requestSource.aiSession.expiresAt
@@ -170,7 +170,7 @@ export function createLocalApiSource(input: {
 export function createAiSessionClientSource(input: AiSessionAuthority): AiSessionClientSource {
   return admit({
     [requestSourceBrand]: true as const,
-    kind: 'agent' as const,
+    kind: 'ai-session' as const,
     participant: 'local-api-client' as const,
     aiSession: Object.freeze({ ...input, accountId: input.accountId.toLowerCase() })
   })
@@ -179,7 +179,7 @@ export function createAiSessionClientSource(input: AiSessionAuthority): AiSessio
 export function isAiSessionActive(requestSource: unknown): requestSource is AiSessionClientSource {
   if (
     !isRequestSource(requestSource) ||
-    requestSource.kind !== 'agent' ||
+    requestSource.kind !== 'ai-session' ||
     requestSource.aiSession.expiresAt <= Date.now()
   ) {
     return false
@@ -232,7 +232,7 @@ function buildOperationIntent(
 }
 
 function sourceMayRequest(requestSource: RequestSource, requestType: RequestType) {
-  if (requestSource.kind === 'agent') {
+  if (requestSource.kind === 'ai-session') {
     return signingRequestTypes.has(requestType)
   }
   if (requestSource.kind !== 'renderer') {
@@ -250,7 +250,7 @@ function sourceMayRequest(requestSource: RequestSource, requestType: RequestType
 /**
  * The one policy decision point for account-affecting requests.
  *
- * Ordinary trusted sources require a prompt. A live agent session can act autonomously only for
+ * Ordinary trusted sources require a prompt. A live AI session can act autonomously only for
  * signing requests scoped to its approved account.
  */
 export function authorizeGatewayOperation(
@@ -269,15 +269,15 @@ export function authorizeGatewayOperation(
     return { outcome: 'reject', reason: 'Request source is not allowed to perform this action' }
   }
 
-  if (requestSource.kind === 'agent') {
+  if (requestSource.kind === 'ai-session') {
     if (requestSource.aiSession.expiresAt <= Date.now()) {
-      return { outcome: 'reject', reason: 'Agent session expired' }
+      return { outcome: 'reject', reason: 'AI session expired' }
     }
     if (!isAiSessionActive(requestSource)) {
-      return { outcome: 'reject', reason: 'Agent session is revoked or unavailable' }
+      return { outcome: 'reject', reason: 'AI session is revoked or unavailable' }
     }
     if (action.account !== requestSource.aiSession.accountId) {
-      return { outcome: 'reject', reason: 'Agent session is not authorized for this account' }
+      return { outcome: 'reject', reason: 'AI session is not authorized for this account' }
     }
 
     return {

@@ -20,7 +20,7 @@ it('maps each request surface to its exact host command and preserves failures',
   await capabilities.panel.openRequest({ requestId: 'request-1' })
   await capabilities.review.clearOrigin({ accountId: '0xabc', originId: 'origin-1' })
   await capabilities.review.resolveAccess({ requestId: 'request-1', approved: true })
-  await capabilities.review.resolveAgentAccess({ requestId: 'request-1', approved: false })
+  await capabilities.review.resolveAiSession({ requestId: 'request-1', approved: false })
   await capabilities.review.resolveAddChain({ requestId: 'request-1', approved: true })
   await capabilities.review.reviewAddChain({ requestId: 'request-1' })
   await capabilities.review.reviewAddToken({ requestId: 'request-1' })
@@ -71,7 +71,7 @@ it('maps each request surface to its exact host command and preserves failures',
     { type: 'panel.request-open', requestId: 'request-1' },
     { type: 'request.clear-origin', accountId: '0xabc', originId: 'origin-1' },
     { type: 'request.access-resolve', requestId: 'request-1', approved: true },
-    { type: 'request.agent-access-resolve', requestId: 'request-1', approved: false },
+    { type: 'request.ai-session-resolve', requestId: 'request-1', approved: false },
     { type: 'chain.request-resolve', requestId: 'request-1', approved: true },
     { type: 'request.add-chain-review', requestId: 'request-1' },
     { type: 'request.add-token-review', requestId: 'request-1' },

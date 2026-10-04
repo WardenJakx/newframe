@@ -553,8 +553,8 @@ const AccountUpdateCommandSchema = z.union([
 ])
 export type AccountUpdateCommand = z.infer<typeof AccountUpdateCommandSchema>
 
-const AccountAgentSessionsRevokeCommandSchema = z.strictObject({
-  type: z.literal('account.agent-sessions-revoke'),
+const AccountAiSessionsRevokeCommandSchema = z.strictObject({
+  type: z.literal('account.ai-sessions-revoke'),
   accountId: AddressSchema
 })
 
@@ -978,8 +978,8 @@ const AccessRequestResolveCommandSchema = z.strictObject({
   approved: z.boolean()
 })
 
-const AgentAccessRequestResolveCommandSchema = z.strictObject({
-  type: z.literal('request.agent-access-resolve'),
+const AiSessionRequestResolveCommandSchema = z.strictObject({
+  type: z.literal('request.ai-session-resolve'),
   requestId: OperationIdSchema,
   approved: z.boolean()
 })
@@ -1163,7 +1163,7 @@ export const commandContracts = defineOperationContracts({
   'operation.cancel': acknowledged(OperationCancelCommandSchema),
   'signer.session-input': acknowledged(SignerSessionInputCommandSchema),
   'signer.session-finish': acknowledged(SignerSessionFinishCommandSchema),
-  'account.agent-sessions-revoke': acknowledged(AccountAgentSessionsRevokeCommandSchema),
+  'account.ai-sessions-revoke': acknowledged(AccountAiSessionsRevokeCommandSchema),
   'account.select': acknowledged(AccountSelectCommandSchema),
   'account.remove': acknowledged(AccountRemoveCommandSchema),
   'account.refresh': acknowledged(AccountRefreshCommandSchema),
@@ -1198,7 +1198,7 @@ export const commandContracts = defineOperationContracts({
   'request.approve': acknowledged(RequestApproveCommandSchema),
   'request.warning-confirm': acknowledged(RequestWarningConfirmCommandSchema),
   'request.access-resolve': acknowledged(AccessRequestResolveCommandSchema),
-  'request.agent-access-resolve': acknowledged(AgentAccessRequestResolveCommandSchema),
+  'request.ai-session-resolve': acknowledged(AiSessionRequestResolveCommandSchema),
   'request.add-chain-review': acknowledged(AddChainReviewCommandSchema),
   'request.add-token-review': acknowledged(AddTokenReviewCommandSchema),
   'request.approval-confirm': acknowledged(RequestApprovalConfirmCommandSchema),

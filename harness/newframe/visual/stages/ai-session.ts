@@ -12,7 +12,7 @@ import { requireAccounts } from './helpers.ts'
 
 const recipient = '0x000000000000000000000000000000000000a11c'
 
-type AgentCredentials = {
+type AiSessionCredentials = {
   sessionId: string
   account: string
   expiresAt: number
@@ -58,7 +58,7 @@ async function runCliResult(context: CliContext, args: string[]) {
   })
 }
 
-async function connectAgent(context: CliContext) {
+async function connectAiSession(context: CliContext) {
   return runCli(context, [
     'session',
     'start',
@@ -66,10 +66,10 @@ async function connectAgent(context: CliContext) {
     'Visual Harness Agent',
     '--duration',
     '600'
-  ]) as Promise<AgentCredentials>
+  ]) as Promise<AiSessionCredentials>
 }
 
-async function agentRpc(context: CliContext, method: string, params: unknown, chainId?: number) {
+async function aiSessionRpc(context: CliContext, method: string, params: unknown, chainId?: number) {
   const response = await runCli(context, [
     'rpc',
     method,
@@ -84,7 +84,7 @@ async function agentRpc(context: CliContext, method: string, params: unknown, ch
 }
 
 async function autonomousSend(context: CliContext) {
-  return agentRpc(
+  return aiSessionRpc(
     context,
     'eth_sendTransaction',
     [
@@ -99,11 +99,11 @@ async function autonomousSend(context: CliContext) {
 }
 
 async function autonomousPersonalSign(context: CliContext, account: string, message: string) {
-  return agentRpc(context, 'personal_sign', [message, account])
+  return aiSessionRpc(context, 'personal_sign', [message, account])
 }
 
 // The selected UI wallet differs from the session wallet, so the response proves session scoping.
-async function assertAgentAssets(context: VisualHarnessContext, cliContext: CliContext, account: string) {
+async function assertAiSessionAssets(context: VisualHarnessContext, cliContext: CliContext, account: string) {
   const { anvil, driver } = context
   const { harness, vitalik } = await requireAccounts(context)
   await driver.refreshBalances()
@@ -121,7 +121,7 @@ async function assertAgentAssets(context: VisualHarnessContext, cliContext: CliC
         `CLI wallet_getAssets returned ${native.balance}, expected session wallet balance ${expected}`
       )
     }
-    context.runtime.evidence('agentAssetsNativeBalance', native.balance)
+    context.runtime.evidence('aiSessionAssetsNativeBalance', native.balance)
   } finally {
     await driver.setSelectedAccount(harness)
   }
@@ -176,8 +176,8 @@ async function cancelExternalFlashOrder(context: CliContext, orderId: string) {
   await runCli(context, ['flash', 'cancel', orderId])
 }
 
-export const agentSessionStage: VisualStage = {
-  name: 'agent session and autonomous actions',
+export const aiSessionStage: VisualStage = {
+  name: 'AI session and autonomous actions',
   async run(context) {
     const { anvil, driver, runtime, tray } = context
     const { harness } = await requireAccounts(context)
@@ -187,7 +187,7 @@ export const agentSessionStage: VisualStage = {
     }
     await driver.clearPanelAndOverlays()
     await driver.setSelectedAccount(harness)
-    await driver.setAgentAccess(harness, true)
+    await driver.setAiSessionsEnabled(harness, true)
 
     await tray.getByRole('button', { name: 'Accounts' }).click()
     const accountsDialog = tray.getByRole('dialog', { name: 'Accounts' })
@@ -202,19 +202,19 @@ export const agentSessionStage: VisualStage = {
     const cliContext: CliContext = { stateDir: await mkdtemp(path.join(tmpdir(), 'newframe-visual-cli-')) }
     let revokedContext: CliContext | undefined
     try {
-      const connection = connectAgent(cliContext)
-      const request = await driver.waitForCurrentRequest('agentAccess', new Set(), 15_000)
+      const connection = connectAiSession(cliContext)
+      const request = await driver.waitForCurrentRequest('aiSession', new Set(), 15_000)
       await tray.getByText('Visual Harness Agent', { exact: true }).waitFor({ state: 'visible' })
-      await runtime.screenshot(tray, '08c-agent-session-request.png')
+      await runtime.screenshot(tray, '08c-ai-session-request.png')
       await driver.executeCommand(tray, {
-        type: 'request.agent-access-resolve',
+        type: 'request.ai-session-resolve',
         requestId: request.handlerId,
         approved: true
       })
       const credentials = await connection
 
       if (credentials.account.toLowerCase() !== harness.address.toLowerCase()) {
-        runtime.fail('Agent session was not scoped to the approved harness wallet')
+        runtime.fail('AI session was not scoped to the approved harness wallet')
       }
       const stateBeforeActions = await driver.getAppState()
       const existingRequestIds = new Set(
@@ -223,13 +223,13 @@ export const agentSessionStage: VisualStage = {
         )
       )
 
-      await assertAgentAssets(context, cliContext, credentials.account)
+      await assertAiSessionAssets(context, cliContext, credentials.account)
 
       const personalMessage = 'Newframe visual harness autonomous agent'
       const personalSignature = await autonomousPersonalSign(cliContext, credentials.account, personalMessage)
       const recoveredPersonalAddress = verifyMessage(personalMessage, personalSignature).toLowerCase()
       if (recoveredPersonalAddress !== credentials.account.toLowerCase()) {
-        runtime.fail('Agent personal_sign signature did not recover to its authorized wallet')
+        runtime.fail('AI session personal_sign signature did not recover to its authorized wallet')
       }
 
       const domain = {
@@ -245,30 +245,30 @@ export const agentSessionStage: VisualStage = {
         action: 'autonomous-signature-test',
         sessionId: credentials.sessionId
       }
-      const typedSignature = await agentRpc(cliContext, 'eth_signTypedData_v4', [
+      const typedSignature = await aiSessionRpc(cliContext, 'eth_signTypedData_v4', [
         credentials.account,
         {
           domain,
-          primaryType: 'AgentAction',
+          primaryType: 'AiSessionAction',
           types: {
             EIP712Domain: [
               { name: 'name', type: 'string' },
               { name: 'version', type: 'string' },
               { name: 'chainId', type: 'uint256' }
             ],
-            AgentAction: actionTypes
+            AiSessionAction: actionTypes
           },
           message: typedMessage
         }
       ])
       const recoveredTypedAddress = verifyTypedData(
         domain,
-        { AgentAction: actionTypes },
+        { AiSessionAction: actionTypes },
         typedMessage,
         typedSignature
       ).toLowerCase()
       if (recoveredTypedAddress !== credentials.account.toLowerCase()) {
-        runtime.fail('Agent typed-data signature did not recover to its authorized wallet')
+        runtime.fail('AI session typed-data signature did not recover to its authorized wallet')
       }
 
       const balanceBefore = await anvil.balance(recipient)
@@ -279,12 +279,12 @@ export const agentSessionStage: VisualStage = {
       const selectedAfter = String(stateAfter.main?.currentAccount ?? '').toLowerCase()
 
       if (!/^0x[0-9a-fA-F]{64}$/.test(transactionHash)) {
-        runtime.fail(`Agent send returned an invalid transaction hash: ${transactionHash}`)
+        runtime.fail(`AI session send returned an invalid transaction hash: ${transactionHash}`)
       }
-      runtime.evidence('agentSessionId', credentials.sessionId)
-      runtime.evidence('agentTransactionHash', transactionHash)
+      runtime.evidence('aiSessionId', credentials.sessionId)
+      runtime.evidence('aiSessionTransactionHash', transactionHash)
       if (selectedAfter !== selectedBefore) {
-        runtime.fail('Autonomous agent send changed the wallet selected in the UI')
+        runtime.fail('Autonomous AI session send changed the wallet selected in the UI')
       }
       const promptedAutonomousAction = Object.entries(stateAfter.main?.accounts ?? {}).some(
         ([accountId, account]) =>
@@ -297,7 +297,7 @@ export const agentSessionStage: VisualStage = {
           )
       )
       if (promptedAutonomousAction) {
-        runtime.fail('Autonomous agent action created a signing prompt')
+        runtime.fail('Autonomous AI session action created a signing prompt')
       }
 
       const externalOrderId = await submitExternalFlashOrder(cliContext)
@@ -320,7 +320,7 @@ export const agentSessionStage: VisualStage = {
       await driver.waitForFlashOrder(
         (order) => order.orderId === externalOrderId && order.status === 'accepted' && order.open === true,
         15_000,
-        'The agent-created Flash order was not discovered through the WebSocket'
+        'The AI-session-created Flash order was not discovered through the WebSocket'
       )
       await cancelExternalFlashOrder(cliContext, externalOrderId)
       await driver.waitForFlashOrder(
@@ -333,8 +333,8 @@ export const agentSessionStage: VisualStage = {
         runtime.fail('CLI Flash watch did not return the cancelled order')
       }
       await driver.assertFlashOrderVisible(externalOrderId)
-      runtime.evidence('agentFlashOrderId', externalOrderId)
-      await runtime.screenshot(tray, '08d-agent-external-flash-order.png')
+      runtime.evidence('aiSessionFlashOrderId', externalOrderId)
+      await runtime.screenshot(tray, '08d-ai-session-external-flash-order.png')
 
       revokedContext = { stateDir: await mkdtemp(path.join(tmpdir(), 'newframe-visual-revoked-')) }
       await copyFile(
@@ -352,13 +352,13 @@ export const agentSessionStage: VisualStage = {
         String(anvilChainId)
       ])
       if (rejectedAfterRevocation.code === 0 || !rejectedAfterRevocation.stderr.includes('401:')) {
-        runtime.fail('Revoked agent credentials were not rejected with HTTP 401')
+        runtime.fail('Revoked AI session credentials were not rejected with HTTP 401')
       }
       runtime.evidence('revokedSessionCliExitCode', rejectedAfterRevocation.code)
 
       await driver.clearPanelAndOverlays()
       await tray.getByRole('tab', { name: 'Activity' }).click()
-      await runtime.screenshot(tray, '08e-agent-autonomous-actions.png')
+      await runtime.screenshot(tray, '08e-ai-session-autonomous-actions.png')
     } finally {
       await rm(cliContext.stateDir, { recursive: true, force: true })
       if (revokedContext) {

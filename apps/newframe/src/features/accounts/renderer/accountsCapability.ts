@@ -15,7 +15,7 @@ export interface AccountsCapability extends ClipboardCapability {
   updateAccount(input: CommandInput<'account.update'>): Promise<CommandResult>
   selectAccount(input: CommandInput<'account.select'>): Promise<CommandResult>
   removeAccount(input: CommandInput<'account.remove'>): Promise<CommandResult>
-  revokeAccountAgentSessions(input: CommandInput<'account.agent-sessions-revoke'>): Promise<CommandResult>
+  revokeAccountAiSessions(input: CommandInput<'account.ai-sessions-revoke'>): Promise<CommandResult>
   exportAccountPrivateKey(
     input: Omit<QueryMap['account.private-key-export'], 'type'>
   ): Promise<QueryResultMap['account.private-key-export']>
@@ -55,8 +55,7 @@ export function createAccountsCapability(host: AccountsHost): AccountsCapability
     updateAccount: (input) => host.executeCommand({ type: 'account.update', ...input }),
     selectAccount: (input) => host.executeCommand({ type: 'account.select', ...input }),
     removeAccount: (input) => host.executeCommand({ type: 'account.remove', ...input }),
-    revokeAccountAgentSessions: (input) =>
-      host.executeCommand({ type: 'account.agent-sessions-revoke', ...input }),
+    revokeAccountAiSessions: (input) => host.executeCommand({ type: 'account.ai-sessions-revoke', ...input }),
     exportAccountPrivateKey: (input) => host.executeQuery({ type: 'account.private-key-export', ...input }),
 
     selectProfile: (input) => host.executeCommand({ type: 'profile.select', ...input }),

@@ -142,7 +142,7 @@ describe('wallet action authority', () => {
     }
   })
 
-  it('allows a valid agent request source to act autonomously only for its session account', () => {
+  it('allows a valid AI session request source to act autonomously only for its session account', () => {
     let active = true
     const requestSource = createAiSessionClientSource({
       sessionId: 'session-1',
@@ -156,7 +156,7 @@ describe('wallet action authority', () => {
       authorization: {
         decision: 'autonomous',
         requestSource: {
-          kind: 'agent',
+          kind: 'ai-session',
           sessionId: 'session-1',
           accountId: '0x1111111111111111111111111111111111111111'
         }
@@ -170,16 +170,16 @@ describe('wallet action authority', () => {
         ...request(),
         account: '0x2222222222222222222222222222222222222222'
       })
-    ).toEqual({ outcome: 'reject', reason: 'Agent session is not authorized for this account' })
+    ).toEqual({ outcome: 'reject', reason: 'AI session is not authorized for this account' })
 
     active = false
     expect(authorizeGatewayOperation(requestSource, request())).toEqual({
       outcome: 'reject',
-      reason: 'Agent session is revoked or unavailable'
+      reason: 'AI session is revoked or unavailable'
     })
   })
 
-  it('rejects expired agent request sources and agent connection-management actions', () => {
+  it('rejects expired AI session request sources and AI session connection-management actions', () => {
     const requestSource = createAiSessionClientSource({
       sessionId: 'expired',
       accountId: '0x1111111111111111111111111111111111111111',
@@ -189,9 +189,9 @@ describe('wallet action authority', () => {
 
     expect(authorizeGatewayOperation(requestSource, request())).toEqual({
       outcome: 'reject',
-      reason: 'Agent session expired'
+      reason: 'AI session expired'
     })
-    expect(authorizeGatewayOperation(requestSource, request('agentAccess'))).toEqual({
+    expect(authorizeGatewayOperation(requestSource, request('aiSession'))).toEqual({
       outcome: 'reject',
       reason: 'Request source is not allowed to perform this action'
     })

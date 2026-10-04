@@ -64,7 +64,7 @@ export class ProtectedOperationsService {
     )
   }
 
-  private requireActiveAgentSession(
+  private requireActiveAiSession(
     source: AiSessionClientSource,
     payload: RPCRequestPayload,
     respond: RPCRequestCallback
@@ -72,7 +72,7 @@ export class ProtectedOperationsService {
     if (isAiSessionActive(source)) {
       return true
     }
-    resError('Agent session is revoked or unavailable', payload, respond)
+    resError('AI session is revoked or unavailable', payload, respond)
     return false
   }
   private aiSessionAccount(
@@ -81,7 +81,7 @@ export class ProtectedOperationsService {
     payload: RPCRequestPayload,
     respond: RPCRequestCallback
   ) {
-    if (!this.requireActiveAgentSession(source, payload, respond)) {
+    if (!this.requireActiveAiSession(source, payload, respond)) {
       return
     }
     const permittedAccount = source.aiSession.accountId
@@ -111,7 +111,7 @@ export class ProtectedOperationsService {
     payload: RPCRequestPayload,
     respond: RPCRequestCallback
   ) {
-    if (!this.requireActiveAgentSession(source, payload, respond)) {
+    if (!this.requireActiveAiSession(source, payload, respond)) {
       return false
     }
     if (this.aiSessionAccountIsActive(source, account)) {
@@ -404,7 +404,7 @@ export class ProtectedOperationsService {
     })
   }
 
-  executeAgentTransaction(
+  executeAiSessionTransaction(
     request: TransactionRequest,
     requestSource: AiSessionClientSource,
     res: RPCRequestCallback
@@ -434,7 +434,7 @@ export class ProtectedOperationsService {
             return
           }
           if (signingError || !signedTransaction) {
-            return resError(signingError ?? 'Agent transaction signing failed', request.payload, res)
+            return resError(signingError ?? 'AI session transaction signing failed', request.payload, res)
           }
 
           this.sendRawTransaction(signedTransaction, data.chainId, request.payload, (response) => {
@@ -488,7 +488,7 @@ export class ProtectedOperationsService {
           return
         }
         if (signingError || !signed) {
-          return resError(signingError ?? 'Agent message signing failed', normalizedPayload, respond)
+          return resError(signingError ?? 'AI session message signing failed', normalizedPayload, respond)
         }
 
         this.verifySignature(signed, message, account.id, (verificationError) => {
@@ -526,7 +526,7 @@ export class ProtectedOperationsService {
           return
         }
         if (signingError || !signature) {
-          return resError(signingError ?? 'Agent typed-data signing failed', payload, respond)
+          return resError(signingError ?? 'AI session typed-data signing failed', payload, respond)
         }
 
         try {

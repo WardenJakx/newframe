@@ -74,7 +74,7 @@ function integrationFixture({
           request.status = RequestStatus.Sent
         })
     },
-    agent: { resolveAccess: () => false },
+    aiSession: { resolveAccess: () => false },
     clock: { delay: async () => {} },
     chain: { rpcMatchesChain: async () => true },
     provider: {

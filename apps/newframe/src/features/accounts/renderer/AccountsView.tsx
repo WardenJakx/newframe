@@ -65,8 +65,8 @@ const secretRecipe = cva({
 })
 
 interface AccountsViewEvents {
-  onAccountAgentAccessChange: (account: AccountListItem, enabled: boolean) => void
-  onAccountAgentSessionsRevoke: (accountId: string) => void
+  onAccountAiSessionsEnabledChange: (account: AccountListItem, enabled: boolean) => void
+  onAccountAiSessionsRevoke: (accountId: string) => void
   onAccountCopy: (account: AccountListItem) => void
   onAccountDragEnd: () => void
   onAccountDragOver: (event: DragEvent, accountId: string) => void
@@ -171,8 +171,8 @@ function AccountActions({
   account: AccountListItem
   model: AccountListModel
   state: AccountsState
-  onAgentAccessChange: (enabled: boolean) => void
-  onAgentSessionsRevoke: () => void
+  onAiSessionsEnabledChange: (enabled: boolean) => void
+  onAiSessionsRevoke: () => void
   onExportOpen: () => void
   onMoveOpenChange: (open: boolean) => void
   onMoveSelect: (profileId: string) => void
@@ -259,14 +259,14 @@ function AccountActions({
           <>
             <Button
               appearance='row'
-              onPress={() => events.onAgentAccessChange(!account.agentEnabled)}
+              onPress={() => events.onAiSessionsEnabledChange(!account.agentEnabled)}
               size='small'
               width='full'
             >
               <Text variant='caption'>{account.agentEnabled ? 'Disable AI access' : 'Enable AI access'}</Text>
             </Button>
             {account.agentEnabled ? (
-              <Button appearance='row' onPress={events.onAgentSessionsRevoke} size='small' width='full'>
+              <Button appearance='row' onPress={events.onAiSessionsRevoke} size='small' width='full'>
                 <Text variant='caption'>Revoke AI sessions</Text>
               </Button>
             ) : null}
@@ -425,10 +425,10 @@ export function AccountsView(props: AccountsViewProps) {
                                 account={account}
                                 model={model}
                                 state={state}
-                                onAgentAccessChange={(enabled) =>
-                                  props.onAccountAgentAccessChange(account, enabled)
+                                onAiSessionsEnabledChange={(enabled) =>
+                                  props.onAccountAiSessionsEnabledChange(account, enabled)
                                 }
-                                onAgentSessionsRevoke={() => props.onAccountAgentSessionsRevoke(account.id)}
+                                onAiSessionsRevoke={() => props.onAccountAiSessionsRevoke(account.id)}
                                 onExportOpen={() => props.onAccountExportOpen(account.id)}
                                 onMoveOpenChange={(open) => props.onMoveOpenChange(account.id, open)}
                                 onMoveSelect={(profileId) => props.onMoveSelect(account.id, profileId)}

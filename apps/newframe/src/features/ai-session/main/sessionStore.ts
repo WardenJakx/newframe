@@ -1,14 +1,11 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
 
-import type {
-  AgentDescriptor,
-  AgentCredentials as AgentSessionCredentials
-} from '@newframe/desktop-api/schemas'
+import type { AiSessionDescriptor, AiSessionCredentials } from '@newframe/desktop-api/schemas'
 
-export type AgentSession = {
+export type AiSession = {
   sessionId: string
   tokenHash: Buffer
-  descriptor: AgentDescriptor
+  descriptor: AiSessionDescriptor
   accountId: string
   createdAt: number
   expiresAt: number
@@ -17,12 +14,12 @@ export type AgentSession = {
 
 const tokenDigest = (token: string) => createHash('sha256').update(token, 'utf8').digest()
 
-export class AgentSessionStore {
-  private readonly sessions = new Map<string, AgentSession>()
+export class AiSessionStore {
+  private readonly sessions = new Map<string, AiSession>()
 
   constructor(private readonly now: () => number = Date.now) {}
 
-  create(accountId: string, descriptor: AgentDescriptor, durationSeconds: number): AgentSessionCredentials {
+  create(accountId: string, descriptor: AiSessionDescriptor, durationSeconds: number): AiSessionCredentials {
     const createdAt = this.now()
     const sessionId = randomUUID()
     const sessionToken = randomBytes(32).toString('base64url')
@@ -47,7 +44,7 @@ export class AgentSessionStore {
     }
   }
 
-  authenticate(sessionId: string, token: string): AgentSession | undefined {
+  authenticate(sessionId: string, token: string): AiSession | undefined {
     const session = this.sessions.get(sessionId)
     if (!session || session.revokedAt || session.expiresAt <= this.now()) {
       return

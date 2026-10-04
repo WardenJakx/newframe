@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'bun:test'
 
-import { AgentSessionStore } from './sessionStore.ts'
+import { AiSessionStore } from './sessionStore.ts'
 
-describe('agent session store', () => {
+describe('AI session store', () => {
   it('returns a one-time credential while retaining only its hash', () => {
     let now = 1_000
-    const store = new AgentSessionStore(() => now)
+    const store = new AiSessionStore(() => now)
     const credentials = store.create(
       '0x1111111111111111111111111111111111111111',
       { name: 'Harness agent' },
@@ -26,7 +26,7 @@ describe('agent session store', () => {
   })
 
   it('invalidates sessions immediately on session or account revocation', () => {
-    const store = new AgentSessionStore(() => 1_000)
+    const store = new AiSessionStore(() => 1_000)
     const first = store.create('0x1111111111111111111111111111111111111111', { name: 'One' }, 600)
     const second = store.create('0x2222222222222222222222222222222222222222', { name: 'Two' }, 600)
 

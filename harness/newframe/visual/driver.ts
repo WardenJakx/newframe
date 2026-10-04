@@ -453,7 +453,7 @@ export class NewframeDriver {
     await this.waitForSelectedAccount(account)
   }
 
-  async setAgentAccess(account: AccountInfo, enabled: boolean) {
+  async setAiSessionsEnabled(account: AccountInfo, enabled: boolean) {
     await this.executeCommand(this.tray, {
       type: 'account.update',
       accountId: account.id,
@@ -462,7 +462,7 @@ export class NewframeDriver {
     await this.waitForState(
       (state) => state.main?.accounts?.[account.id]?.agentEnabled === enabled,
       5_000,
-      `Agent access projection did not become ${String(enabled)} for ${account.id}`
+      `AI access projection did not become ${String(enabled)} for ${account.id}`
     )
   }
 

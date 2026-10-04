@@ -70,7 +70,7 @@ interface FlashMarketOrderPoller {
   timer?: ReturnType<typeof setTimeout>
 }
 
-interface FlashAgentSessionStream {
+interface FlashAiSessionStream {
   accountAddress: string
   expirationTimer?: ReturnType<typeof setTimeout>
   expiresAt: number
@@ -82,7 +82,7 @@ interface FlashAgentSessionStream {
 type FlashInternet = Pick<Internet, 'isOpen' | 'openWebSocket' | 'request' | 'subscribe'>
 
 interface FlashServiceState {
-  agentSessionStreams: Map<string, FlashAgentSessionStream>
+  aiSessionStreams: Map<string, FlashAiSessionStream>
   createWebSocket: FlashWebSocketFactory
   marketOrderPollers: Map<string, FlashMarketOrderPoller>
   internet: FlashInternet
@@ -99,7 +99,7 @@ function createFlashServiceState(
   createWebSocket: FlashWebSocketFactory = (url) => internet.openWebSocket(url)
 ): FlashServiceState {
   return {
-    agentSessionStreams: new Map(),
+    aiSessionStreams: new Map(),
     createWebSocket,
     marketOrderPollers: new Map(),
     internet,
@@ -838,7 +838,7 @@ function hydrateOrderNotification(
 function hasStreamingSessionForFunder(state: FlashServiceState, accountAddress: string) {
   const address = normalizeAddress(accountAddress)
 
-  return Array.from(state.agentSessionStreams.values()).some(
+  return Array.from(state.aiSessionStreams.values()).some(
     (session) => session.streaming && session.accountAddress === address
   )
 }
@@ -1079,19 +1079,19 @@ async function applyWebSocketOrders(
   )
 }
 
-function stopAgentSessionFallback(session: FlashAgentSessionStream) {
+function stopAiSessionFallback(session: FlashAiSessionStream) {
   if (session.fallbackTimer) {
     clearTimeout(session.fallbackTimer)
   }
   session.fallbackTimer = undefined
 }
 
-function scheduleAgentSessionFallback(
+function scheduleAiSessionFallback(
   state: FlashServiceState,
   sessionId: string,
   delay = FLASH_STREAM_FALLBACK_POLL_MS
 ) {
-  const session = state.agentSessionStreams.get(sessionId)
+  const session = state.aiSessionStreams.get(sessionId)
   if (
     !state.internet.isOpen() ||
     !session ||
@@ -1101,10 +1101,10 @@ function scheduleAgentSessionFallback(
     return
   }
 
-  stopAgentSessionFallback(session)
+  stopAiSessionFallback(session)
   session.fallbackTimer = setTimeout(() => {
     session.fallbackTimer = undefined
-    const current = state.agentSessionStreams.get(sessionId)
+    const current = state.aiSessionStreams.get(sessionId)
     if (!current || current.streaming || hasStreamingSessionForFunder(state, current.accountAddress)) {
       return
     }
@@ -1117,19 +1117,19 @@ function scheduleAgentSessionFallback(
       .catch((error: unknown) =>
         console.warn('could not poll Flash orders while WebSocket was unavailable', error)
       )
-      .finally(() => scheduleAgentSessionFallback(state, sessionId))
+      .finally(() => scheduleAiSessionFallback(state, sessionId))
   }, delay)
 }
 
-function setAgentSessionStreaming(state: FlashServiceState, sessionId: string, streaming: boolean) {
-  const session = state.agentSessionStreams.get(sessionId)
+function setAiSessionStreaming(state: FlashServiceState, sessionId: string, streaming: boolean) {
+  const session = state.aiSessionStreams.get(sessionId)
   if (!session || session.streaming === streaming) {
     return
   }
 
   session.streaming = streaming
   if (streaming) {
-    stopAgentSessionFallback(session)
+    stopAiSessionFallback(session)
     for (const [orderId] of state.marketOrderPollers) {
       const order = getRecord(state, orderId)
       if (order?.accountAddress === session.accountAddress) {
@@ -1137,7 +1137,7 @@ function setAgentSessionStreaming(state: FlashServiceState, sessionId: string, s
       }
     }
   } else {
-    scheduleAgentSessionFallback(state, sessionId, 0)
+    scheduleAiSessionFallback(state, sessionId, 0)
     Object.values(storeOrders(state))
       .filter((order) => order.accountAddress === session.accountAddress)
       .forEach((order) => startMarketOrderPolling(state, order))
@@ -1146,17 +1146,17 @@ function setAgentSessionStreaming(state: FlashServiceState, sessionId: string, s
   ensureOpenOrderPolling(state)
 }
 
-function stopAgentSessionStream(state: FlashServiceState, sessionId: string) {
-  const session = state.agentSessionStreams.get(sessionId)
+function stopAiSessionStream(state: FlashServiceState, sessionId: string) {
+  const session = state.aiSessionStreams.get(sessionId)
   if (!session) {
     return false
   }
 
-  state.agentSessionStreams.delete(sessionId)
+  state.aiSessionStreams.delete(sessionId)
   if (session.expirationTimer) {
     clearTimeout(session.expirationTimer)
   }
-  stopAgentSessionFallback(session)
+  stopAiSessionFallback(session)
   session.stream.stop()
 
   Object.values(storeOrders(state))
@@ -1166,8 +1166,8 @@ function stopAgentSessionStream(state: FlashServiceState, sessionId: string) {
   return true
 }
 
-function scheduleAgentSessionExpiration(state: FlashServiceState, sessionId: string) {
-  const session = state.agentSessionStreams.get(sessionId)
+function scheduleAiSessionExpiration(state: FlashServiceState, sessionId: string) {
+  const session = state.aiSessionStreams.get(sessionId)
   if (!session) {
     return
   }
@@ -1177,21 +1177,21 @@ function scheduleAgentSessionExpiration(state: FlashServiceState, sessionId: str
   }
   const remaining = session.expiresAt - Date.now()
   if (remaining <= 0) {
-    stopAgentSessionStream(state, sessionId)
+    stopAiSessionStream(state, sessionId)
     return
   }
 
   session.expirationTimer = setTimeout(
-    () => scheduleAgentSessionExpiration(state, sessionId),
+    () => scheduleAiSessionExpiration(state, sessionId),
     Math.min(remaining, MAX_SESSION_EXPIRATION_TIMER_MS)
   )
 }
 
-function startAgentSessionStream(
+function startAiSessionStream(
   state: FlashServiceState,
   { accountAddress, expiresAt, sessionId }: { accountAddress: string; expiresAt: number; sessionId: string }
 ) {
-  stopAgentSessionStream(state, sessionId)
+  stopAiSessionStream(state, sessionId)
 
   const address = normalizeAddress(accountAddress)
   if (!sessionId || !/^0x[0-9a-f]{40}$/.test(address) || expiresAt <= Date.now()) {
@@ -1203,27 +1203,27 @@ function startAgentSessionStream(
     createSocket: state.createWebSocket,
     funderAddress: address,
     url: flashWebSocketUrl(runtime()),
-    onAvailabilityChange: (available) => setAgentSessionStreaming(state, sessionId, available),
+    onAvailabilityChange: (available) => setAiSessionStreaming(state, sessionId, available),
     onError: (error) => console.warn('Flash WebSocket error', { sessionId, accountAddress: address }, error),
     onTerminalError: () => {
-      const current = state.agentSessionStreams.get(sessionId)
+      const current = state.aiSessionStreams.get(sessionId)
       if (current) {
-        stopAgentSessionFallback(current)
+        stopAiSessionFallback(current)
       }
     },
     onOrders: (type, orders) => applyWebSocketOrders(state, address, type, orders)
   })
-  const session: FlashAgentSessionStream = {
+  const session: FlashAiSessionStream = {
     accountAddress: address,
     expiresAt,
     stream,
     streaming: false
   }
 
-  state.agentSessionStreams.set(sessionId, session)
-  scheduleAgentSessionExpiration(state, sessionId)
+  state.aiSessionStreams.set(sessionId, session)
+  scheduleAiSessionExpiration(state, sessionId)
   if (state.internet.isOpen()) {
-    scheduleAgentSessionFallback(state, sessionId)
+    scheduleAiSessionFallback(state, sessionId)
     stream.start()
   }
   return true
@@ -1234,28 +1234,28 @@ function pauseFlashInternet(state: FlashServiceState) {
   for (const orderId of state.marketOrderPollers.keys()) {
     stopMarketOrderPolling(state, orderId)
   }
-  for (const session of state.agentSessionStreams.values()) {
-    stopAgentSessionFallback(session)
+  for (const session of state.aiSessionStreams.values()) {
+    stopAiSessionFallback(session)
     session.stream.stop()
   }
 }
 
 function resumeFlashInternet(state: FlashServiceState) {
-  for (const [sessionId, session] of state.agentSessionStreams) {
-    scheduleAgentSessionFallback(state, sessionId)
+  for (const [sessionId, session] of state.aiSessionStreams) {
+    scheduleAiSessionFallback(state, sessionId)
     session.stream.start()
   }
   Object.values(storeOrders(state)).forEach((order) => startMarketOrderPolling(state, order))
   ensureOpenOrderPolling(state)
 }
 
-function stopAgentSessionStreamsForAccount(state: FlashServiceState, accountAddress: string) {
+function stopAiSessionStreamsForAccount(state: FlashServiceState, accountAddress: string) {
   const address = normalizeAddress(accountAddress)
-  const sessionIds = Array.from(state.agentSessionStreams.entries())
+  const sessionIds = Array.from(state.aiSessionStreams.entries())
     .filter(([, session]) => session.accountAddress === address)
     .map(([sessionId]) => sessionId)
 
-  sessionIds.forEach((sessionId) => stopAgentSessionStream(state, sessionId))
+  sessionIds.forEach((sessionId) => stopAiSessionStream(state, sessionId))
   return sessionIds.length
 }
 
@@ -1411,15 +1411,15 @@ export function createFlashService({
     cancelOrder: (request: FlashCancelOrderRequest) => cancelOrder(state, request),
     refreshOpenOrders: () => refreshOpenOrders(state),
     startOpenOrderPolling: () => ensureOpenOrderPolling(state),
-    startAgentSession: (session: { accountAddress: string; expiresAt: number; sessionId: string }) =>
-      startAgentSessionStream(state, session),
-    stopAgentSession: (sessionId: string) => stopAgentSessionStream(state, sessionId),
-    stopAgentSessionsForAccount: (accountAddress: string) =>
-      stopAgentSessionStreamsForAccount(state, accountAddress),
+    startAiSession: (session: { accountAddress: string; expiresAt: number; sessionId: string }) =>
+      startAiSessionStream(state, session),
+    stopAiSession: (sessionId: string) => stopAiSessionStream(state, sessionId),
+    stopAiSessionsForAccount: (accountAddress: string) =>
+      stopAiSessionStreamsForAccount(state, accountAddress),
     dispose: () => {
       unsubscribeInternet()
-      for (const sessionId of state.agentSessionStreams.keys()) {
-        stopAgentSessionStream(state, sessionId)
+      for (const sessionId of state.aiSessionStreams.keys()) {
+        stopAiSessionStream(state, sessionId)
       }
       stopOpenOrderPolling(state)
       for (const orderId of state.marketOrderPollers.keys()) {

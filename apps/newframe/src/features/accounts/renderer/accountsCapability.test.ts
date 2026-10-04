@@ -17,7 +17,7 @@ it('maps every semantic account command to its exact catalog payload', async () 
   await capability.removeAccount({ address: firstAddress, removeSeedSigner: true })
   await capability.updateAccount({ operationId, accountId: firstAddress, profileId: 'work' })
   await capability.updateAccount({ accountId: firstAddress, enabled: true })
-  await capability.revokeAccountAgentSessions({ accountId: firstAddress })
+  await capability.revokeAccountAiSessions({ accountId: firstAddress })
   await capability.selectProfile({ operationId, profileId: 'work' })
   await capability.createProfile({ operationId, name: 'Work', accountIds: [firstAddress] })
   await capability.updateProfile({ operationId, profileId: 'work', name: 'Archive' })
@@ -73,7 +73,7 @@ it('maps every semantic account command to its exact catalog payload', async () 
       { type: 'account.remove', address: firstAddress, removeSeedSigner: true },
       { type: 'account.update', operationId, accountId: firstAddress, profileId: 'work' },
       { type: 'account.update', accountId: firstAddress, enabled: true },
-      { type: 'account.agent-sessions-revoke', accountId: firstAddress },
+      { type: 'account.ai-sessions-revoke', accountId: firstAddress },
       { type: 'profile.select', operationId, profileId: 'work' },
       { type: 'profile.create', operationId, name: 'Work', accountIds: [firstAddress] },
       { type: 'profile.update', operationId, profileId: 'work', name: 'Archive' },

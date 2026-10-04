@@ -112,7 +112,7 @@ export class NewframeClient {
     this.flash = createFlashApi({ baseUrl: this.flashUrl, fetch: this.fetcher })
   }
 
-  private agentClient(session: StoredSession) {
+  private aiSessionClient(session: StoredSession) {
     return createDesktopClient(this.rpcUrl, {
       fetch: this.fetcher,
       headers: () => ({
@@ -138,7 +138,7 @@ export class NewframeClient {
     if (existing) {
       let stale = false
       try {
-        await this.agentClient(existing).agent.status.query()
+        await this.aiSessionClient(existing).agent.status.query()
       } catch (error) {
         if (isDesktopClientError(error) && error.data?.code === 'UNAUTHORIZED') {
           stale = true
@@ -194,11 +194,11 @@ export class NewframeClient {
   }
 
   private revokeCredentials(session: StoredSession) {
-    return this.agentClient(session).agent.revoke.mutate({ sessionId: session.sessionId })
+    return this.aiSessionClient(session).agent.revoke.mutate({ sessionId: session.sessionId })
   }
 
   async rpc(method: string, params: unknown[] = [], chainId?: number): Promise<unknown> {
-    return this.agentClient(await this.session()).rpc.mutate({
+    return this.aiSessionClient(await this.session()).rpc.mutate({
       method,
       params,
       chainId: chainId ? `0x${chainId.toString(16)}` : undefined
@@ -239,7 +239,7 @@ export class NewframeClient {
 
   private async signTypedData(account: string, typedData: unknown, chainId: number) {
     assertTypedDataChain(typedData, chainId)
-    const signature = await this.agentClient(await this.session()).wallet.signTypedData.mutate({
+    const signature = await this.aiSessionClient(await this.session()).wallet.signTypedData.mutate({
       account,
       data: JSON.stringify(typedData),
       chainId: `0x${chainId.toString(16)}`
@@ -296,7 +296,7 @@ export class NewframeClient {
           if (!step) {
             progress.actions[kind] = { phase: 'sending' }
             await save()
-            const hash = await this.agentClient(session).wallet.sendTransaction.mutate({
+            const hash = await this.aiSessionClient(session).wallet.sendTransaction.mutate({
               transaction: { ...built.transaction, from: account, chainId: `0x${spentChainId.toString(16)}` },
               chainId: `0x${spentChainId.toString(16)}`
             })
@@ -383,7 +383,7 @@ export class NewframeClient {
       throw new Error('Flash order does not belong to the approved session account')
     }
     const cancelMessage = flashCancelMessage(orderId)
-    const signature = await this.agentClient(session).wallet.personalSign.mutate({
+    const signature = await this.aiSessionClient(session).wallet.personalSign.mutate({
       message: cancelMessage,
       account: session.account
     })

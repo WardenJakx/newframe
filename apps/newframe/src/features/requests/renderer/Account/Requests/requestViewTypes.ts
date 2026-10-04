@@ -79,7 +79,7 @@ export type PermitRequestView = RequestViewBase<'signErc20Permit'> & {
 
 export type AccessRequestView = RequestViewBase<'access'>
 
-export type AgentAccessRequestView = RequestViewBase<'agentAccess'> & {
+export type AiSessionRequestView = RequestViewBase<'aiSession'> & {
   data: {
     descriptor: { name: string; description?: string; url?: string }
     durationSeconds: number
@@ -173,7 +173,7 @@ export type AdjustFeeRequestView = Pick<TransactionRequestView, 'data' | 'handle
 export type RenderableRequestView =
   | AccessRequestView
   | AddTokenRequestView
-  | AgentAccessRequestView
+  | AiSessionRequestView
   | ChainRequestView
   | PermitRequestView
   | SignRequestView

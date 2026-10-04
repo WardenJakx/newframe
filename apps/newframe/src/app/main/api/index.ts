@@ -8,7 +8,7 @@ import { createHTTPHandler } from '@trpc/server/adapters/standalone'
 import WebSocket, { WebSocketServer } from 'ws'
 
 import type { Accounts } from '../../../features/accounts/main/index.ts'
-import type { AgentService } from '../../../features/agent-access/main/index.ts'
+import type { AiSessionService } from '../../../features/ai-session/main/index.ts'
 import { createExtensionAccessService } from '../../../features/connections/main/extensionAccess.ts'
 import {
   parseOrigin,
@@ -34,7 +34,7 @@ export function createProductionApiServer(
   accounts: Accounts,
   flashService: FlashService,
   canonicalStore: CanonicalStoreReader,
-  agentService: AgentService,
+  aiSessionService: AiSessionService,
   requestService: RequestService,
   windows: WebSocketRpcTransportDependencies['windows']
 ) {
@@ -71,13 +71,13 @@ export function createProductionApiServer(
     maxBodySize: MAX_RPC_REQUEST_BYTES,
     allowBatching: false,
     createContext({ req, res }) {
-      const agent = agentService.createContext(req, res, provider)
+      const aiSession = aiSessionService.createContext(req, res, provider)
       if (req.headers.authorization || req.headers['x-newframe-agent-session']) {
-        return agent
+        return aiSession
       }
       const origin = parseOrigin(req.headers.origin)
       return {
-        ...agent,
+        ...aiSession,
         rpc: (input) =>
           rpcCall((writeResponse) =>
             requestHandler({

@@ -42,7 +42,7 @@ export interface OperationServices {
   accountMutations: import('../../../features/accounts/main/service.ts').AccountService
   safes: import('../../../features/accounts/main/safe.ts').SafeService
   accountOnboarding: import('../../../features/accounts/main/accountOnboarding/service.ts').AccountOnboardingService
-  agent: import('../../../features/agent-access/main/index.ts').AgentService
+  aiSession: import('../../../features/ai-session/main/index.ts').AiSessionService
   chains: import('../../../features/chains/main/service.ts').ChainService
   portfolio: import('../../../features/portfolio/main/service.ts').PortfolioService
   profiles: import('../../../features/accounts/main/profiles/service.ts').ProfileService
@@ -225,7 +225,7 @@ export function createOperationRegistry(services: OperationServices) {
     airgap,
     accountOnboarding,
     safes,
-    agent,
+    aiSession,
     chains,
     portfolio,
     platform,
@@ -282,7 +282,7 @@ export function createOperationRegistry(services: OperationServices) {
           return profiles.moveAccount(command, operationOwner(context))
         }
         return 'enabled' in command
-          ? agent.setAgentAccess(command.accountId, command.enabled)
+          ? aiSession.setAiSessionsEnabled(command.accountId, command.enabled)
           : accountMutations.update(command)
       },
       (command) => ('profileId' in command ? 'invalid_command' : 'not_found')
@@ -410,9 +410,8 @@ export function createOperationRegistry(services: OperationServices) {
       trade.cancel(command, context.source, operationOwner(context))
     ),
 
-    'account.agent-sessions-revoke': defineAcknowledgedCommand(
-      'account.agent-sessions-revoke',
-      ({ accountId }) => agent.revokeAgentSessions(accountId)
+    'account.ai-sessions-revoke': defineAcknowledgedCommand('account.ai-sessions-revoke', ({ accountId }) =>
+      aiSession.revokeAiSessions(accountId)
     ),
 
     'account.refresh': defineAcknowledgedCommand('account.refresh', (command) => safes.refresh(command)),
@@ -457,9 +456,9 @@ export function createOperationRegistry(services: OperationServices) {
       'request_not_found',
       ['tray']
     ),
-    'request.agent-access-resolve': defineAcknowledgedCommand(
-      'request.agent-access-resolve',
-      ({ requestId, approved }) => requests.resolveAgentAccess(requestId, approved),
+    'request.ai-session-resolve': defineAcknowledgedCommand(
+      'request.ai-session-resolve',
+      ({ requestId, approved }) => requests.resolveAiSession(requestId, approved),
       'request_not_found',
       ['tray']
     ),

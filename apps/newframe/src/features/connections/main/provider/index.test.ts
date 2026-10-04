@@ -94,7 +94,7 @@ const createSignTransactionMock = () =>
   mock((_tx: TransactionData, _cb: Callback<string>, _context?: SigningApprovalContext) => {})
 const createSetTxSignedMock = () => mock((_handlerId: string, _cb: Callback<void>) => {})
 const createSetSignerMock = () => mock((_id: string, _cb: Callback<TestAccount>) => {})
-const createGetFrameAccountMock = () => mock((_id: string): TestAgentAccount | undefined => undefined)
+const createGetFrameAccountMock = () => mock((_id: string): TestAiSessionAccount | undefined => undefined)
 const refreshBalances = mock((_address: string) => {})
 const createTrackAutonomousTransactionMock = () =>
   mock((_accountId: string, _request: TransactionRequest, _hash: string) => {})
@@ -137,7 +137,7 @@ interface TestChains {
 }
 
 type PublicProvider = { [Key in keyof RpcIpcHandlers]: RpcIpcHandlers[Key] }
-interface TestAgentAccount {
+interface TestAiSessionAccount {
   id: string
   signTransaction?: ReturnType<typeof createSignTransactionMock>
   signMessage?: (message: string, cb: Callback<string>, context?: SigningApprovalContext) => void
@@ -1668,7 +1668,7 @@ describe('protected AI-session signatures', () => {
           jsonrpc: '2.0',
           method: kind === 'message' ? 'personal_sign' : 'eth_signTypedData_v4',
           params: [scenario === 'wrong-account' ? address : wallet.address, '0x1234'],
-          _origin: 'agent'
+          _origin: 'ai-session'
         }
         accounts.getFrameAccount.mockReturnValue(account)
         const message = '0x1234'
@@ -1727,7 +1727,7 @@ describe('protected AI-session signatures', () => {
   }
 })
 
-describe('#executeAgentTransaction', () => {
+describe('#executeAiSessionTransaction', () => {
   it.each([
     'active',
     'revoked',
@@ -1737,8 +1737,8 @@ describe('#executeAgentTransaction', () => {
     'account-replaced'
   ] as const)('binds transaction execution and broadcast to the permitted account: %s', (scenario) => {
     let active = true
-    const agentRequestSource = createAiSessionClientSource({
-      sessionId: 'agent-session',
+    const aiSessionRequestSource = createAiSessionClientSource({
+      sessionId: 'ai-session',
       accountId: address,
       expiresAt: Date.now() + 60_000,
       isActive: () => active
@@ -1746,16 +1746,16 @@ describe('#executeAgentTransaction', () => {
     const signTransaction = createSignTransactionMock()
     const account = { id: address, signTransaction }
     const request: TransactionRequest = {
-      handlerId: 'agent-request',
+      handlerId: 'ai-session-request',
       type: 'transaction',
-      origin: 'agent',
+      origin: 'ai-session',
       account: address,
       payload: {
-        id: 'agent-rpc-request',
+        id: 'ai-session-rpc-request',
         jsonrpc: '2.0',
         method: 'eth_sendTransaction',
         params: [],
-        _origin: 'agent'
+        _origin: 'ai-session'
       },
       data: {
         chainId: '0xa',
@@ -1778,7 +1778,7 @@ describe('#executeAgentTransaction', () => {
     if (scenario === 'wrong-account') {
       request.account = '0x' + '11'.repeat(20)
     }
-    provider.protectedOperations.executeAgentTransaction(request, agentRequestSource, respond)
+    provider.protectedOperations.executeAiSessionTransaction(request, aiSessionRequestSource, respond)
     if (scenario === 'wrong-account' || scenario === 'wrong-from') {
       expect(signTransaction).not.toHaveBeenCalled()
       expect(connection.send).not.toHaveBeenCalled()
@@ -1803,7 +1803,7 @@ describe('#executeAgentTransaction', () => {
         error: {
           message:
             scenario === 'revoked'
-              ? 'Agent session is revoked or unavailable'
+              ? 'AI session is revoked or unavailable'
               : 'AI session account is unavailable'
         }
       })

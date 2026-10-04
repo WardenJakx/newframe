@@ -702,7 +702,7 @@ export class RpcIpcHandlers extends EventEmitter {
   }
 
   /** Sign and broadcast a reviewed transaction with a named EOA, without changing selection. */
-  private requireActiveAgentSession(
+  private requireActiveAiSession(
     requestSource: AiSessionClientSource,
     payload: RPCRequestPayload,
     res: RPCRequestCallback
@@ -710,32 +710,32 @@ export class RpcIpcHandlers extends EventEmitter {
     if (isAiSessionActive(requestSource)) {
       return true
     }
-    resError('Agent session is revoked or unavailable', payload, res)
+    resError('AI session is revoked or unavailable', payload, res)
     return false
   }
 
   // Reads the session's authorized wallet, not the wallet selected in the UI.
-  private getAgentAssets(
+  private getAiSessionAssets(
     payload: RPC.GetAssets.Request,
     requestSource: AiSessionClientSource,
     res: RPCRequestCallback
   ) {
-    if (!this.requireActiveAgentSession(requestSource, payload, res)) {
+    if (!this.requireActiveAiSession(requestSource, payload, res)) {
       return
     }
     const account = this.accounts.getFrameAccount(requestSource.aiSession.accountId)
     if (!account || account.id !== requestSource.aiSession.accountId) {
-      return resError('Agent session is not authorized for this account', payload, res)
+      return resError('AI session is not authorized for this account', payload, res)
     }
     return this.getAssets(payload, account, res)
   }
 
-  sendAgentTransaction(
+  sendAiSessionTransaction(
     payload: RPC.SendTransaction.Request,
     requestSource: AiSessionClientSource,
     res: RPCRequestCallback
   ) {
-    if (!this.requireActiveAgentSession(requestSource, payload, res)) {
+    if (!this.requireActiveAiSession(requestSource, payload, res)) {
       return
     }
 
@@ -744,19 +744,19 @@ export class RpcIpcHandlers extends EventEmitter {
       | undefined
     const txParams = (payload.params as unknown[])[0]
     if (!account || !txParams || typeof txParams !== 'object') {
-      return resError('Agent transaction is missing its authorized account or transaction', payload, res)
+      return resError('AI session transaction is missing its authorized account or transaction', payload, res)
     }
 
     const payloadChainId = payload.chainId ? parseInt(payload.chainId, 16) : undefined
     const normalized = normalizeChainId(txParams as RPC.SendTransaction.TxParams, payloadChainId)
     const chainId = normalized.chainId || payload.chainId
     if (!chainId || Number.isNaN(parseInt(chainId, 16))) {
-      return resError('Agent transaction requires a valid chainId', payload, res)
+      return resError('AI session transaction requires a valid chainId', payload, res)
     }
 
     const from = (normalized.from ?? account.id).toLowerCase()
     if (from !== requestSource.aiSession.accountId || from !== account.id) {
-      return resError('Agent session is not authorized for the transaction account', payload, res)
+      return resError('AI session is not authorized for the transaction account', payload, res)
     }
 
     // fillTransaction reports preparation failures through its callback.
@@ -765,7 +765,7 @@ export class RpcIpcHandlers extends EventEmitter {
         return resError(error ?? 'Could not prepare transaction', payload, res)
       }
       if (transactionMetadata.approvals.length > 0) {
-        return resError('Agent transaction requires an explicit user approval', payload, res)
+        return resError('AI session transaction requires an explicit user approval', payload, res)
       }
 
       const { feesUpdated: _feesUpdated, recipientType, ...data } = transactionMetadata.tx
@@ -777,7 +777,7 @@ export class RpcIpcHandlers extends EventEmitter {
         data,
         payload,
         account: account.id,
-        origin: 'newframe-agent',
+        origin: 'newframe-ai-session',
         approvals: [],
         feesUpdatedByUser: false,
         recipientType,
@@ -789,7 +789,7 @@ export class RpcIpcHandlers extends EventEmitter {
       } as TransactionRequest
 
       this.accounts.routeRequest(requestSource, request, (authorizedRequest) => {
-        this.protectedOperations.executeAgentTransaction(
+        this.protectedOperations.executeAiSessionTransaction(
           authorizedRequest as TransactionRequest,
           requestSource,
           respond
@@ -798,12 +798,12 @@ export class RpcIpcHandlers extends EventEmitter {
     })
   }
 
-  sendAgentPersonalSign(
+  sendAiSessionPersonalSign(
     payload: RPCRequestPayload,
     requestSource: AiSessionClientSource,
     res: RPCRequestCallback
   ) {
-    if (!this.requireActiveAgentSession(requestSource, payload, res)) {
+    if (!this.requireActiveAiSession(requestSource, payload, res)) {
       return
     }
 
@@ -814,12 +814,12 @@ export class RpcIpcHandlers extends EventEmitter {
     const [requestedAddress, rawMessage] = orderedParams
 
     if (!account || typeof requestedAddress !== 'string' || typeof rawMessage !== 'string' || !rawMessage) {
-      return resError('Agent sign request requires an authorized account and message', payload, res)
+      return resError('AI session sign request requires an authorized account and message', payload, res)
     }
 
     const address = requestedAddress.toLowerCase()
     if (address !== requestSource.aiSession.accountId || address !== account.id) {
-      return resError('Agent session is not authorized for the sign request account', payload, res)
+      return resError('AI session is not authorized for the sign request account', payload, res)
     }
 
     const message = encodePersonalSignMessage(rawMessage)
@@ -833,7 +833,7 @@ export class RpcIpcHandlers extends EventEmitter {
       payload: normalizedPayload,
       account: account.id,
       chainId: this.parseTargetChain(normalizedPayload)?.id ?? 1,
-      origin: 'newframe-agent',
+      origin: 'newframe-ai-session',
       data: { decodedMessage: decodeMessage(message) }
     }
 
@@ -842,12 +842,12 @@ export class RpcIpcHandlers extends EventEmitter {
     })
   }
 
-  sendAgentTypedData(
+  sendAiSessionTypedData(
     rawPayload: RPC.SignTypedData.Request,
     requestSource: AiSessionClientSource,
     res: RPCRequestCallback
   ) {
-    if (!this.requireActiveAgentSession(requestSource, rawPayload, res)) {
+    if (!this.requireActiveAiSession(requestSource, rawPayload, res)) {
       return
     }
 
@@ -860,12 +860,16 @@ export class RpcIpcHandlers extends EventEmitter {
     const [requestedAddress, rawTypedData, ...additionalParams] = orderedParams
 
     if (!account || typeof requestedAddress !== 'string' || !rawTypedData) {
-      return resError('Agent typed-data request requires an authorized account and data', rawPayload, res)
+      return resError(
+        'AI session typed-data request requires an authorized account and data',
+        rawPayload,
+        res
+      )
     }
 
     const address = requestedAddress.toLowerCase()
     if (address !== requestSource.aiSession.accountId || address !== account.id) {
-      return resError('Agent session is not authorized for the typed-data account', rawPayload, res)
+      return resError('AI session is not authorized for the typed-data account', rawPayload, res)
     }
 
     let parsedTypedData: unknown = rawTypedData
@@ -891,7 +895,7 @@ export class RpcIpcHandlers extends EventEmitter {
     }
     const version = explicitVersion ?? getVersionFromTypedData(validatedTypedData)
     if (![SignTypedDataVersion.V3, SignTypedDataVersion.V4].includes(version)) {
-      return resError('Agent typed-data signing supports only v3 and v4', rawPayload, res)
+      return resError('AI session typed-data signing supports only v3 and v4', rawPayload, res)
     }
 
     const payload = {
@@ -910,7 +914,7 @@ export class RpcIpcHandlers extends EventEmitter {
       payload,
       account: account.id,
       chainId: this.parseTargetChain(payload)?.id ?? 1,
-      origin: 'newframe-agent'
+      origin: 'newframe-ai-session'
     }
 
     this.accounts.routeRequest(requestSource, request, () => {
@@ -1786,17 +1790,17 @@ export class RpcIpcHandlers extends EventEmitter {
     const payload = requestPayload
 
     const method = payload.method || ''
-    if (requestSource?.kind === 'agent') {
+    if (requestSource?.kind === 'ai-session') {
       if (method === 'eth_sendTransaction') {
-        return this.sendAgentTransaction(payload as RPC.SendTransaction.Request, requestSource, res)
+        return this.sendAiSessionTransaction(payload as RPC.SendTransaction.Request, requestSource, res)
       }
       if (method === 'personal_sign') {
-        return this.sendAgentPersonalSign(payload, requestSource, res)
+        return this.sendAiSessionPersonalSign(payload, requestSource, res)
       }
       if (method === 'wallet_getAssets') {
-        return this.getAgentAssets(payload as RPC.GetAssets.Request, requestSource, res)
+        return this.getAiSessionAssets(payload as RPC.GetAssets.Request, requestSource, res)
       }
-      return this.sendAgentTypedData(payload as RPC.SignTypedData.Request, requestSource, res)
+      return this.sendAiSessionTypedData(payload as RPC.SignTypedData.Request, requestSource, res)
     }
 
     if (method === 'eth_sign' || method === 'eth_signTransaction') {

@@ -78,7 +78,7 @@ export interface RequestServicePorts {
   > & {
     trackSafeExecution?(safeTxHash: string, outerTxHash: string): boolean
   }
-  agent: {
+  aiSession: {
     resolveAccess(requestId: string, approved: boolean): boolean
   }
   clock: {
@@ -768,8 +768,8 @@ export function createRequestService(ports: RequestServicePorts) {
       return true
     },
 
-    resolveAgentAccess(requestId: string, approved: boolean) {
-      return ports.agent.resolveAccess(requestId, approved)
+    resolveAiSession(requestId: string, approved: boolean) {
+      return ports.aiSession.resolveAccess(requestId, approved)
     },
 
     resolveSwitchChain(requestId: string, approved: boolean) {

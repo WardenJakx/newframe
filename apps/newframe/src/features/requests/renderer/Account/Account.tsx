@@ -12,7 +12,7 @@ import { accountViewTitles } from '../../domain/index.ts'
 import type { RequestRendererCapabilities } from '../requestCapabilities.ts'
 import { useRequestView } from '../requestView.tsx'
 import AddTokenRequest from './Requests/AddTokenRequest.tsx'
-import AgentAccessRequest from './Requests/AgentAccessRequest.tsx'
+import AiSessionRequest from './Requests/AiSessionRequest.tsx'
 import ChainRequest from './Requests/ChainRequest.tsx'
 import Requests from './Requests/index.tsx'
 import ProviderRequest from './Requests/ProviderRequest.tsx'
@@ -221,7 +221,7 @@ function isRenderableRequest(request: ProjectedRequest): request is ProjectedReq
       )
     case 'transaction':
       return isTransactionRequest(request)
-    case 'agentAccess':
+    case 'aiSession':
       return (
         isRecord(request.data) &&
         isRecord(request.data.descriptor) &&
@@ -376,8 +376,8 @@ function AccountBody(props: AccountBodyProps) {
         )
       case 'transaction':
         return <TransactionRequest capabilities={props.capabilities} key={request.handlerId} req={request} />
-      case 'agentAccess':
-        return <AgentAccessRequest key={request.handlerId} req={request} />
+      case 'aiSession':
+        return <AiSessionRequest key={request.handlerId} req={request} />
       case 'access':
         return (
           <ProviderRequest key={request.handlerId} req={request} accountSelector={props.accountSelector} />

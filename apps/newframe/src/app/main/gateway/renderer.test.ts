@@ -32,7 +32,7 @@ const accountOnboarding = fakes(
   'startSession',
   'sessionInput'
 )
-const agent = fakes('resolveAgentAccessRequest', 'revokeAgentSessions', 'setAgentAccess')
+const aiSession = fakes('resolveAiSessionRequest', 'revokeAiSessions', 'setAiSessionsEnabled')
 const chains = fakes('remove', 'setActivation', 'setPrimaryRpc')
 const portfolio = fakes('refresh')
 const requestEdits = fakes('updateTokenApproval')
@@ -44,7 +44,7 @@ const requests = fakes(
   'rejectRequest',
   'replaceTransaction',
   'resolveAccess',
-  'resolveAgentAccess',
+  'resolveAiSession',
   'resolveChain',
   'resolveSwitchChain',
   'reviewAddChain',
@@ -88,7 +88,7 @@ const servicesWithMocks = [
   accountMutations,
   accountOnboarding,
   safes,
-  agent,
+  aiSession,
   chains,
   portfolio,
   requestEdits,
@@ -125,7 +125,7 @@ function createTestServices() {
     accountOnboarding,
     protectedOperations: { exportPrivateKey: accountOnboarding.exportPrivateKey },
     safes,
-    agent,
+    aiSession,
     chains,
     portfolio,
     platform,
@@ -211,7 +211,7 @@ describe('typed operation dispatcher', () => {
       },
       { type: 'account.update', accountId: address, name: 'Primary' },
       { type: 'account.update', accountId: address, enabled: true },
-      { type: 'account.agent-sessions-revoke', accountId: address },
+      { type: 'account.ai-sessions-revoke', accountId: address },
       { type: 'settings.update', setting: 'show-testnets', value: true },
       { type: 'app.quit' },
       { type: 'permission.clear', accountId: address },
@@ -219,7 +219,7 @@ describe('typed operation dispatcher', () => {
       { type: 'notification.update', notificationId: 'notice-1', action: 'dismiss' },
       { type: 'request.reject', requestId: 'request-1' },
       { type: 'request.access-resolve', requestId: 'request-1', approved: true },
-      { type: 'request.agent-access-resolve', requestId: 'request-1', approved: true },
+      { type: 'request.ai-session-resolve', requestId: 'request-1', approved: true },
       { type: 'request.switch-chain-resolve', requestId: 'request-1', approved: true },
       { type: 'request.clear-origin', accountId: address, originId: 'origin-1' },
       { type: 'request.approval-confirm', requestId: 'request-1', approvalType: 'approveGasLimit' },
