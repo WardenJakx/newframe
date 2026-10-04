@@ -24,7 +24,7 @@ import {
   getFlashAssetPairChains
 } from '@newframe/flash/pair'
 
-import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
+import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
 
 describe('flash domain helpers', () => {
   it('selects dev and production supported chain sets by runtime', () => {

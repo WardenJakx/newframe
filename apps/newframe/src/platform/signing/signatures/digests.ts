@@ -1,8 +1,8 @@
 import { SignTypedDataVersion, typedSignatureHash, TypedDataUtils } from '@metamask/eth-sig-util'
 import { getBytes, hashMessage, hexlify, isHexString } from 'ethers'
-export { getCalldataDigest } from '../../../shared/domain/calldata.js'
+export { getCalldataDigest } from '../../../shared/domain/calldata.ts'
 
-import type { TypedData, TypedMessage } from '../../../features/requests/contract/requests.js'
+import type { TypedData, TypedMessage } from '../../../features/requests/contract/requests.ts'
 
 export interface Eip712Digests {
   eip712Digest: string

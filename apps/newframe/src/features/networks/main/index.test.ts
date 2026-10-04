@@ -4,9 +4,9 @@ import EventEmitter from 'events'
 import { addHexPrefix, intToHex } from '@ethereumjs/util'
 import log from 'electron-log'
 
-import { gweiToHex } from '../../../../test/support/util'
-import store from '../../../platform/state-store'
-import type { RPCRequestPayload } from '../../../shared/domain/rpc.js'
+import { gweiToHex } from '../../../../test/support/util.ts'
+import store from '../../../platform/state-store/index.ts'
+import type { RPCRequestPayload } from '../../../shared/domain/rpc.ts'
 
 log.transports.console.level = false
 
@@ -182,14 +182,14 @@ const state = {
   }
 }
 
-await mock.module('../../connections/main/provider/connection', () => ({
+await mock.module('../../connections/main/provider/connection.ts', () => ({
   createJsonRpcProvider: (target: keyof typeof mockConnections) => mockConnections[target].connection,
   listenForProviderClose: mock(),
   sendRpcPayload: (provider: MockConnection, payload: RPCRequestPayload) =>
     provider.send(payload.method, payload.params)
 }))
-await mock.module('../../../platform/state-store/state', () => () => state)
-await mock.module('../../accounts/main', () => ({ updatePendingFees: mock() }))
+await mock.module('../../../platform/state-store/state/index.ts', () => () => state)
+await mock.module('../../accounts/main/index.ts', () => ({ updatePendingFees: mock() }))
 
 const mockConnections = {
   'https://ethereum-sepolia-rpc.publicnode.com': {
@@ -209,7 +209,7 @@ const mockConnections = {
   }
 }
 
-let chains: import('./index').Chains
+let chains: import('./index.ts').Chains
 
 const resetChainState = () => {
   store.setState((current) => {
@@ -231,7 +231,7 @@ beforeAll(async () => {
   resetChainState()
 
   // need to import this after mocks are set up
-  const { Chains } = await import('./index')
+  const { Chains } = await import('./index.ts')
   chains = new Chains(store)
   chains.start()
 })

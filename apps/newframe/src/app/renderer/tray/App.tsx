@@ -7,25 +7,25 @@ import { useCallback, useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
-import { AccountSelector } from '../../../features/accounts/renderer/AccountSelector'
-import Account from '../../../features/requests/renderer/Account'
-import type { RequestRendererCapabilities } from '../../../features/requests/renderer/requestCapabilities'
-import type { RequestCommandNotifier } from '../../../features/requests/renderer/RequestCommand'
-import { RequestViewProvider } from '../../../features/requests/renderer/requestView'
+import { AccountSelector } from '../../../features/accounts/renderer/AccountSelector.tsx'
+import Account from '../../../features/requests/renderer/Account/index.tsx'
+import type { RequestRendererCapabilities } from '../../../features/requests/renderer/requestCapabilities.ts'
+import type { RequestCommandNotifier } from '../../../features/requests/renderer/RequestCommand/index.tsx'
+import { RequestViewProvider } from '../../../features/requests/renderer/requestView.tsx'
 import {
   getWebAuthnBiometricSecret,
   isBiometricUserCanceledError,
   isWebAuthnBiometricsSupported,
   type StoredWebAuthnCredential
-} from '../../../features/security/renderer/biometrics'
-import type { SecurityCapability } from '../../../features/security/renderer/securityCapability'
-import Badge from '../../../platform/app-update/renderer'
-import { updaterCapability } from '../../../platform/app-update/renderer/production'
-import { selectOperationById } from '../../../platform/state-sync/renderer/selectors/operation'
-import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
-import { AppIcon } from '../../../shared/renderer/ui/appIcon'
-import { accountsCapability, qrCameraCapability } from '../capabilities/accounts'
-import { homeCapability } from '../capabilities/home'
+} from '../../../features/security/renderer/biometrics.ts'
+import type { SecurityCapability } from '../../../features/security/renderer/securityCapability.ts'
+import Badge from '../../../platform/app-update/renderer/index.tsx'
+import { updaterCapability } from '../../../platform/app-update/renderer/production.ts'
+import { selectOperationById } from '../../../platform/state-sync/renderer/selectors/operation.ts'
+import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector.tsx'
+import { AppIcon } from '../../../shared/renderer/ui/appIcon.tsx'
+import { accountsCapability, qrCameraCapability } from '../capabilities/accounts.ts'
+import { homeCapability } from '../capabilities/home.ts'
 import {
   activityCapability,
   connectionsCapability,
@@ -35,14 +35,14 @@ import {
   securityCapability,
   settingsCapability,
   tokensCapability
-} from '../capabilities/homeFeatures'
-import { requestCapabilities } from '../capabilities/requests'
-import Footer from './Footer'
-import Home from './Home/Home'
-import type { HomeCapabilities } from './Home/Home'
-import { TrayNotificationProvider, useTrayNotification } from './notification'
-import Notify from './Notify'
-import type { TrayRendererState } from './state'
+} from '../capabilities/homeFeatures.ts'
+import { requestCapabilities } from '../capabilities/requests.ts'
+import Footer from './Footer/index.tsx'
+import Home from './Home/Home.tsx'
+import type { HomeCapabilities } from './Home/Home.tsx'
+import { TrayNotificationProvider, useTrayNotification } from './notification.tsx'
+import Notify from './Notify/index.tsx'
+import type { TrayRendererState } from './state.ts'
 
 type BiometricsState = {
   enabled: boolean

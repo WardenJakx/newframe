@@ -1,14 +1,14 @@
 import { expect, it } from 'bun:test'
 
-import type { RPCRequestPayload, RPCResponsePayload } from '../../../shared/domain/rpc.js'
-import { createExtensionGateway } from './extension'
+import type { RPCRequestPayload, RPCResponsePayload } from '../../../shared/domain/rpc.ts'
+import { createExtensionGateway } from './extension.ts'
 import {
   createAiSessionClientSource,
   createLocalApiSource,
   createMainProcessSource,
   isRequestSource
-} from './requestSource'
-import { createRpcGateway } from './rpc'
+} from './requestSource.ts'
+import { createRpcGateway } from './rpc.ts'
 
 const request = (method: string): RPCRequestPayload => ({
   id: 1,

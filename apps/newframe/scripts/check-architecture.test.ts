@@ -9,7 +9,7 @@ import {
   checkRendererTransportAuthority,
   checkSource,
   extractModuleSpecifiers
-} from './check-architecture'
+} from './check-architecture.ts'
 
 type Check = (file: string, source: string) => string[]
 type RejectCase = readonly [name: string, check: Check, file: string, source: string, message: string]

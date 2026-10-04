@@ -3,7 +3,7 @@ import { constants } from 'node:fs'
 import { chmod, lstat, mkdir, open, readFile, rename, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 
-import { stateDirectory } from './storage.js'
+import { stateDirectory } from './storage.ts'
 
 export type ActionProgress = { phase: 'sending' } | { phase: 'sent'; hash: string; confirmed: boolean }
 

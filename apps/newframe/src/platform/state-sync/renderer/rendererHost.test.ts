@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 
-import { createRendererClient, installRendererHost } from '../../../../test/support/rendererClient'
+import { createRendererClient, installRendererHost } from '../../../../test/support/rendererClient.ts'
 
 describe('renderer host installation', () => {
   let originalWindow: PropertyDescriptor | undefined

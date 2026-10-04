@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react'
 
 import { cva } from '../styled-system/css/cva.js'
-import { Button } from './Button.js'
-import { Icon, type IconName } from './Icon.js'
-import { Stack } from './Stack.js'
-import { Surface } from './Surface.js'
-import { Text } from './Text.js'
+import { Button } from './Button.tsx'
+import { Icon, type IconName } from './Icon.tsx'
+import { Stack } from './Stack.tsx'
+import { Surface } from './Surface.tsx'
+import { Text } from './Text.tsx'
 
 const chevronRecipe = cva({
   base: { marginInlineStart: 'auto', display: 'flex' },

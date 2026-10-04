@@ -1,12 +1,12 @@
 import { expect, it, mock } from 'bun:test'
 
-import type { IpcMainHandlerPort } from '../../../platform/ipc/main/operations'
-import createCanonicalStore from '../../../platform/state-store/createCanonicalStore'
+import type { IpcMainHandlerPort } from '../../../platform/ipc/main/operations.ts'
+import createCanonicalStore from '../../../platform/state-store/createCanonicalStore.ts'
 import {
   createProductionCapabilities,
   createProductionMainApp,
   type ProductionCapabilityAdapters
-} from './production'
+} from './production.ts'
 
 const memoryStorage = { getItem: () => null, setItem: () => undefined, removeItem: () => undefined }
 

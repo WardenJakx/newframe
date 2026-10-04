@@ -4,7 +4,7 @@ import type {
   SignatureRequest,
   SignTypedDataRequest,
   TransactionRequest
-} from '../contract/requests.js'
+} from '../contract/requests.ts'
 
 export const isCancelableRequest = (status: string): boolean => {
   return !['sent', 'sending', 'verifying', 'confirming', 'confirmed', 'error', 'declined'].includes(status)

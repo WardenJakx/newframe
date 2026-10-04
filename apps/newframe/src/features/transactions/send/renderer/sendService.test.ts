@@ -1,8 +1,8 @@
 import { expect, it } from 'bun:test'
 
-import { createRendererClient as createTypedClient } from '../../../../../test/support/rendererClient'
-import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
-import { createSendCapability } from './sendService'
+import { createRendererClient as createTypedClient } from '../../../../../test/support/rendererClient.ts'
+import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
+import { createSendCapability } from './sendService.ts'
 
 it('maps semantic send actions to their exact catalog payloads', async () => {
   const host = createTypedClient()

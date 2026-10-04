@@ -2,8 +2,8 @@ import type {
   NetworkLike,
   NetworkMetaLike,
   TokenSelectorItem
-} from '../../../../shared/renderer/ui/tokenSelectorTypes'
-import type { SendRecipient } from './sendReducer'
+} from '../../../../shared/renderer/ui/tokenSelectorTypes.ts'
+import type { SendRecipient } from './sendReducer.ts'
 
 export type SendAccountViewModel = SendRecipient
 

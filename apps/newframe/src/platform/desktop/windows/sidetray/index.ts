@@ -2,11 +2,11 @@
 // it does not own the Electron lifecycle.
 import { shallow } from 'zustand/vanilla/shallow'
 
-import type { RendererAuthorizationRegistry } from '../../../ipc/main/authorization.js'
-import type canonicalStore from '../../../state-store/index.js'
-import type { Frame } from '../../../state-store/state/index.js'
-import type { SideTray } from './window.js'
-import sideTrayHost from './window.js'
+import type { RendererAuthorizationRegistry } from '../../../ipc/main/authorization.ts'
+import type canonicalStore from '../../../state-store/index.ts'
+import type { Frame } from '../../../state-store/state/index.ts'
+import type { SideTray } from './window.ts'
+import sideTrayHost from './window.ts'
 
 export default class SideTrayManager {
   private sideTrays: Record<string, SideTray | undefined> = {}

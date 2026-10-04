@@ -10,7 +10,7 @@ const VAULT_PATH = path.resolve(import.meta.dirname, '../../../.userData/vault.j
 
 const clean = () => rm(VAULT_PATH, { recursive: true, force: true })
 
-let vault: typeof import('./vault').default
+let vault: typeof import('./vault.ts').default
 
 function currentKey() {
   const key = vault.getKey()
@@ -24,7 +24,7 @@ describe('Vault', () => {
   beforeAll(async () => {
     electronMock.app.getPath.mockReturnValue(path.resolve(import.meta.dirname, '../../../.userData'))
     await clean()
-    vault = (await import('./vault')).default
+    vault = (await import('./vault.ts')).default
   })
 
   afterAll(async () => {

@@ -4,7 +4,7 @@ import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 
-import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay'
+import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay.tsx'
 
 export interface ConnectedDappRow {
   id: string

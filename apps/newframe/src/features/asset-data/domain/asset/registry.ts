@@ -1,5 +1,5 @@
-import type { Address } from '../../../../shared/domain/address.js'
-import { TokenSchema } from '../../../tokens/domain/state/token.js'
+import type { Address } from '../../../../shared/domain/address.ts'
+import { TokenSchema } from '../../../tokens/domain/state/token.ts'
 
 type AssetLabel = 'native' | 'stablecoin' | 'token'
 

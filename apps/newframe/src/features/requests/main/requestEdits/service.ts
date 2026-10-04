@@ -1,6 +1,6 @@
-import type { RequestTokenApprovalUpdateCommand } from '../../../../app/contracts/operations.js'
-import type { Accounts } from '../../../accounts/main/index.js'
-import type { AccountRequest, PermitSignatureRequest, TransactionRequest } from '../../contract/requests.js'
+import type { RequestTokenApprovalUpdateCommand } from '../../../../app/contracts/operations.ts'
+import type { Accounts } from '../../../accounts/main/index.ts'
+import type { AccountRequest, PermitSignatureRequest, TransactionRequest } from '../../contract/requests.ts'
 
 export interface RequestEditServicePorts {
   accounts: Pick<Accounts, 'current' | 'updateRequest'>

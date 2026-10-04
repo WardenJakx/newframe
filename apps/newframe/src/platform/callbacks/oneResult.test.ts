@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { createOneResultCallbackBoundary, type OneResultCallback } from './oneResult'
+import { createOneResultCallbackBoundary, type OneResultCallback } from './oneResult.ts'
 
 describe('one-result callback boundary', () => {
   it('settles once when a legacy callback fires more than once', async () => {

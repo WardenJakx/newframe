@@ -1,6 +1,6 @@
 import { describe, expect, it, mock } from 'bun:test'
 
-import ProviderRequestPolicy from './requestPolicy'
+import ProviderRequestPolicy from './requestPolicy.ts'
 
 function createResponse(status = 200, headers: Record<string, string> = {}) {
   return {

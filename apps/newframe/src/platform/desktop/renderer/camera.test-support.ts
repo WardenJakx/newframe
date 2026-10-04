@@ -1,4 +1,4 @@
-import type { QrCameraCapability } from './camera'
+import type { QrCameraCapability } from './camera.ts'
 
 export function createQrCameraFake(autoReady = true) {
   const sessions: Array<{

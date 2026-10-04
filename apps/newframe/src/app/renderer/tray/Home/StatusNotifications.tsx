@@ -4,9 +4,9 @@ import { Text } from '@newframe/ui/text'
 import React, { useEffect } from 'react'
 
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
-import type { WalletStatusNotification } from '../../../../platform/state-sync/contract/projections'
-import { timestamp } from '../../../../shared/domain/timestamp'
-import StatusGlyph from '../../../../shared/renderer/ui/StatusGlyph'
+import type { WalletStatusNotification } from '../../../../platform/state-sync/contract/projections.ts'
+import { timestamp } from '../../../../shared/domain/timestamp.ts'
+import StatusGlyph from '../../../../shared/renderer/ui/StatusGlyph.tsx'
 
 const notificationListRecipe = cva({
   base: {

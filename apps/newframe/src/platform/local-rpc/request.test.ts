@@ -1,13 +1,13 @@
 import { expect, it } from 'bun:test'
 
-import { createRpcGateway } from '../../app/main/gateway/rpc'
-import type { JSONRPCRequestPayload, RPCRequestPayload, RPCResponsePayload } from '../../shared/domain/rpc.js'
+import { createRpcGateway } from '../../app/main/gateway/rpc.ts'
+import type { JSONRPCRequestPayload, RPCRequestPayload, RPCResponsePayload } from '../../shared/domain/rpc.ts'
 import {
   RPC_REQUEST_BURST,
   createOriginSessionMonitor,
   createRpcRequestHandler,
   type RpcRequestDescription
-} from './request'
+} from './request.ts'
 
 const rpc = (method = 'eth_blockNumber', params: unknown[] = []): JSONRPCRequestPayload => ({
   id: 1,

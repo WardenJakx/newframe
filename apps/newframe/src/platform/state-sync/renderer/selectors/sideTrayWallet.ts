@@ -3,11 +3,11 @@ import {
   hasPositiveBalance,
   toTokenId,
   type BalanceSummary
-} from '../../../../features/asset-data/domain/balance'
-import type { Balance } from '../../../../features/asset-data/domain/state/balance'
-import { selectableTokens as selectGlobalTokens } from '../../../../features/tokens/domain'
-import type { Token } from '../../../../features/tokens/domain/state/token'
-import type { SideTrayRendererState } from '../../contract/projections'
+} from '../../../../features/asset-data/domain/balance/index.ts'
+import type { Balance } from '../../../../features/asset-data/domain/state/balance.ts'
+import { selectableTokens as selectGlobalTokens } from '../../../../features/tokens/domain/index.ts'
+import type { Token } from '../../../../features/tokens/domain/state/token.ts'
+import type { SideTrayRendererState } from '../../contract/projections.ts'
 
 type SideTrayWalletAccount = SideTrayRendererState['accounts'][string]
 type SideTrayWalletEthereumNetwork = SideTrayRendererState['networks']['ethereum'][number]

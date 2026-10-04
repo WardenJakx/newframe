@@ -1,8 +1,8 @@
 import { expect, it } from 'bun:test'
 
-import type { SignatureRequest } from '../../requests/contract/requests'
-import type { Account } from '../domain/state/account'
-import { deriveSigningCapability } from './signingCapability'
+import type { SignatureRequest } from '../../requests/contract/requests.ts'
+import type { Account } from '../domain/state/account.ts'
+import { deriveSigningCapability } from './signingCapability.ts'
 
 const profileId = 'profile-1'
 const safeAddress = `0x${'a'.repeat(40)}`

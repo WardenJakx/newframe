@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
-import type { RPCRequestPayload } from '../../../../shared/domain/rpc.js'
-import { mapRequest as mapRequestTyped } from './index'
+import type { RPCRequestPayload } from '../../../../shared/domain/rpc.ts'
+import { mapRequest as mapRequestTyped } from './index.ts'
 
 // Real function under test, exercised with deliberately loose payload fixtures.
 const mapRequest = (request: unknown) => mapRequestTyped(request as RPCRequestPayload)

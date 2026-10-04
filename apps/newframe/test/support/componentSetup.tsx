@@ -8,7 +8,7 @@ import {
   createRendererStateWrapper,
   getRendererStateFixtureForRender,
   type RendererStateStore
-} from './rendererState'
+} from './rendererState.tsx'
 
 type TestingLibraryRenderOptions = NonNullable<Parameters<typeof render>[1]>
 type UserEventSetupOptions = NonNullable<Parameters<typeof userEvent.setup>[0]>

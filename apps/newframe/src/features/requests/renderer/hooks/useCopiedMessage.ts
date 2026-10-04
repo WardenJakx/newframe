@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-import type { RequestExternalCapability } from '../requestCapabilities'
+import type { RequestExternalCapability } from '../requestCapabilities.ts'
 
 const useCopiedMessage = (
   capability: Pick<RequestExternalCapability, 'copy'>,

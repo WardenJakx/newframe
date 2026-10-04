@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
 import { intToHex } from '@ethereumjs/util'
 
-import GasMonitor from './gasMonitor'
+import GasMonitor from './gasMonitor.ts'
 
 let requestHandlers: Record<string, (params: readonly unknown[]) => unknown>
 const testConnection = {

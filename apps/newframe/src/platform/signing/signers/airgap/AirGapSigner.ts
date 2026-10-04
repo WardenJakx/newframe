@@ -8,17 +8,17 @@ import {
   TypedDataUtils
 } from '@metamask/eth-sig-util'
 
-import type { TypedMessage } from '../../../../features/requests/contract/requests.js'
-import type { TransactionData } from '../../../../features/transactions/domain/index.js'
-import { sign, createUnsignedTransaction } from '../../../../features/transactions/main/index.js'
-import type { Callback } from '../../../../shared/domain/async.js'
-import type { OperationOwner } from '../../../operations/types.js'
+import type { TypedMessage } from '../../../../features/requests/contract/requests.ts'
+import type { TransactionData } from '../../../../features/transactions/domain/index.ts'
+import { sign, createUnsignedTransaction } from '../../../../features/transactions/main/index.ts'
+import type { Callback } from '../../../../shared/domain/async.ts'
+import type { OperationOwner } from '../../../operations/types.ts'
 import {
   AirGapPublicAccountSchema,
   type AirGapPublicAccount,
   type AirGapRequestReference
-} from '../../domain/airgap.js'
-import Signer, { type SignerRequestContext } from '../Signer/index.js'
+} from '../../domain/airgap.ts'
+import Signer, { type SignerRequestContext } from '../Signer/index.ts'
 import {
   airGapId,
   deriveAirGapAddresses,
@@ -28,7 +28,7 @@ import {
   decodeSignature,
   requestFrames,
   transactionPreimage
-} from './protocol.js'
+} from './protocol.ts'
 
 type Pending = {
   sessionId: string

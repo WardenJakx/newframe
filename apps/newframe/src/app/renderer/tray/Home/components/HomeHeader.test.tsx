@@ -4,12 +4,12 @@ import { Icon } from '@newframe/ui/icon'
 import { within } from '@testing-library/react'
 import { renderToStaticMarkup } from 'react-dom/server'
 
-import { act, render, screen } from '../../../../../../test/support/componentSetup'
-import { registerTestRuntimeFixture } from '../../../../../../test/support/rendererClient'
-import { walletState } from '../../../../../platform/state-sync/renderer/fixtures.test-support'
-import { shortAddress } from '../../../../../shared/renderer/ui/AddressIdentity'
-import { HomeUiProvider } from '../state/HomeUiProvider'
-import { HomeHeader } from './HomeHeader'
+import { act, render, screen } from '../../../../../../test/support/componentSetup.tsx'
+import { registerTestRuntimeFixture } from '../../../../../../test/support/rendererClient.ts'
+import { walletState } from '../../../../../platform/state-sync/renderer/fixtures.test-support.ts'
+import { shortAddress } from '../../../../../shared/renderer/ui/AddressIdentity.tsx'
+import { HomeUiProvider } from '../state/HomeUiProvider.tsx'
+import { HomeHeader } from './HomeHeader.tsx'
 
 const fixture = registerTestRuntimeFixture()
 

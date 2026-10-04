@@ -2,8 +2,8 @@ import {
   registerOperationHandlers,
   type IpcMainHandlerPort,
   type OperationDispatcher
-} from '../../../platform/ipc/main/operations.js'
-import type { StateStream } from '../../../platform/ipc/main/stateStream.js'
+} from '../../../platform/ipc/main/operations.ts'
+import type { StateStream } from '../../../platform/ipc/main/stateStream.ts'
 
 export interface MainApp {
   readonly started: boolean

@@ -1,14 +1,14 @@
 import log from 'electron-log'
 import { z } from 'zod'
 
-import { commandContracts, queryContracts } from '../../contracts/operations.js'
+import { commandContracts, queryContracts } from '../../contracts/operations.ts'
 import {
   createOperationRegistry,
   type OperationServices,
   type OperationRegistry,
   type RendererOperationContext
-} from '../ipc-handlers/renderer.js'
-import { dispatchGatewayOperation } from './dispatch.js'
+} from '../ipc-handlers/renderer.ts'
+import { dispatchGatewayOperation } from './dispatch.ts'
 
 const OperationTypeSchema = z.looseObject({ type: z.string().max(128) })
 type RendererRequest = { event: Electron.IpcMainInvokeEvent; context: RendererOperationContext }

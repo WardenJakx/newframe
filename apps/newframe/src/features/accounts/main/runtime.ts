@@ -1,6 +1,6 @@
-import type Signer from '../../../platform/signing/signers/Signer/index.js'
-import type { NavigationEntry } from '../../../platform/state-store/state/index.js'
-import type { Chain } from '../../networks/main/index.js'
+import type Signer from '../../../platform/signing/signers/Signer/index.ts'
+import type { NavigationEntry } from '../../../platform/state-store/state/index.ts'
+import type { Chain } from '../../networks/main/index.ts'
 
 export interface AccountsRuntime {
   navigation: {

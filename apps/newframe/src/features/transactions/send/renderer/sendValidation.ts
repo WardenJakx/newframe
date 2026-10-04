@@ -1,7 +1,7 @@
 import { isAddress } from 'ethers'
 
-import { parseUnits, toBigInt } from '../../../../shared/domain/units'
-import { cleanAddress, shouldResolveName } from './sendTransaction'
+import { parseUnits, toBigInt } from '../../../../shared/domain/units.ts'
+import { cleanAddress, shouldResolveName } from './sendTransaction.ts'
 
 interface SendValidationAsset {
   balance?: string

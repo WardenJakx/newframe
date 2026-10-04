@@ -1,7 +1,7 @@
 import { bytesToHex, publicToAddress, toChecksumAddress } from '@ethereumjs/util'
 import { HDKey } from '@scure/bip32'
 
-import type { Callback } from '../../../../shared/domain/async.js'
+import type { Callback } from '../../../../shared/domain/async.ts'
 
 export enum Derivation {
   live = 'live',

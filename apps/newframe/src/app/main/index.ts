@@ -4,29 +4,29 @@ import url from 'url'
 import { app, clipboard, ipcMain, net, protocol, powerMonitor } from 'electron'
 import log from 'electron-log'
 
-import { createProductionAccountOnboardingAdapters } from '../../features/accounts/main/accountOnboarding/production.js'
-import { createProductionAccountsRuntime } from '../../features/accounts/main/production.js'
-import { createProductionImageServiceAdapters } from '../../features/asset-data/main/images/production.js'
-import { lookupChainlistIcon, rpcMatchesChain } from '../../features/networks/main/production.js'
-import { createProductionPortfolioAdapters } from '../../features/portfolio/main/production.js'
-import { createProductionSecurityAdapters } from '../../features/security/main/production.js'
-import { createBundledTokenService } from '../../features/tokens/main/tokens.js'
-import { Updater } from '../../platform/app-update/index.js'
-import * as launch from '../../platform/desktop/launch.js'
-import menu from '../../platform/desktop/menu.js'
-import { showUnhandledExceptionDialog } from '../../platform/desktop/windows/dialog.js'
-import windows from '../../platform/desktop/windows/index.js'
-import { createProductionPersistencePorts } from '../../platform/persistence/index.js'
-import { getErrorCode } from '../../platform/runtime/errors.js'
-import biometrics from '../../platform/secrets/biometrics.js'
-import vault from '../../platform/secrets/vault.js'
-import { Signers } from '../../platform/signing/signers/index.js'
-import TrezorBridge from '../../platform/signing/signers/trezor/bridge.js'
-import store, { createCanonicalPersistenceService } from '../../platform/state-store/index.js'
-import persist from '../../platform/state-store/persist/index.js'
-import { createProductionApiServer } from './api/index.js'
-import { createProductionCapabilities, createProductionMainApp } from './composition/index.js'
-import { createProductionPlatformAdapters } from './platform/production.js'
+import { createProductionAccountOnboardingAdapters } from '../../features/accounts/main/accountOnboarding/production.ts'
+import { createProductionAccountsRuntime } from '../../features/accounts/main/production.ts'
+import { createProductionImageServiceAdapters } from '../../features/asset-data/main/images/production.ts'
+import { lookupChainlistIcon, rpcMatchesChain } from '../../features/networks/main/production.ts'
+import { createProductionPortfolioAdapters } from '../../features/portfolio/main/production.ts'
+import { createProductionSecurityAdapters } from '../../features/security/main/production.ts'
+import { createBundledTokenService } from '../../features/tokens/main/tokens.ts'
+import { Updater } from '../../platform/app-update/index.ts'
+import * as launch from '../../platform/desktop/launch.ts'
+import menu from '../../platform/desktop/menu.ts'
+import { showUnhandledExceptionDialog } from '../../platform/desktop/windows/dialog.ts'
+import windows from '../../platform/desktop/windows/index.ts'
+import { createProductionPersistencePorts } from '../../platform/persistence/index.ts'
+import { getErrorCode } from '../../platform/runtime/errors.ts'
+import biometrics from '../../platform/secrets/biometrics.ts'
+import vault from '../../platform/secrets/vault.ts'
+import { Signers } from '../../platform/signing/signers/index.ts'
+import TrezorBridge from '../../platform/signing/signers/trezor/bridge.ts'
+import store, { createCanonicalPersistenceService } from '../../platform/state-store/index.ts'
+import persist from '../../platform/state-store/persist/index.ts'
+import { createProductionApiServer } from './api/index.ts'
+import { createProductionCapabilities, createProductionMainApp } from './composition/index.ts'
+import { createProductionPlatformAdapters } from './platform/production.ts'
 
 const signers = new Signers({ biometrics, store, vault })
 const updater = new Updater(store)
@@ -299,7 +299,7 @@ void app.whenReady().then(async () => {
   }
   if (isDev) {
     const loadDev = async () => {
-      const { installDevTools, startCpuMonitoring } = await import('../../platform/runtime/dev/index.js')
+      const { installDevTools, startCpuMonitoring } = await import('../../platform/runtime/dev/index.ts')
       // Installation logs failures internally; CPU monitoring starts immediately.
       void installDevTools()
       startCpuMonitoring()

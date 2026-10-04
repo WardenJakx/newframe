@@ -1,10 +1,10 @@
 import { beforeAll, beforeEach, expect, it, mock } from 'bun:test'
 import { EventEmitter } from 'events'
 
-import type { Callback } from '../../../shared/domain/async.js'
-import store from '../../state-store'
-import createCanonicalStore from '../../state-store/createCanonicalStore'
-import type Signer from './Signer'
+import type { Callback } from '../../../shared/domain/async.ts'
+import createCanonicalStore from '../../state-store/createCanonicalStore.ts'
+import store from '../../state-store/index.ts'
+import type Signer from './Signer/index.ts'
 
 class HotSignerMock extends EventEmitter {
   type = 'seed'
@@ -55,8 +55,8 @@ const createFromPrivateKey = mock(
   ) => {}
 )
 
-await mock.module('./hot/HotSigner', () => ({ default: HotSignerMock }))
-await mock.module('./hot', () => ({
+await mock.module('./hot/HotSigner/index.ts', () => ({ default: HotSignerMock }))
+await mock.module('./hot/index.ts', () => ({
   default: {
     load: mock(),
     newPhrase: mock(),
@@ -70,14 +70,14 @@ await mock.module('./hot', () => ({
   createFromKeystore: mock(),
   load: mock()
 }))
-await mock.module('./ledger/adapter', () => ({ default: AdapterMock }))
-await mock.module('./trezor/adapter', () => ({ default: AdapterMock }))
-await mock.module('./lattice/adapter', () => ({ default: AdapterMock }))
+await mock.module('./ledger/adapter.ts', () => ({ default: AdapterMock }))
+await mock.module('./trezor/adapter.ts', () => ({ default: AdapterMock }))
+await mock.module('./lattice/adapter.ts', () => ({ default: AdapterMock }))
 
-let Signers: typeof import('./index').Signers
+let Signers: typeof import('./index.ts').Signers
 
 beforeAll(async () => {
-  Signers = (await import('./index')).Signers
+  Signers = (await import('./index.ts')).Signers
 })
 
 beforeEach(() => {

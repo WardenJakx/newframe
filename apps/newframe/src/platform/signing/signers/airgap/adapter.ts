@@ -1,8 +1,8 @@
-import type canonicalStore from '../../../state-store/index.js'
-import { AirGapPublicAccountSchema } from '../../domain/airgap.js'
-import { SignerAdapter } from '../adapters.js'
-import AirGapSigner from './AirGapSigner.js'
-import { airGapId } from './protocol.js'
+import type canonicalStore from '../../../state-store/index.ts'
+import { AirGapPublicAccountSchema } from '../../domain/airgap.ts'
+import { SignerAdapter } from '../adapters.ts'
+import AirGapSigner from './AirGapSigner.ts'
+import { airGapId } from './protocol.ts'
 
 export default class AirGapAdapter extends SignerAdapter {
   private readonly known = new Map<string, { signer: AirGapSigner; update: () => void }>()

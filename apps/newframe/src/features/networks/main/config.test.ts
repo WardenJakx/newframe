@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import chainConfigTyped from './config'
+import chainConfigTyped from './config.ts'
 
 const chainConfig = (chain: number, hardfork?: string) => chainConfigTyped(chain, hardfork as string)
 

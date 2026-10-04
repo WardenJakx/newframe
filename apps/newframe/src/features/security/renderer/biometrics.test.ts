@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { getCredentialExtensionResults } from './biometrics'
+import { getCredentialExtensionResults } from './biometrics.ts'
 
 describe('getCredentialExtensionResults', () => {
   it('returns an empty result for null and malformed credentials', () => {

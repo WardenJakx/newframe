@@ -4,9 +4,9 @@ import { Text } from '@newframe/ui/text'
 import hotkeys from 'hotkeys-js'
 import { useEffect } from 'react'
 
-import type { Platform } from '../../../shared/domain/keyboard'
-import type { Shortcut } from '../domain/state/shortcuts'
-import { getShortcutFromKeyEvent, getDisplayShortcut, isShortcutKey } from './keyboard'
+import type { Platform } from '../../../shared/domain/keyboard.ts'
+import type { Shortcut } from '../domain/state/shortcuts.ts'
+import { getShortcutFromKeyEvent, getDisplayShortcut, isShortcutKey } from './keyboard.ts'
 
 interface KeyboardShortcutConfiguratorProps {
   actionText?: string

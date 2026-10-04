@@ -1,8 +1,8 @@
 import { immer } from 'zustand/middleware/immer'
 import { createStore } from 'zustand/vanilla'
 
-import { createCanonicalActions, type CanonicalStore } from '../../src/platform/state-store/actions'
-import createInitialState, { type CanonicalState } from '../../src/platform/state-store/state'
+import { createCanonicalActions, type CanonicalStore } from '../../src/platform/state-store/actions.ts'
+import createInitialState, { type CanonicalState } from '../../src/platform/state-store/state/index.ts'
 
 type TestInitialState = Partial<Omit<CanonicalState, 'main' | 'view' | 'windows'>> & {
   main?: Partial<CanonicalState['main']>

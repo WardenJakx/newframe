@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { embeddedImageSource, imageSource, isEmbeddedImage } from './index'
+import { embeddedImageSource, imageSource, isEmbeddedImage } from './index.ts'
 
 describe('image sources', () => {
   it('allows only embedded images in renderers', () => {

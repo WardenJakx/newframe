@@ -9,9 +9,9 @@ import { Text } from '@newframe/ui/text'
 import React from 'react'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
-import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay'
-import { formatUsdRate } from '../../asset-data/domain/balance'
+import type { WalletRendererState } from '../../../platform/state-sync/contract/projections.ts'
+import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay.tsx'
+import { formatUsdRate } from '../../asset-data/domain/balance/index.ts'
 
 type NetworkConnection = WalletRendererState['networks']['ethereum'][number]['connection']
 

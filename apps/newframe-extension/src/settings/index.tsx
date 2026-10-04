@@ -1,8 +1,8 @@
 import { UIRoot } from '@newframe/ui/root'
 import { createRoot } from 'react-dom/client'
 
-import { Settings } from './Settings'
-import { getMetaMaskSetting, isSupportedTab } from './tabSettings'
+import { Settings } from './Settings.tsx'
+import { getMetaMaskSetting, isSupportedTab } from './tabSettings.ts'
 
 import '../styled-system/styles.css'
 

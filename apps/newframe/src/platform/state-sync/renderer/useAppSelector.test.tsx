@@ -2,10 +2,10 @@ import { beforeEach, describe, expect, it } from 'bun:test'
 
 import { useShallow } from 'zustand/react/shallow'
 
-import { act, render, screen } from '../../../../test/support/componentSetup'
-import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
+import { act, render, screen } from '../../../../test/support/componentSetup.tsx'
+import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient.ts'
 import { walletState } from './fixtures.test-support.ts'
-import { useWalletSelector } from './useAppSelector'
+import { useWalletSelector } from './useAppSelector.tsx'
 
 const fixture = registerTestRuntimeFixture()
 

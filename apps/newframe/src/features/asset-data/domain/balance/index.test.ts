@@ -8,7 +8,7 @@ import {
   createDisplayBalance,
   formatBalanceNotionalValue,
   isLowValueTokenBalance
-} from './index'
+} from './index.ts'
 
 describe('#createBalance', () => {
   it('creates an unpriced balance when no quote is available', () => {

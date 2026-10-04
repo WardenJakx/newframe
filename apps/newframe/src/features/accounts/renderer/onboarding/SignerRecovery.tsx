@@ -8,17 +8,17 @@ import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 import { useEffect, useMemo, useState } from 'react'
 
-import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
-import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
-import { AppIcon } from '../../../../shared/renderer/ui/appIcon'
+import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections.ts'
+import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector.tsx'
+import { AppIcon } from '../../../../shared/renderer/ui/appIcon.tsx'
 import {
   signerIconName,
   signerIsLoading,
   signerIsReady,
   signerStatusText
-} from '../../../../shared/renderer/ui/signerPresentation'
-import type { AccountsCapability } from '../accountsCapability'
-import { useHardwareSessionController } from '../useHardwareSession'
+} from '../../../../shared/renderer/ui/signerPresentation.ts'
+import type { AccountsCapability } from '../accountsCapability.ts'
+import { useHardwareSessionController } from '../useHardwareSession.ts'
 
 type WalletSigner = WalletRendererState['signers'][string]
 

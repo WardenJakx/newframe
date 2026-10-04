@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 
-import { cleanup, render, screen } from '../../../../../test/support/componentSetup'
-import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
-import { WalletRequestSchema } from '../../../../platform/state-sync/contract/projections'
-import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support'
-import { createRequestRendererCapabilitiesFake } from '../requestCapabilities.test-support'
-import { RequestViewProvider } from '../requestView'
-import Account from './Account'
+import { cleanup, render, screen } from '../../../../../test/support/componentSetup.tsx'
+import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient.ts'
+import { WalletRequestSchema } from '../../../../platform/state-sync/contract/projections.ts'
+import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support.ts'
+import { createRequestRendererCapabilitiesFake } from '../requestCapabilities.test-support.ts'
+import { RequestViewProvider } from '../requestView.tsx'
+import Account from './Account.tsx'
 
 const fixture = registerTestRuntimeFixture()
 const accountId = '0x0000000000000000000000000000000000000001'

@@ -1,14 +1,14 @@
 import { z } from 'zod'
 
-import { FlashBoundQuoteRequestSchema, FlashSubmitOrderRequestSchema } from './contracts.js'
+import { FlashBoundQuoteRequestSchema, FlashSubmitOrderRequestSchema } from './contracts.ts'
 import {
   buildFlashQuoteBodyValidated,
   buildFlashSubmitBodyValidated,
   normalizeFlashQuoteResponseValidated
-} from './protocol.js'
-import { flashRuntimeFromEnv } from './runtime.js'
-import { FlashQuoteSchema, type FlashRuntime } from './schemas.js'
-import { flashRawStatus, normalizeFlashStatus } from './status.js'
+} from './protocol.ts'
+import { flashRuntimeFromEnv } from './runtime.ts'
+import { FlashQuoteSchema, type FlashRuntime } from './schemas.ts'
+import { flashRawStatus, normalizeFlashStatus } from './status.ts'
 import {
   FlashBalancesResponseSchema,
   FlashCancelOrderResponseSchema,
@@ -16,7 +16,7 @@ import {
   FlashListOrdersResponseSchema,
   FlashQuoteResponseSchema,
   FlashSubmitResponseSchema
-} from './wire.js'
+} from './wire.ts'
 
 const FLASH_DEV_BASE_URL = 'http://127.0.0.1:8422/v1'
 const FLASH_PROD_BASE_URL = 'https://flash.definitive.fi/v1'

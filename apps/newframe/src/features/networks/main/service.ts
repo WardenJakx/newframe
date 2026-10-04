@@ -1,4 +1,4 @@
-import type { CanonicalStore } from '../../../platform/state-store/actions.js'
+import type { CanonicalStore } from '../../../platform/state-store/actions.ts'
 
 type NetworkState = Pick<
   CanonicalStore,

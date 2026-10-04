@@ -4,7 +4,7 @@ import { EventEmitter } from 'events'
 import type { CommonParams, Device } from '@trezor/connect'
 import log from 'electron-log'
 
-import type TrezorBridgeType from './bridge'
+import type TrezorBridgeType from './bridge.ts'
 
 const trezorEvents = new EventEmitter()
 const DEVICE_EVENT = 'DEVICE_EVENT'
@@ -71,7 +71,7 @@ let TrezorBridge: typeof TrezorBridgeType
 beforeAll(async () => {
   log.transports.console.level = false
 
-  TrezorBridge = (await import('./bridge')).default
+  TrezorBridge = (await import('./bridge.ts')).default
 })
 
 afterAll(() => {

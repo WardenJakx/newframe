@@ -1,6 +1,6 @@
 import { useEffect, type RefObject } from 'react'
 
-import type { TokenImageCapability } from '../capabilities'
+import type { TokenImageCapability } from '../capabilities.ts'
 
 const TOKEN_ID = /^\d+:0x[0-9a-f]{40}$/i
 

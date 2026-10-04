@@ -2,8 +2,8 @@ import { expect, it } from 'bun:test'
 
 import type { Session, WebContents } from 'electron'
 
-import { createRendererAuthorizationRegistry } from '../../ipc/main/authorization'
-import { installCameraPermissions } from './cameraPermissions'
+import { createRendererAuthorizationRegistry } from '../../ipc/main/authorization.ts'
+import { installCameraPermissions } from './cameraPermissions.ts'
 
 type PermissionSession = Parameters<typeof installCameraPermissions>[0]
 function fixture() {

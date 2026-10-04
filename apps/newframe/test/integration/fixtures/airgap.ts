@@ -7,17 +7,17 @@ import { URDecoder, UREncoder } from '@ngraveio/bc-ur'
 import type {
   CanonicalAccountRequest,
   TypedMessage
-} from '../../../src/features/requests/contract/requests.js'
-import { RequestStatus } from '../../../src/features/requests/contract/requests.js'
-import { GasFeesSource } from '../../../src/features/transactions/domain/index.js'
-import type { TransactionData } from '../../../src/features/transactions/domain/index.js'
-import AirGapSigner from '../../../src/platform/signing/signers/airgap/AirGapSigner.js'
+} from '../../../src/features/requests/contract/requests.ts'
+import { RequestStatus } from '../../../src/features/requests/contract/requests.ts'
+import { GasFeesSource } from '../../../src/features/transactions/domain/index.ts'
+import type { TransactionData } from '../../../src/features/transactions/domain/index.ts'
+import AirGapSigner from '../../../src/platform/signing/signers/airgap/AirGapSigner.ts'
 import {
   AirGapUrAssembler,
   decodePublicAccount
-} from '../../../src/platform/signing/signers/airgap/protocol.js'
-import type { SignerRequestContext } from '../../../src/platform/signing/signers/Signer/index.js'
-import createCanonicalStore from '../../../src/platform/state-store/createCanonicalStore.js'
+} from '../../../src/platform/signing/signers/airgap/protocol.ts'
+import type { SignerRequestContext } from '../../../src/platform/signing/signers/Signer/index.ts'
+import createCanonicalStore from '../../../src/platform/state-store/createCanonicalStore.ts'
 import vectors from './airgap-vectors.json'
 
 export { vectors }

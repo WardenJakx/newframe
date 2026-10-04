@@ -1,13 +1,13 @@
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 
-import { getSignerType, isSignerReady, Type as SignerType } from '../../../platform/signing/domain/index.js'
+import { getSignerType, isSignerReady, Type as SignerType } from '../../../platform/signing/domain/index.ts'
 import type {
   SignatureRequest,
   SigningCapability,
   SigningCandidate
-} from '../../requests/contract/requests.js'
-import type { SafeDeployment } from '../domain/safe.js'
-import type { Account } from '../domain/state/account.js'
+} from '../../requests/contract/requests.ts'
+import type { SafeDeployment } from '../domain/safe.ts'
+import type { Account } from '../domain/state/account.ts'
 
 type SignerSummary = {
   id?: string

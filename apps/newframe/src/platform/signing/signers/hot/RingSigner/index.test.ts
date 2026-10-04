@@ -8,10 +8,10 @@ import path from 'node:path'
 import log from 'electron-log'
 import { keccak256 } from 'ethers'
 
-import type RingSigner from '.'
 import { electronMock } from '../../../../../../test/support/electron.mock.ts'
 import { callbackResult, exerciseHotSignerContract } from '../../callback.test-support.ts'
-import type Signer from '../../Signer'
+import type Signer from '../../Signer/index.ts'
+import type RingSigner from './index.ts'
 
 const USER_DATA = fs.mkdtempSync(path.join(tmpdir(), 'newframe-ring-test-'))
 const SIGNER_PATH = path.join(USER_DATA, 'signers')
@@ -53,7 +53,7 @@ const createV1Keystore = (privateKey: Buffer, password: string) => {
   }
 }
 
-let hot: typeof import('..')
+let hot: typeof import('../index.ts')
 const isRingSigner = (value: Signer): value is RingSigner => 'encryptedKeys' in value
 
 describe('Ring signer', () => {
@@ -62,7 +62,7 @@ describe('Ring signer', () => {
   beforeAll(async () => {
     log.transports.console.level = false
     electronMock.app.getPath.mockReturnValue(USER_DATA)
-    hot = await import('..')
+    hot = await import('../index.ts')
   })
 
   afterAll(async () => {

@@ -1,4 +1,4 @@
-import type { SideTrayRendererState } from '../../../../platform/state-sync/contract/projections'
+import type { SideTrayRendererState } from '../../../../platform/state-sync/contract/projections.ts'
 
 type SendActivity = SideTrayRendererState['activity'][string]
 

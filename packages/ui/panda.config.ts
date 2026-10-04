@@ -1,6 +1,6 @@
 import { defineConfig } from '@pandacss/dev'
 
-import { newframePreset } from './panda.preset.js'
+import { newframePreset } from './panda.preset.ts'
 
 export default defineConfig({
   include: ['./src/primitives/**/*.tsx', './src/root/**/*.tsx'],

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import type { JSONRPCRequestPayload } from '../../../shared/domain/rpc.js'
+import type { JSONRPCRequestPayload } from '../../../shared/domain/rpc.ts'
 import {
   chainIdFromRequest,
   decideOriginAuthorization,
@@ -8,7 +8,7 @@ import {
   parseExtensionIdentity,
   parseOriginName,
   projectOriginUpdate
-} from './index'
+} from './index.ts'
 
 function requestPayload(overrides: Partial<JSONRPCRequestPayload> = {}): JSONRPCRequestPayload {
   return {

@@ -4,12 +4,12 @@ import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 
-import { AddressIdentity } from '../../../../../shared/renderer/ui/AddressIdentity'
-import { accountDisplayType } from '../../../../../shared/renderer/ui/signerPresentation'
-import { persistedImageSource } from '../../../../asset-data/domain/image'
-import { RequestStatusNotice } from '../../ui/RequestStatusNotice'
-import type { AddTokenRequestView } from './requestViewTypes'
-import { useAccountIdentity, useOriginName } from './state'
+import { AddressIdentity } from '../../../../../shared/renderer/ui/AddressIdentity.tsx'
+import { accountDisplayType } from '../../../../../shared/renderer/ui/signerPresentation.ts'
+import { persistedImageSource } from '../../../../asset-data/domain/image/index.ts'
+import { RequestStatusNotice } from '../../ui/RequestStatusNotice.tsx'
+import type { AddTokenRequestView } from './requestViewTypes.ts'
+import { useAccountIdentity, useOriginName } from './state.ts'
 
 type AddTokenRequestProps = {
   req: AddTokenRequestView

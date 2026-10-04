@@ -7,14 +7,14 @@ import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 
-import { AddressIdentity, shortAddress } from '../../../../shared/renderer/ui/AddressIdentity'
-import { CopyButton } from '../../../../shared/renderer/ui/CopyButton'
-import { SidePanel } from '../../../../shared/renderer/ui/SidePanel/SidePanel'
-import { accountDisplayType } from '../../../../shared/renderer/ui/signerPresentation'
-import TokenSelector from '../../../../shared/renderer/ui/TokenSelector'
-import { SEND_TOKEN_ROWS_INCREMENT } from './sendReducer'
-import type { SendCapability } from './sendService'
-import type { SendAccountViewModel, SendViewEvents, SendViewModel } from './sendViewModel'
+import { AddressIdentity, shortAddress } from '../../../../shared/renderer/ui/AddressIdentity.tsx'
+import { CopyButton } from '../../../../shared/renderer/ui/CopyButton.tsx'
+import { SidePanel } from '../../../../shared/renderer/ui/SidePanel/SidePanel.tsx'
+import { accountDisplayType } from '../../../../shared/renderer/ui/signerPresentation.ts'
+import TokenSelector from '../../../../shared/renderer/ui/TokenSelector.tsx'
+import { SEND_TOKEN_ROWS_INCREMENT } from './sendReducer.ts'
+import type { SendCapability } from './sendService.ts'
+import type { SendAccountViewModel, SendViewEvents, SendViewModel } from './sendViewModel.ts'
 
 function recipientName(account: SendAccountViewModel) {
   return account.ensName ?? account.name ?? shortAddress(account.address)

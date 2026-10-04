@@ -2,9 +2,9 @@ import { describe, expect, it } from 'bun:test'
 
 import { useState } from 'react'
 
-import { fireEvent, render, screen } from '../../../../../test/support/componentSetup'
-import { MenuItem } from './Menu/MenuItem'
-import { MenuOverlay } from './Menu/MenuOverlay'
+import { fireEvent, render, screen } from '../../../../../test/support/componentSetup.tsx'
+import { MenuItem } from './Menu/MenuItem.tsx'
+import { MenuOverlay } from './Menu/MenuOverlay.tsx'
 
 function MenuHarness() {
   const [open, setOpen] = useState(false)

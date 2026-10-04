@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 
 import appPackage from '../../../../package.json'
-import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
-import { AboutView } from './AboutView'
-import type { SettingsCapability } from './settingsCapability'
+import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector.tsx'
+import { AboutView } from './AboutView.tsx'
+import type { SettingsCapability } from './settingsCapability.ts'
 
 const appVersion = appPackage.version
 

@@ -1,9 +1,9 @@
-import type { Address } from '../../../../shared/domain/address.js'
-import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.js'
-import type { AssetRateMap, AssetRateReference, ResolvedAssetRate } from '../state/rate.js'
-import { CURATED_ASSETS, type CuratedAsset } from './registry.js'
+import type { Address } from '../../../../shared/domain/address.ts'
+import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
+import type { AssetRateMap, AssetRateReference, ResolvedAssetRate } from '../state/rate.ts'
+import { CURATED_ASSETS, type CuratedAsset } from './registry.ts'
 
-export type { CuratedAsset } from './registry.js'
+export type { CuratedAsset } from './registry.ts'
 
 const assetsById: ReadonlyMap<string, CuratedAsset> = new Map(
   CURATED_ASSETS.map((asset) => [asset.assetId, asset])

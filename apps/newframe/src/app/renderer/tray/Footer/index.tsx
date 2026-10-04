@@ -2,18 +2,18 @@ import { useEffect, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
-import { useAccountIdentity } from '../../../../features/requests/renderer/Account/Requests/state'
-import type { RequestRendererCapabilities } from '../../../../features/requests/renderer/requestCapabilities'
+import { useAccountIdentity } from '../../../../features/requests/renderer/Account/Requests/state.ts'
+import type { RequestRendererCapabilities } from '../../../../features/requests/renderer/requestCapabilities.ts'
 import RequestCommand, {
   type RequestCommandNotifier,
   type RequestCommandRequest
-} from '../../../../features/requests/renderer/RequestCommand'
-import { useRequestView, type RequestViewStep } from '../../../../features/requests/renderer/requestView'
-import { RequestActions } from '../../../../features/requests/renderer/ui/RequestActions'
-import { RequestSigningFooter } from '../../../../features/requests/renderer/ui/RequestSigningFooter'
-import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
-import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
-import { accountDisplayType } from '../../../../shared/renderer/ui/signerPresentation'
+} from '../../../../features/requests/renderer/RequestCommand/index.tsx'
+import { useRequestView, type RequestViewStep } from '../../../../features/requests/renderer/requestView.tsx'
+import { RequestActions } from '../../../../features/requests/renderer/ui/RequestActions.tsx'
+import { RequestSigningFooter } from '../../../../features/requests/renderer/ui/RequestSigningFooter.tsx'
+import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections.ts'
+import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector.tsx'
+import { accountDisplayType } from '../../../../shared/renderer/ui/signerPresentation.ts'
 
 interface FooterSharedState {
   crumb: { view?: string; data?: unknown }

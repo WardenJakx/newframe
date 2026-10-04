@@ -3,12 +3,12 @@ import { expect, it } from 'bun:test'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { createStore } from 'zustand/vanilla'
 
-import { createSafeHandler } from '../../scripts/local-safe/handler'
-import { createSafeService } from '../../src/features/accounts/main/safe'
-import { createOperationService } from '../../src/platform/operations/service'
-import { createSafeClient } from '../../src/platform/safe/client'
-import { projectRendererState } from '../../src/platform/state-sync/main/projections'
-import { createTestStore } from '../support/createTestStore'
+import { createSafeHandler } from '../../scripts/local-safe/handler.ts'
+import { createSafeService } from '../../src/features/accounts/main/safe.ts'
+import { createOperationService } from '../../src/platform/operations/service.ts'
+import { createSafeClient } from '../../src/platform/safe/client.ts'
+import { projectRendererState } from '../../src/platform/state-sync/main/projections.ts'
+import { createTestStore } from '../support/createTestStore.ts'
 
 it('projects the paginated local Safe service through public observation capabilities', async () => {
   const address = '0x1111111111111111111111111111111111111111'

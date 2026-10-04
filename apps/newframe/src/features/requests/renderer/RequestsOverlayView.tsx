@@ -1,12 +1,12 @@
 import { Text } from '@newframe/ui/text'
 
-import type { AirGapRequestReference } from '../../../platform/signing/domain/airgap'
-import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay'
-import Requests from './Account/Requests'
-import type { RequestRendererCapabilities } from './requestCapabilities'
-import { SafeProposalDetailsView } from './SafeProposalDetailsView'
-import { useSafeQueue } from './SafeQueue'
-import { SafeQueueView } from './SafeQueueView'
+import type { AirGapRequestReference } from '../../../platform/signing/domain/airgap.ts'
+import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay.tsx'
+import Requests from './Account/Requests/index.tsx'
+import type { RequestRendererCapabilities } from './requestCapabilities.ts'
+import { SafeProposalDetailsView } from './SafeProposalDetailsView.tsx'
+import { useSafeQueue } from './SafeQueue.tsx'
+import { SafeQueueView } from './SafeQueueView.tsx'
 
 export function RequestsOverlayView({
   accountId,

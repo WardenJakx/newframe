@@ -1,6 +1,6 @@
 import { describe, expect, it, mock } from 'bun:test'
 
-import { createFlashApi, flashCancelMessage } from '../src/api.js'
+import { createFlashApi, flashCancelMessage } from '../src/api.ts'
 
 const account = '0x0000000000000000000000000000000000000001'
 

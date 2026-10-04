@@ -1,7 +1,7 @@
 import { describe, expect, it, mock } from 'bun:test'
 
-import { createTestStore } from '../../../../test/support/createTestStore'
-import { createSettingsService } from './service'
+import { createTestStore } from '../../../../test/support/createTestStore.ts'
+import { createSettingsService } from './service.ts'
 
 describe('settings service', () => {
   it('persists an available fee preference without modifying requests', () => {

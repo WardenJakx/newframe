@@ -4,15 +4,19 @@ import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
-import type { ClipboardCapability, TokenImageCapability } from '../../../shared/renderer/capabilities'
-import { AddressIdentity } from '../../../shared/renderer/ui/AddressIdentity'
-import { ChainIcon } from '../../../shared/renderer/ui/ChainIcon'
-import ChainTokenIcon from '../../../shared/renderer/ui/ChainTokenIcon'
-import { DetailRow } from '../../../shared/renderer/ui/DetailRow'
-import type { NetworkLike, NetworkMetaLike } from '../../../shared/renderer/ui/tokenSelectorTypes'
-import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay'
-import { formatUsdRate, isNativeCurrency, type DisplayedBalance } from '../../asset-data/domain/balance'
-import { TRADE_DISABLED_CHAIN_LABEL } from './usePortfolioActions'
+import type { ClipboardCapability, TokenImageCapability } from '../../../shared/renderer/capabilities.ts'
+import { AddressIdentity } from '../../../shared/renderer/ui/AddressIdentity.tsx'
+import { ChainIcon } from '../../../shared/renderer/ui/ChainIcon.tsx'
+import ChainTokenIcon from '../../../shared/renderer/ui/ChainTokenIcon.tsx'
+import { DetailRow } from '../../../shared/renderer/ui/DetailRow.tsx'
+import type { NetworkLike, NetworkMetaLike } from '../../../shared/renderer/ui/tokenSelectorTypes.ts'
+import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay.tsx'
+import {
+  formatUsdRate,
+  isNativeCurrency,
+  type DisplayedBalance
+} from '../../asset-data/domain/balance/index.ts'
+import { TRADE_DISABLED_CHAIN_LABEL } from './usePortfolioActions.ts'
 
 const contentRecipe = cva({ base: { paddingBlockStart: '4' } })
 

@@ -1,10 +1,10 @@
 import { useMemo } from 'react'
 
-import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections'
-import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector'
-import { accountDisplayType } from '../../../../../shared/renderer/ui/signerPresentation'
-import { resolveAssetRate } from '../../../../asset-data/domain/asset'
-import type { AssetRateReference } from '../../../../asset-data/domain/state/rate'
+import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections.ts'
+import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector.tsx'
+import { accountDisplayType } from '../../../../../shared/renderer/ui/signerPresentation.ts'
+import { resolveAssetRate } from '../../../../asset-data/domain/asset/index.ts'
+import type { AssetRateReference } from '../../../../asset-data/domain/state/rate.ts'
 
 type AccountRequests = WalletRendererState['accounts'][string]['requests']
 type NetworkRecord = WalletRendererState['networks']['ethereum']

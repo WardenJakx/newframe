@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test'
 
 import { Interface, encodeBytes32String } from 'ethers'
 
-import ensContracts from './index'
+import ensContracts from './index.ts'
 
 const from = '0x6fBdDB7200c95f8f648C7bF6E99606CB8AdfF6F9'
 const to = '0x388C818CA8B9251b393131C08a736A67ccB19297'

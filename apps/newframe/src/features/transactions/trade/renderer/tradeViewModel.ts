@@ -4,9 +4,9 @@ import type {
   NetworkLike,
   NetworkMetaLike,
   TokenSelectorItem
-} from '../../../../shared/renderer/ui/tokenSelectorTypes'
-import type { TradeAssetField } from './tradeReducer'
-import type { TradeOrderFields } from './tradeTransaction'
+} from '../../../../shared/renderer/ui/tokenSelectorTypes.ts'
+import type { TradeAssetField } from './tradeReducer.ts'
+import type { TradeOrderFields } from './tradeTransaction.ts'
 
 export interface TradeAssetViewModel {
   amount: string

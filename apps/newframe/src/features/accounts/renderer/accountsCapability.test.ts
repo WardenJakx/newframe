@@ -1,7 +1,7 @@
 import { expect, it } from 'bun:test'
 
-import { createRendererClient as createTypedClient } from '../../../../test/support/rendererClient'
-import { createAccountsCapability } from './accountsCapability'
+import { createRendererClient as createTypedClient } from '../../../../test/support/rendererClient.ts'
+import { createAccountsCapability } from './accountsCapability.ts'
 
 const firstAddress = `0x${'1'.repeat(40)}`
 const secondAddress = `0x${'2'.repeat(40)}`

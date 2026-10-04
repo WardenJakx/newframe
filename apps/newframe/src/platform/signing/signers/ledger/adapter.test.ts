@@ -4,7 +4,7 @@ import EventEmitter from 'events'
 import log from 'electron-log'
 import { v5 as uuid } from 'uuid'
 
-import store from '../../../state-store'
+import store from '../../../state-store/index.ts'
 
 const ns = '3bbcee75-cecc-5b56-8031-b6641c1ed1f1'
 
@@ -84,12 +84,12 @@ const TransportNodeHidSingletonMock = {
 
 let connectedHids: TestLedgerDevice[] = []
 
-await mock.module('./dependencies.js', () => ({
+await mock.module('./dependencies.ts', () => ({
   getLedgerDevices: () => connectedHids,
   TransportNodeHidSingleton: TransportNodeHidSingletonMock
 }))
 
-await mock.module('./Ledger/index.js', () => ({
+await mock.module('./Ledger/index.ts', () => ({
   default: LedgerMock,
   Status
 }))
@@ -110,7 +110,8 @@ beforeAll(async () => {
   timers.useFakeTimers()
   log.transports.console.level = false
 
-  LedgerSignerAdapter = (await import('./adapter')).default as unknown as TestLedgerSignerAdapterConstructor
+  LedgerSignerAdapter = (await import('./adapter.ts'))
+    .default as unknown as TestLedgerSignerAdapterConstructor
 })
 
 beforeEach(() => {

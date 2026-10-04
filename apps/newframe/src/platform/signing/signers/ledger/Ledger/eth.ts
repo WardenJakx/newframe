@@ -3,13 +3,13 @@ import { addHexPrefix, bytesToHex, stripHexPrefix, padToEven } from '@ethereumjs
 import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util'
 import log from 'electron-log'
 
-import type { TypedData } from '../../../../../features/requests/contract/requests.js'
-import type { TransactionData } from '../../../../../features/transactions/domain/index.js'
-import { sign } from '../../../../../features/transactions/main/index.js'
-import type { Derivation } from '../../Signer/derive.js'
-import { getDerivationPath, deriveHDAccounts } from '../../Signer/derive.js'
-import { LedgerEthereumApp as Eth } from '../dependencies.js'
-import { DeviceError } from './index.js'
+import type { TypedData } from '../../../../../features/requests/contract/requests.ts'
+import type { TransactionData } from '../../../../../features/transactions/domain/index.ts'
+import { sign } from '../../../../../features/transactions/main/index.ts'
+import type { Derivation } from '../../Signer/derive.ts'
+import { getDerivationPath, deriveHDAccounts } from '../../Signer/derive.ts'
+import { LedgerEthereumApp as Eth } from '../dependencies.ts'
+import { DeviceError } from './index.ts'
 
 type EthInstance = InstanceType<(typeof import('@ledgerhq/hw-app-eth'))['default']>
 type TransportInstance = ConstructorParameters<typeof Eth>[0]

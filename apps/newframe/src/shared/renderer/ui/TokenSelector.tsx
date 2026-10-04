@@ -5,10 +5,10 @@ import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 import React from 'react'
 
-import type { TokenImageCapability } from '../capabilities'
-import ChainTokenIcon from './ChainTokenIcon'
-import TokenOptionRow from './TokenOptionRow'
-import type { NetworkLike, NetworkMetaLike, TokenSelectorItem } from './tokenSelectorTypes'
+import type { TokenImageCapability } from '../capabilities.ts'
+import ChainTokenIcon from './ChainTokenIcon.tsx'
+import TokenOptionRow from './TokenOptionRow.tsx'
+import type { NetworkLike, NetworkMetaLike, TokenSelectorItem } from './tokenSelectorTypes.ts'
 
 interface TokenSelectorProps {
   ariaLabel: string

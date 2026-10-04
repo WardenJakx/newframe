@@ -1,10 +1,10 @@
 import { getFlashDefaultChainId, isFlashChainSupported } from '@newframe/flash/chains'
 import { useShallow } from 'zustand/react/shallow'
 
-import { toCanonicalAssetId } from '../../../app/contracts/sidetray'
-import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
-import { hasPositiveBalance } from '../../asset-data/domain/balance'
-import type { PortfolioCapability } from './portfolioCapability'
+import { toCanonicalAssetId } from '../../../app/contracts/sidetray/index.ts'
+import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector.tsx'
+import { hasPositiveBalance } from '../../asset-data/domain/balance/index.ts'
+import type { PortfolioCapability } from './portfolioCapability.ts'
 
 export const TRADE_DISABLED_CHAIN_LABEL = 'Trade unavailable on this chain'
 

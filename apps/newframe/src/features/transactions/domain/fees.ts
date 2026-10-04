@@ -1,4 +1,4 @@
-import { toBigInt } from '../../../shared/domain/units.js'
+import { toBigInt } from '../../../shared/domain/units.ts'
 
 export type TransactionFeeField = 'baseFee' | 'priorityFee' | 'gasPrice' | 'gasLimit'
 

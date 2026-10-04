@@ -23,9 +23,9 @@ import {
   type FlashTradeSide
 } from '@newframe/flash/schemas'
 
-import type { FlashQuoteRequest } from '../../../../app/contracts/operations'
-import { type BalanceSummary } from '../../../asset-data/domain/balance'
-import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
+import type { FlashQuoteRequest } from '../../../../app/contracts/operations.ts'
+import { type BalanceSummary } from '../../../asset-data/domain/balance/index.ts'
+import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
 import {
   FLASH_MAX_TWAP_BUCKET_COUNT,
   FLASH_MAX_TWAP_DURATION_SECONDS,
@@ -36,7 +36,7 @@ import {
   flashRequestKey,
   nonNegativeFlashInteger,
   positiveFlashNumber
-} from '../domain/policy'
+} from '../domain/policy.ts'
 
 export const TRADE_DEFAULT_SLIPPAGE = ''
 export const TRADE_DEFAULT_MAX_PRICE_IMPACT = ''

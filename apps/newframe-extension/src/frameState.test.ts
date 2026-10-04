@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { frameStateStore } from './frameState'
+import { frameStateStore } from './frameState.ts'
 
 describe('frame state store', () => {
   test('applies atomic partial updates and notifies subscribers once', () => {

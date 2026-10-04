@@ -3,16 +3,16 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, jest as timers, s
 import { addHexPrefix } from '@ethereumjs/util'
 import log from 'electron-log'
 
-import { createTestStore as createActionHarness } from '../../../test/support/createTestStore'
-import { DEFAULT_PROFILE_ID, type OrderRecord } from '../../app/contracts/state/main'
-import { toTokenId } from '../../features/asset-data/domain/balance'
-import { RequestStatus } from '../../features/requests/contract/requests'
-import { customTokens, tokensForAccount } from '../../features/tokens/domain'
-import { NATIVE_CURRENCY } from '../../features/tokens/domain/constants'
-import type { Token, TokenCatalog, TokenRecord } from '../../features/tokens/domain/state/token'
-import type { CanonicalStore } from './actions'
-import createInitialState from './state'
-import type { ActivityRecord } from './state'
+import { createTestStore as createActionHarness } from '../../../test/support/createTestStore.ts'
+import { DEFAULT_PROFILE_ID, type OrderRecord } from '../../app/contracts/state/main.ts'
+import { toTokenId } from '../../features/asset-data/domain/balance/index.ts'
+import { RequestStatus } from '../../features/requests/contract/requests.ts'
+import { NATIVE_CURRENCY } from '../../features/tokens/domain/constants.ts'
+import { customTokens, tokensForAccount } from '../../features/tokens/domain/index.ts'
+import type { Token, TokenCatalog, TokenRecord } from '../../features/tokens/domain/state/token.ts'
+import type { CanonicalStore } from './actions.ts'
+import createInitialState from './state/index.ts'
+import type { ActivityRecord } from './state/index.ts'
 
 type AccountRecord = CanonicalStore['main']['accounts'][string]
 type StatusNotification = CanonicalStore['view']['notifications'][string]

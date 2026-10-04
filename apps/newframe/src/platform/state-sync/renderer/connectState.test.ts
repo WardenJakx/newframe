@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'bun:test'
 
-import { createTestRuntimeFixture } from '../../../../test/support/rendererClient'
-import type { SideTrayRendererState } from '../contract/projections'
-import type { StateMessage } from '../contract/protocol'
-import { connectRendererState } from './connectState'
+import { createTestRuntimeFixture } from '../../../../test/support/rendererClient.ts'
+import type { SideTrayRendererState } from '../contract/projections.ts'
+import type { StateMessage } from '../contract/protocol.ts'
+import { connectRendererState } from './connectState.ts'
 import { sideTrayState } from './fixtures.test-support.ts'
 
 function createClient() {

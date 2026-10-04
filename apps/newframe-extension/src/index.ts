@@ -6,9 +6,9 @@ import FrameBackgroundProvider, {
   type ConnectionRetryState,
   type JsonRpcPayload,
   type JsonRpcResponse
-} from './frameConnection'
-import { frameStateStore, type ConnectionStatus } from './frameState'
-import { isRecord, messageSource, originFromUrl, tabFromMessage, type TabLike } from './messageSource'
+} from './frameConnection.ts'
+import { frameStateStore, type ConnectionStatus } from './frameState.ts'
+import { isRecord, messageSource, originFromUrl, tabFromMessage, type TabLike } from './messageSource.ts'
 
 type Provider = FrameBackgroundProvider
 

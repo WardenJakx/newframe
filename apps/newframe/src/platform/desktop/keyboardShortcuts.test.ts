@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, type Mock } from 'bun:test'
 
-import { electronMock } from '../../../test/support/electron.mock'
-import type { Shortcut } from '../../features/settings/domain/state/shortcuts'
+import { electronMock } from '../../../test/support/electron.mock.ts'
+import type { Shortcut } from '../../features/settings/domain/state/shortcuts.ts'
 
-let registerShortcut: typeof import('./keyboardShortcuts').registerShortcut
+let registerShortcut: typeof import('./keyboardShortcuts.ts').registerShortcut
 const { register, unregister } = electronMock.globalShortcut
 
 describe('registerShortcut', () => {
@@ -15,7 +15,7 @@ describe('registerShortcut', () => {
   }
 
   beforeEach(async () => {
-    const keyboardShortcuts = await import('./keyboardShortcuts')
+    const keyboardShortcuts = await import('./keyboardShortcuts.ts')
     registerShortcut = keyboardShortcuts.registerShortcut
   })
 

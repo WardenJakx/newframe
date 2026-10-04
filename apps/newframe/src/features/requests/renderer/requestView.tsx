@@ -1,15 +1,15 @@
 import { createContext, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
 
-import { typeSupportsBaseFee } from '../../transactions/domain'
-import type { TransactionApprovalAdjustments } from '../../transactions/domain/approval'
+import type { TransactionApprovalAdjustments } from '../../transactions/domain/approval.ts'
 import {
   limitTransactionFee,
   transactionFeePreset,
   type TransactionFeeField,
   type TransactionFeeLevel,
   type TransactionFeeValues
-} from '../../transactions/domain/fees'
-import type { TransactionRequestView } from './Account/Requests/requestViewTypes'
+} from '../../transactions/domain/fees.ts'
+import { typeSupportsBaseFee } from '../../transactions/domain/index.ts'
+import type { TransactionRequestView } from './Account/Requests/requestViewTypes.ts'
 
 type FeeRequest = Pick<TransactionRequestView, 'data' | 'status' | 'mode' | 'locked'>
 type FeeData = Pick<

@@ -1,5 +1,5 @@
-import type { QueryResultMap } from '../../../app/contracts/operations'
-import { emptyAddAccountDraft } from './addAccountModel'
+import type { QueryResultMap } from '../../../app/contracts/operations.ts'
+import { emptyAddAccountDraft } from './addAccountModel.ts'
 
 type Keystore = Extract<QueryResultMap['keystore.locate'], { ok: true }>['keystore']
 

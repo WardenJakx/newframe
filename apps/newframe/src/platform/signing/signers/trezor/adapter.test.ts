@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, expect, it, jest as timers, mock } from 'bun:test'
 import { EventEmitter } from 'events'
 
-import store from '../../../state-store'
-import TrezorSignerAdapter from './adapter'
+import store from '../../../state-store/index.ts'
+import TrezorSignerAdapter from './adapter.ts'
 
 class BridgeFake extends EventEmitter {
   open = mock()

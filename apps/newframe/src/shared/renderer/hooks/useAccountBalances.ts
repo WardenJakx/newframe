@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
-import { createBalanceSummarySelector } from '../../../features/asset-data/domain/balance'
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
-import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
+import { createBalanceSummarySelector } from '../../../features/asset-data/domain/balance/index.ts'
+import type { WalletRendererState } from '../../../platform/state-sync/contract/projections.ts'
+import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector.tsx'
 
 const EMPTY_BALANCES: WalletRendererState['balances'][string] = []
 

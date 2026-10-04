@@ -1,1 +1,1 @@
-export { useAccountBalances } from '../../../shared/renderer/hooks/useAccountBalances'
+export { useAccountBalances } from '../../../shared/renderer/hooks/useAccountBalances.ts'

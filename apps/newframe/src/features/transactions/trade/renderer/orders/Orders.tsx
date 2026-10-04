@@ -2,12 +2,12 @@ import { useState } from 'react'
 import { useEffect, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
-import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector'
-import { resolveOrderAssetImageSource } from './OrderAssetPosition'
-import { createOrderRows, orderErrorMessage } from './orderModel'
-import type { OrdersCapability } from './ordersCapability'
-import { OrdersView } from './OrdersView'
-import type { OrderRow } from './orderTypes'
+import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector.tsx'
+import { resolveOrderAssetImageSource } from './OrderAssetPosition.tsx'
+import { createOrderRows, orderErrorMessage } from './orderModel.ts'
+import type { OrdersCapability } from './ordersCapability.ts'
+import { OrdersView } from './OrdersView.tsx'
+import type { OrderRow } from './orderTypes.ts'
 
 type CancellationByOrder = Record<string, string | undefined>
 type CancelErrorsByOrder = Record<string, string | undefined>

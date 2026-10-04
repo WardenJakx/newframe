@@ -1,8 +1,8 @@
 import { expect, it } from 'bun:test'
 
-import { act, render, waitFor } from '../../../../../test/support/componentSetup'
-import { createQrCameraFake } from '../../../../platform/desktop/renderer/camera.test-support'
-import { QrScanner } from './QrScanner'
+import { act, render, waitFor } from '../../../../../test/support/componentSetup.tsx'
+import { createQrCameraFake } from '../../../../platform/desktop/renderer/camera.test-support.ts'
+import { QrScanner } from './QrScanner.tsx'
 
 it('serializes scans, deduplicates adjacent frames, and permits multipart cycles', async () => {
   const f = createQrCameraFake(false)

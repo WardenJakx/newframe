@@ -1,10 +1,10 @@
 import log from 'electron-log'
 import { FunctionFragment, Interface, hexlify } from 'ethers'
 
-import type { Address } from '../../../shared/domain/address.js'
-import { fetchFunctionSelectorSignatures, getLocalFunctionSelectorSignatures } from './selectors.js'
-import { fetchEtherscanContract } from './sources/etherscan.js'
-import { fetchSourcifyContract } from './sources/sourcify.js'
+import type { Address } from '../../../shared/domain/address.ts'
+import { fetchFunctionSelectorSignatures, getLocalFunctionSelectorSignatures } from './selectors.ts'
+import { fetchEtherscanContract } from './sources/etherscan.ts'
+import { fetchSourcifyContract } from './sources/sourcify.ts'
 
 // this list should be in order of descending priority as each source will
 // be searched in turn

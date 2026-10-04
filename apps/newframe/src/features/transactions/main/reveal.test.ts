@@ -1,8 +1,8 @@
 import { expect, it } from 'bun:test'
 
-import type { JSONRPCRequestPayload } from '../../../shared/domain/rpc.js'
-import { createProviderProxyConnection } from '../../connections/main/provider/proxy'
-import { createRevealService } from './reveal'
+import type { JSONRPCRequestPayload } from '../../../shared/domain/rpc.ts'
+import { createProviderProxyConnection } from '../../connections/main/provider/proxy.ts'
+import { createRevealService } from './reveal.ts'
 
 it('reveals a contract identity through its graph-owned provider proxy', async () => {
   const proxy = createProviderProxyConnection()

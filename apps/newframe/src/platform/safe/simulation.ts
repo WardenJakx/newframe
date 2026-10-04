@@ -1,6 +1,6 @@
-import type { Chains } from '../../features/networks/main/index.js'
-import { createOneResultCallbackBoundary } from '../callbacks/oneResult.js'
-import type { Erc20ProviderPort } from '../chain-rpc/contracts/erc20.js'
+import type { Chains } from '../../features/networks/main/index.ts'
+import { createOneResultCallbackBoundary } from '../callbacks/oneResult.ts'
+import type { Erc20ProviderPort } from '../chain-rpc/contracts/erc20.ts'
 
 type SafeReadMethod =
   | 'eth_call'

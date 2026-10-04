@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { getTokenSelectorPage } from './tokenSelectorModel'
+import { getTokenSelectorPage } from './tokenSelectorModel.ts'
 
 const items = Array.from({ length: 120 }, (_, index) => ({ id: String(index) }))
 

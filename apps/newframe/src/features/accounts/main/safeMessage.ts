@@ -6,18 +6,18 @@ import {
   packSafeMessageSignatures,
   verifySafeMessageConfirmation,
   type VerifiedSafeMessageConfirmation
-} from '../../../platform/safe/integrity.js'
+} from '../../../platform/safe/integrity.ts'
 import {
   getOriginalMessageDigest,
   type OriginalMessage
-} from '../../../platform/signing/signatures/digests.js'
-import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.js'
-import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.js'
-import type { SignatureRequest, SafeMessageProgress } from '../../requests/contract/requests.js'
-import { isTypedMessageSignatureRequest } from '../../requests/domain/index.js'
-import type { SafeConfiguration } from '../domain/safe.js'
-import type FrameAccount from './Account.js'
-import { deriveSigningCandidate } from './signingCapability.js'
+} from '../../../platform/signing/signatures/digests.ts'
+import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.ts'
+import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
+import type { SignatureRequest, SafeMessageProgress } from '../../requests/contract/requests.ts'
+import { isTypedMessageSignatureRequest } from '../../requests/domain/index.ts'
+import type { SafeConfiguration } from '../domain/safe.ts'
+import type FrameAccount from './Account.ts'
+import { deriveSigningCandidate } from './signingCapability.ts'
 
 export type SafeMessageApprovalResult = { status: 'pending' } | { status: 'complete'; signature: string }
 

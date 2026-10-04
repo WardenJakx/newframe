@@ -2,17 +2,17 @@ import { describe, expect, it, mock } from 'bun:test'
 
 import { Interface } from 'ethers'
 
-import createCanonicalStore from '../../../platform/state-store/createCanonicalStore'
-import type { Callback } from '../../../shared/domain/async.js'
-import { erc20Interface } from '../../../shared/domain/evm'
+import createCanonicalStore from '../../../platform/state-store/createCanonicalStore.ts'
+import type { Callback } from '../../../shared/domain/async.ts'
+import { erc20Interface } from '../../../shared/domain/evm.ts'
 import type {
   EVMError,
   RPCRequestCallback,
   RPCRequestPayload,
   RPCResponsePayload
-} from '../../../shared/domain/rpc.js'
-import { TxClassification, type TransactionRequest } from '../../requests/contract/requests'
-import { GasFeesSource, type TransactionEffect } from '../domain'
+} from '../../../shared/domain/rpc.ts'
+import { TxClassification, type TransactionRequest } from '../../requests/contract/requests.ts'
+import { GasFeesSource, type TransactionEffect } from '../domain/index.ts'
 import {
   createTransactionSimulationProjection,
   effectsFromTrace,
@@ -20,7 +20,7 @@ import {
   type SimulationEffectContext,
   type TraceCall,
   type TransactionSimulationProjection
-} from './simulation'
+} from './simulation.ts'
 
 const account = '0x35f9179059A691D8BEECf82Fe112F7277E018588'
 const testContract = '0x0000000000000000000000000000000000001337'

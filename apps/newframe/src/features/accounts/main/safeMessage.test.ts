@@ -3,10 +3,10 @@ import { expect, it, mock } from 'bun:test'
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import { Wallet } from 'ethers'
 
-import { getOriginalMessageDigest } from '../../../platform/signing/signatures/digests'
-import type { Callback } from '../../../shared/domain/async.js'
-import type { SignatureRequest, TypedMessage } from '../../requests/contract/requests'
-import { createSafeMessageService, type SafeMessagePorts } from './safeMessage'
+import { getOriginalMessageDigest } from '../../../platform/signing/signatures/digests.ts'
+import type { Callback } from '../../../shared/domain/async.ts'
+import type { SignatureRequest, TypedMessage } from '../../requests/contract/requests.ts'
+import { createSafeMessageService, type SafeMessagePorts } from './safeMessage.ts'
 
 const safe = '0x1111111111111111111111111111111111111111'
 

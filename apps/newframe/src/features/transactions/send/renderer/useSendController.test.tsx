@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
 
-import { act, fireEvent, render, screen, waitFor } from '../../../../../test/support/componentSetup'
-import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
-import type { AppCommand, AppQuery, CommandResult } from '../../../../app/contracts/operations'
-import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
-import Send from './index'
-import { createSendCapabilityFake, type SendCapabilityFake } from './sendService.test-support'
+import { act, fireEvent, render, screen, waitFor } from '../../../../../test/support/componentSetup.tsx'
+import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient.ts'
+import type { AppCommand, AppQuery, CommandResult } from '../../../../app/contracts/operations.ts'
+import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
+import Send from './index.tsx'
+import { createSendCapabilityFake, type SendCapabilityFake } from './sendService.test-support.ts'
 
 const fixture = registerTestRuntimeFixture()
 

@@ -1,6 +1,6 @@
-import type { CommandResult, SendRequestCommand } from '../../../../app/contracts/operations'
-import type { NewframeHost } from '../../../../platform/ipc/contract/ipc'
-import type { ClipboardCapability, TokenImageCapability } from '../../../../shared/renderer/capabilities'
+import type { CommandResult, SendRequestCommand } from '../../../../app/contracts/operations.ts'
+import type { NewframeHost } from '../../../../platform/ipc/contract/ipc.ts'
+import type { ClipboardCapability, TokenImageCapability } from '../../../../shared/renderer/capabilities.ts'
 
 type WithoutType<TInput> = TInput extends { type: string } ? Omit<TInput, 'type'> : never
 type SendSubmitInput = WithoutType<SendRequestCommand>

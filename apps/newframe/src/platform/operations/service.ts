@@ -1,14 +1,14 @@
 import { randomUUID } from 'node:crypto'
 
-import type { CanonicalStoreReader } from '../state-store/actions.js'
-import { RendererProjectionSchema } from '../state-sync/contract/projections.js'
+import type { CanonicalStoreReader } from '../state-store/actions.ts'
+import { RendererProjectionSchema } from '../state-sync/contract/projections.ts'
 import {
   OperationRecordSchema,
   type OperationEntityRef,
   type OperationRecord,
   type OperationSafeError
-} from './operation.js'
-import type { OperationOwner, OperationReference } from './types.js'
+} from './operation.ts'
+import type { OperationOwner, OperationReference } from './types.ts'
 
 export interface OperationClock {
   now(): number

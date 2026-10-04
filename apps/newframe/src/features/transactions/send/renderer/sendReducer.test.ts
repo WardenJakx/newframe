@@ -6,7 +6,7 @@ import {
   SEND_TOKEN_ROWS_INCREMENT,
   sendReducer,
   type SendWorkflowAction
-} from './sendReducer'
+} from './sendReducer.ts'
 
 describe('sendReducer account changes', () => {
   it('owns draft, recipient, token-menu, and validation transitions', () => {

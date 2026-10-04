@@ -1,10 +1,15 @@
 import { afterEach, beforeEach, mock } from 'bun:test'
 
-import type { AppCommand, AppQuery, CommandResult, ResultForQuery } from '../../src/app/contracts/operations'
-import type { NewframeHost } from '../../src/platform/ipc/contract/ipc'
-import type { StateConnectionResult, StateMessage } from '../../src/platform/state-sync/contract/protocol'
-import type { RendererStateFixtureOptions } from './rendererState'
-import { createRendererStateFixture, installRendererStateFixture } from './rendererState'
+import type {
+  AppCommand,
+  AppQuery,
+  CommandResult,
+  ResultForQuery
+} from '../../src/app/contracts/operations.ts'
+import type { NewframeHost } from '../../src/platform/ipc/contract/ipc.ts'
+import type { StateConnectionResult, StateMessage } from '../../src/platform/state-sync/contract/protocol.ts'
+import type { RendererStateFixtureOptions } from './rendererState.tsx'
+import { createRendererStateFixture, installRendererStateFixture } from './rendererState.tsx'
 
 export function createRendererClient() {
   return {

@@ -1,6 +1,6 @@
 import { createStore } from 'zustand/vanilla'
 
-import type { HomeUiState } from './homeUiTypes'
+import type { HomeUiState } from './homeUiTypes.ts'
 
 export function createHomeUiStore() {
   return createStore<HomeUiState>()((set) => ({

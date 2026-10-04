@@ -1,6 +1,6 @@
-import { getFlashChainSlug } from './chains.js'
-import { getFlashAssetPairChains } from './pair.js'
-import type { FlashQuote, FlashQuoteAction } from './schemas.js'
+import { getFlashChainSlug } from './chains.ts'
+import { getFlashAssetPairChains } from './pair.ts'
+import type { FlashQuote, FlashQuoteAction } from './schemas.ts'
 
 export type FlashTypedDataField =
   | 'orderTypedData'

@@ -1,9 +1,9 @@
 import { useShallow } from 'zustand/react/shallow'
 
-import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
-import { accountDisplayType } from '../../accounts/domain/accountDisplayType'
-import type { ConnectionsCapability } from './connectionsCapability'
-import { ExtensionAccessView } from './ExtensionAccessView'
+import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector.tsx'
+import { accountDisplayType } from '../../accounts/domain/accountDisplayType.ts'
+import type { ConnectionsCapability } from './connectionsCapability.ts'
+import { ExtensionAccessView } from './ExtensionAccessView.tsx'
 
 export default function ExtensionAccessNotification({
   id,

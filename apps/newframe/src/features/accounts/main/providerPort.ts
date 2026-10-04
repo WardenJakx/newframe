@@ -1,7 +1,7 @@
-import type { RequestSource } from '../../../app/main/gateway/requestSource.js'
-import type { Callback } from '../../../shared/domain/async.js'
-import type { RPCRequestCallback, RPCRequestPayload, RPCResponsePayload } from '../../../shared/domain/rpc.js'
-import type { TransactionData } from '../../transactions/domain/index.js'
+import type { RequestSource } from '../../../app/main/gateway/requestSource.ts'
+import type { Callback } from '../../../shared/domain/async.ts'
+import type { RPCRequestCallback, RPCRequestPayload, RPCResponsePayload } from '../../../shared/domain/rpc.ts'
+import type { TransactionData } from '../../transactions/domain/index.ts'
 
 export interface AccountChainRpcPort {
   send(payload: RPCRequestPayload, respond: RPCRequestCallback, principal?: RequestSource): unknown

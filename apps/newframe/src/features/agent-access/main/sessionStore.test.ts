@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { AgentSessionStore } from './sessionStore'
+import { AgentSessionStore } from './sessionStore.ts'
 
 describe('agent session store', () => {
   it('returns a one-time credential while retaining only its hash', () => {

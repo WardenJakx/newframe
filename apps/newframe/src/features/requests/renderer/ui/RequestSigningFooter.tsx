@@ -1,9 +1,9 @@
 import { Stack } from '@newframe/ui/stack'
 import type { ReactNode } from 'react'
 
-import type { ClipboardCapability } from '../../../../shared/renderer/capabilities'
-import { AddressIdentity, shortAddress } from '../../../../shared/renderer/ui/AddressIdentity'
-import { SigningAccount } from './SigningAccount'
+import type { ClipboardCapability } from '../../../../shared/renderer/capabilities.ts'
+import { AddressIdentity, shortAddress } from '../../../../shared/renderer/ui/AddressIdentity.tsx'
+import { SigningAccount } from './SigningAccount.tsx'
 
 export function RequestSigningFooter({
   account,

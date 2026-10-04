@@ -1,7 +1,7 @@
-import { createRendererGateway } from '../../../app/main/gateway/renderer.js'
-import { createNewframeInternalSource } from '../../../app/main/gateway/requestSource.js'
-import type { OperationServices } from '../../../app/main/ipc-handlers/renderer.js'
-import { ExecuteCommandChannel, ExecuteQueryChannel } from '../contract/ipc.js'
+import { createRendererGateway } from '../../../app/main/gateway/renderer.ts'
+import { createNewframeInternalSource } from '../../../app/main/gateway/requestSource.ts'
+import type { OperationServices } from '../../../app/main/ipc-handlers/renderer.ts'
+import { ExecuteCommandChannel, ExecuteQueryChannel } from '../contract/ipc.ts'
 export interface OperationDispatcher {
   dispatchCommand(event: Electron.IpcMainInvokeEvent, command: unknown): Promise<unknown>
   dispatchQuery(event: Electron.IpcMainInvokeEvent, query: unknown): Promise<unknown>

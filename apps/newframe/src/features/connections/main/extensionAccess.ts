@@ -1,11 +1,11 @@
 import type { ExtensionAccounts } from '@newframe/desktop-api/schemas'
 
-import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.js'
+import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
 import {
   activeExtensionAccountId,
   extensionAccess,
   visibleExtensionAccountIds
-} from '../domain/extensionAccess.js'
+} from '../domain/extensionAccess.ts'
 
 type View = CanonicalStore['view']
 

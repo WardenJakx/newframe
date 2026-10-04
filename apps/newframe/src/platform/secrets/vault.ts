@@ -5,7 +5,7 @@ import path from 'path'
 import { app } from 'electron'
 import log from 'electron-log'
 
-import zxcvbn from '../../features/security/domain/passwordStrength.js'
+import zxcvbn from '../../features/security/domain/passwordStrength.ts'
 
 // Mock user data dir during tests
 const electronApp = app as typeof app | undefined

@@ -45,7 +45,7 @@ import {
   FLASH_MIN_TWAP_DURATION_SECONDS,
   cleanFlashDecimal,
   positiveFlashNumber
-} from '../../src/features/transactions/trade/domain/policy'
+} from '../../src/features/transactions/trade/domain/policy.ts'
 
 type LocalOrderStatus = 'accepted' | 'filled' | 'cancelled' | 'rejected'
 

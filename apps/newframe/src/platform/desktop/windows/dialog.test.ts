@@ -1,12 +1,12 @@
 import { describe, expect, it, mock, type Mock } from 'bun:test'
 
-import { electronMock } from '../../../../test/support/electron.mock'
-import { showUnhandledExceptionDialog } from './dialog'
+import { electronMock } from '../../../../test/support/electron.mock.ts'
+import { showUnhandledExceptionDialog } from './dialog.ts'
 
 const { quit, relaunch } = electronMock.app
 const { showErrorBox, showMessageBoxSync } = electronMock.dialog
 
-await mock.module('./', () => ({
+await mock.module('./index.ts', () => ({
   browserWindows: () => ({ panel: 'mock tray browserwindow' })
 }))
 

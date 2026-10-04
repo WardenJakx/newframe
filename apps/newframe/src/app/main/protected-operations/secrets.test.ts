@@ -1,6 +1,6 @@
 import { expect, it } from 'bun:test'
 
-import { exportProtectedPrivateKey } from './secrets'
+import { exportProtectedPrivateKey } from './secrets.ts'
 
 it('exports only an account in the unlocked active profile', async () => {
   const account = { address: 'account', created: 'created', signer: 'signer', profileId: 'profile' }

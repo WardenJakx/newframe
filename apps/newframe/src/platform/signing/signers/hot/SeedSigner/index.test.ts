@@ -7,11 +7,11 @@ import path from 'node:path'
 import log from 'electron-log'
 import { Mnemonic, randomBytes } from 'ethers'
 
-import type SeedSigner from '.'
 import { electronMock } from '../../../../../../test/support/electron.mock.ts'
-import { GasFeesSource } from '../../../../../features/transactions/domain'
+import { GasFeesSource } from '../../../../../features/transactions/domain/index.ts'
 import { callbackResult, exerciseHotSignerContract } from '../../callback.test-support.ts'
-import type Signer from '../../Signer'
+import type Signer from '../../Signer/index.ts'
+import type SeedSigner from './index.ts'
 
 const USER_DATA = fs.mkdtempSync(path.join(tmpdir(), 'newframe-seed-test-'))
 const SIGNER_PATH = path.join(USER_DATA, 'signers')
@@ -29,7 +29,7 @@ const vault = {
   }
 }
 
-let hot: typeof import('..')
+let hot: typeof import('../index.ts')
 const isSeedSigner = (value: Signer): value is SeedSigner => 'encryptedSeed' in value
 
 describe('Seed signer', () => {
@@ -38,7 +38,7 @@ describe('Seed signer', () => {
   beforeAll(async () => {
     log.transports.console.level = false
     electronMock.app.getPath.mockReturnValue(USER_DATA)
-    hot = await import('..')
+    hot = await import('../index.ts')
   })
 
   afterAll(async () => {

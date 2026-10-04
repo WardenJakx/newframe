@@ -9,12 +9,12 @@ import { getAddress, isAddress } from 'ethers'
 import { shallow } from 'zustand/shallow'
 
 import packageFile from '../../../../package.json' with { type: 'json' }
-import { hasAddress } from '../../../features/accounts/domain/index.js'
-import { safeDecodedSchema } from '../../../features/accounts/domain/safe.js'
-import type { SafeTransactionPort } from '../../../features/accounts/main/safeTransactionPort.js'
-import { activeExtensionAccountId } from '../../../features/connections/domain/extensionAccess.js'
-import type { OriginsService } from '../../../features/connections/main/origins.js'
-import type { AccountRequestPort } from '../../../features/connections/main/provider/accountRequestPort.js'
+import { hasAddress } from '../../../features/accounts/domain/index.ts'
+import { safeDecodedSchema } from '../../../features/accounts/domain/safe.ts'
+import type { SafeTransactionPort } from '../../../features/accounts/main/safeTransactionPort.ts'
+import { activeExtensionAccountId } from '../../../features/connections/domain/extensionAccess.ts'
+import type { OriginsService } from '../../../features/connections/main/origins.ts'
+import type { AccountRequestPort } from '../../../features/connections/main/provider/accountRequestPort.ts'
 import {
   checkExistingNonceGas,
   ecRecover,
@@ -25,24 +25,24 @@ import {
   resError,
   decodeMessage,
   encodePersonalSignMessage
-} from '../../../features/connections/main/provider/helpers.js'
-import type { ProviderProxyConnection } from '../../../features/connections/main/provider/proxy.js'
-import type { ProviderStatePort } from '../../../features/connections/main/provider/statePort.js'
-import type { Subscription } from '../../../features/connections/main/provider/subscriptions.js'
+} from '../../../features/connections/main/provider/helpers.ts'
+import type { ProviderProxyConnection } from '../../../features/connections/main/provider/proxy.ts'
+import type { ProviderStatePort } from '../../../features/connections/main/provider/statePort.ts'
+import type { Subscription } from '../../../features/connections/main/provider/subscriptions.ts'
 import {
   SubscriptionType,
   hasSubscriptionPermission
-} from '../../../features/connections/main/provider/subscriptions.js'
-import { getVersionFromTypedData } from '../../../features/connections/main/provider/typedData.js'
-import type { Chains } from '../../../features/networks/main/index.js'
-import type { Chain } from '../../../features/networks/main/index.js'
-import { estimateL1GasCost } from '../../../features/networks/main/l1GasFees.js'
+} from '../../../features/connections/main/provider/subscriptions.ts'
+import { getVersionFromTypedData } from '../../../features/connections/main/provider/typedData.ts'
+import type { Chains } from '../../../features/networks/main/index.ts'
+import type { Chain } from '../../../features/networks/main/index.ts'
+import { estimateL1GasCost } from '../../../features/networks/main/l1GasFees.ts'
 import type {
   TransactionRequest,
   SignTypedDataRequest,
   AddChainRequest,
   AddTokenRequest
-} from '../../../features/requests/contract/requests.js'
+} from '../../../features/requests/contract/requests.ts'
 import type {
   EIP2612TypedData,
   LegacyTypedData,
@@ -50,28 +50,28 @@ import type {
   SignatureRequest,
   TypedData,
   TypedMessage
-} from '../../../features/requests/contract/requests.js'
-import { ApprovalType } from '../../../features/requests/domain/approval.js'
-import type { PromptedRequestContinuationPort } from '../../../features/requests/main/service.js'
-import { toTokenId } from '../../../features/tokens/domain/index.js'
-import type { Token } from '../../../features/tokens/domain/state/token.js'
-import { resolveWatchAsset } from '../../../features/tokens/main/watchAsset.js'
-import type { TransactionData } from '../../../features/transactions/domain/index.js'
-import { normalizeChainId } from '../../../features/transactions/domain/index.js'
+} from '../../../features/requests/contract/requests.ts'
+import { ApprovalType } from '../../../features/requests/domain/approval.ts'
+import type { PromptedRequestContinuationPort } from '../../../features/requests/main/service.ts'
+import { toTokenId } from '../../../features/tokens/domain/index.ts'
+import type { Token } from '../../../features/tokens/domain/state/token.ts'
+import { resolveWatchAsset } from '../../../features/tokens/main/watchAsset.ts'
+import type { TransactionData } from '../../../features/transactions/domain/index.ts'
+import { normalizeChainId } from '../../../features/transactions/domain/index.ts'
 import {
   populate as populateTransaction,
   classifyTransaction,
   signerCompatibility
-} from '../../../features/transactions/main/index.js'
-import type { RevealService } from '../../../features/transactions/main/reveal.js'
-import type { TokenData } from '../../../platform/chain-rpc/contracts/erc20.js'
-import { getSignerType, Type as SignerType } from '../../../platform/signing/domain/index.js'
-import { getCalldataDigest, getEip712Digests } from '../../../platform/signing/signatures/digests.js'
-import * as sigParser from '../../../platform/signing/signatures/index.js'
-import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
-import type { Permission } from '../../../platform/state-store/state/index.js'
-import type { Callback } from '../../../shared/domain/async.js'
-import { isNonZeroHex } from '../../../shared/domain/hex.js'
+} from '../../../features/transactions/main/index.ts'
+import type { RevealService } from '../../../features/transactions/main/reveal.ts'
+import type { TokenData } from '../../../platform/chain-rpc/contracts/erc20.ts'
+import { getSignerType, Type as SignerType } from '../../../platform/signing/domain/index.ts'
+import { getCalldataDigest, getEip712Digests } from '../../../platform/signing/signatures/digests.ts'
+import * as sigParser from '../../../platform/signing/signatures/index.ts'
+import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
+import type { Permission } from '../../../platform/state-store/state/index.ts'
+import type { Callback } from '../../../shared/domain/async.ts'
+import { isNonZeroHex } from '../../../shared/domain/hex.ts'
 import type {
   EVMError,
   JSONRPCRequestPayload,
@@ -81,18 +81,18 @@ import type {
   RPCRequestPayload,
   RPCResponsePayload,
   RPCSuccessCallback
-} from '../../../shared/domain/rpc.js'
-import { capitalize } from '../../../shared/domain/text.js'
+} from '../../../shared/domain/rpc.ts'
+import { capitalize } from '../../../shared/domain/text.ts'
 import {
   createMainProcessSource,
   hasSourceCapability,
   isAiSessionActive,
   type AiSessionClientSource,
   type RequestSource
-} from '../gateway/requestSource.js'
-import { createRpcGateway } from '../gateway/rpc.js'
-import { rpcMethodPolicy } from '../gateway/rpcPolicy.js'
-import { ProtectedOperationsService } from '../protected-operations/service.js'
+} from '../gateway/requestSource.ts'
+import { createRpcGateway } from '../gateway/rpc.ts'
+import { rpcMethodPolicy } from '../gateway/rpcPolicy.ts'
+import { ProtectedOperationsService } from '../protected-operations/service.ts'
 
 export interface TransactionRequestContext {
   tokenData?: TokenData

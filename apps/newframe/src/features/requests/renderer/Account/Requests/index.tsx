@@ -4,7 +4,7 @@ import { Text } from '@newframe/ui/text'
 import type { ReactNode } from 'react'
 
 import { cva } from '../../../../../../generated/styled-system/css/cva.js'
-import { persistedImageSource } from '../../../../asset-data/domain/image'
+import { persistedImageSource } from '../../../../asset-data/domain/image/index.ts'
 import type {
   AccessRequest,
   AgentAccessRequest,
@@ -13,18 +13,18 @@ import type {
   AddTokenRequest,
   SignatureRequest,
   TransactionRequest
-} from '../../../contract/requests'
-import type { RequestRendererCapabilities } from '../../requestCapabilities'
-import RequestItem from '../../ui/RequestItem'
-import { RequestList } from '../../ui/RequestList'
+} from '../../../contract/requests.ts'
+import type { RequestRendererCapabilities } from '../../requestCapabilities.ts'
+import RequestItem from '../../ui/RequestItem.tsx'
+import { RequestList } from '../../ui/RequestList.tsx'
 import {
   useAddressIdentities,
   useAccountRequests,
   useEthereumNetworkMetadata,
   useEthereumNetworks,
   useOrigins
-} from './state'
-import TxOverview from './TransactionRequest/TxMainNew/overview'
+} from './state.ts'
+import TxOverview from './TransactionRequest/TxMainNew/overview.tsx'
 
 type RenderableRequest =
   | AccessRequest

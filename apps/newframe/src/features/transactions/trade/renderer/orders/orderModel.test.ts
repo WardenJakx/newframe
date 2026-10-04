@@ -15,7 +15,7 @@ import {
   orderSize,
   orderTargetNotional,
   orderStatusLabel
-} from './orderModel'
+} from './orderModel.ts'
 
 describe('orderModel', () => {
   it('normalizes supported trade sides', () => {

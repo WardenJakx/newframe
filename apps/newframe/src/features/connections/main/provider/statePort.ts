@@ -1,8 +1,8 @@
-import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
-import type { Address } from '../../../../shared/domain/address.js'
-import type { RPC } from '../../../../shared/domain/rpc.js'
-import { createObserver as createAssetsObserver, loadAssets } from './assets.js'
-import { createChainsObserver, createOriginChainObserver, getActiveChains } from './chains.js'
+import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
+import type { Address } from '../../../../shared/domain/address.ts'
+import type { RPC } from '../../../../shared/domain/rpc.ts'
+import { createObserver as createAssetsObserver, loadAssets } from './assets.ts'
+import { createChainsObserver, createOriginChainObserver, getActiveChains } from './chains.ts'
 
 type ChainsHandler = Parameters<typeof createChainsObserver>[1]
 type OriginHandler = Parameters<typeof createOriginChainObserver>[1]

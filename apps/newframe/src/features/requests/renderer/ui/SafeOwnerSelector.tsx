@@ -3,13 +3,13 @@ import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 import { useState } from 'react'
 
-import { AddressIdentity, shortAddress } from '../../../../shared/renderer/ui/AddressIdentity'
+import { AddressIdentity, shortAddress } from '../../../../shared/renderer/ui/AddressIdentity.tsx'
 import {
   signerIsReady,
   signerStatusText,
   signerTypeLabel
-} from '../../../../shared/renderer/ui/signerPresentation'
-import type { SafeOwnerAccount } from '../../../accounts/domain/safe'
+} from '../../../../shared/renderer/ui/signerPresentation.ts'
+import type { SafeOwnerAccount } from '../../../accounts/domain/safe.ts'
 
 export function SafeOwnerSelector({
   owners,

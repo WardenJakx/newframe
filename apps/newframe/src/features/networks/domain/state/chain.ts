@@ -1,10 +1,10 @@
 import { z } from 'zod'
 
-import { TokenImageSchema } from '../../../tokens/domain/state/token.js'
-import { ColorwayPaletteSchema } from './colors.js'
-import { ConnectionSchema } from './connection.js'
-import { GasSchema } from './gas.js'
-import { NativeCurrencySchema } from './nativeCurrency.js'
+import { TokenImageSchema } from '../../../tokens/domain/state/token.ts'
+import { ColorwayPaletteSchema } from './colors.ts'
+import { ConnectionSchema } from './connection.ts'
+import { GasSchema } from './gas.ts'
+import { NativeCurrencySchema } from './nativeCurrency.ts'
 
 const layerValues = ['mainnet', 'rollup', 'sidechain', 'testnet'] as const
 

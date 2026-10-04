@@ -7,8 +7,8 @@ import { DataType, EthSignRequest, ETHSignature } from '@keystonehq/bc-ur-regist
 import { URDecoder, UREncoder } from '@ngraveio/bc-ur'
 import { HDKey } from '@scure/bip32'
 
-import { AirGapPublicAccountSchema, type AirGapPublicAccount } from '../../domain/airgap.js'
-import { deriveHDAccounts } from '../Signer/derive.js'
+import { AirGapPublicAccountSchema, type AirGapPublicAccount } from '../../domain/airgap.ts'
+import { deriveHDAccounts } from '../Signer/derive.ts'
 
 export { DataType }
 const MAX_MESSAGE = 65_536

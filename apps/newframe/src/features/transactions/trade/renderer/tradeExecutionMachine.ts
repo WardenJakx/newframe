@@ -1,4 +1,4 @@
-import type { OperationRecord } from '../../../../platform/operations/operation'
+import type { OperationRecord } from '../../../../platform/operations/operation.ts'
 
 type TradeExecutionPhase =
   | 'idle'

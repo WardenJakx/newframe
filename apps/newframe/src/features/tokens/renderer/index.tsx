@@ -3,12 +3,12 @@ import { Icon } from '@newframe/ui/icon'
 import { Text } from '@newframe/ui/text'
 import { useState } from 'react'
 
-import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay'
-import type { Token } from '../domain/state/token'
-import AddToken from './AddToken'
-import type { AddTokenNotifyData } from './AddToken'
-import CustomTokens from './CustomTokens'
-import type { TokensCapability } from './tokensCapability'
+import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay.tsx'
+import type { Token } from '../domain/state/token.ts'
+import AddToken from './AddToken/index.tsx'
+import type { AddTokenNotifyData } from './AddToken/index.tsx'
+import CustomTokens from './CustomTokens/index.tsx'
+import type { TokensCapability } from './tokensCapability.ts'
 
 interface PendingCustomToken {
   address: string

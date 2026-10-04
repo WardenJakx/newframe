@@ -13,24 +13,24 @@ import log from 'electron-log'
 import { v4 as uuid } from 'uuid'
 import type WebSocket from 'ws'
 
-import { createExtensionGateway } from '../../app/main/gateway/extension.js'
-import { embeddedImageSource } from '../../features/asset-data/domain/image/index.js'
-import type { ExtensionAccessService } from '../../features/connections/main/extensionAccess.js'
+import { createExtensionGateway } from '../../app/main/gateway/extension.ts'
+import { embeddedImageSource } from '../../features/asset-data/domain/image/index.ts'
+import type { ExtensionAccessService } from '../../features/connections/main/extensionAccess.ts'
 import {
   parseOrigin,
   parseRequestChainId,
   type FrameExtension,
   type OriginsService
-} from '../../features/connections/main/origins.js'
-import type { JSONRPCRequestPayload, RPC, RPCResponsePayload } from '../../shared/domain/rpc.js'
+} from '../../features/connections/main/origins.ts'
+import type { JSONRPCRequestPayload, RPC, RPCResponsePayload } from '../../shared/domain/rpc.ts'
 import {
   createOriginSessionMonitor,
   type ApiTimerPort,
   type RpcProviderSendPort,
   type RpcRequestHandler
-} from './request.js'
-import { rpcCall } from './trpc.js'
-import validPayload from './validPayload.js'
+} from './request.ts'
+import { rpcCall } from './trpc.ts'
+import validPayload from './validPayload.ts'
 
 function faviconSource(value: unknown): string | undefined {
   const embedded = embeddedImageSource(value)

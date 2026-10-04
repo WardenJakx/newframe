@@ -1,10 +1,10 @@
-import type { NativeCurrency as ChainNativeCurrency } from '../../features/networks/domain/state/nativeCurrency.js'
+import type { NativeCurrency as ChainNativeCurrency } from '../../features/networks/domain/state/nativeCurrency.ts'
 import type {
   LegacyTypedData,
   TransactionReceipt,
   TypedData
-} from '../../features/requests/contract/requests.js'
-import type { Address } from './address.js'
+} from '../../features/requests/contract/requests.ts'
+import type { Address } from './address.ts'
 
 export type RPCResponsePayload = JSONRPCSuccessResponsePayload & JSONRPCErrorResponsePayload
 

@@ -1,16 +1,16 @@
 import React from 'react'
 
-import type { FlashQuoteDisplay } from '../../../../app/contracts/operations'
-import type { OperationCollection, OperationRecord } from '../../../../platform/operations/operation'
+import type { FlashQuoteDisplay } from '../../../../app/contracts/operations.ts'
+import type { OperationCollection, OperationRecord } from '../../../../platform/operations/operation.ts'
 import {
   initialTradeExecutionState,
   tradeExecutionBlocksQuotes,
   tradeExecutionCanSubmit,
   tradeExecutionReducer,
   type TradeExecutionSession
-} from './tradeExecutionMachine'
-import type { TradeCapability } from './tradeService'
-import { tradeErrorMessage } from './tradeTransaction'
+} from './tradeExecutionMachine.ts'
+import type { TradeCapability } from './tradeService.ts'
+import { tradeErrorMessage } from './tradeTransaction.ts'
 
 export function useTradeExecution({
   capability,

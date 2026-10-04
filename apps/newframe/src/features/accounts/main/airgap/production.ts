@@ -1,13 +1,13 @@
-import type { OperationService } from '../../../../platform/operations/service.js'
-import AirGapSigner from '../../../../platform/signing/signers/airgap/AirGapSigner.js'
+import type { OperationService } from '../../../../platform/operations/service.ts'
+import AirGapSigner from '../../../../platform/signing/signers/airgap/AirGapSigner.ts'
 import {
   AirGapUrAssembler,
   airGapId,
   decodePublicAccount
-} from '../../../../platform/signing/signers/airgap/protocol.js'
-import type canonicalStore from '../../../../platform/state-store/index.js'
-import type { AccountsRuntime } from '../runtime.js'
-import { createAirGapService } from './service.js'
+} from '../../../../platform/signing/signers/airgap/protocol.ts'
+import type canonicalStore from '../../../../platform/state-store/index.ts'
+import type { AccountsRuntime } from '../runtime.ts'
+import { createAirGapService } from './service.ts'
 
 export function createProductionAirGapService(
   store: typeof canonicalStore,

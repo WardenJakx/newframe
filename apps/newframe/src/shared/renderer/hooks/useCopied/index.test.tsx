@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, expect, it, jest as timers } from 'bun:test'
 
-import { render, screen } from '../../../../../test/support/componentSetup'
+import { render, screen } from '../../../../../test/support/componentSetup.tsx'
 import {
   createRequestRendererCapabilitiesFake as createRequestPortsFake,
   type RequestRendererCapabilitiesFake
-} from '../../../../features/requests/renderer/requestCapabilities.test-support'
+} from '../../../../features/requests/renderer/requestCapabilities.test-support.ts'
 
 let capabilities: RequestRendererCapabilitiesFake
-let useCopiedMessage: typeof import('../../../../features/requests/renderer/hooks/useCopiedMessage').default
+let useCopiedMessage: typeof import('../../../../features/requests/renderer/hooks/useCopiedMessage.ts').default
 
 const TestComponent = () => {
   const [showCopiedMessage, copyText] = useCopiedMessage(capabilities.external, 'use frame!')
@@ -23,7 +23,8 @@ const TestComponent = () => {
 beforeEach(async () => {
   timers.useFakeTimers()
   capabilities = createRequestPortsFake()
-  useCopiedMessage = (await import('../../../../features/requests/renderer/hooks/useCopiedMessage')).default
+  useCopiedMessage = (await import('../../../../features/requests/renderer/hooks/useCopiedMessage.ts'))
+    .default
 })
 
 afterEach(() => {

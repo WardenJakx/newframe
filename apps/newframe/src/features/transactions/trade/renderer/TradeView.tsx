@@ -22,14 +22,14 @@ import { Tabs } from '@newframe/ui/tabs'
 import { Text } from '@newframe/ui/text'
 import { ToggleButton } from '@newframe/ui/toggle-button'
 
-import { SidePanel } from '../../../../shared/renderer/ui/SidePanel/SidePanel'
-import TokenSelector from '../../../../shared/renderer/ui/TokenSelector'
-import { TOKEN_SELECTOR_ROWS_INCREMENT } from '../../../../shared/renderer/ui/tokenSelectorModel'
-import type { TradeCapability } from './tradeService'
-import type { TradeOrderFields } from './tradeTransaction'
-import type { TradeAssetViewModel, TradeViewEvents, TradeViewModel } from './tradeViewModel'
-import { BalanceRange } from './ui/BalanceRange'
-import { ProgressSteps } from './ui/ProgressSteps'
+import { SidePanel } from '../../../../shared/renderer/ui/SidePanel/SidePanel.tsx'
+import TokenSelector from '../../../../shared/renderer/ui/TokenSelector.tsx'
+import { TOKEN_SELECTOR_ROWS_INCREMENT } from '../../../../shared/renderer/ui/tokenSelectorModel.ts'
+import type { TradeCapability } from './tradeService.ts'
+import type { TradeOrderFields } from './tradeTransaction.ts'
+import type { TradeAssetViewModel, TradeViewEvents, TradeViewModel } from './tradeViewModel.ts'
+import { BalanceRange } from './ui/BalanceRange.tsx'
+import { ProgressSteps } from './ui/ProgressSteps.tsx'
 
 const durationInputs = [
   ['durationDays', 'days', 'Days', '0'],

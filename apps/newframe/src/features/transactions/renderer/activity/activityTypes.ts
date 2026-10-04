@@ -1,6 +1,6 @@
-import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
-import type { NetworkLike, NetworkMetaLike } from '../../../../shared/renderer/ui/tokenSelectorTypes'
-import type { TransactionEffect } from '../../domain'
+import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections.ts'
+import type { NetworkLike, NetworkMetaLike } from '../../../../shared/renderer/ui/tokenSelectorTypes.ts'
+import type { TransactionEffect } from '../../domain/index.ts'
 
 export type WalletActivityRecord = WalletRendererState['activity'][string]
 

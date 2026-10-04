@@ -1,6 +1,6 @@
 import { beforeEach, expect, it, mock } from 'bun:test'
 
-import { createImageService } from './index'
+import { createImageService } from './index.ts'
 
 const downloadImage = mock()
 const getTokenDiscoveryProvider = mock()
@@ -306,9 +306,9 @@ async function createOriginImageStore() {
   const { createStore } = await import('zustand/vanilla')
   const { subscribeWithSelector } = await import('zustand/middleware')
   const { immer } = await import('zustand/middleware/immer')
-  const { createCanonicalActions } = await import('../../../../platform/state-store/actions')
-  const { default: createInitialState } = await import('../../../../platform/state-store/state')
-  const canonical = createStore<import('../../../../platform/state-store/actions').CanonicalStore>()(
+  const { createCanonicalActions } = await import('../../../../platform/state-store/actions.ts')
+  const { default: createInitialState } = await import('../../../../platform/state-store/state/index.ts')
+  const canonical = createStore<import('../../../../platform/state-store/actions.ts').CanonicalStore>()(
     subscribeWithSelector(
       immer((set, get) => ({ ...createInitialState(), ...createCanonicalActions(set, get) }))
     )

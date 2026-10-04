@@ -1,7 +1,7 @@
 import { expect, it } from 'bun:test'
 
-import { render, screen } from '../../../../test/support/componentSetup'
-import { TrayNotificationProvider, useTrayNotification } from './notification'
+import { render, screen } from '../../../../test/support/componentSetup.tsx'
+import { TrayNotificationProvider, useTrayNotification } from './notification.tsx'
 
 function NotificationConsumer() {
   const { data, notify, type } = useTrayNotification()

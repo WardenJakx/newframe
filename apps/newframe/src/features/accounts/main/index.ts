@@ -4,27 +4,27 @@ import { addHexPrefix, intToHex } from '@ethereumjs/util'
 import log from 'electron-log'
 import { v5 as uuidv5 } from 'uuid'
 
-import { getProfileAccountIds } from '../../../app/contracts/state/main.js'
-import { authorizeGatewayOperation, type RequestSource } from '../../../app/main/gateway/requestSource.js'
-import { getSignerType } from '../../../platform/signing/domain/index.js'
-import type { SigningApprovalContext } from '../../../platform/signing/signers/Signer/index.js'
-import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.js'
-import type { ActivityRecord, Token } from '../../../platform/state-store/state/index.js'
-import type { Address } from '../../../shared/domain/address.js'
-import type { Callback } from '../../../shared/domain/async.js'
-import { weiIntToEthInt, hexToInt } from '../../../shared/domain/hex.js'
+import { getProfileAccountIds } from '../../../app/contracts/state/main.ts'
+import { authorizeGatewayOperation, type RequestSource } from '../../../app/main/gateway/requestSource.ts'
+import { getSignerType } from '../../../platform/signing/domain/index.ts'
+import type { SigningApprovalContext } from '../../../platform/signing/signers/Signer/index.ts'
+import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
+import type { ActivityRecord, Token } from '../../../platform/state-store/state/index.ts'
+import type { Address } from '../../../shared/domain/address.ts'
+import type { Callback } from '../../../shared/domain/async.ts'
+import { weiIntToEthInt, hexToInt } from '../../../shared/domain/hex.ts'
 import type {
   EVMError,
   RPC,
   RPCRequestCallback,
   RPCRequestPayload,
   RPCResponsePayload
-} from '../../../shared/domain/rpc.js'
-import { resolveAssetRate } from '../../asset-data/domain/asset/index.js'
-import type { DataScanner } from '../../asset-data/main/externalData/index.js'
-import type { NameResolutionService } from '../../name-resolution/main/nameResolution.js'
-import { chainUsesOptimismFees } from '../../networks/domain/chain/fees.js'
-import type { Chain } from '../../networks/main/index.js'
+} from '../../../shared/domain/rpc.ts'
+import { resolveAssetRate } from '../../asset-data/domain/asset/index.ts'
+import type { DataScanner } from '../../asset-data/main/externalData/index.ts'
+import type { NameResolutionService } from '../../name-resolution/main/nameResolution.ts'
+import { chainUsesOptimismFees } from '../../networks/domain/chain/fees.ts'
+import type { Chain } from '../../networks/main/index.ts'
 import type {
   AccountRequest,
   AccessRequest,
@@ -32,18 +32,18 @@ import type {
   TransactionReceipt,
   TypedMessage,
   PermitSignatureRequest
-} from '../../requests/contract/requests.js'
+} from '../../requests/contract/requests.ts'
 import {
   ReplacementType,
   RequestStatus,
   RequestMode,
   TxClassification
-} from '../../requests/contract/requests.js'
-import type { ApprovalType } from '../../requests/domain/approval.js'
-import type { PromptedRequestLifecyclePort } from '../../requests/main/service.js'
-import { NATIVE_CURRENCY } from '../../tokens/domain/constants.js'
-import { tokensForAccount, toTokenId } from '../../tokens/domain/index.js'
-import type { TransactionData } from '../../transactions/domain/index.js'
+} from '../../requests/contract/requests.ts'
+import type { ApprovalType } from '../../requests/domain/approval.ts'
+import type { PromptedRequestLifecyclePort } from '../../requests/main/service.ts'
+import { NATIVE_CURRENCY } from '../../tokens/domain/constants.ts'
+import { tokensForAccount, toTokenId } from '../../tokens/domain/index.ts'
+import type { TransactionData } from '../../transactions/domain/index.ts'
 import {
   usesBaseFee,
   GasFeesSource,
@@ -53,16 +53,16 @@ import {
   getTransactionEffects,
   getPaidTransactionFee,
   type TransactionEffect
-} from '../../transactions/domain/index.js'
-import type { AccountTransactionPolicyPort } from '../../transactions/main/accountPolicyPort.js'
-import type { ActionType } from '../../transactions/main/actions/index.js'
-import type { RevealService } from '../../transactions/main/reveal.js'
-import type { TransactionSimulationPort } from '../../transactions/main/simulationPort.js'
-import { accountNS } from '../domain/index.js'
-import type { Account } from '../domain/state/account.js'
-import FrameAccount from './Account.js'
-import type { AccountChainRpcPort } from './providerPort.js'
-import type { AccountsRuntime } from './runtime.js'
+} from '../../transactions/domain/index.ts'
+import type { AccountTransactionPolicyPort } from '../../transactions/main/accountPolicyPort.ts'
+import type { ActionType } from '../../transactions/main/actions/index.ts'
+import type { RevealService } from '../../transactions/main/reveal.ts'
+import type { TransactionSimulationPort } from '../../transactions/main/simulationPort.ts'
+import { accountNS } from '../domain/index.ts'
+import type { Account } from '../domain/state/account.ts'
+import FrameAccount from './Account.ts'
+import type { AccountChainRpcPort } from './providerPort.ts'
+import type { AccountsRuntime } from './runtime.ts'
 
 function shortHash(hash?: string) {
   if (!hash) {
@@ -179,7 +179,7 @@ function toTransactionsByLayer(requests: Record<string, AccountRequest | undefin
 const frameOriginId = uuidv5('newframe-internal', uuidv5.DNS)
 const CONFIRMED_REQUEST_CLOSE_MS = 3000
 
-export type { AccountRequest, AccessRequest, TransactionRequest } from '../../requests/contract/requests.js'
+export type { AccountRequest, AccessRequest, TransactionRequest } from '../../requests/contract/requests.ts'
 
 type RequestWithId = [string, TransactionRequest]
 

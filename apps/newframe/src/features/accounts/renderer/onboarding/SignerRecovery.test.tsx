@@ -1,9 +1,12 @@
 import { expect, it, mock } from 'bun:test'
 
-import { cleanup, render, screen, waitFor } from '../../../../../test/support/componentSetup'
-import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
-import { createAccountsCapabilityFake, type AccountsCapabilityFake } from '../accountsCapability.test-support'
-import SignerRecovery from './SignerRecovery'
+import { cleanup, render, screen, waitFor } from '../../../../../test/support/componentSetup.tsx'
+import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient.ts'
+import {
+  createAccountsCapabilityFake,
+  type AccountsCapabilityFake
+} from '../accountsCapability.test-support.ts'
+import SignerRecovery from './SignerRecovery.tsx'
 
 const fixture = registerTestRuntimeFixture()
 let capability: AccountsCapabilityFake

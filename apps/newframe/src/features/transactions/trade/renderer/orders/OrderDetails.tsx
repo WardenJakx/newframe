@@ -1,9 +1,9 @@
 import { useShallow } from 'zustand/react/shallow'
 
-import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector'
-import { accountDisplayType } from '../../../../../shared/renderer/ui/signerPresentation'
-import { OrderDetailsView } from './OrderDetailsView'
-import type { OrdersCapability } from './ordersCapability'
+import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector.tsx'
+import { accountDisplayType } from '../../../../../shared/renderer/ui/signerPresentation.ts'
+import { OrderDetailsView } from './OrderDetailsView.tsx'
+import type { OrdersCapability } from './ordersCapability.ts'
 
 export function OrderDetails({
   assetImages,

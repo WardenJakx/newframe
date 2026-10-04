@@ -6,7 +6,7 @@ import {
   activityTimestampLabel,
   createActivityRows,
   transactionStatusLabel
-} from './activityModel'
+} from './activityModel.ts'
 
 describe('activityModel', () => {
   it('filters activity by account and selected network', () => {

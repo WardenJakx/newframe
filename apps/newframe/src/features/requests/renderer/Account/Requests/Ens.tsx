@@ -1,5 +1,5 @@
-import { AddressIdentity } from '../../../../../shared/renderer/ui/AddressIdentity'
-import type { AddressIdentities } from './state'
+import { AddressIdentity } from '../../../../../shared/renderer/ui/AddressIdentity.tsx'
+import type { AddressIdentities } from './state.ts'
 const timeFormat = new Intl.DateTimeFormat('en', { dateStyle: 'medium' })
 
 type EnsOverviewProps = {

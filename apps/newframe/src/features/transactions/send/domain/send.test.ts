@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
-import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
-import { buildSendTransaction, encodeErc20Transfer } from './send'
+import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
+import { buildSendTransaction, encodeErc20Transfer } from './send.ts'
 
 describe('send transaction construction', () => {
   it('constructs native and ERC-20 transfers from validated final intent', () => {

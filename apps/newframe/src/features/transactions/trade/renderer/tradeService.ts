@@ -4,10 +4,10 @@ import type {
   QueryMap,
   ResultForQuery,
   TradeRequestCommand
-} from '../../../../app/contracts/operations'
-import type { NewframeHost } from '../../../../platform/ipc/contract/ipc'
-import type { TokenImageCapability } from '../../../../shared/renderer/capabilities'
-import type { MarketTradeQuoteRequest } from './tradeTransaction'
+} from '../../../../app/contracts/operations.ts'
+import type { NewframeHost } from '../../../../platform/ipc/contract/ipc.ts'
+import type { TokenImageCapability } from '../../../../shared/renderer/capabilities.ts'
+import type { MarketTradeQuoteRequest } from './tradeTransaction.ts'
 
 type WithoutType<TInput> = TInput extends { type: string } ? Omit<TInput, 'type'> : never
 type TradePrepareInput = WithoutType<TradeRequestCommand>

@@ -4,7 +4,7 @@ import {
   handleLocalTradeRequest,
   localOpenOrderSnapshot,
   subscribeLocalTradeOrders
-} from './local-trade/handler'
+} from './local-trade/handler.ts'
 
 const hostname = process.env.FLASH_LOCAL_TRADE_HOST ?? '127.0.0.1'
 const port = Number(process.env.FLASH_LOCAL_TRADE_PORT ?? 8422)

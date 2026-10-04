@@ -1,7 +1,7 @@
-import { persistedImageSource } from '../../../../asset-data/domain/image'
-import { SimpleTypedData } from '../../ui/SimpleTypedData'
-import type { TypedDataRequestView } from './requestViewTypes'
-import { useOriginName, useOrigins } from './state'
+import { persistedImageSource } from '../../../../asset-data/domain/image/index.ts'
+import { SimpleTypedData } from '../../ui/SimpleTypedData.tsx'
+import type { TypedDataRequestView } from './requestViewTypes.ts'
+import { useOriginName, useOrigins } from './state.ts'
 
 export default function SignTypedDataRequest({ req }: { req: TypedDataRequestView }) {
   const originName = useOriginName(req.origin)

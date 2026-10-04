@@ -1,4 +1,4 @@
-import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.js'
+import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
 
 export interface SendAssetIdentity {
   address: string

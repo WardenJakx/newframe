@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { TokenIdSchema } from '../../../tokens/domain/state/token.js'
+import { TokenIdSchema } from '../../../tokens/domain/state/token.ts'
 
 const CoreBalanceSchema = z.object({
   balance: z.string().describe('Raw balance, in hex'),

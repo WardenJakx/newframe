@@ -6,13 +6,13 @@ import type { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import log from 'electron-log'
 import { Client, Utils, Constants } from 'gridplus-sdk'
 
-import type { TypedData, TypedMessage } from '../../../../features/requests/contract/requests.js'
-import type { TransactionData } from '../../../../features/transactions/domain/index.js'
-import { sign, signerCompatibility, londonToLegacy } from '../../../../features/transactions/main/index.js'
-import type { Callback } from '../../../../shared/domain/async.js'
-import { hexToInt } from '../../../../shared/domain/hex.js'
-import { Derivation, getDerivationPath } from '../Signer/derive.js'
-import Signer from '../Signer/index.js'
+import type { TypedData, TypedMessage } from '../../../../features/requests/contract/requests.ts'
+import type { TransactionData } from '../../../../features/transactions/domain/index.ts'
+import { sign, signerCompatibility, londonToLegacy } from '../../../../features/transactions/main/index.ts'
+import type { Callback } from '../../../../shared/domain/async.ts'
+import { hexToInt } from '../../../../shared/domain/hex.ts'
+import { Derivation, getDerivationPath } from '../Signer/derive.ts'
+import Signer from '../Signer/index.ts'
 
 const ADDRESS_LIMIT = 10
 const HARDENED_OFFSET = 0x80000000

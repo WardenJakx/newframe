@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 
-import { type AccountsCapability, selectAccountAndClose } from './accountsCapability'
-import { AccountSelectorView } from './AccountSelectorView'
-import { useAccountList } from './useAccountList'
+import { type AccountsCapability, selectAccountAndClose } from './accountsCapability.ts'
+import { AccountSelectorView } from './AccountSelectorView.tsx'
+import { useAccountList } from './useAccountList.ts'
 
 export function AccountSelector({
   capability,

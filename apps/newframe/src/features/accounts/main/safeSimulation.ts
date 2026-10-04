@@ -1,14 +1,14 @@
 import { Interface, concat, toBeHex } from 'ethers'
 import { z } from 'zod'
 
-import type { Erc20ProviderPort } from '../../../platform/chain-rpc/contracts/erc20.js'
-import type { SafeSimulationRpc, SafeStateOverrides } from '../../../platform/safe/simulation.js'
+import type { Erc20ProviderPort } from '../../../platform/chain-rpc/contracts/erc20.ts'
+import type { SafeSimulationRpc, SafeStateOverrides } from '../../../platform/safe/simulation.ts'
 import {
   effectsFromTrace,
   isTraceCall,
   type TraceCall,
   type TransactionSimulationProjection
-} from '../../transactions/main/simulation.js'
+} from '../../transactions/main/simulation.ts'
 import {
   safeAddressSchema,
   safeConfigurationSchema,
@@ -16,7 +16,7 @@ import {
   type SafeConfiguration,
   type SafeProposal,
   type SafeProposalSimulation
-} from '../domain/safe.js'
+} from '../domain/safe.ts'
 
 const abi = new Interface([
   'function getThreshold() view returns (uint256)',

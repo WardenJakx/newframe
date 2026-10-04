@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, jest as timers, mock } from 'bun:test'
 
-import FrameBackgroundProvider, { RawFrameConnection, type ConnectionRetryState } from './frameConnection'
+import FrameBackgroundProvider, { RawFrameConnection, type ConnectionRetryState } from './frameConnection.ts'
 
 class FakeWebSocket extends EventTarget {
   readyState: number = WebSocket.CONNECTING

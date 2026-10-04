@@ -3,7 +3,7 @@ import { describe, expect, test } from 'bun:test'
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import { hashMessage, TypedDataEncoder } from 'ethers'
 
-import { getCalldataDigest, getEip712Digests, getOriginalMessageDigest } from './digests'
+import { getCalldataDigest, getEip712Digests, getOriginalMessageDigest } from './digests.ts'
 
 const TYPED_DATA = {
   types: {

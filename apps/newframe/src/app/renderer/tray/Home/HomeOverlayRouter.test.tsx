@@ -1,13 +1,20 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
 
-import { act, fireEvent, render, screen, waitFor, within } from '../../../../../test/support/componentSetup'
-import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
-import type { DisplayedBalance } from '../../../../features/asset-data/domain/balance'
-import { createRequestRendererCapabilitiesFake as createRequestPortsFake } from '../../../../features/requests/renderer/requestCapabilities.test-support'
-import { NATIVE_CURRENCY } from '../../../../features/tokens/domain/constants'
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within
+} from '../../../../../test/support/componentSetup.tsx'
+import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient.ts'
+import type { DisplayedBalance } from '../../../../features/asset-data/domain/balance/index.ts'
+import { createRequestRendererCapabilitiesFake as createRequestPortsFake } from '../../../../features/requests/renderer/requestCapabilities.test-support.ts'
+import { NATIVE_CURRENCY } from '../../../../features/tokens/domain/constants.ts'
 import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support.ts'
-import { accountsCapability } from '../../capabilities/accounts'
-import { homeCapability } from '../../capabilities/home'
+import { accountsCapability } from '../../capabilities/accounts.ts'
+import { homeCapability } from '../../capabilities/home.ts'
 import {
   activityCapability,
   connectionsCapability,
@@ -17,17 +24,17 @@ import {
   securityCapability,
   settingsCapability,
   tokensCapability
-} from '../../capabilities/homeFeatures'
-import type { HomeCapabilities } from './Home'
-import { HomeUiProvider, useHomeUiStore } from './state/HomeUiProvider'
+} from '../../capabilities/homeFeatures.ts'
+import type { HomeCapabilities } from './Home.tsx'
+import { HomeUiProvider, useHomeUiStore } from './state/HomeUiProvider.tsx'
 
 Object.defineProperty(global.navigator, 'keyboard', {
   configurable: true,
   value: { getLayoutMap: async () => new Map() }
 })
 
-const { HomeOverlayRouter } = await import('./HomeOverlayRouter')
-const { default: Home } = await import('./Home')
+const { HomeOverlayRouter } = await import('./HomeOverlayRouter.tsx')
+const { default: Home } = await import('./Home.tsx')
 const fixture = registerTestRuntimeFixture()
 const requestCapabilities = createRequestPortsFake()
 const capabilities: HomeCapabilities = {
@@ -286,4 +293,4 @@ describe('HomeOverlayRouter retained menu layers', () => {
     })
   }
 })
-import { createQrCameraFake } from '../../../../platform/desktop/renderer/camera.test-support'
+import { createQrCameraFake } from '../../../../platform/desktop/renderer/camera.test-support.ts'

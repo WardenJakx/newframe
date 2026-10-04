@@ -1,14 +1,17 @@
 import { expect, it, mock, spyOn } from 'bun:test'
 
-import { act, cleanup, render, screen, waitFor } from '../../../../test/support/componentSetup'
-import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
-import type { QueryResultMap } from '../../../app/contracts/operations'
-import { createQrCameraFake } from '../../../platform/desktop/renderer/camera.test-support'
-import type { OperationRecord } from '../../../platform/operations/operation'
+import { act, cleanup, render, screen, waitFor } from '../../../../test/support/componentSetup.tsx'
+import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient.ts'
+import type { QueryResultMap } from '../../../app/contracts/operations.ts'
+import { createQrCameraFake } from '../../../platform/desktop/renderer/camera.test-support.ts'
+import type { OperationRecord } from '../../../platform/operations/operation.ts'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
-import { createBuiltInNetworks } from '../../networks/domain/chain/catalog'
-import { createAccountsCapabilityFake, type AccountsCapabilityFake } from './accountsCapability.test-support'
-import { AddAccount } from './AddAccount'
+import { createBuiltInNetworks } from '../../networks/domain/chain/catalog.ts'
+import {
+  createAccountsCapabilityFake,
+  type AccountsCapabilityFake
+} from './accountsCapability.test-support.ts'
+import { AddAccount } from './AddAccount.tsx'
 
 const anyString = expect.any(String) as string
 

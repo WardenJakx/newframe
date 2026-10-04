@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
+import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
 import {
   getAssetRateKey,
   getAssetLabel,
@@ -10,8 +11,7 @@ import {
   toAssetId,
   toErc20AssetId,
   toNativeAssetId
-} from '.'
-import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
+} from './index.ts'
 
 const expectedGroups = {
   ETH: [

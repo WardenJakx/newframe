@@ -7,7 +7,7 @@ import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
-import { AddressAvatar } from '../../../../shared/renderer/ui/AddressAvatar'
+import { AddressAvatar } from '../../../../shared/renderer/ui/AddressAvatar.tsx'
 
 const identityControlRecipe = cva({
   base: {

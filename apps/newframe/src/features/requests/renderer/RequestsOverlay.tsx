@@ -1,7 +1,7 @@
-import type { AirGapRequestReference } from '../../../platform/signing/domain/airgap'
-import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
-import type { RequestRendererCapabilities } from './requestCapabilities'
-import { RequestsOverlayView } from './RequestsOverlayView'
+import type { AirGapRequestReference } from '../../../platform/signing/domain/airgap.ts'
+import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector.tsx'
+import type { RequestRendererCapabilities } from './requestCapabilities.ts'
+import { RequestsOverlayView } from './RequestsOverlayView.tsx'
 
 export function RequestsOverlay({
   capabilities,

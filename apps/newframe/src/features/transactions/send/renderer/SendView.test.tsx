@@ -1,10 +1,10 @@
 import { expect, it, mock } from 'bun:test'
 
-import { render, screen } from '../../../../../test/support/componentSetup'
-import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
-import { createSendCapabilityFake } from './sendService.test-support'
-import { SendView } from './SendView'
-import type { SendViewEvents, SendViewModel } from './sendViewModel'
+import { render, screen } from '../../../../../test/support/componentSetup.tsx'
+import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient.ts'
+import { createSendCapabilityFake } from './sendService.test-support.ts'
+import { SendView } from './SendView.tsx'
+import type { SendViewEvents, SendViewModel } from './sendViewModel.ts'
 
 registerTestRuntimeFixture()
 

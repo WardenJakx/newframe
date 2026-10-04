@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { timestamp } from './timestamp'
+import { timestamp } from './timestamp.ts'
 
 describe('timestamp', () => {
   it('returns numeric timestamps unchanged', () => {

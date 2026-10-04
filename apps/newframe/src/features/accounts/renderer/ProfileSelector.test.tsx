@@ -1,11 +1,14 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
 
-import { act, cleanup, render, screen, waitFor } from '../../../../test/support/componentSetup'
-import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
-import type { OperationRecord } from '../../../platform/operations/operation'
+import { act, cleanup, render, screen, waitFor } from '../../../../test/support/componentSetup.tsx'
+import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient.ts'
+import type { OperationRecord } from '../../../platform/operations/operation.ts'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
-import { createAccountsCapabilityFake, type AccountsCapabilityFake } from './accountsCapability.test-support'
-import { ProfileSelector } from './ProfileSelector'
+import {
+  createAccountsCapabilityFake,
+  type AccountsCapabilityFake
+} from './accountsCapability.test-support.ts'
+import { ProfileSelector } from './ProfileSelector.tsx'
 
 const anyString = expect.any(String) as string
 

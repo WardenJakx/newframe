@@ -1,6 +1,6 @@
 import { mock } from 'bun:test'
 
-import type { TradeCapability } from './tradeService'
+import type { TradeCapability } from './tradeService.ts'
 
 export function createTradeCapabilityFake() {
   return {

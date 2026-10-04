@@ -4,8 +4,8 @@ const currentAccount = mock()
 const providerSend = mock()
 const initOrigin = mock()
 
-import { createNewframeInternalSource } from '../../../app/main/gateway/requestSource'
-import { createSideTrayTransactionService } from './sideTrayService'
+import { createNewframeInternalSource } from '../../../app/main/gateway/requestSource.ts'
+import { createSideTrayTransactionService } from './sideTrayService.ts'
 
 let service: ReturnType<typeof createSideTrayTransactionService>
 let chainAvailable = true

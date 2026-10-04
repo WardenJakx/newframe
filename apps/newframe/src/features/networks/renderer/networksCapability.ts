@@ -1,5 +1,5 @@
-import type { CommandMap, CommandResult } from '../../../app/contracts/operations'
-import type { NewframeHost } from '../../../platform/ipc/contract/ipc'
+import type { CommandMap, CommandResult } from '../../../app/contracts/operations.ts'
+import type { NewframeHost } from '../../../platform/ipc/contract/ipc.ts'
 
 type Input<TType extends keyof CommandMap> = Omit<CommandMap[TType], 'type'>
 

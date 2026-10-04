@@ -1,5 +1,5 @@
-import type { PersistenceAdapter } from './createPersistenceAdapter.js'
-import type { PersistenceLifecycle, PersistenceSchedulerPort } from './ports.js'
+import type { PersistenceAdapter } from './createPersistenceAdapter.ts'
+import type { PersistenceLifecycle, PersistenceSchedulerPort } from './ports.ts'
 
 export interface PersistenceServiceDependencies {
   adapter: PersistenceAdapter

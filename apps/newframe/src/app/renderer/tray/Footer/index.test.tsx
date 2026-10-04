@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, expect, it, mock } from 'bun:test'
 
-import { render, screen } from '../../../../../test/support/componentSetup'
-import { createRendererStateFixture } from '../../../../../test/support/rendererState'
-import { createRequestRendererCapabilitiesFake as createRequestPortsFake } from '../../../../features/requests/renderer/requestCapabilities.test-support'
-import { RequestViewProvider } from '../../../../features/requests/renderer/requestView'
-import { Footer } from './index'
+import { render, screen } from '../../../../../test/support/componentSetup.tsx'
+import { createRendererStateFixture } from '../../../../../test/support/rendererState.tsx'
+import { createRequestRendererCapabilitiesFake as createRequestPortsFake } from '../../../../features/requests/renderer/requestCapabilities.test-support.ts'
+import { RequestViewProvider } from '../../../../features/requests/renderer/requestView.tsx'
+import { Footer } from './index.tsx'
 
 const requestPorts = createRequestPortsFake()
 const notify = mock()

@@ -10,9 +10,9 @@ import {
 } from '@newframe/flash/constants'
 import { type FlashAsset } from '@newframe/flash/schemas'
 
-import type { FlashQuoteDisplay } from '../../../../app/contracts/operations'
-import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
-import { createInitialTradeState, getTradeInputAmount, tradeReducer } from './tradeReducer'
+import type { FlashQuoteDisplay } from '../../../../app/contracts/operations.ts'
+import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
+import { createInitialTradeState, getTradeInputAmount, tradeReducer } from './tradeReducer.ts'
 
 function marketQuote(id = 'quote-1'): FlashQuoteDisplay {
   return {

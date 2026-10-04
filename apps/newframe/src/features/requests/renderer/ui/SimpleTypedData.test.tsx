@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'bun:test'
 
-import { screen, render, fireEvent } from '../../../../../test/support/componentSetup'
-import { createRendererStateFixture } from '../../../../../test/support/rendererState'
-import SignTypedDataRequest from '../Account/Requests/SignTypedDataRequest'
-import { SimpleTypedData } from './SimpleTypedData'
+import { screen, render, fireEvent } from '../../../../../test/support/componentSetup.tsx'
+import { createRendererStateFixture } from '../../../../../test/support/rendererState.tsx'
+import SignTypedDataRequest from '../Account/Requests/SignTypedDataRequest.tsx'
+import { SimpleTypedData } from './SimpleTypedData.tsx'
 
 describe('SimpleTypedData', () => {
   test('renders the stored requester and favicon, with a fallback for failed images', () => {

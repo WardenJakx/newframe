@@ -2,12 +2,12 @@ import { expect, it } from 'bun:test'
 
 import { useState, type ComponentProps } from 'react'
 
-import { act, render, screen, waitFor } from '../../../../../test/support/componentSetup'
-import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
-import { createQrCameraFake } from '../../../../platform/desktop/renderer/camera.test-support'
-import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support'
-import { createAccountsCapabilityFake } from '../accountsCapability.test-support'
-import { AirGapSigning } from './AirGapSigning'
+import { act, render, screen, waitFor } from '../../../../../test/support/componentSetup.tsx'
+import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient.ts'
+import { createQrCameraFake } from '../../../../platform/desktop/renderer/camera.test-support.ts'
+import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support.ts'
+import { createAccountsCapabilityFake } from '../accountsCapability.test-support.ts'
+import { AirGapSigning } from './AirGapSigning.tsx'
 
 function SigningHost(props: Omit<ComponentProps<typeof AirGapSigning>, 'dismiss'>) {
   const [open, setOpen] = useState(true)

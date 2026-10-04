@@ -1,13 +1,13 @@
 import { Text } from '@newframe/ui/text'
 
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
-import { MAX_HEX } from '../../../transactions/domain/constants'
+import { MAX_HEX } from '../../../transactions/domain/constants.ts'
 import {
   displayValueData,
   type DisplayValueData,
   type DisplayValueDataParams,
   type SourceValue
-} from '../format/displayValue'
+} from '../format/displayValue.ts'
 
 function isDisplayValueData(obj: unknown): obj is DisplayValueData {
   if (!obj || typeof obj !== 'object') {

@@ -1,10 +1,10 @@
 import { createFlashApi } from '@newframe/flash/api'
 
-import { getMainRuntime } from '../../../platform/runtime/index.js'
-import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
-import FlashPortfolioProvider from './providers/flash.js'
-import ZerionPortfolioProvider from './providers/zerion.js'
-import type { PortfolioProvider } from './types.js'
+import { getMainRuntime } from '../../../platform/runtime/index.ts'
+import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
+import FlashPortfolioProvider from './providers/flash.ts'
+import ZerionPortfolioProvider from './providers/zerion.ts'
+import type { PortfolioProvider } from './types.ts'
 
 type TokenDiscoveryProviderError = 'token_discovery_disabled' | 'missing_api_key'
 

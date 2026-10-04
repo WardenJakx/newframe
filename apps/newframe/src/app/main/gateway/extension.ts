@@ -1,8 +1,8 @@
-import type { ExtensionAccessService } from '../../../features/connections/main/extensionAccess.js'
-import type { RPCRequestPayload, RPCResponsePayload } from '../../../shared/domain/rpc.js'
-import { dispatchGatewayOperation } from './dispatch.js'
-import { isRequestSource, hasSourceCapability, type LocalApiSource } from './requestSource.js'
-import { rpcMethodPolicy } from './rpcPolicy.js'
+import type { ExtensionAccessService } from '../../../features/connections/main/extensionAccess.ts'
+import type { RPCRequestPayload, RPCResponsePayload } from '../../../shared/domain/rpc.ts'
+import { dispatchGatewayOperation } from './dispatch.ts'
+import { isRequestSource, hasSourceCapability, type LocalApiSource } from './requestSource.ts'
+import { rpcMethodPolicy } from './rpcPolicy.ts'
 
 export function createExtensionGateway(
   windows: { toggleTray(): unknown },

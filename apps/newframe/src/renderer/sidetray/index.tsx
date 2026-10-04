@@ -1,16 +1,16 @@
 import { UIRoot } from '@newframe/ui/root'
 import { createRoot } from 'react-dom/client'
 
-import App from '../../app/renderer/sidetray/App'
+import App from '../../app/renderer/sidetray/App.tsx'
 
 import '../../../generated/styled-system/styles.css'
 
-import { createSendCapability } from '../../features/transactions/send/renderer/sendService'
-import { createTradeCapability } from '../../features/transactions/trade/renderer/tradeService'
-import link from '../../platform/ipc/renderer/link'
-import type { SideTrayRendererState } from '../../platform/state-sync/contract/projections'
-import { connectRendererState } from '../../platform/state-sync/renderer/connectState'
-import { RendererStateProvider } from '../../platform/state-sync/renderer/useAppSelector'
+import { createSendCapability } from '../../features/transactions/send/renderer/sendService.ts'
+import { createTradeCapability } from '../../features/transactions/trade/renderer/tradeService.ts'
+import link from '../../platform/ipc/renderer/link.ts'
+import type { SideTrayRendererState } from '../../platform/state-sync/contract/projections.ts'
+import { connectRendererState } from '../../platform/state-sync/renderer/connectState.ts'
+import { RendererStateProvider } from '../../platform/state-sync/renderer/useAppSelector.tsx'
 
 document.addEventListener('dragover', (e) => e.preventDefault())
 document.addEventListener('drop', (e) => e.preventDefault())

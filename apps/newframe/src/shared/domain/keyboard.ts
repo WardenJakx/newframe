@@ -1,4 +1,4 @@
-import type { ShortcutKey } from '../../features/settings/domain/state/shortcuts.js'
+import type { ShortcutKey } from '../../features/settings/domain/state/shortcuts.ts'
 
 export type Platform = 'darwin' | 'win32' | 'linux'
 

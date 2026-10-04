@@ -1,1 +1,1 @@
-export { createProductionMainApp, createProductionCapabilities } from './production.js'
+export { createProductionMainApp, createProductionCapabilities } from './production.ts'

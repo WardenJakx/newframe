@@ -2,18 +2,18 @@ import { beforeEach, describe, expect, it } from 'bun:test'
 
 import { act, waitFor, within } from '@testing-library/react'
 
-import { fireEvent, screen, render } from '../../../../../../../test/support/componentSetup'
-import { registerTestRuntimeFixture } from '../../../../../../../test/support/rendererClient'
-import { erc20Interface } from '../../../../../../shared/domain/evm'
-import { TransactionApprovalAdjustmentsSchema } from '../../../../../transactions/domain/approval'
-import { RequestStatus, TxClassification } from '../../../../contract/requests'
+import { fireEvent, screen, render } from '../../../../../../../test/support/componentSetup.tsx'
+import { registerTestRuntimeFixture } from '../../../../../../../test/support/rendererClient.ts'
+import { erc20Interface } from '../../../../../../shared/domain/evm.ts'
+import { TransactionApprovalAdjustmentsSchema } from '../../../../../transactions/domain/approval.ts'
+import { RequestStatus, TxClassification } from '../../../../contract/requests.ts'
 import {
   createRequestRendererCapabilitiesFake as createRequestPortsFake,
   type RequestRendererCapabilitiesFake
-} from '../../../requestCapabilities.test-support'
-import { RequestViewProvider } from '../../../requestView'
-import type { TransactionRequestView } from '../requestViewTypes'
-import TxRequest, { TransactionRequest } from './index'
+} from '../../../requestCapabilities.test-support.ts'
+import { RequestViewProvider } from '../../../requestView.tsx'
+import type { TransactionRequestView } from '../requestViewTypes.ts'
+import TxRequest, { TransactionRequest } from './index.tsx'
 
 const fixture = registerTestRuntimeFixture()
 let capabilities: RequestRendererCapabilitiesFake

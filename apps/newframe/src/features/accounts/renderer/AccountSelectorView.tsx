@@ -8,10 +8,10 @@ import { Text } from '@newframe/ui/text'
 import { useEffect, useRef, type DragEventHandler, type ReactNode } from 'react'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
-import { AddressAvatar } from '../../../shared/renderer/ui/AddressAvatar'
-import { SidePanelHeader } from '../../../shared/renderer/ui/SidePanel/SidePanelHeader'
-import { TrayOverlayFrame } from '../../../shared/renderer/ui/TrayOverlayFrame'
-import { accountMatchesQuery, type AccountListItem, type AccountListModel } from './accountsModel'
+import { AddressAvatar } from '../../../shared/renderer/ui/AddressAvatar.tsx'
+import { SidePanelHeader } from '../../../shared/renderer/ui/SidePanel/SidePanelHeader.tsx'
+import { TrayOverlayFrame } from '../../../shared/renderer/ui/TrayOverlayFrame.tsx'
+import { accountMatchesQuery, type AccountListItem, type AccountListModel } from './accountsModel.ts'
 
 const accountRowRecipe = cva({
   base: {

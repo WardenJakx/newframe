@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { messageSource } from './messageSource'
+import { messageSource } from './messageSource.ts'
 
 const settingsUrl = 'chrome-extension://abc/settings.html'
 const forgedTab = { id: 99, url: 'https://victim.example/' }

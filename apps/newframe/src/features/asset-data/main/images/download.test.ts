@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, mock } from 'bun:test'
 
 import { electronMock } from '../../../../../test/support/electron.mock.ts'
-import { downloadImage } from './download'
+import { downloadImage } from './download.ts'
 
 type TestResponse = ReturnType<typeof createResponse> | ReturnType<typeof createRedirect>
 type LookupResult = Array<{ address: string; family: number }>

@@ -2,7 +2,7 @@ import path from 'node:path'
 
 import { app } from 'electron'
 
-import { prepareDevelopmentProfile } from '../platform/runtime/developmentProfile.js'
+import { prepareDevelopmentProfile } from '../platform/runtime/developmentProfile.ts'
 
 process.env.BUNDLE_LOCATION =
   process.env.BUNDLE_LOCATION || path.resolve(import.meta.dirname, '../../..', 'bundle')
@@ -27,4 +27,4 @@ if (isDevApp) {
   app.setPath('userData', path.join(app.getPath('appData'), profileAppName))
 }
 
-await import('../app/main/index.js')
+await import('../app/main/index.ts')

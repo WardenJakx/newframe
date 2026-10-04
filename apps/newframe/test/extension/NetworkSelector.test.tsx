@@ -1,7 +1,7 @@
 import { describe, expect, it, mock } from 'bun:test'
 
-import { NetworkSelector } from '../../../newframe-extension/src/settings/NetworkSelector'
-import { fireEvent, render, screen } from '../support/componentSetup'
+import { NetworkSelector } from '../../../newframe-extension/src/settings/NetworkSelector.tsx'
+import { fireEvent, render, screen } from '../support/componentSetup.tsx'
 
 describe('NetworkSelector', () => {
   it('shows the selected network and prevents unavailable networks from activating', () => {

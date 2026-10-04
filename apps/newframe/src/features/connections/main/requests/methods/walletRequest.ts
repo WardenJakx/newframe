@@ -1,8 +1,8 @@
 import { z } from 'zod'
 
-import type { RPCRequestPayload } from '../../../../../shared/domain/rpc.js'
-import { createRequestMatcher } from '../matchers.js'
-import { chainIdMatcher, sessionMatcher } from './caipRequest.js'
+import type { RPCRequestPayload } from '../../../../../shared/domain/rpc.ts'
+import { createRequestMatcher } from '../matchers.ts'
+import { chainIdMatcher, sessionMatcher } from './caipRequest.ts'
 
 const walletRequestParams = z.object({
   chainId: z.optional(chainIdMatcher),

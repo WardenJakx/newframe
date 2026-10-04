@@ -1,11 +1,11 @@
 import { describe, expect, it, mock } from 'bun:test'
 
-import { createTestStore } from '../../../../test/support/createTestStore'
-import { DEFAULT_PROFILE_ID } from '../../../app/contracts/state/main'
-import { createOperationService } from '../../../platform/operations/service'
-import type { Account } from '../../accounts/domain/state/account'
-import { createBuiltInNetworks } from '../../networks/domain/chain/catalog'
-import { createPortfolioService } from './service'
+import { createTestStore } from '../../../../test/support/createTestStore.ts'
+import { DEFAULT_PROFILE_ID } from '../../../app/contracts/state/main.ts'
+import { createOperationService } from '../../../platform/operations/service.ts'
+import type { Account } from '../../accounts/domain/state/account.ts'
+import { createBuiltInNetworks } from '../../networks/domain/chain/catalog.ts'
+import { createPortfolioService } from './service.ts'
 
 const address = '0x1111111111111111111111111111111111111111'
 const owner = { clientType: 'wallet-ui' as const, windowInstanceId: 'tray-test' }

@@ -1,6 +1,6 @@
 import Conf from 'conf'
 
-import type { PersistenceSchedulerPort, PersistenceStoragePort } from './ports.js'
+import type { PersistenceSchedulerPort, PersistenceStoragePort } from './ports.ts'
 
 export interface ProductionPersistencePorts {
   storage: PersistenceStoragePort

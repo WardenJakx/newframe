@@ -1,5 +1,5 @@
-import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections'
-import type { NetworkLike, NetworkMetaLike } from '../../../../../shared/renderer/ui/tokenSelectorTypes'
+import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections.ts'
+import type { NetworkLike, NetworkMetaLike } from '../../../../../shared/renderer/ui/tokenSelectorTypes.ts'
 
 type OrderRecord = WalletRendererState['orders'][string]
 export type OrderAsset = Partial<OrderRecord['targetAsset']> & {

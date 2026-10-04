@@ -14,15 +14,15 @@ import { sva } from '../../../../../../../generated/styled-system/css/sva.js'
 import type {
   ClipboardCapability,
   TokenImageCapability
-} from '../../../../../../shared/renderer/capabilities'
-import { useTokenImageHydration } from '../../../../../../shared/renderer/hooks/useTokenImageHydration'
-import { CopyButton } from '../../../../../../shared/renderer/ui/CopyButton'
-import { imageSource, persistedImageSource } from '../../../../../asset-data/domain/image'
-import type { NativeCurrency } from '../../../../../networks/domain/state/nativeCurrency'
-import type { TransactionEffect } from '../../../../../transactions/domain'
-import type { SourceValue } from '../../../format/displayValue'
-import { DisplayCoinBalance } from '../../../ui/DisplayValue'
-import { RequestOrigin } from '../../../ui/RequestOrigin'
+} from '../../../../../../shared/renderer/capabilities.ts'
+import { useTokenImageHydration } from '../../../../../../shared/renderer/hooks/useTokenImageHydration.ts'
+import { CopyButton } from '../../../../../../shared/renderer/ui/CopyButton.tsx'
+import { imageSource, persistedImageSource } from '../../../../../asset-data/domain/image/index.ts'
+import type { NativeCurrency } from '../../../../../networks/domain/state/nativeCurrency.ts'
+import type { TransactionEffect } from '../../../../../transactions/domain/index.ts'
+import type { SourceValue } from '../../../format/displayValue.ts'
+import { DisplayCoinBalance } from '../../../ui/DisplayValue.tsx'
+import { RequestOrigin } from '../../../ui/RequestOrigin.tsx'
 
 type TransactionInformationEffect = Omit<TransactionEffect, 'amount' | 'detail' | 'label'> & {
   amount?: SourceValue

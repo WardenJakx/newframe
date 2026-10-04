@@ -3,8 +3,8 @@ import { describe, expect, it, mock } from 'bun:test'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-import { Selection } from '../src/primitives/Selection'
-import { Text } from '../src/primitives/Text'
+import { Selection } from '../src/primitives/Selection.tsx'
+import { Text } from '../src/primitives/Text.tsx'
 
 describe('Selection', () => {
   it('matches the trigger by default and supports an explicitly aligned wide menu', () => {

@@ -12,8 +12,8 @@ import {
 } from '@newframe/flash/constants'
 import type { FlashQuote } from '@newframe/flash/schemas'
 
-import type { BalanceSummary } from '../../../asset-data/domain/balance'
-import { cleanFlashDecimal } from '../domain/policy'
+import type { BalanceSummary } from '../../../asset-data/domain/balance/index.ts'
+import { cleanFlashDecimal } from '../domain/policy.ts'
 import {
   buildTradeAssetOptions,
   buildTradeQuoteRequest,
@@ -24,7 +24,7 @@ import {
   getTradeQuoteValidationError,
   getTradeValidationError,
   marketTradeQuoteRequestKey
-} from './tradeTransaction'
+} from './tradeTransaction.ts'
 
 describe('tradeTransaction', () => {
   const base = {

@@ -4,7 +4,7 @@ import { readFile, writeFile } from 'node:fs/promises'
 import { isDesktopClientError } from '@newframe/desktop-api/client'
 import { FlashQuoteRequestSchema } from '@newframe/flash/contracts'
 
-import { NewframeClient } from './client.js'
+import { NewframeClient } from './client.ts'
 
 const usage = `newframe session start --name NAME [--description TEXT] [--duration SECONDS]
 newframe session show|revoke

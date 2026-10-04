@@ -1,11 +1,11 @@
 import { describe, expect, it, mock } from 'bun:test'
 
-import { createTestStore } from '../../../../../test/support/createTestStore'
-import { DEFAULT_PROFILE_ID } from '../../../../app/contracts/state/main'
-import type { OperationRecord } from '../../../../platform/operations/operation'
-import { createOperationService } from '../../../../platform/operations/service'
-import type { OperationOwner } from '../../../../platform/operations/types'
-import { createProfileService } from './service'
+import { createTestStore } from '../../../../../test/support/createTestStore.ts'
+import { DEFAULT_PROFILE_ID } from '../../../../app/contracts/state/main.ts'
+import type { OperationRecord } from '../../../../platform/operations/operation.ts'
+import { createOperationService } from '../../../../platform/operations/service.ts'
+import type { OperationOwner } from '../../../../platform/operations/types.ts'
+import { createProfileService } from './service.ts'
 
 const first = '0x1111111111111111111111111111111111111111'
 const second = '0x2222222222222222222222222222222222222222'

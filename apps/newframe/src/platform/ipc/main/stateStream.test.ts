@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
 
-import { DEFAULT_PROFILE_ID } from '../../../app/contracts/state/main'
-import createCanonicalStore from '../../state-store/createCanonicalStore'
-import createInitialState from '../../state-store/state'
-import { StateMessageChannel } from '../../state-sync/contract/protocol'
-import { projectRendererState } from '../../state-sync/main/projections'
-import type { AuthorizationContext } from './authorization'
-import { createStateStream, type StateStream } from './stateStream'
+import { DEFAULT_PROFILE_ID } from '../../../app/contracts/state/main.ts'
+import createCanonicalStore from '../../state-store/createCanonicalStore.ts'
+import createInitialState from '../../state-store/state/index.ts'
+import { StateMessageChannel } from '../../state-sync/contract/protocol.ts'
+import { projectRendererState } from '../../state-sync/main/projections.ts'
+import type { AuthorizationContext } from './authorization.ts'
+import { createStateStream, type StateStream } from './stateStream.ts'
 
 type ProjectedRecord = Record<string, unknown>
 type ProjectedAccount = ProjectedRecord & {

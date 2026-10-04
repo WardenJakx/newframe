@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { openSecret, sealSecret } from './secret'
+import { openSecret, sealSecret } from './secret.ts'
 
 describe('hot signer secret envelope', () => {
   const vaultKey = 'ab'.repeat(32)

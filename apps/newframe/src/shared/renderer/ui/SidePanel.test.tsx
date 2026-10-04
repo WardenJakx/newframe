@@ -3,8 +3,8 @@ import { describe, expect, it, mock } from 'bun:test'
 import { Button } from '@newframe/ui/button'
 import { Text } from '@newframe/ui/text'
 
-import { fireEvent, render, screen } from '../../../../test/support/componentSetup'
-import { SidePanel } from './SidePanel/SidePanel'
+import { fireEvent, render, screen } from '../../../../test/support/componentSetup.tsx'
+import { SidePanel } from './SidePanel/SidePanel.tsx'
 
 describe('SidePanel', () => {
   it('encapsulates its heading, body, close action, and footer composition', () => {

@@ -1,6 +1,6 @@
 import { expect, it } from 'bun:test'
 
-import { createDeferredAccountTransactionPolicyPort } from './accountPolicyPort'
+import { createDeferredAccountTransactionPolicyPort } from './accountPolicyPort.ts'
 
 it('fails closed without a transaction policy and restores nested bindings', () => {
   const deferred = createDeferredAccountTransactionPolicyPort()

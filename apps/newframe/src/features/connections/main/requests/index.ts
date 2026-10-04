@@ -1,6 +1,6 @@
-import type { RPCRequestPayload } from '../../../../shared/domain/rpc.js'
-import mapCaipRequest from './methods/caipRequest.js'
-import mapWalletRequest from './methods/walletRequest.js'
+import type { RPCRequestPayload } from '../../../../shared/domain/rpc.ts'
+import mapCaipRequest from './methods/caipRequest.ts'
+import mapWalletRequest from './methods/walletRequest.ts'
 
 export function mapRequest(requestPayload: RPCRequestPayload): RPCRequestPayload {
   if (requestPayload.method === 'caip_request') {

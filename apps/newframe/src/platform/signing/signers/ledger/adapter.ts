@@ -3,11 +3,11 @@ import log from 'electron-log'
 import type { Device } from 'node-hid'
 import { shallow } from 'zustand/vanilla/shallow'
 
-import type canonicalStore from '../../../state-store/index.js'
-import { SignerAdapter } from '../adapters.js'
-import { Derivation } from '../Signer/derive.js'
-import { getLedgerDevices, TransportNodeHidSingleton as TransportNodeHid } from './dependencies.js'
-import Ledger, { Status } from './Ledger/index.js'
+import type canonicalStore from '../../../state-store/index.ts'
+import { SignerAdapter } from '../adapters.ts'
+import { Derivation } from '../Signer/derive.ts'
+import { getLedgerDevices, TransportNodeHidSingleton as TransportNodeHid } from './dependencies.ts'
+import Ledger, { Status } from './Ledger/index.ts'
 
 function updateDerivation(
   store: typeof canonicalStore,

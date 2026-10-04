@@ -2,7 +2,7 @@ import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 
-import type { AgentAccessRequestView } from './requestViewTypes'
+import type { AgentAccessRequestView } from './requestViewTypes.ts'
 
 function durationLabel(seconds: number) {
   if (seconds % 86_400 === 0) {

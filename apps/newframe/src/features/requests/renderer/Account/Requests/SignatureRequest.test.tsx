@@ -1,8 +1,8 @@
 import { expect, it } from 'bun:test'
 
-import { screen, render } from '../../../../../../test/support/componentSetup'
-import type { SignRequestView } from './requestViewTypes'
-import SignatureRequestComponent from './SignatureRequest'
+import { screen, render } from '../../../../../../test/support/componentSetup.tsx'
+import type { SignRequestView } from './requestViewTypes.ts'
+import SignatureRequestComponent from './SignatureRequest.tsx'
 
 const address = '0x0000000000000000000000000000000000000001'
 const statement = 'Sign in to manage your account.'

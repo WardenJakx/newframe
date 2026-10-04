@@ -1,8 +1,8 @@
 import { describe, expect, it, mock } from 'bun:test'
 
-import { fireEvent, render, screen } from '../../../../test/support/componentSetup'
-import { AddChain } from './AddChain'
-import type { NetworksCapability } from './networksCapability'
+import { fireEvent, render, screen } from '../../../../test/support/componentSetup.tsx'
+import { AddChain } from './AddChain.tsx'
+import type { NetworksCapability } from './networksCapability.ts'
 
 describe('AddChain', () => {
   const pending = {

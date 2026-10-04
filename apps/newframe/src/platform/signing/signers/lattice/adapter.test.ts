@@ -3,10 +3,10 @@ import { EventEmitter } from 'events'
 
 import log from 'electron-log'
 
-import store from '../../../state-store'
-import createCanonicalStore from '../../../state-store/createCanonicalStore'
-import { Derivation } from '../Signer/derive'
-import LatticeSignerAdapter from './adapter'
+import createCanonicalStore from '../../../state-store/createCanonicalStore.ts'
+import store from '../../../state-store/index.ts'
+import { Derivation } from '../Signer/derive.ts'
+import LatticeSignerAdapter from './adapter.ts'
 
 const calls = <T extends unknown[]>(fn: unknown) => (fn as { mock: { calls: T[] } }).mock.calls
 

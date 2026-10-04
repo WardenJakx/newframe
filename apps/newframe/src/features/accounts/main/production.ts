@@ -1,16 +1,16 @@
 import { Notification } from 'electron'
 
-import type { RpcIpcHandlers } from '../../../app/main/ipc-handlers/rpc.js'
-import { createOneResultCallbackBoundary } from '../../../platform/callbacks/oneResult.js'
-import { createBlockExplorerOpener } from '../../../platform/desktop/windows/window.js'
-import type { CanonicalStore } from '../../../platform/state-store/actions.js'
-import type store from '../../../platform/state-store/index.js'
-import { arraysEqual } from '../../../shared/domain/collections.js'
-import type { Chains } from '../../networks/main/index.js'
-import type { Account } from '../domain/state/account.js'
-import type { Accounts } from './index.js'
-import type { AccountsRuntime } from './runtime.js'
-import type { AccountServicePorts } from './service.js'
+import type { RpcIpcHandlers } from '../../../app/main/ipc-handlers/rpc.ts'
+import { createOneResultCallbackBoundary } from '../../../platform/callbacks/oneResult.ts'
+import { createBlockExplorerOpener } from '../../../platform/desktop/windows/window.ts'
+import type { CanonicalStore } from '../../../platform/state-store/actions.ts'
+import type store from '../../../platform/state-store/index.ts'
+import { arraysEqual } from '../../../shared/domain/collections.ts'
+import type { Chains } from '../../networks/main/index.ts'
+import type { Account } from '../domain/state/account.ts'
+import type { Accounts } from './index.ts'
+import type { AccountsRuntime } from './runtime.ts'
+import type { AccountServicePorts } from './service.ts'
 
 export type ProductionAccountsExternalAdapters = Pick<AccountsRuntime, 'persistence' | 'signers' | 'windows'>
 

@@ -1,7 +1,7 @@
 import { mock } from 'bun:test'
 
-import type { CommandResult, QueryResultMap } from '../../../app/contracts/operations'
-import type { RequestRendererCapabilities } from './requestCapabilities'
+import type { CommandResult, QueryResultMap } from '../../../app/contracts/operations.ts'
+import type { RequestRendererCapabilities } from './requestCapabilities.ts'
 
 const acknowledged = <TInput>() => mock(async (_input: TInput): Promise<CommandResult> => ({ ok: true }))
 

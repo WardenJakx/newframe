@@ -1,4 +1,4 @@
-import type { DisplayedBalance } from '../../../../../features/asset-data/domain/balance'
+import type { DisplayedBalance } from '../../../../../features/asset-data/domain/balance/index.ts'
 
 export type HomeSection = 'positions' | 'activity' | 'orders'
 

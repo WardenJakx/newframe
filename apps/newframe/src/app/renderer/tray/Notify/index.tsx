@@ -7,23 +7,23 @@ import { ToggleButton } from '@newframe/ui/toggle-button'
 import type { ReactNode } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
-import type { AccountsCapability } from '../../../../features/accounts/renderer/accountsCapability'
-import { AirGapSigning } from '../../../../features/accounts/renderer/airgap/AirGapSigning'
-import SignerRecovery from '../../../../features/accounts/renderer/onboarding/SignerRecovery'
-import ExtensionAccessNotification from '../../../../features/connections/renderer/ExtensionAccess'
-import ExtensionConnectNotification from '../../../../features/connections/renderer/ExtensionConnect'
-import type { TransactionRequest } from '../../../../features/requests/contract/requests'
+import type { AccountsCapability } from '../../../../features/accounts/renderer/accountsCapability.ts'
+import { AirGapSigning } from '../../../../features/accounts/renderer/airgap/AirGapSigning.tsx'
+import SignerRecovery from '../../../../features/accounts/renderer/onboarding/SignerRecovery.tsx'
+import ExtensionAccessNotification from '../../../../features/connections/renderer/ExtensionAccess.tsx'
+import ExtensionConnectNotification from '../../../../features/connections/renderer/ExtensionConnect.tsx'
+import type { TransactionRequest } from '../../../../features/requests/contract/requests.ts'
 import type {
   RequestExternalCapability,
   RequestReviewCapability
-} from '../../../../features/requests/renderer/requestCapabilities'
-import type { QrCameraCapability } from '../../../../platform/desktop/renderer/camera'
-import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
-import { capitalize } from '../../../../shared/domain/text'
-import { connectionsCapability } from '../../capabilities/homeFeatures'
-import type { HomeCapability } from '../Home/homeCapability'
-import { useTrayNotification, type TrayNotifier } from '../notification'
-import type { TrayRendererState } from '../state'
+} from '../../../../features/requests/renderer/requestCapabilities.ts'
+import type { QrCameraCapability } from '../../../../platform/desktop/renderer/camera.ts'
+import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector.tsx'
+import { capitalize } from '../../../../shared/domain/text.ts'
+import { connectionsCapability } from '../../capabilities/homeFeatures.ts'
+import type { HomeCapability } from '../Home/homeCapability.ts'
+import { useTrayNotification, type TrayNotifier } from '../notification.tsx'
+import type { TrayRendererState } from '../state.ts'
 
 const isNotificationData = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value)

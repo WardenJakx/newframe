@@ -19,20 +19,20 @@ import {
 import { subscribeWithSelector } from 'zustand/middleware'
 import { createStore } from 'zustand/vanilla'
 
-import { seedSafe, type SafeSeedManifest } from '../../../../harness/newframe/services/safe-contracts'
-import { createSafeHandler } from '../../scripts/local-safe/handler'
-import type { SafeProposal } from '../../src/features/accounts/domain/safe'
-import { createSafeService } from '../../src/features/accounts/main/safe'
-import { simulateSafeProposal } from '../../src/features/accounts/main/safeSimulation'
-import type { TransactionEffect } from '../../src/features/transactions/domain'
+import { seedSafe, type SafeSeedManifest } from '../../../../harness/newframe/services/safe-contracts.ts'
+import { createSafeHandler } from '../../scripts/local-safe/handler.ts'
+import type { SafeProposal } from '../../src/features/accounts/domain/safe.ts'
+import { createSafeService } from '../../src/features/accounts/main/safe.ts'
+import { simulateSafeProposal } from '../../src/features/accounts/main/safeSimulation.ts'
+import type { TransactionEffect } from '../../src/features/transactions/domain/index.ts'
 import {
   createTransactionSimulationProjection,
   type TraceCall
-} from '../../src/features/transactions/main/simulation'
-import { createOperationService } from '../../src/platform/operations/service'
-import { createSafeClient } from '../../src/platform/safe/client'
-import { createSafeSimulationRpc } from '../../src/platform/safe/simulation'
-import { createTestStore } from '../support/createTestStore'
+} from '../../src/features/transactions/main/simulation.ts'
+import { createOperationService } from '../../src/platform/operations/service.ts'
+import { createSafeClient } from '../../src/platform/safe/client.ts'
+import { createSafeSimulationRpc } from '../../src/platform/safe/simulation.ts'
+import { createTestStore } from '../support/createTestStore.ts'
 
 // Anvil and official Safe contracts are the same local dependencies as the visual harness.
 // Run explicitly with test:integration:safe-simulation; no external chain or user keys.

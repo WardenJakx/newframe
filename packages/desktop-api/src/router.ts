@@ -19,7 +19,7 @@ import {
   type RpcError,
   type ProviderEvent,
   type WalletEvent
-} from './schemas.js'
+} from './schemas.ts'
 
 /** Ports only: no desktop, Electron, or wallet implementation enters the client type graph. */
 export interface DesktopContext {

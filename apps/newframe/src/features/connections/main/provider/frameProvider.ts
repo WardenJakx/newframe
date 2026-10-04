@@ -17,7 +17,7 @@ import {
   type RpcPayload,
   type RpcResult,
   type SubscriptionPayload
-} from './rpc.js'
+} from './rpc.ts'
 
 export interface Eip1193Provider {
   request<T = unknown>(payload: ProviderRequest): Promise<T>

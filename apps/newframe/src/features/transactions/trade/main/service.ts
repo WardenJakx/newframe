@@ -30,11 +30,11 @@ import {
   type TradeRequestCommand,
   type TradeSubmitCommand,
   type TypedDataV4
-} from '../../../../app/contracts/operations.js'
-import type { RequestSource } from '../../../../app/main/gateway/requestSource.js'
-import type { OperationEntityRef } from '../../../../platform/operations/operation.js'
-import type { OperationService } from '../../../../platform/operations/service.js'
-import type { OperationOwner, OperationReference } from '../../../../platform/operations/types.js'
+} from '../../../../app/contracts/operations.ts'
+import type { RequestSource } from '../../../../app/main/gateway/requestSource.ts'
+import type { OperationEntityRef } from '../../../../platform/operations/operation.ts'
+import type { OperationService } from '../../../../platform/operations/service.ts'
+import type { OperationOwner, OperationReference } from '../../../../platform/operations/types.ts'
 
 type TradeAccount = { id: string; address: string }
 type TradeOrder = {

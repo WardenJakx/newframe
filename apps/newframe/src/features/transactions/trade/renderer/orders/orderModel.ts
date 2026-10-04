@@ -1,8 +1,8 @@
 import { getDirectionLabel } from '@newframe/flash/pair'
 import type { FlashTradeSide } from '@newframe/flash/schemas'
 
-import { timestamp } from '../../../../../shared/domain/timestamp'
-import type { OrderAsset, OrderModel, OrderNetworkMap, OrderRow } from './orderTypes'
+import { timestamp } from '../../../../../shared/domain/timestamp.ts'
+import type { OrderAsset, OrderModel, OrderNetworkMap, OrderRow } from './orderTypes.ts'
 
 export function normalizeOrderSide(side = ''): FlashTradeSide | '' {
   const normalized = String(side).toLowerCase()

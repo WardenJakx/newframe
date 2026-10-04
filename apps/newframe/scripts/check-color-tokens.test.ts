@@ -8,7 +8,7 @@ import {
   systemColors
 } from '@newframe/ui/tokens/colors'
 
-import { chainColors, chainColorValue } from '../src/features/networks/domain/chain/colors'
+import { chainColors, chainColorValue } from '../src/features/networks/domain/chain/colors.ts'
 
 describe('color tokens', () => {
   it('defines the six-level plum surface scale', () => {

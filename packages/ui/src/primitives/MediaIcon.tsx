@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 
 import { cva } from '../styled-system/css/cva.js'
 import type { RecipeVariantProps } from '../styled-system/types/recipe.js'
-import { Image } from './Image'
+import { Image } from './Image.tsx'
 
 const mediaIconRecipe = cva({
   base: {

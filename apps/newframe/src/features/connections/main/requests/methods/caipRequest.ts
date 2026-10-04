@@ -1,8 +1,8 @@
 import { addHexPrefix } from '@ethereumjs/util'
 import { z } from 'zod'
 
-import type { RPCRequestPayload } from '../../../../../shared/domain/rpc.js'
-import { createRequestMatcher, generateError } from '../matchers.js'
+import type { RPCRequestPayload } from '../../../../../shared/domain/rpc.ts'
+import { createRequestMatcher, generateError } from '../matchers.ts'
 
 export const chainIdMatcher = z
   .string()

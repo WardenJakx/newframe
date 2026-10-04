@@ -1,6 +1,6 @@
-import type { SafeOwnerAccount } from '../domain/safe.js'
-import type { Account } from '../domain/state/account.js'
-import { safeExecutorCandidates, safeOwnerCandidates } from './signingCapability.js'
+import type { SafeOwnerAccount } from '../domain/safe.ts'
+import type { Account } from '../domain/state/account.ts'
+import { safeExecutorCandidates, safeOwnerCandidates } from './signingCapability.ts'
 
 export function deriveSafeOwners(
   safeAccount: Account,

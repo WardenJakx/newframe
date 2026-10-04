@@ -1,5 +1,5 @@
 const NATIVE_CURRENCY = '0x0000000000000000000000000000000000000000'
-import { getFlashChainConfig } from './chains.js'
+import { getFlashChainConfig } from './chains.ts'
 import {
   FLASH_ANVIL_CHAIN_ID,
   FLASH_NATIVE_ETH_ASSET_SYMBOL,
@@ -8,8 +8,8 @@ import {
   FLASH_USDC_ASSET_SYMBOL,
   FLASH_WETH_ADDRESS,
   FLASH_WETH_ASSET_SYMBOL
-} from './constants.js'
-import { FlashAssetSchema, type FlashAsset } from './schemas.js'
+} from './constants.ts'
+import { FlashAssetSchema, type FlashAsset } from './schemas.ts'
 
 interface FlashBalanceSummaryLike {
   address?: unknown

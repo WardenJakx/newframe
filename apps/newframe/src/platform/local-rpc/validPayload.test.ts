@@ -6,7 +6,7 @@ import {
   WebSocketJsonRpcRequestSchema
 } from '@newframe/desktop-api/protocol'
 
-import validatePayloadTyped from './validPayload'
+import validatePayloadTyped from './validPayload.ts'
 
 // real function under test, exercised with invalid payloads
 const validatePayload = (payload: unknown) =>

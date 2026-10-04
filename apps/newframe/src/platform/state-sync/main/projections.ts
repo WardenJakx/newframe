@@ -1,17 +1,17 @@
-import { getProfileAccountIds } from '../../../app/contracts/state/main.js'
-import { accountDisplayType } from '../../../features/accounts/domain/accountDisplayType.js'
-import { deriveSafeExecutors, deriveSafeOwners } from '../../../features/accounts/main/safeOwners.js'
+import { getProfileAccountIds } from '../../../app/contracts/state/main.ts'
+import { accountDisplayType } from '../../../features/accounts/domain/accountDisplayType.ts'
+import { deriveSafeExecutors, deriveSafeOwners } from '../../../features/accounts/main/safeOwners.ts'
 import {
   deriveSigningCapability,
   safeExecutorCandidates,
   safeOwnerCandidates
-} from '../../../features/accounts/main/signingCapability.js'
-import { createBalanceSummarySelector } from '../../../features/asset-data/domain/balance/index.js'
-import type { SignatureRequest, TransactionRequest } from '../../../features/requests/contract/requests.js'
-import { isSignatureRequest, isTransactionRequest } from '../../../features/requests/domain/index.js'
-import { OperationRecordSchema, type OperationCollection } from '../../operations/operation.js'
-import { verifySafeConfirmation } from '../../safe/integrity.js'
-import type { CanonicalState } from '../../state-store/state/index.js'
+} from '../../../features/accounts/main/signingCapability.ts'
+import { createBalanceSummarySelector } from '../../../features/asset-data/domain/balance/index.ts'
+import type { SignatureRequest, TransactionRequest } from '../../../features/requests/contract/requests.ts'
+import { isSignatureRequest, isTransactionRequest } from '../../../features/requests/domain/index.ts'
+import { OperationRecordSchema, type OperationCollection } from '../../operations/operation.ts'
+import { verifySafeConfirmation } from '../../safe/integrity.ts'
+import type { CanonicalState } from '../../state-store/state/index.ts'
 import {
   WalletHomeCommandSchema,
   WalletPanelNavigationEntrySchema,
@@ -21,7 +21,7 @@ import {
   type SideTrayRendererState,
   type RendererProjection,
   type WalletRendererState
-} from '../contract/projections.js'
+} from '../contract/projections.ts'
 
 type CanonicalMain = CanonicalState['main']
 

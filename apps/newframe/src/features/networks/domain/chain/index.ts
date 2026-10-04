@@ -4,4 +4,4 @@ export {
   createBuiltInNetworkMetadata,
   createBuiltInNetworks,
   isBuiltInChain
-} from './catalog.js'
+} from './catalog.ts'

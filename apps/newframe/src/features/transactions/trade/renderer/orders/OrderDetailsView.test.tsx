@@ -1,12 +1,12 @@
 import { expect, it } from 'bun:test'
 
-import { render, screen } from '../../../../../../test/support/componentSetup'
-import { registerTestRuntimeFixture } from '../../../../../../test/support/rendererClient'
-import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections'
+import { render, screen } from '../../../../../../test/support/componentSetup.tsx'
+import { registerTestRuntimeFixture } from '../../../../../../test/support/rendererClient.ts'
+import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections.ts'
 import { walletState } from '../../../../../platform/state-sync/renderer/fixtures.test-support.ts'
-import { OrderDetails } from './OrderDetails'
-import { OrderDetailsView } from './OrderDetailsView'
-import { createOrdersCapability } from './ordersCapability'
+import { OrderDetails } from './OrderDetails.tsx'
+import { OrderDetailsView } from './OrderDetailsView.tsx'
+import { createOrdersCapability } from './ordersCapability.ts'
 
 const fixture = registerTestRuntimeFixture()
 const ordersCapability = createOrdersCapability({

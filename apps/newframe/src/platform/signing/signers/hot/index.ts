@@ -7,11 +7,11 @@ import log from 'electron-log'
 import { Mnemonic, randomBytes } from 'ethers'
 import { z } from 'zod'
 
-import type { Callback } from '../../../../shared/domain/async.js'
-import type Signer from '../Signer/index.js'
-import type { VaultAccess } from './HotSigner/index.js'
-import RingSigner from './RingSigner/index.js'
-import SeedSigner from './SeedSigner/index.js'
+import type { Callback } from '../../../../shared/domain/async.ts'
+import type Signer from '../Signer/index.ts'
+import type { VaultAccess } from './HotSigner/index.ts'
+import RingSigner from './RingSigner/index.ts'
+import SeedSigner from './SeedSigner/index.ts'
 
 type VaultPort = VaultAccess & { acquireKey(password?: string): string }
 type SignerCollection = { add(signer: Signer): void; exists(id: string): boolean }

@@ -1,6 +1,6 @@
 import { expect, it, mock } from 'bun:test'
 
-import { createMainApp } from './createMainApp'
+import { createMainApp } from './createMainApp.ts'
 
 function createTestApp() {
   const ipc = {

@@ -1,4 +1,4 @@
-import { getSignerDisplayType } from '../../../platform/signing/domain/index.js'
+import { getSignerDisplayType } from '../../../platform/signing/domain/index.ts'
 
 export const accountNS = '114c39e5-cd7d-416f-ab9e-5ab6ab0218ce'
 

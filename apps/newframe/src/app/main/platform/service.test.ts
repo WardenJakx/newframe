@@ -1,7 +1,7 @@
 import { describe, expect, it, mock } from 'bun:test'
 
-import { createTestStore } from '../../../../test/support/createTestStore'
-import { createPlatformService } from './service'
+import { createTestStore } from '../../../../test/support/createTestStore.ts'
+import { createPlatformService } from './service.ts'
 
 describe('platform service', () => {
   it('owns passive state and trusted platform effects without returning domain data', () => {

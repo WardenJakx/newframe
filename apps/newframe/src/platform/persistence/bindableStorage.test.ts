@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
-import { createBindablePersistenceStorage } from './bindableStorage'
-import type { PersistenceStoragePort } from './ports'
+import { createBindablePersistenceStorage } from './bindableStorage.ts'
+import type { PersistenceStoragePort } from './ports.ts'
 
 class MemoryStorage implements PersistenceStoragePort {
   readonly values = new Map<string, unknown>()

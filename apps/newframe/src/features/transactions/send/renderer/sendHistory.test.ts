@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { hasSentToAddress } from './sendHistory'
+import { hasSentToAddress } from './sendHistory.ts'
 
 const sender = '0x0000000000000000000000000000000000000001'
 const recipient = '0x0000000000000000000000000000000000000002'

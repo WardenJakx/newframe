@@ -8,17 +8,17 @@ import {
 } from '@newframe/desktop-api/protocol'
 import log from 'electron-log'
 
-import { rpcMethodPolicy } from '../../app/main/gateway/rpcPolicy.js'
-import { parseOrigin, parseRequestChainId } from '../../features/connections/main/origins.js'
-import type { JSONRPCRequestPayload, RPC, RPCResponsePayload } from '../../shared/domain/rpc.js'
+import { rpcMethodPolicy } from '../../app/main/gateway/rpcPolicy.ts'
+import { parseOrigin, parseRequestChainId } from '../../features/connections/main/origins.ts'
+import type { JSONRPCRequestPayload, RPC, RPCResponsePayload } from '../../shared/domain/rpc.ts'
 import {
   createOriginSessionMonitor,
   type ApiTimerPort,
   type RpcProviderSendPort,
   type RpcRequestHandler,
   type RpcResponseReason
-} from './request.js'
-import validPayload from './validPayload.js'
+} from './request.ts'
+import validPayload from './validPayload.ts'
 
 interface PendingRequest {
   send: () => void

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'bun:test'
 
-import { NATIVE_CURRENCY } from '../../../../features/tokens/domain/constants'
-import type { Token } from '../../../../features/tokens/domain/state/token'
-import type { SideTrayRendererState } from '../../contract/projections'
-import { createSideTrayWalletSelector } from './sideTrayWallet'
+import { NATIVE_CURRENCY } from '../../../../features/tokens/domain/constants.ts'
+import type { Token } from '../../../../features/tokens/domain/state/token.ts'
+import type { SideTrayRendererState } from '../../contract/projections.ts'
+import { createSideTrayWalletSelector } from './sideTrayWallet.ts'
 
 const emptyCatalog = () => ({ byId: {}, accountTokenIds: {} })
 const globalCatalog = (token: Token, source: 'custom' | 'bundled' = 'custom') => ({

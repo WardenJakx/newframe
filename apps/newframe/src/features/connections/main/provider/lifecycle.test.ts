@@ -1,14 +1,14 @@
 import { expect, it, mock } from 'bun:test'
 import EventEmitter from 'events'
 
-import { RpcIpcHandlers } from '../../../../app/main/ipc-handlers/rpc'
-import createCanonicalStore from '../../../../platform/state-store/createCanonicalStore'
-import type { RPCRequestCallback, RPCResponsePayload } from '../../../../shared/domain/rpc.js'
-import type { Chains } from '../../../networks/main'
-import type { AccountRequestPort } from './accountRequestPort'
-import { createProxyProvider } from './frameProvider'
-import { createProviderProxyConnection } from './proxy'
-import { createProviderStatePort } from './statePort'
+import { RpcIpcHandlers } from '../../../../app/main/ipc-handlers/rpc.ts'
+import createCanonicalStore from '../../../../platform/state-store/createCanonicalStore.ts'
+import type { RPCRequestCallback, RPCResponsePayload } from '../../../../shared/domain/rpc.ts'
+import type { Chains } from '../../../networks/main/index.ts'
+import type { AccountRequestPort } from './accountRequestPort.ts'
+import { createProxyProvider } from './frameProvider.ts'
+import { createProviderProxyConnection } from './proxy.ts'
+import { createProviderStatePort } from './statePort.ts'
 
 const memoryStorage = {
   getItem: () => null,

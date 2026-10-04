@@ -6,12 +6,12 @@ import type {
   ProfileDeleteCommand,
   ProfileUpdateCommand,
   ProfileSelectCommand
-} from '../../../../app/contracts/operations.js'
-import type { OperationEntityRef } from '../../../../platform/operations/operation.js'
-import type { OperationService } from '../../../../platform/operations/service.js'
-import type { OperationOwner, OperationReference } from '../../../../platform/operations/types.js'
-import type { CanonicalStore } from '../../../../platform/state-store/actions.js'
-import { accountDisplayType } from '../../domain/accountDisplayType.js'
+} from '../../../../app/contracts/operations.ts'
+import type { OperationEntityRef } from '../../../../platform/operations/operation.ts'
+import type { OperationService } from '../../../../platform/operations/service.ts'
+import type { OperationOwner, OperationReference } from '../../../../platform/operations/types.ts'
+import type { CanonicalStore } from '../../../../platform/state-store/actions.ts'
+import { accountDisplayType } from '../../domain/accountDisplayType.ts'
 
 type ProfileCommand =
   | Extract<AccountUpdateCommand, { profileId: string }>

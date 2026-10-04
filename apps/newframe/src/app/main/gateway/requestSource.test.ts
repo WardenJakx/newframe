@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import type { AccountRequest, RequestType } from '../../../features/requests/contract/requests'
+import type { AccountRequest, RequestType } from '../../../features/requests/contract/requests.ts'
 import {
   createMainProcessSource,
   createAiSessionClientSource,
@@ -8,7 +8,7 @@ import {
   createLocalApiSource,
   authorizeGatewayOperation,
   hasSourceCapability
-} from './requestSource'
+} from './requestSource.ts'
 
 function request(type: RequestType = 'transaction'): AccountRequest {
   return {

@@ -5,10 +5,10 @@ import { Text } from '@newframe/ui/text'
 import { formatUnits } from 'ethers'
 import type { ReactNode } from 'react'
 
-import { shortAddress } from '../../../shared/renderer/ui/AddressIdentity'
-import type { SafeDeployment } from '../../accounts/domain/safe'
-import { RequestCard } from './ui/RequestCard'
-import { RequestList } from './ui/RequestList'
+import { shortAddress } from '../../../shared/renderer/ui/AddressIdentity.tsx'
+import type { SafeDeployment } from '../../accounts/domain/safe.ts'
+import { RequestCard } from './ui/RequestCard.tsx'
+import { RequestList } from './ui/RequestList.tsx'
 
 export function SafeQueueView({
   deployments,

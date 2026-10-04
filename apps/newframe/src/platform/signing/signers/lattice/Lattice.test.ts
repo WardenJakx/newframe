@@ -3,12 +3,12 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, jest as timers, 
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import log from 'electron-log'
 
-import type { TypedMessage } from '../../../../features/requests/contract/requests'
-import { GasFeesSource, type TransactionData } from '../../../../features/transactions/domain'
-import type { Callback } from '../../../../shared/domain/async.js'
+import type { TypedMessage } from '../../../../features/requests/contract/requests.ts'
+import { GasFeesSource, type TransactionData } from '../../../../features/transactions/domain/index.ts'
+import type { Callback } from '../../../../shared/domain/async.ts'
 import { callbackResult } from '../callback.test-support.ts'
-import { Derivation } from '../Signer/derive'
-import type LatticeSigner from './Lattice'
+import { Derivation } from '../Signer/derive.ts'
+import type LatticeSigner from './Lattice.ts'
 
 const ClientMock = mock()
 const gridplusConstantsMock = {
@@ -79,7 +79,7 @@ let Lattice: typeof LatticeSigner
 beforeAll(async () => {
   log.transports.console.level = false
   timers.useFakeTimers()
-  Lattice = (await import('./Lattice')).default
+  Lattice = (await import('./Lattice.ts')).default
 })
 
 afterAll(() => {

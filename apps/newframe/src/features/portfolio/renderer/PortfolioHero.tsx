@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 
-import { selectOperationById } from '../../../platform/state-sync/renderer/selectors/operation'
-import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
-import { formatUsdRate } from '../../asset-data/domain/balance'
-import type { BalanceSummary } from '../../asset-data/domain/balance'
-import type { PortfolioCapability } from './portfolioCapability'
-import { PortfolioHeroView } from './PortfolioHeroView'
-import { useAccountBalances } from './useAccountBalances'
-import { usePortfolioActions } from './usePortfolioActions'
+import { selectOperationById } from '../../../platform/state-sync/renderer/selectors/operation.ts'
+import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector.tsx'
+import { formatUsdRate } from '../../asset-data/domain/balance/index.ts'
+import type { BalanceSummary } from '../../asset-data/domain/balance/index.ts'
+import type { PortfolioCapability } from './portfolioCapability.ts'
+import { PortfolioHeroView } from './PortfolioHeroView.tsx'
+import { useAccountBalances } from './useAccountBalances.ts'
+import { usePortfolioActions } from './usePortfolioActions.ts'
 
 export function formatPortfolioValue(balances: Pick<BalanceSummary, 'hasPrice' | 'totalValue'>[]) {
   if (balances.length > 0 && !balances.some((balance) => balance.hasPrice)) {

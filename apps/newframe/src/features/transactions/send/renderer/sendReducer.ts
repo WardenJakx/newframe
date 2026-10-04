@@ -1,7 +1,7 @@
 import {
   INITIAL_TOKEN_SELECTOR_ROWS,
   TOKEN_SELECTOR_ROWS_INCREMENT
-} from '../../../../shared/renderer/ui/tokenSelectorModel'
+} from '../../../../shared/renderer/ui/tokenSelectorModel.ts'
 
 export const INITIAL_SEND_TOKEN_ROWS = INITIAL_TOKEN_SELECTOR_ROWS
 export const SEND_TOKEN_ROWS_INCREMENT = TOKEN_SELECTOR_ROWS_INCREMENT

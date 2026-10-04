@@ -3,8 +3,8 @@ import { forwardRef } from 'react'
 import { cva } from '../styled-system/css/cva.js'
 import { cx } from '../styled-system/css/cx.js'
 import type { RecipeVariantProps } from '../styled-system/types/recipe.js'
-import { inputControlStyles, inputInvalidVariants } from './Input.js'
-import { textRecipe } from './Text.js'
+import { inputControlStyles, inputInvalidVariants } from './Input.tsx'
+import { textRecipe } from './Text.tsx'
 
 const textAreaRecipe = cva({
   base: {

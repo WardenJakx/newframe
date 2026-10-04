@@ -1,12 +1,16 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
-import { ExecuteCommandChannel, ExecuteQueryChannel, type NewframeHost } from '../platform/ipc/contract/ipc'
+import {
+  ExecuteCommandChannel,
+  ExecuteQueryChannel,
+  type NewframeHost
+} from '../platform/ipc/contract/ipc.ts'
 import {
   StateConnectChannel,
   StateDisconnectChannel,
   StateMessageChannel,
   type StateMessage
-} from '../platform/state-sync/contract/protocol'
+} from '../platform/state-sync/contract/protocol.ts'
 
 type Listener = (...args: unknown[]) => void
 

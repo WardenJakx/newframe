@@ -1,10 +1,10 @@
 import { useShallow } from 'zustand/react/shallow'
 
-import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
-import { accountDisplayType } from '../../../../shared/renderer/ui/signerPresentation'
-import type { ActivityCapability } from './activityCapability'
-import { ActivityDetailsView } from './ActivityDetailsView'
-import { projectActivityRecord } from './activityTypes'
+import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector.tsx'
+import { accountDisplayType } from '../../../../shared/renderer/ui/signerPresentation.ts'
+import type { ActivityCapability } from './activityCapability.ts'
+import { ActivityDetailsView } from './ActivityDetailsView.tsx'
+import { projectActivityRecord } from './activityTypes.ts'
 
 export function ActivityDetails({
   activityId,

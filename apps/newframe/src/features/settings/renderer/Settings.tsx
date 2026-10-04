@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
-import type { CommandMap, CommandResult } from '../../../app/contracts/operations'
-import { selectOperationById } from '../../../platform/state-sync/renderer/selectors/operation'
-import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
-import type { SettingsCapability } from './settingsCapability'
-import { SettingsView } from './SettingsView'
-import type { SettingsUpdateInput } from './types'
-import { useSettingsDrafts } from './useSettingsDrafts'
+import type { CommandMap, CommandResult } from '../../../app/contracts/operations.ts'
+import { selectOperationById } from '../../../platform/state-sync/renderer/selectors/operation.ts'
+import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector.tsx'
+import type { SettingsCapability } from './settingsCapability.ts'
+import { SettingsView } from './SettingsView.tsx'
+import type { SettingsUpdateInput } from './types.ts'
+import { useSettingsDrafts } from './useSettingsDrafts.ts'
 
 type WithoutType<T> = T extends { type: string } ? Omit<T, 'type'> : never
 

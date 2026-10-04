@@ -1,20 +1,20 @@
 import { definePreset } from '@pandacss/dev'
 
-import { borderTokens } from './src/tokens/borders.js'
+import { borderTokens } from './src/tokens/borders.ts'
 import {
   colorPrimitives,
   darkColorSemantics,
   systemColors,
   type ColorReference
-} from './src/tokens/colors.js'
-import { elevationTokens } from './src/tokens/elevation.js'
-import { layerTokens } from './src/tokens/layers.js'
-import { motionTokens } from './src/tokens/motion.js'
-import { opacityTokens } from './src/tokens/opacity.js'
-import { radiusTokens } from './src/tokens/radius.js'
-import { sizingTokens } from './src/tokens/sizing.js'
-import { spacingTokens } from './src/tokens/spacing.js'
-import { typographyTokens } from './src/tokens/typography.js'
+} from './src/tokens/colors.ts'
+import { elevationTokens } from './src/tokens/elevation.ts'
+import { layerTokens } from './src/tokens/layers.ts'
+import { motionTokens } from './src/tokens/motion.ts'
+import { opacityTokens } from './src/tokens/opacity.ts'
+import { radiusTokens } from './src/tokens/radius.ts'
+import { sizingTokens } from './src/tokens/sizing.ts'
+import { spacingTokens } from './src/tokens/spacing.ts'
+import { typographyTokens } from './src/tokens/typography.ts'
 
 function tokensWithPrefix(tokens: Record<string, string>, prefix: string) {
   return Object.fromEntries(

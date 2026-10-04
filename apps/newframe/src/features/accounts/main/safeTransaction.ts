@@ -4,29 +4,29 @@ import type {
   SafeApprovalCommand,
   SafeConfirmationStatus,
   SafeConfirmationStatusQuery
-} from '../../../app/contracts/operations.js'
-import type { OperationService } from '../../../platform/operations/service.js'
-import type { OperationOwner } from '../../../platform/operations/types.js'
+} from '../../../app/contracts/operations.ts'
+import type { OperationService } from '../../../platform/operations/service.ts'
+import type { OperationOwner } from '../../../platform/operations/types.ts'
 import {
   getSafeTypedMessage,
   packSafeSignatures,
   serviceCalldataMismatch,
   verifySafeConfirmation,
   verifySafeHash
-} from '../../../platform/safe/integrity.js'
-import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.js'
-import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.js'
-import type { RPC } from '../../../shared/domain/rpc.js'
-import type { TransactionApprovalAdjustments } from '../../transactions/domain/approval.js'
-import { GasFeesSource, type TransactionData } from '../../transactions/domain/index.js'
+} from '../../../platform/safe/integrity.ts'
+import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.ts'
+import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
+import type { RPC } from '../../../shared/domain/rpc.ts'
+import type { TransactionApprovalAdjustments } from '../../transactions/domain/approval.ts'
+import { GasFeesSource, type TransactionData } from '../../transactions/domain/index.ts'
 import {
   safeConfigurationSchema,
   safeProposalSchema,
   type SafeConfiguration,
   type SafeProposal
-} from '../domain/safe.js'
-import type FrameAccount from './Account.js'
-import { safeExecutorCandidates, safeOwnerCandidates } from './signingCapability.js'
+} from '../domain/safe.ts'
+import type FrameAccount from './Account.ts'
+import { safeExecutorCandidates, safeOwnerCandidates } from './signingCapability.ts'
 
 const safeAbi = new Interface([
   'function execTransaction(address,uint256,bytes,uint8,uint256,uint256,uint256,address,address,bytes) payable returns (bool)'

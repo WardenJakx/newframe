@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'bun:test'
 
-import type { OperationRecord } from '../../../../platform/operations/operation'
+import type { OperationRecord } from '../../../../platform/operations/operation.ts'
 import {
   initialTradeExecutionState,
   tradeExecutionBlocksQuotes,
   tradeExecutionCanSubmit,
   tradeExecutionReducer,
   type TradeExecutionSession
-} from './tradeExecutionMachine'
+} from './tradeExecutionMachine.ts'
 
 const session: TradeExecutionSession = {
   operationId: 'operation-1',

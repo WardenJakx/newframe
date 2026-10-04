@@ -5,9 +5,9 @@ import type { BrowserWindowConstructorOptions } from 'electron'
 import { BrowserWindow, shell } from 'electron'
 import log from 'electron-log'
 
-import type { RendererAuthorizationRegistry } from '../../ipc/main/authorization.js'
-import type { CanonicalStore } from '../../state-store/actions.js'
-import type { ChainId } from '../../state-store/state/index.js'
+import type { RendererAuthorizationRegistry } from '../../ipc/main/authorization.ts'
+import type { CanonicalStore } from '../../state-store/actions.ts'
+import type { ChainId } from '../../state-store/state/index.ts'
 
 export function createWindow(
   name: string,

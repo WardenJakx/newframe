@@ -2,10 +2,10 @@ import { expect, it } from 'bun:test'
 
 import { Interface, getAddress } from 'ethers'
 
-import Erc20Contract from '../../../platform/chain-rpc/contracts/erc20'
-import type { Callback } from '../../../shared/domain/async.js'
-import type { RPCRequestPayload, RPCResponsePayload } from '../../../shared/domain/rpc.js'
-import { resolveWatchAsset } from './watchAsset'
+import Erc20Contract from '../../../platform/chain-rpc/contracts/erc20.ts'
+import type { Callback } from '../../../shared/domain/async.ts'
+import type { RPCRequestPayload, RPCResponsePayload } from '../../../shared/domain/rpc.ts'
+import { resolveWatchAsset } from './watchAsset.ts'
 
 const address = getAddress('0xbfa641051ba0a0ad1b0acf549a89536a0d76472e')
 const token = new Interface([

@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
 
-import { render } from '../../../../test/support/componentSetup'
-import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
+import { render } from '../../../../test/support/componentSetup.tsx'
+import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient.ts'
 import { walletState } from '../../state-sync/renderer/fixtures.test-support.ts'
-import Badge from './index'
-import { createUpdaterCapability } from './updaterCapability'
+import Badge from './index.tsx'
+import { createUpdaterCapability } from './updaterCapability.ts'
 
 const fixture = registerTestRuntimeFixture()
 

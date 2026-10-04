@@ -1,12 +1,12 @@
 import { isAddress } from 'ethers'
 
-import type { SendRequestCommand } from '../../../../app/contracts/operations.js'
-import type { RequestSource } from '../../../../app/main/gateway/requestSource.js'
-import type { OperationService } from '../../../../platform/operations/service.js'
-import type { OperationOwner, OperationReference } from '../../../../platform/operations/types.js'
-import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.js'
-import { toTokenId } from '../../../tokens/domain/index.js'
-import { buildSendTransaction, type SendTransaction } from '../domain/send.js'
+import type { SendRequestCommand } from '../../../../app/contracts/operations.ts'
+import type { RequestSource } from '../../../../app/main/gateway/requestSource.ts'
+import type { OperationService } from '../../../../platform/operations/service.ts'
+import type { OperationOwner, OperationReference } from '../../../../platform/operations/types.ts'
+import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
+import { toTokenId } from '../../../tokens/domain/index.ts'
+import { buildSendTransaction, type SendTransaction } from '../domain/send.ts'
 
 type SendAccount = { id: string; address: string }
 type SendBalance = { address: string; balance: string; chainId: number }

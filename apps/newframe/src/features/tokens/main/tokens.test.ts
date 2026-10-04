@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'bun:test'
 
-import { createTestStore } from '../../../../test/support/createTestStore'
-import { listCuratedTokenAssets } from '../../asset-data/domain/asset'
-import { createBuiltInNetworks } from '../../networks/domain/chain/catalog'
-import { createBundledTokenService } from './tokens'
+import { createTestStore } from '../../../../test/support/createTestStore.ts'
+import { listCuratedTokenAssets } from '../../asset-data/domain/asset/index.ts'
+import { createBuiltInNetworks } from '../../networks/domain/chain/catalog.ts'
+import { createBundledTokenService } from './tokens.ts'
 
 function tokenProjection(store: ReturnType<typeof createTestStore>) {
   return Object.values(store.getState().main.tokens.byId)

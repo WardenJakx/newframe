@@ -1,8 +1,8 @@
 import log from 'electron-log'
 
-import type { RpcIpcHandlers } from '../../../app/main/ipc-handlers/rpc.js'
-import Erc20Contract from '../../../platform/chain-rpc/contracts/erc20.js'
-import type { TokenServicePorts } from './service.js'
+import type { RpcIpcHandlers } from '../../../app/main/ipc-handlers/rpc.ts'
+import Erc20Contract from '../../../platform/chain-rpc/contracts/erc20.ts'
+import type { TokenServicePorts } from './service.ts'
 
 export function createTokenLookupAdapter(provider: RpcIpcHandlers): TokenServicePorts['lookup'] {
   return async (address, chainId) => {

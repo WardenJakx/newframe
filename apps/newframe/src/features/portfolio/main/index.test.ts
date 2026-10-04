@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
-import store from '../../../platform/state-store'
-import { getTokenDiscoveryProvider } from './index'
+import store from '../../../platform/state-store/index.ts'
+import { getTokenDiscoveryProvider } from './index.ts'
 
 describe('#getTokenDiscoveryProvider', () => {
   it('does not construct a provider when token discovery is disabled', () => {

@@ -2,12 +2,12 @@ import type { createFlashApi } from '@newframe/flash/api'
 import { getFlashChainSlug } from '@newframe/flash/chains'
 import type { FlashTokenBalance } from '@newframe/flash/wire'
 
-import type { Balance, Token } from '../../../../platform/state-store/state/index.js'
-import type { Address } from '../../../../shared/domain/address.js'
-import { formatUnits, parseUnits } from '../../../../shared/domain/units.js'
-import type { AssetRateInput } from '../../../asset-data/domain/state/rate.js'
-import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.js'
-import type { PortfolioChainImage, PortfolioProvider, PortfolioSnapshot } from '../types.js'
+import type { Balance, Token } from '../../../../platform/state-store/state/index.ts'
+import type { Address } from '../../../../shared/domain/address.ts'
+import { formatUnits, parseUnits } from '../../../../shared/domain/units.ts'
+import type { AssetRateInput } from '../../../asset-data/domain/state/rate.ts'
+import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
+import type { PortfolioChainImage, PortfolioProvider, PortfolioSnapshot } from '../types.ts'
 
 type FlashBalancesApi = Pick<ReturnType<typeof createFlashApi>, 'balances'>
 

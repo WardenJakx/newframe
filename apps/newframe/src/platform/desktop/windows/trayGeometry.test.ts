@@ -7,7 +7,7 @@ import {
   TRAY_WIDTH,
   trayHeight,
   trayPosition
-} from './trayGeometry'
+} from './trayGeometry.ts'
 
 describe('tray geometry', () => {
   it('locks both trays to the shared dimensions', () => {

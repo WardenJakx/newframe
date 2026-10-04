@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import type { RPC } from '../../../shared/domain/rpc.js'
+import type { RPC } from '../../../shared/domain/rpc.ts'
 import {
   getPaidTransactionFee,
   getTransactionEffects,
@@ -10,7 +10,7 @@ import {
   type TransactionData,
   type TransactionEffect,
   usesBaseFee
-} from './index'
+} from './index.ts'
 
 function effectMatching(effect: Partial<TransactionEffect>): TransactionEffect {
   return expect.objectContaining(effect) as TransactionEffect

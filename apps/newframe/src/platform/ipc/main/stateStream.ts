@@ -1,24 +1,24 @@
 import type { IpcMainInvokeEvent, WebContents } from 'electron'
 import log from 'electron-log'
 
-import type { CanonicalStoreReader } from '../../state-store/actions.js'
+import type { CanonicalStoreReader } from '../../state-store/actions.ts'
 import {
   projectionStateChangeSchemas,
   projectionStateSchemas
-} from '../../state-sync/contract/projections.js'
+} from '../../state-sync/contract/projections.ts'
 import {
   StateConnectChannel,
   StateDisconnectChannel,
   StateMessageChannel,
   type RendererState,
   type StateMessage
-} from '../../state-sync/contract/protocol.js'
-import type { RendererAuthorizationRegistry, RendererRole } from './authorization.js'
+} from '../../state-sync/contract/protocol.ts'
+import type { RendererAuthorizationRegistry, RendererRole } from './authorization.ts'
 
 export interface StateStreamDependencies {
   store: CanonicalStoreReader
   authorizeRenderer: RendererAuthorizationRegistry['authorizeRenderer']
-  projectRendererState: typeof import('../../state-sync/main/projections.js').projectRendererState
+  projectRendererState: typeof import('../../state-sync/main/projections.ts').projectRendererState
 }
 
 interface StateStreamIpcPort {

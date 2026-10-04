@@ -1,11 +1,11 @@
 import { isDeepStrictEqual } from 'util'
 
-import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
-import type { Chain, ChainMetadata, Origin } from '../../../../platform/state-store/state/index.js'
-import type { Address } from '../../../../shared/domain/address.js'
-import type { RPC } from '../../../../shared/domain/rpc.js'
-import { persistedImageSource } from '../../../asset-data/domain/image/index.js'
-import { getColor } from '../../../networks/domain/chain/colors.js'
+import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
+import type { Chain, ChainMetadata, Origin } from '../../../../platform/state-store/state/index.ts'
+import type { Address } from '../../../../shared/domain/address.ts'
+import type { RPC } from '../../../../shared/domain/rpc.ts'
+import { persistedImageSource } from '../../../asset-data/domain/image/index.ts'
+import { getColor } from '../../../networks/domain/chain/colors.ts'
 type CanonicalStoreApi = CanonicalStoreReader
 
 // typed access to state

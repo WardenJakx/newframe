@@ -3,14 +3,14 @@ import { persist, subscribeWithSelector, type PersistStorage } from 'zustand/mid
 import { immer } from 'zustand/middleware/immer'
 import { createStore } from 'zustand/vanilla'
 
-import { createCanonicalActions, type CanonicalStore } from './actions.js'
+import { createCanonicalActions, type CanonicalStore } from './actions.ts'
 import {
   CANONICAL_STATE_STORAGE_NAME,
   PERSISTENCE_VERSION,
   type PersistedCanonicalState
-} from './persist/schema.js'
-import { mergePersistedState, migratePersistedState, selectPersistedState } from './persistence.js'
-import createInitialState from './state/index.js'
+} from './persist/schema.ts'
+import { mergePersistedState, migratePersistedState, selectPersistedState } from './persistence.ts'
+import createInitialState from './state/index.ts'
 
 export default function createCanonicalStore(storage: PersistStorage<PersistedCanonicalState, void>) {
   let hydrationError: unknown

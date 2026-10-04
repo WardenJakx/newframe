@@ -1,6 +1,6 @@
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 
-import type { TypedMessage } from '../../../requests/contract/requests.js'
+import type { TypedMessage } from '../../../requests/contract/requests.ts'
 
 export function getVersionFromTypedData(typedData: TypedMessage['data']) {
   if (Array.isArray(typedData)) {

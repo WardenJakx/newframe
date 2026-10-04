@@ -1,8 +1,8 @@
 import { afterEach, expect, it, mock } from 'bun:test'
 
-import { cleanup, fireEvent, render, screen } from '../../../../../../../test/support/componentSetup'
-import { GasFeesSource } from '../../../../../transactions/domain'
-import AdjustFee from './AdjustFee'
+import { cleanup, fireEvent, render, screen } from '../../../../../../../test/support/componentSetup.tsx'
+import { GasFeesSource } from '../../../../../transactions/domain/index.ts'
+import AdjustFee from './AdjustFee.tsx'
 
 afterEach(cleanup)
 const req = {

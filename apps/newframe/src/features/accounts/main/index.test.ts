@@ -14,25 +14,25 @@ import {
 import { intToHex } from '@ethereumjs/util'
 import log from 'electron-log'
 
-import { gweiToHex } from '../../../../test/support/util'
+import { gweiToHex } from '../../../../test/support/util.ts'
 import {
   ActivityRecordSchema,
   DEFAULT_PROFILE_ID,
   type ActivityRecord
-} from '../../../app/contracts/state/main'
+} from '../../../app/contracts/state/main.ts'
 import {
   createAiSessionClientSource,
   createLocalApiSource,
   type RequestSource
-} from '../../../app/main/gateway/requestSource'
-import store from '../../../platform/state-store'
-import type { Callback } from '../../../shared/domain/async.js'
+} from '../../../app/main/gateway/requestSource.ts'
+import store from '../../../platform/state-store/index.ts'
+import type { Callback } from '../../../shared/domain/async.ts'
 import type {
   EVMError,
   RPCRequestCallback,
   RPCRequestPayload,
   RPCResponsePayload
-} from '../../../shared/domain/rpc.js'
+} from '../../../shared/domain/rpc.ts'
 import {
   RequestMode,
   RequestStatus,
@@ -40,13 +40,13 @@ import {
   type AccountRequest,
   type CanonicalAccountRequest,
   type TransactionRequest
-} from '../../requests/contract/requests'
+} from '../../requests/contract/requests.ts'
 import {
   GasFeesSource,
   TRANSACTION_CONFIRMATION_TARGET,
   type TransactionEffect,
   type TransactionSimulation
-} from '../../transactions/domain'
+} from '../../transactions/domain/index.ts'
 
 const providerMock = {
   send: mock((_payload: RPCRequestPayload, _callback: RPCRequestCallback) => {}),
@@ -104,14 +104,20 @@ const requestLifecycle = {
   }
 }
 
-await mock.module('../../../platform/signing/signers', () => ({ default: signersMock, ...signersMock }))
-await mock.module('../../../platform/desktop/windows', () => ({ default: windowsMock, ...windowsMock }))
-await mock.module('../../asset-data/main/externalData', () => ({
+await mock.module('../../../platform/signing/signers/index.ts', () => ({
+  default: signersMock,
+  ...signersMock
+}))
+await mock.module('../../../platform/desktop/windows/index.ts', () => ({
+  default: windowsMock,
+  ...windowsMock
+}))
+await mock.module('../../asset-data/main/externalData/index.ts', () => ({
   default: externalDataScannerFactoryMock,
   start: mock(),
   stop: mock()
 }))
-await mock.module('../../name-resolution/main/nameResolution', () => ({
+await mock.module('../../name-resolution/main/nameResolution.ts', () => ({
   __esModule: true,
   default: {
     ready: () => true,
@@ -121,8 +127,8 @@ await mock.module('../../name-resolution/main/nameResolution', () => ({
 }))
 
 const provider = providerMock
-let Accounts: import('./index').Accounts
-let AccountsClass: typeof import('./index').Accounts
+let Accounts: import('./index.ts').Accounts
+let AccountsClass: typeof import('./index.ts').Accounts
 
 const nameResolutionMock = {
   started: true,
@@ -184,7 +190,7 @@ const currentAccount = () => {
   }
   return current
 }
-const requiredFrameAccount = (accounts: import('./index').Accounts, address: string) => {
+const requiredFrameAccount = (accounts: import('./index.ts').Accounts, address: string) => {
   const frameAccount = accounts.getFrameAccount(address)
   if (!frameAccount) {
     throw new Error(`Expected frame account ${address}`)
@@ -281,7 +287,7 @@ let request = createRequest()
 beforeAll(async () => {
   log.transports.console.level = false
 
-  const accountsModule = await import('./index')
+  const accountsModule = await import('./index.ts')
   AccountsClass = accountsModule.Accounts
   Accounts = createAccounts()
 })
