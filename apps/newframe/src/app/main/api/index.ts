@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto'
 import { MAX_RPC_REQUEST_BYTES } from '@newframe/desktop-api/protocol'
 import { desktopRouter } from '@newframe/desktop-api/router'
 import { createHTTPHandler } from '@trpc/server/adapters/standalone'
+// oxlint-disable-next-line no-restricted-imports -- The local API server accepts inbound sockets; it opens none.
 import WebSocket, { WebSocketServer } from 'ws'
 
 import type { Accounts } from '../../../features/accounts/main/index.ts'

@@ -21,6 +21,7 @@ import {
 } from '@newframe/flash/protocol'
 import WebSocket from 'ws'
 
+import { createOutbound } from '../../../../platform/outbound/index.ts'
 import createCanonicalStore from '../../../../platform/state-store/createCanonicalStore.ts'
 import store from '../../../../platform/state-store/index.ts'
 import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
@@ -64,6 +65,16 @@ const queuedJsonResponses = (payloads: unknown[]) => {
   }
 }
 type FetchImplementation = (...args: Parameters<typeof fetch>) => ReturnType<typeof fetch>
+async function flushMicrotasks() {
+  for (let turn = 0; turn < 20; turn++) {
+    await Promise.resolve()
+  }
+}
+function openOutbound() {
+  const outbound = createOutbound((input, init) => fetch(input, init))
+  outbound.setOpen(true)
+  return outbound
+}
 function installFetch(implementation: FetchImplementation) {
   const fetchMock = mock(implementation)
   globalThis.fetch = fetchMock as unknown as typeof fetch
@@ -71,7 +82,7 @@ function installFetch(implementation: FetchImplementation) {
 }
 function flashWithFetch(implementation: FetchImplementation, overrides: Record<string, unknown> = {}) {
   const fetchMock = installFetch(implementation)
-  const flash = createFlashService({ assetRateService, store, ...overrides })
+  const flash = createFlashService({ assetRateService, outbound: openOutbound(), store, ...overrides })
   services.push(flash)
   return { fetchMock, flash }
 }
@@ -627,8 +638,8 @@ describe('main Flash facade helpers', () => {
       })
     ]
     installFetch(queuedJsonResponses(responses.map((order) => ({ orders: [order] }))))
-    const firstFlash = createFlashService({ assetRateService, store: firstStore })
-    const secondFlash = createFlashService({ assetRateService, store: secondStore })
+    const firstFlash = createFlashService({ assetRateService, outbound: openOutbound(), store: firstStore })
+    const secondFlash = createFlashService({ assetRateService, outbound: openOutbound(), store: secondStore })
     services.push(firstFlash, secondFlash)
     await firstFlash.listOrders({ accountAddress })
     await secondFlash.listOrders({ accountAddress: '0x0000000000000000000000000000000000000002' })
@@ -780,6 +791,7 @@ describe('main Flash facade helpers', () => {
     const contraAsset = { ...FLASH_USDC_ASSET, id: `8453:${FLASH_USDC_ASSET.address}`, chainId: 8453 }
     const flash = createFlashService({
       assetRateService,
+      outbound: openOutbound(),
       store,
       createWebSocket: () => socket as unknown as WebSocket,
       positionSync: { track, refresh }
@@ -851,6 +863,7 @@ describe('main Flash facade helpers', () => {
     const orderId = 'websocket-agent-order'
     const flash = createFlashService({
       assetRateService,
+      outbound: openOutbound(),
       store,
       createWebSocket: () => {
         const socket = new FakeFlashWebSocket()
@@ -922,11 +935,46 @@ describe('main Flash facade helpers', () => {
     expect(flash.stopAgentSession('agent-session-two')).toBe(true)
     expect(sockets[1].readyState).toBe(WebSocket.CLOSED)
   })
+  it('stops order polling and streams while outbound traffic is closed and resumes them when it opens', async () => {
+    timers.useFakeTimers()
+    const outbound = openOutbound()
+    const sockets: FakeFlashWebSocket[] = []
+    const order = officialOrder({
+      orderId: 'paused-open-order',
+      status: 'ORDER_STATUS_ACCEPTED',
+      filled: null
+    })
+    const { fetchMock, flash } = flashWithFetch(async () => jsonResponse({ order, orders: [order] }), {
+      outbound,
+      createWebSocket: () => {
+        sockets.push(new FakeFlashWebSocket())
+        return sockets.at(-1) as unknown as WebSocket
+      }
+    })
+    await flash.listOrders({ accountAddress })
+    startAgentSession(flash, '0x00000000000000000000000000000000000000b1', 'paused-session', 60 * 60 * 1000)
+    const requests = fetchMock.mock.calls.length
+
+    outbound.setOpen(false)
+    timers.advanceTimersByTime(10 * 60 * 1000)
+    await flushMicrotasks()
+
+    expect(fetchMock.mock.calls).toHaveLength(requests)
+    expect(sockets.map((socket) => socket.readyState)).toEqual([WebSocket.CLOSED])
+
+    outbound.setOpen(true)
+    timers.advanceTimersByTime(5 * 60 * 1000)
+    await flushMicrotasks()
+
+    expect(sockets.map((socket) => socket.readyState)).toEqual([WebSocket.CLOSED, WebSocket.CONNECTING])
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(requests)
+  })
   it('closes an agent order stream when its session expires', () => {
     timers.useFakeTimers()
     const socket = new FakeFlashWebSocket()
     const flash = createFlashService({
       assetRateService,
+      outbound: openOutbound(),
       store,
       createWebSocket: () => socket as unknown as WebSocket
     })

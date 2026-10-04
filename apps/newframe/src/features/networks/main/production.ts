@@ -1,3 +1,4 @@
+import { outbound } from '../../../platform/outbound/index.ts'
 import { persistedImageSource } from '../../asset-data/domain/image/index.ts'
 import { downloadImage } from '../../asset-data/main/images/download.ts'
 
@@ -14,7 +15,7 @@ type ChainlistEntry = {
 type ChainlistFetch = (url: string, init: RequestInit) => Promise<Pick<Response, 'json' | 'ok'>>
 
 export function createChainlistIconLookup(
-  fetchCatalog: ChainlistFetch = fetch,
+  fetchCatalog: ChainlistFetch = outbound.request,
   loadImage: typeof downloadImage = downloadImage
 ) {
   let catalogRequest: Promise<ChainlistEntry[]> | undefined
@@ -63,7 +64,7 @@ export async function rpcMatchesChain(url: unknown, chainId: number) {
   }
 
   try {
-    const response = await fetch(url, {
+    const response = await outbound.request(url, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ id: 1, jsonrpc: '2.0', method: 'eth_chainId', params: [] }),

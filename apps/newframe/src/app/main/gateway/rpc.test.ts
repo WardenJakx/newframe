@@ -22,6 +22,7 @@ it('applies the same admission to external clients and composed main-process cal
   const executed: string[] = []
   const replies: RPCResponsePayload[] = []
   const gateway = createRpcGateway({
+    isLocked: () => false,
     origins: { hasAccountAccessGrant: async () => false },
     selectedAddresses: () => ['account'],
     handle(payload, respond) {
@@ -54,6 +55,7 @@ it('rejects copied sources and stale or out-of-scope AI-session authority before
   let executions = 0
   const replies: RPCResponsePayload[] = []
   const gateway = createRpcGateway({
+    isLocked: () => false,
     selectedAddresses: () => ['account'],
     handle() {
       executions++
@@ -118,6 +120,7 @@ it('settles once when a handler replies then throws, and rejects malformed input
   const replies: RPCResponsePayload[] = []
   let calls = 0
   const gateway = createRpcGateway({
+    isLocked: () => false,
     selectedAddresses: () => [],
     handle(payload, respond) {
       calls++
@@ -139,6 +142,7 @@ it('settles once when a handler replies then throws, and rejects malformed input
 it('rejects unlisted methods for every source, including wrapped and prototype-property names', async () => {
   let calls = 0
   const gateway = createRpcGateway({
+    isLocked: () => false,
     selectedAddresses: () => [],
     handle() {
       calls++
@@ -187,6 +191,7 @@ it('applies the inner method account grant and validates parameters before dispa
   const checks: string[] = []
   const handled: RPCRequestPayload[] = []
   const gateway = createRpcGateway({
+    isLocked: () => false,
     origins: {
       hasAccountAccessGrant: async (payload) => {
         checks.push(payload.method)
@@ -227,6 +232,7 @@ it('applies the inner method account grant and validates parameters before dispa
 it('admits only registered upstream methods and keeps debugging main-process-only', async () => {
   const handled: string[] = []
   const gateway = createRpcGateway({
+    isLocked: () => false,
     selectedAddresses: () => [],
     handle(payload) {
       handled.push(payload.method)
@@ -249,6 +255,7 @@ it('admits only registered upstream methods and keeps debugging main-process-onl
 it('preserves supported block overrides and pending-transaction options through admission', async () => {
   const handled: RPCRequestPayload[] = []
   const gateway = createRpcGateway({
+    isLocked: () => false,
     selectedAddresses: () => [],
     handle(payload, respond) {
       handled.push(payload)
@@ -281,6 +288,7 @@ it('preserves supported block overrides and pending-transaction options through 
 it('rejects malformed overrides and pending-transaction options before forwarding', async () => {
   let calls = 0
   const gateway = createRpcGateway({
+    isLocked: () => false,
     selectedAddresses: () => [],
     handle() {
       calls++
@@ -301,4 +309,33 @@ it('rejects malformed overrides and pending-transaction options before forwardin
     ])
   }
   expect(calls).toBe(0)
+})
+
+it('gives dapps no accounts and no network reads while locked, before any other check', async () => {
+  let locked = true
+  const executed: string[] = []
+  const replies: RPCResponsePayload[] = []
+  const gateway = createRpcGateway({
+    isLocked: () => locked,
+    origins: { hasAccountAccessGrant: async () => true },
+    selectedAddresses: () => ['account'],
+    handle(payload, respond) {
+      executed.push(payload.method)
+      respond({ id: payload.id, jsonrpc: '2.0', result: true })
+    }
+  })
+  const dapp = createLocalApiSource({ transport: 'http', connectionId: 'dapp', origin: 'dapp.example' })
+  await gateway(request('eth_accounts'), (value) => replies.push(value), dapp)
+  await gateway(request('eth_blockNumber'), (value) => replies.push(value), dapp)
+  await gateway(request('not_a_method'), (value) => replies.push(value), dapp)
+  await gateway(
+    request('eth_blockNumber'),
+    (value) => replies.push(value),
+    createMainProcessSource('internal')
+  )
+  locked = false
+  await gateway(request('eth_blockNumber'), (value) => replies.push(value), dapp)
+
+  expect(replies.map((reply) => reply.result ?? reply.error?.code)).toEqual([[], 4100, 4100, true, true])
+  expect(executed).toEqual(['eth_blockNumber', 'eth_blockNumber'])
 })

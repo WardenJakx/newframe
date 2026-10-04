@@ -41,6 +41,7 @@ function setup({
   const handler = createRpcRequestHandler({
     provider: {
       send: createRpcGateway({
+        isLocked: () => false,
         origins,
         selectedAddresses: () => ['0x1111111111111111111111111111111111111111'],
         handle: (payload, respond, principal) => {

@@ -43,13 +43,15 @@ flowchart LR
         signers[Signers and secrets]
       end
       gateway -->|approved request only| signers
+      outbound[Outbound]
     end
   end
   dapp --> ext --> entry
   client --> entry
   trays --> entry
-  services --> remote
-  features --> remote
+  services --> outbound
+  features --> outbound
+  outbound -->|closed while locked| remote
 ```
 
 From least to most trusted: outside, the relay, the trays, the core. The vault is not a separate zone or a separate process; it is the hardened part of the core, reachable only from the gateway. The core is trusted, so the vault's protection is that nothing but the gateway is given its interface.
@@ -74,18 +76,19 @@ Wallet services and features sit behind all of these. They check meaning (the ac
 
 Parts are either **primitives**, the shared building blocks every feature relies on and none can bypass, or **features** built on top of them.
 
-| Part                | Kind             | Owns                                                                                                                                                | Interface                                                            |
-| ------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| **Entry points**    | Primitive        | Identifying who is on a channel and creating the request source. One each for trays, the extension, other local API clients, and AI session clients | Hands the gateway a request source and a request                     |
-| **Gateway**         | Primitive        | The operation catalog, the authority ledger, requests in progress and pending requests. The vault's only caller                                     | Accepts a request from an entry point                                |
-| **Vault**           | Primitive        | Secrets, the lock, signers (hot and hardware wallets), signatures, key export                                                                       | Sign, export, manage signers. Given to the gateway only              |
-| **Wallet services** | Primitive        | One area of wallet state each: networks, accounts, Safe wallets, assets, transactions, settings                                                     | A typed interface per service and a read-only view of its state      |
-| **State**           | Primitive        | Storage, loading, and projections. Not the contents: each piece belongs to its owner                                                                | One write handle per piece of state, given to its owner only         |
-| **Desktop UI**      | Primitive        | Tray windows, menu bar icon, menus, shortcuts, launch                                                                                               | Window and lifecycle interface                                       |
-| **Features**        | Feature          | One user-facing capability each: its gateway operations, its screens, and any state or remote service only it uses                                  | Registered with the gateway; screens shown in a tray                 |
-| **Trays**           | Trays            | Showing projections and carrying the human's decisions                                                                                              | Reach the core through the tray entry point only                     |
-| **Extension**       | Separate program | Dapp origin, the injected Ethereum provider, the connection to the desktop app                                                                      | Reaches the core through its entry point only                        |
-| **Newframe CLI**    | Separate program | AI session credential storage, its commands, and its own conversation with the trading service                                                      | Reaches the core through the local API only, and only for signatures |
+| Part                | Kind             | Owns                                                                                                                                                | Interface                                                                     |
+| ------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| **Entry points**    | Primitive        | Identifying who is on a channel and creating the request source. One each for trays, the extension, other local API clients, and AI session clients | Hands the gateway a request source and a request                              |
+| **Gateway**         | Primitive        | The operation catalog, the authority ledger, requests in progress and pending requests. The vault's only caller                                     | Accepts a request from an entry point                                         |
+| **Vault**           | Primitive        | Secrets, the lock, signers (hot and hardware wallets), signatures, key export                                                                       | Sign, export, manage signers. Given to the gateway only                       |
+| **Wallet services** | Primitive        | One area of wallet state each: networks, accounts, Safe wallets, assets, transactions, settings                                                     | A typed interface per service and a read-only view of its state               |
+| **State**           | Primitive        | Storage, loading, and projections. Not the contents: each piece belongs to its owner                                                                | One write handle per piece of state, given to its owner only                  |
+| **Outbound**        | Primitive        | Every connection the core opens to a remote service: whether one may be opened at all, and how it leaves the computer                               | Send a request, open a socket. Opened and closed by the composition root only |
+| **Desktop UI**      | Primitive        | Tray windows, menu bar icon, menus, shortcuts, launch                                                                                               | Window and lifecycle interface                                                |
+| **Features**        | Feature          | One user-facing capability each: its gateway operations, its screens, and any state or remote service only it uses                                  | Registered with the gateway; screens shown in a tray                          |
+| **Trays**           | Trays            | Showing projections and carrying the human's decisions                                                                                              | Reach the core through the tray entry point only                              |
+| **Extension**       | Separate program | Dapp origin, the injected Ethereum provider, the connection to the desktop app                                                                      | Reaches the core through its entry point only                                 |
+| **Newframe CLI**    | Separate program | AI session credential storage, its commands, and its own conversation with the trading service                                                      | Reaches the core through the local API only, and only for signatures          |
 
 One file, the composition root, constructs every part of the core and hands each one the interfaces it is allowed. Nothing else wires parts together.
 
@@ -148,7 +151,8 @@ sequenceDiagram
   | Operation approval    | The human approved these exact contents, or a live AI session covers them        | Signing a message, sending a transaction |
   | Password confirmation | The human re-entered the password or passed the biometric check for this request | Exporting a private key                  |
 
-- **One lock for everything.** While locked, the gateway admits nothing from any request source except unlocking, the vault releases nothing, background refresh stops, and AI sessions are paused. A connected dapp gets no accounts, no events, and no network reads. Newframe locks when the human locks it and when the computer's screen locks or it sleeps, so there is no separate suspended state to manage.
+- **One lock for everything.** While locked, the gateway admits nothing from any request source except unlocking, the vault releases nothing, outbound is closed, and AI sessions are paused. A connected dapp gets no accounts, no events, and no network reads. Newframe locks when the human locks it and when the computer's screen locks or it sleeps, so there is no separate suspended state to manage.
+- **Closing outbound is the guarantee, not each caller's memory.** Closed outbound refuses every new request and socket to a remote service, so a poller that forgot to stop still reaches nothing. A request already sent is left to finish, so a send with effect is never cut off halfway and left in an unknown state. Background work follows outbound's state, never the lock directly, and closes its own timers and sockets when it closes. Outbound starts closed and opens only once stored state has loaded, so nothing connects before the human's settings are known.
 - **Requests can be long.** Pairing a hardware wallet or waiting on the human can take minutes. It is still one request: its progress is part of the projection, and cancelling it is another request. There is no separate kind of background work.
 - **Password confirmation is checked by the vault.** The gateway's policy says a gateway operation needs it; the vault is what verifies the password or biometric, since that is what unlocks the secret.
 - **Two decisions, two times.** Admission: may this request source request this gateway operation? Approval: did the human agree to these exact contents? Most gateway operations need only the first.
@@ -165,7 +169,9 @@ sequenceDiagram
 
 ## Remote services
 
-A remote service is not a step in the path; it is whatever is on the other end. The wallet service or feature that needs it is the only part that talks to it.
+A remote service is not a step in the path; it is whatever is on the other end. The wallet service or feature that needs it is the only part that talks to it, and it does so only through outbound.
+
+Outbound decides two things for every connection: whether it may leave at all, which it may not while locked, and how it leaves the computer. Routing every connection through a proxy such as Tor is one change to outbound, not one per remote service. A connection to this computer (loopback) never leaves it, so outbound lets it through even while closed.
 
 The gateway does not guard outbound calls. It decides whether a request source may request a gateway operation; what that operation reaches out to is internal. Three things cross this edge:
 
@@ -218,6 +224,7 @@ apps/
       services/    networks/  accounts/  safe-wallets/  assets/  transactions/  settings/
       features/    trading/  send/  dapp-requests/  safe-proposals/  connected-dapps/  onboarding/  ...
       state/       storage, projections
+      outbound/    the only way out to remote services
       desktop-ui/  tray windows, menu bar icon, menus, shortcuts
     trays/
       main/        main tray root
@@ -233,7 +240,7 @@ harness/         end-to-end and visual checks against the built app
 Allowed imports, enforced by the compiler through package boundaries rather than a script:
 
 ```
-schema ← core: { gateway, vault, state, services, desktop-ui } ← features ← main.ts
+schema ← core: { gateway, vault, state, outbound, services, desktop-ui } ← features ← main.ts
     ↑
 core/entry, trays, extension, cli
 ```
@@ -243,6 +250,7 @@ core/entry, trays, extension, cli
 - A wallet service never imports `gateway`, `entry` or a feature. It imports another wallet service only if that one comes earlier in the order networks → accounts → Safe wallets → assets → transactions.
 - Features never import each other. A flow that spans two features goes through gateway operations.
 - Only `vault` imports key and hardware-wallet libraries, including the client for a hardware wallet relay. Only the owner of a remote service's data imports that remote service's client.
+- Only `outbound` opens a connection. `fetch`, `WebSocket` and Electron's `net` are lint errors everywhere else in the core; a remote service's client is handed outbound's request function instead of reaching for its own.
 
 ## Adding a feature
 
@@ -262,7 +270,8 @@ Most of the endgame is restructuring. These change what Newframe does:
 
 | Today                                                                                                                                                                                       | Endgame                                                                                                                                                                                                                                                               |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| The lock is checked by signing, key export, AI sessions and the main tray. A connected dapp's reads are not checked                                                                         | While locked the gateway admits nothing except unlocking                                                                                                                                                                                                              |
+| The gateway refuses dapp and AI-session requests while locked, but a tray's requests and the extension's own requests are not checked, and events are still pushed to dapps                 | While locked the gateway admits nothing except unlocking                                                                                                                                                                                                              |
+| The app updater and the hardware wallet relay client open their own connections, outside outbound                                                                                           | Every connection the desktop app opens goes through outbound, so the lock and routing apply to it                                                                                                                                                                     |
 | Whether key export asks for the password again is not confirmed                                                                                                                             | Revealing a secret always needs password confirmation. Resetting the wallet and adding a hot wallet do not                                                                                                                                                            |
 | A hardware wallet pairing secret sits in general stored state; the portfolio API key sits in settings                                                                                       | Every secret is held by the vault, encrypted, and decrypted only for the moment of use                                                                                                                                                                                |
 | Events to dapps are sent from the code that carries out requests                                                                                                                            | The gateway decides who is told                                                                                                                                                                                                                                       |
@@ -292,6 +301,7 @@ Most of the endgame is restructuring. These change what Newframe does:
 | `platform/chain-rpc`, `features/networks`                                                                                                                                 | `core/services/networks`                                             |
 | `platform/state-store` (one store, about 100 mutators open to every holder), `platform/state-sync`, `platform/persistence`                                                | `core/state`, with each piece owned as above                         |
 | `platform/desktop`, `platform/app-update`, `platform/runtime`                                                                                                             | `core/desktop-ui`                                                    |
+| `platform/outbound`                                                                                                                                                       | `core/outbound`                                                      |
 | `app/renderer`, every `features/*/renderer`, `shared/renderer`                                                                                                            | `trays`                                                              |
 | `scripts/check-architecture.ts`                                                                                                                                           | Deleted as each rule becomes a compile error                         |
 

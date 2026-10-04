@@ -1,4 +1,6 @@
-type Fetch = typeof fetch
+import type { HttpFetch } from '../../../platform/outbound/index.ts'
+
+type Fetch = HttpFetch
 
 export interface ProviderRequestPolicyOptions {
   minIntervalMs?: number

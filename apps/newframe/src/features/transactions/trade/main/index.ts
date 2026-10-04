@@ -36,6 +36,7 @@ import {
   type FlashWebSocketFactory
 } from '@newframe/flash/websocket'
 
+import type { Outbound } from '../../../../platform/outbound/index.ts'
 import { getMainRuntime } from '../../../../platform/runtime/index.ts'
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
 import type { Token } from '../../../../platform/state-store/state/index.ts'
@@ -43,7 +44,8 @@ import type { AssetRateInput } from '../../../asset-data/domain/state/rate.ts'
 import type { AssetRateService } from '../../../asset-data/main/assetRates/service.ts'
 import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
 
-const flashApi = () => createFlashApi({ runtime: runtime() })
+const flashApi = (state: FlashServiceState) =>
+  createFlashApi({ runtime: runtime(), fetch: state.outbound.request })
 
 interface FlashOrderPositionUpdate {
   address: string
@@ -77,10 +79,13 @@ interface FlashAgentSessionStream {
   streaming: boolean
 }
 
+type FlashOutbound = Pick<Outbound, 'isOpen' | 'openWebSocket' | 'request' | 'subscribe'>
+
 interface FlashServiceState {
   agentSessionStreams: Map<string, FlashAgentSessionStream>
-  createWebSocket?: FlashWebSocketFactory
+  createWebSocket: FlashWebSocketFactory
   marketOrderPollers: Map<string, FlashMarketOrderPoller>
+  outbound: FlashOutbound
   openOrderPoller: ReturnType<typeof setInterval> | null
   openOrderRefresh: Promise<FlashOrderRecord[]> | null
   positionSync: FlashPositionSync | null
@@ -89,13 +94,15 @@ interface FlashServiceState {
 
 function createFlashServiceState(
   canonicalStore: Pick<CanonicalStoreReader, 'getState'>,
+  outbound: FlashOutbound,
   positionSync?: FlashPositionSync,
-  createWebSocket?: FlashWebSocketFactory
+  createWebSocket: FlashWebSocketFactory = (url) => outbound.openWebSocket(url)
 ): FlashServiceState {
   return {
     agentSessionStreams: new Map(),
     createWebSocket,
     marketOrderPollers: new Map(),
+    outbound,
     openOrderPoller: null,
     openOrderRefresh: null,
     positionSync: positionSync ?? null,
@@ -930,7 +937,7 @@ async function pollMarketOrder(state: FlashServiceState, orderId: string, poller
 }
 
 function startMarketOrderPolling(state: FlashServiceState, record: FlashOrderRecord) {
-  if (record.orderType !== FLASH_MARKET_ORDER_TYPE) {
+  if (!state.outbound.isOpen() || record.orderType !== FLASH_MARKET_ORDER_TYPE) {
     return
   }
   if (hasStreamingSessionForFunder(state, record.accountAddress)) {
@@ -965,7 +972,7 @@ function stopOpenOrderPolling(state: FlashServiceState) {
 }
 
 function ensureOpenOrderPolling(state: FlashServiceState) {
-  if (!hasOrdersRequiringPolling(state)) {
+  if (!state.outbound.isOpen() || !hasOrdersRequiringPolling(state)) {
     stopOpenOrderPolling(state)
     return
   }
@@ -994,7 +1001,7 @@ function sortOrders(a: FlashOrderRecord, b: FlashOrderRecord) {
 }
 
 async function fetchOrderRecord(state: FlashServiceState, fallback: FlashOrderRecord) {
-  const raw = await flashApi().getOrder(fallback.accountAddress, fallback.orderId)
+  const raw = await flashApi(state).getOrder(fallback.accountAddress, fallback.orderId)
   const record = normalizeOrderRecord(raw.order, fallback)
 
   return applyOrderRecord(state, record)
@@ -1085,7 +1092,12 @@ function scheduleAgentSessionFallback(
   delay = FLASH_STREAM_FALLBACK_POLL_MS
 ) {
   const session = state.agentSessionStreams.get(sessionId)
-  if (!session || session.streaming || hasStreamingSessionForFunder(state, session.accountAddress)) {
+  if (
+    !state.outbound.isOpen() ||
+    !session ||
+    session.streaming ||
+    hasStreamingSessionForFunder(state, session.accountAddress)
+  ) {
     return
   }
 
@@ -1210,9 +1222,31 @@ function startAgentSessionStream(
 
   state.agentSessionStreams.set(sessionId, session)
   scheduleAgentSessionExpiration(state, sessionId)
-  scheduleAgentSessionFallback(state, sessionId)
-  stream.start()
+  if (state.outbound.isOpen()) {
+    scheduleAgentSessionFallback(state, sessionId)
+    stream.start()
+  }
   return true
+}
+
+function pauseFlashOutbound(state: FlashServiceState) {
+  stopOpenOrderPolling(state)
+  for (const orderId of state.marketOrderPollers.keys()) {
+    stopMarketOrderPolling(state, orderId)
+  }
+  for (const session of state.agentSessionStreams.values()) {
+    stopAgentSessionFallback(session)
+    session.stream.stop()
+  }
+}
+
+function resumeFlashOutbound(state: FlashServiceState) {
+  for (const [sessionId, session] of state.agentSessionStreams) {
+    scheduleAgentSessionFallback(state, sessionId)
+    session.stream.start()
+  }
+  Object.values(storeOrders(state)).forEach((order) => startMarketOrderPolling(state, order))
+  ensureOpenOrderPolling(state)
 }
 
 function stopAgentSessionStreamsForAccount(state: FlashServiceState, accountAddress: string) {
@@ -1225,8 +1259,8 @@ function stopAgentSessionStreamsForAccount(state: FlashServiceState, accountAddr
   return sessionIds.length
 }
 
-async function quote(request: FlashBoundQuoteRequest) {
-  const { quote: normalizedQuote, flash } = await flashApi().quote(request)
+async function quote(state: FlashServiceState, request: FlashBoundQuoteRequest) {
+  const { quote: normalizedQuote, flash } = await flashApi(state).quote(request)
 
   return {
     ...runtime(),
@@ -1237,7 +1271,7 @@ async function quote(request: FlashBoundQuoteRequest) {
 
 async function submitOrder(state: FlashServiceState, request: FlashSubmitOrderRequest) {
   request = FlashSubmitOrderRequestSchema.parse(request)
-  const raw = await flashApi().submitOrder(request)
+  const raw = await flashApi(state).submitOrder(request)
   const orderId = raw.orderId
 
   const fallback = recordFromQuote({
@@ -1266,7 +1300,7 @@ async function listOrders(state: FlashServiceState, request: FlashListOrdersRequ
     throw new Error('Flash order list requires an account address')
   }
 
-  const raw = await flashApi().listOrders(accountAddress, {
+  const raw = await flashApi(state).listOrders(accountAddress, {
     status: request.status,
     pageSize: request.pageSize
   })
@@ -1298,7 +1332,7 @@ async function getOrder(state: FlashServiceState, request: FlashGetOrderRequest)
     throw new Error('Flash order lookup requires an account address')
   }
 
-  const raw = await flashApi().getOrder(accountAddress, request.orderId)
+  const raw = await flashApi(state).getOrder(accountAddress, request.orderId)
   const record = normalizeOrderRecord(raw.order, fallback)
   const storedRecord = applyOrderRecord(state, record)
 
@@ -1315,8 +1349,8 @@ async function cancelOrder(state: FlashServiceState, request: FlashCancelOrderRe
   const signature = request.userSignature ?? request.signature ?? ''
   const message = request.cancelMessage?.trim() ? request.cancelMessage : undefined
   const raw = message
-    ? await flashApi().cancelOrder(request.orderId, signature, message)
-    : await flashApi().cancelOrder(request.orderId, signature)
+    ? await flashApi(state).cancelOrder(request.orderId, signature, message)
+    : await flashApi(state).cancelOrder(request.orderId, signature)
   const fallback = getRecord(state, request.orderId)
   const record = normalizeOrderRecord(
     raw.order ?? {
@@ -1341,19 +1375,24 @@ async function cancelOrder(state: FlashServiceState, request: FlashCancelOrderRe
 export function createFlashService({
   assetRateService,
   createWebSocket,
+  outbound,
   positionSync,
   store
 }: {
   assetRateService: Pick<AssetRateService, 'observe'>
   createWebSocket?: FlashWebSocketFactory
+  outbound: FlashOutbound
   positionSync?: FlashPositionSync
   store: Pick<CanonicalStoreReader, 'getState'>
 }) {
-  const state = createFlashServiceState(store, positionSync, createWebSocket)
+  const state = createFlashServiceState(store, outbound, positionSync, createWebSocket)
+  const unsubscribeOutbound = outbound.subscribe((open) =>
+    open ? resumeFlashOutbound(state) : pauseFlashOutbound(state)
+  )
 
   return {
     quote: async (request: FlashBoundQuoteRequest) => {
-      const result = await quote(request)
+      const result = await quote(state, request)
       const observations = quoteAssetRateInputs(result.quote)
 
       if (observations.length) {
@@ -1378,6 +1417,7 @@ export function createFlashService({
     stopAgentSessionsForAccount: (accountAddress: string) =>
       stopAgentSessionStreamsForAccount(state, accountAddress),
     dispose: () => {
+      unsubscribeOutbound()
       for (const sessionId of state.agentSessionStreams.keys()) {
         stopAgentSessionStream(state, sessionId)
       }

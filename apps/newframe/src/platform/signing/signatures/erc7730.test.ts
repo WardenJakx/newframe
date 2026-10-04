@@ -206,7 +206,7 @@ describe('ERC-7730 typed data clear signing', () => {
 
     const display = await getErc7730TypedDataDisplay(
       { data: TYPED_DATA, version: SignTypedDataVersion.V4 },
-      fetcher as typeof fetch
+      fetcher
     )
 
     expect(display?.descriptorPath).toBe(descriptorPath)

@@ -7,6 +7,7 @@ import { addHexPrefix } from '@ethereumjs/util'
 import log from 'electron-log'
 import { shallow } from 'zustand/vanilla/shallow'
 
+import type { OutboundGate } from '../../../platform/outbound/index.ts'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
 import type { GasFees } from '../../../platform/state-store/state/index.ts'
 import type { EVMError, JSONRPCRequestPayload, RPCRequestCallback } from '../../../shared/domain/rpc.ts'
@@ -545,11 +546,12 @@ export class Chains extends EventEmitter {
   private disposeRuntime: () => void = () => {}
   private started = false
 
-  constructor(private readonly store: CanonicalStoreApi) {
+  constructor(
+    private readonly store: CanonicalStoreApi,
+    outbound: OutboundGate
+  ) {
     super()
     this.connections = { ethereum: {} }
-
-    const isLocked = () => this.store.getState().main.appLock.locked
 
     const activeConnectionIds = () =>
       Object.keys(this.connections)
@@ -602,7 +604,7 @@ export class Chains extends EventEmitter {
 
     const sleepConnections = () => {
       const connections = activeConnectionIds()
-      log.info('Newframe locked, closing active chain connections', {
+      log.info('Outbound traffic closed, closing active chain connections', {
         chains: connections
       })
 
@@ -613,8 +615,8 @@ export class Chains extends EventEmitter {
     }
 
     const updateConnections = () => {
-      if (isLocked()) {
-        log.debug('Skipping chain connection updates while Newframe is locked')
+      if (!outbound.isOpen()) {
+        log.debug('Skipping chain connection updates while outbound traffic is closed')
         return
       }
 
@@ -670,20 +672,20 @@ export class Chains extends EventEmitter {
       })
     }
 
-    const handleLockChange = (locked: boolean) => {
-      if (locked) {
-        sleepConnections()
-      } else {
-        log.info('Newframe unlocked, restoring chain connections')
+    const handleOutboundChange = (open: boolean) => {
+      if (open) {
+        log.info('Outbound traffic open, restoring chain connections')
         updateConnections()
+      } else {
+        sleepConnections()
       }
     }
 
     let unsubscribeNetworks: (() => void) | undefined
-    let unsubscribeLock: (() => void) | undefined
+    let unsubscribeOutbound: (() => void) | undefined
     this.startRuntime = () => {
       updateConnections()
-      unsubscribeLock = this.store.subscribe((state) => state.main.appLock.locked, handleLockChange)
+      unsubscribeOutbound = outbound.subscribe(handleOutboundChange)
       unsubscribeNetworks = this.store.subscribe(
         (state) =>
           Object.values(state.main.networks.ethereum)
@@ -696,8 +698,8 @@ export class Chains extends EventEmitter {
     this.disposeRuntime = () => {
       unsubscribeNetworks?.()
       unsubscribeNetworks = undefined
-      unsubscribeLock?.()
-      unsubscribeLock = undefined
+      unsubscribeOutbound?.()
+      unsubscribeOutbound = undefined
       activeConnectionIds().forEach((id) => {
         const [type, chainId] = id.split(':')
         removeConnection(chainId, type as Chain['type'])

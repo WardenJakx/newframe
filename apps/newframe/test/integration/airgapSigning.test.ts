@@ -19,6 +19,7 @@ import { createRequestService } from '../../src/features/requests/main/service.t
 import { signerCompatibility, maxFee } from '../../src/features/transactions/main/index.ts'
 import { createRevealService } from '../../src/features/transactions/main/reveal.ts'
 import { createOperationService } from '../../src/platform/operations/service.ts'
+import { createOutbound } from '../../src/platform/outbound/index.ts'
 import { createSafeClient } from '../../src/platform/safe/client.ts'
 import { getSafeTypedMessage, verifySafeHash } from '../../src/platform/safe/integrity.ts'
 import type { AirGapPublicAccount } from '../../src/platform/signing/domain/airgap.ts'
@@ -101,7 +102,7 @@ function integrationFixture({
   })
   const proxy = createProviderProxyConnection()
   const reveal = createRevealService(proxy, names)
-  const chains = new Chains(f.store)
+  const chains = new Chains(f.store, createOutbound(fetch))
   chains.send = rpc.send.bind(rpc)
   const accounts = new Accounts(f.store, {
     chainRpc: {

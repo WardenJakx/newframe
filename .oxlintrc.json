@@ -464,6 +464,54 @@
       }
     },
     {
+      "files": ["apps/newframe/src/**/*.ts"],
+      "excludeFiles": [
+        "apps/newframe/src/platform/outbound/**",
+        "apps/newframe/src/**/*.test.ts",
+        "apps/newframe/src/renderer/**",
+        "apps/newframe/src/**/renderer/**"
+      ],
+      "rules": {
+        "no-restricted-globals": [
+          "error",
+          {
+            "name": "fetch",
+            "message": "Use network.request from platform/network so the lock and routing apply."
+          },
+          {
+            "name": "WebSocket",
+            "message": "Use network.openWebSocket from platform/network so the lock and routing apply."
+          }
+        ],
+        "no-restricted-properties": [
+          "error",
+          {
+            "object": "globalThis",
+            "property": "fetch",
+            "message": "Use network.request from platform/network so the lock and routing apply."
+          }
+        ],
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "ws",
+                "importNames": ["default", "WebSocket"],
+                "allowTypeImports": true,
+                "message": "Use network.openWebSocket from platform/network so the lock and routing apply."
+              },
+              {
+                "name": "electron",
+                "importNames": ["net"],
+                "message": "Use network.request from platform/network so the lock and routing apply."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "files": ["**/*.{test,spec}.{ts,tsx}"],
       "plugins": ["jest"],
       "rules": {

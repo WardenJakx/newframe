@@ -7,10 +7,13 @@ import {
   it,
   jest as timers,
   mock,
+  spyOn,
   type Mock
 } from 'bun:test'
 
 import log from 'electron-log'
+
+import { outbound } from '../../outbound/index.ts'
 
 await mock.module('./sources/sourcify.ts', () => ({ fetchSourcifyContract: mock() }))
 await mock.module('./sources/etherscan.ts', () => ({ fetchEtherscanContract: mock() }))
@@ -43,6 +46,7 @@ const mockAbi = [
 
 beforeAll(async () => {
   log.transports.console.level = false
+  spyOn(outbound, 'request').mockImplementation((input, init) => globalThis.fetch(input, init))
   ;({ decodeCallData, decodeCallDataWithSelectorRegistry, fetchContract } = await import('./index.ts'))
   ;({ clearFunctionSelectorCache } = await import('./selectors.ts'))
   ;({ fetchSourcifyContract } = await import('./sources/sourcify.ts'))

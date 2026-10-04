@@ -1,6 +1,6 @@
-import { beforeEach, expect, it, mock } from 'bun:test'
+import { beforeEach, expect, it, mock, spyOn } from 'bun:test'
 
-import { electronMock } from '../../../../../test/support/electron.mock.ts'
+import { outbound } from '../../../../platform/outbound/index.ts'
 import { downloadImage } from './download.ts'
 
 type TestResponse = ReturnType<typeof createResponse> | ReturnType<typeof createRedirect>
@@ -49,7 +49,7 @@ function createRedirect(location: string, status = 302) {
 
 beforeEach(() => {
   mockFetch.mockReset()
-  electronMock.net.fetch.mockImplementation((...args: Parameters<typeof fetch>) => mockFetch(...args))
+  spyOn(outbound, 'request').mockImplementation(async (...args) => (await mockFetch(...args)) as Response)
   mockLookup.mockReset()
   mockLookup.mockResolvedValue([{ address: '93.184.216.34', family: 4 }])
 })

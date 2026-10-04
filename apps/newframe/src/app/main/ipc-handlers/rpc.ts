@@ -214,6 +214,7 @@ export class RpcIpcHandlers extends EventEmitter {
     )
     this.rpcOrigins = origins
     this.dispatchRpc = createRpcGateway({
+      isLocked: () => store.getState().main.appLock.locked,
       origins,
       selectedAddresses: () => accounts.getSelectedAddresses(),
       handle: (payload, respond, source) => this.handleRpc(payload, respond, source)
@@ -1752,6 +1753,7 @@ export class RpcIpcHandlers extends EventEmitter {
       return this.dispatchRpc(payload, respond, source)
     }
     return createRpcGateway({
+      isLocked: () => this.store.getState().main.appLock.locked,
       origins: this.rpcOrigins,
       selectedAddresses: () => this.accounts.getSelectedAddresses(),
       handle: (input, reply, admitted) => this.handleRpc(input, reply, admitted, context)
