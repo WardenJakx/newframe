@@ -402,6 +402,8 @@ export class NewframeDriver {
     const dialog = this.tray.getByRole('dialog', { name: 'Accounts' })
     await dialog.waitFor({ state: 'visible' })
     await dialog.getByRole('textbox', { name: 'Search accounts' }).fill(searchValue)
+    // The tray debounces the search, and the row below is visible before the filter applies.
+    await dialog.getByRole('button', { name: 'Clear Search accounts' }).waitFor({ state: 'visible' })
 
     const shortAddress = `${account.address.slice(0, 8)}...${account.address.slice(-6)}`
     const row = dialog.getByRole('button', { name: new RegExp(shortAddress.replaceAll('.', '\\.'), 'i') })
