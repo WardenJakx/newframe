@@ -102,6 +102,7 @@ import {
 import { createOperationDispatcher, type IpcMainHandlerPort } from '../../../platform/ipc/main/operations.ts'
 import { createStateStream } from '../../../platform/ipc/main/stateStream.ts'
 import { createOperationService } from '../../../platform/operations/service.ts'
+import { outbound } from '../../../platform/outbound/index.ts'
 import type { PersistenceLifecycle } from '../../../platform/persistence/ports.ts'
 import { createSafeClient, safeServiceNetworks } from '../../../platform/safe/client.ts'
 import { createSafeSimulationRpc } from '../../../platform/safe/simulation.ts'
@@ -258,11 +259,13 @@ export function createProductionCapabilities(
     reveal,
     runtime: adapters.accounts,
     createDataScanner: (canonicalStore) =>
-      createExternalDataScanner(canonicalStore, (tokens, options) => tokenService.register(tokens, options)),
+      createExternalDataScanner(canonicalStore, outbound, (tokens, options) =>
+        tokenService.register(tokens, options)
+      ),
     registerTokens: (tokens, options) => tokenService.register(tokens, options),
     requests: requestService
   })
-  const chains = new Chains(store)
+  const chains = new Chains(store, outbound)
   const provider = createProductionProvider(
     store,
     accounts,
@@ -327,7 +330,7 @@ export function createProductionCapabilities(
     store
   })
   const networkService = createNetworkService({ ...adapters.network, store })
-  const safeRequests = new ProviderRequestPolicy(fetch, { maxRetries: 0, minIntervalMs: 500 })
+  const safeRequests = new ProviderRequestPolicy(outbound.request, { maxRetries: 0, minIntervalMs: 500 })
   const safeRpc = createSafeSimulationRpc(chains)
   const safeClient = createSafeClient({
     call: (chainId, address, data, blockTag, signal) =>
@@ -649,7 +652,10 @@ export function createProductionMainApp({
         provider.start()
         nameResolution.start()
         proxy.start()
-        imageService.start()
+        // Images download only while outbound is open. Restarting the service retries what failed.
+        disconnectCapabilities.push(
+          outbound.subscribe((open) => (open ? imageService.start() : imageService.dispose()))
+        )
         app.start()
       } catch (error) {
         rendererAuthorization.dispose()

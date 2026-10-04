@@ -179,7 +179,11 @@ it('characterizes agent prompt timeout, disconnect, approval idempotency, and di
         } as never,
         new EventEmitter() as never,
         {
-          send: createRpcGateway({ selectedAddresses: () => [accountId], handle: handleRpc })
+          send: createRpcGateway({
+            isLocked: () => false,
+            selectedAddresses: () => [accountId],
+            handle: handleRpc
+          })
         }
       )
     )

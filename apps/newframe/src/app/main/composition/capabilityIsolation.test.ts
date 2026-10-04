@@ -1,6 +1,7 @@
-import { expect, it, mock } from 'bun:test'
+import { expect, it, mock, spyOn } from 'bun:test'
 
 import type { IpcMainHandlerPort } from '../../../platform/ipc/main/operations.ts'
+import { outbound } from '../../../platform/outbound/index.ts'
 import createCanonicalStore from '../../../platform/state-store/createCanonicalStore.ts'
 import {
   createProductionCapabilities,
@@ -175,6 +176,7 @@ it('releases registered handlers, account listeners, and Flash polling on dispos
         receiveAsset: asset
       }
     })
+    spyOn(outbound, 'isOpen').mockReturnValue(true)
     capabilities.flashService.startOpenOrderPolling()
 
     app.dispose()

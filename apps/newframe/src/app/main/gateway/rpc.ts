@@ -17,6 +17,7 @@ const RpcOperationSchema = z.looseObject({
 })
 
 export interface RpcGatewayPorts {
+  isLocked(): boolean
   origins?: Pick<OriginsService, 'hasAccountAccessGrant'>
   selectedAddresses(): string[]
   handle(
@@ -35,6 +36,15 @@ export function createRpcGateway(ports: RpcGatewayPorts) {
         settled = true
         respond(response)
       }
+    }
+    // Dapps and AI sessions get nothing while locked: no accounts and no network reads.
+    if ((source?.kind === 'rpc' || source?.kind === 'agent') && ports.isLocked()) {
+      reply(
+        input.method === 'eth_accounts'
+          ? { id: input.id, jsonrpc: input.jsonrpc, result: [] }
+          : { id: input.id, jsonrpc: input.jsonrpc, error: { code: 4100, message: 'Newframe is locked' } }
+      )
+      return
     }
     let effectiveMethod = input.method
     let invalid = { code: -32600, message: 'Invalid gateway request' }

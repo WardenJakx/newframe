@@ -23,7 +23,7 @@ describe('ProviderRequestPolicy', () => {
       now += 10
       return Promise.resolve(createResponse())
     })
-    const policy = new ProviderRequestPolicy(fetchMock as unknown as typeof fetch, {
+    const policy = new ProviderRequestPolicy(fetchMock, {
       minIntervalMs: 1000,
       maxRetries: 0,
       now: () => now,
@@ -52,7 +52,7 @@ describe('ProviderRequestPolicy', () => {
         now += 10
         return Promise.resolve(createResponse())
       })
-    const policy = new ProviderRequestPolicy(fetchMock as unknown as typeof fetch, {
+    const policy = new ProviderRequestPolicy(fetchMock, {
       minIntervalMs: 1000,
       maxRetries: 1,
       now: () => now,

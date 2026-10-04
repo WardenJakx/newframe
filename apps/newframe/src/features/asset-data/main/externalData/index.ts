@@ -1,5 +1,6 @@
 import log from 'electron-log'
 
+import type { OutboundGate } from '../../../../platform/outbound/index.ts'
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
 import type { Token } from '../../../../platform/state-store/state/index.ts'
 import type { Address } from '../../../../shared/domain/address.ts'
@@ -16,6 +17,7 @@ export interface DataScanner {
 
 export default function createExternalDataScanner(
   canonicalStore: CanonicalStoreReader,
+  outbound: OutboundGate,
   registerTokens?: Parameters<typeof Balances>[1]
 ): DataScanner {
   const storeApi = {
@@ -38,10 +40,7 @@ export default function createExternalDataScanner(
     const signerType = storeApi.getAccount(address)?.lastSignerType ?? ''
     return signerType.toLowerCase() !== 'address'
   }
-  const scanningAllowed = () => {
-    const { locked, vaultExists } = canonicalStore.getState().main.appLock
-    return vaultExists && !locked
-  }
+  const scanningAllowed = () => outbound.isOpen()
   const balances = Balances(canonicalStore, registerTokens)
 
   let connectedChains: number[] = [],
@@ -88,12 +87,12 @@ export default function createExternalDataScanner(
       return
     }
 
-    log.verbose('stopping external data while Newframe is locked')
+    log.verbose('stopping external data while outbound traffic is closed')
     balancesRunning = false
   }
 
   function resumeBalances() {
-    log.verbose('resuming external data after Newframe unlocked')
+    log.verbose('resuming external data after outbound traffic opened')
     startBalances()
 
     if (!canonicalStore.getState().tray.open && !pauseScanningDelay) {
@@ -103,17 +102,7 @@ export default function createExternalDataScanner(
 
   startBalances()
 
-  const handleScanningPermissionChange = (allowed: boolean) => {
-    if (allowed) {
-      resumeBalances()
-    } else {
-      stopBalances()
-    }
-  }
-  const unsubscribeScanningPermission = canonicalStore.subscribe(
-    (state) => state.main.appLock.vaultExists && !state.main.appLock.locked,
-    handleScanningPermissionChange
-  )
+  const unsubscribeOutbound = outbound.subscribe((open) => (open ? resumeBalances() : stopBalances()))
 
   const handleNetworkUpdate = debounce((newlyConnected: number[]) => {
     if (!scanningAllowed()) {
@@ -256,7 +245,7 @@ export default function createExternalDataScanner(
       unsubscribeAccount()
       unsubscribeCustomTokens()
       unsubscribeTray()
-      unsubscribeScanningPermission()
+      unsubscribeOutbound()
 
       balances.stop()
       balancesRunning = false

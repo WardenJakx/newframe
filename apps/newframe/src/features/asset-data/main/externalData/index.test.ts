@@ -1,6 +1,7 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, jest as timers, mock } from 'bun:test'
 
 import { DEFAULT_PROFILE_ID } from '../../../../app/contracts/state/main.ts'
+import { createOutbound } from '../../../../platform/outbound/index.ts'
 import createCanonicalStore from '../../../../platform/state-store/createCanonicalStore.ts'
 import store from '../../../../platform/state-store/index.ts'
 import type { Account } from '../../../accounts/domain/state/account.ts'
@@ -21,7 +22,6 @@ beforeEach(() => {
   timers.useFakeTimers()
   store.setState((state) => {
     state.tray.open = true
-    state.main.appLock = { locked: false, vaultExists: true }
     state.main.accounts = {}
     state.main.currentAccount = ''
   })
@@ -37,7 +37,7 @@ beforeEach(() => {
     refreshPositions: mock(),
     setAddress: mock()
   }
-  dataManager = externalData(store)
+  dataManager = externalData(store, outbound())
 })
 
 afterEach(() => {
@@ -75,18 +75,19 @@ function accountState(address: string, lastSignerType: string): Account {
   }
 }
 
-function isolatedStore(
-  appLock: { locked: boolean; vaultExists: boolean },
-  address?: string,
-  signerType = 'ledger'
-) {
+function outbound(open = true) {
+  const gate = createOutbound(fetch)
+  gate.setOpen(open)
+  return gate
+}
+
+function isolatedStore(address?: string, signerType = 'ledger') {
   const memoryStorage = {
     getItem: () => null,
     setItem: () => undefined,
     removeItem: () => undefined
   }
   const isolated = createCanonicalStore(memoryStorage).store
-  isolated.getState().setAppLock(appLock)
   if (address) {
     isolated.getState().upsertAccount({
       id: address,
@@ -102,38 +103,33 @@ function isolatedStore(
   return isolated
 }
 
-describe('wallet lock lifecycle', () => {
+describe('outbound lifecycle', () => {
   const normalAddress = '0x0000000000000000000000000000000000004444'
   const watchAddress = '0x0000000000000000000000000000000000005555'
 
-  it('does not start without a vault or while the vault is locked', () => {
-    const noVaultBalances = createBalancesMock()
-    const lockedBalances = createBalancesMock()
-    mockBalancesFactory.mockImplementationOnce(() => noVaultBalances)
-    mockBalancesFactory.mockImplementationOnce(() => lockedBalances)
+  it('does not start while outbound traffic is closed', () => {
+    const balances = createBalancesMock()
+    mockBalancesFactory.mockImplementationOnce(() => balances)
 
-    const noVaultScanner = externalData(isolatedStore({ locked: false, vaultExists: false }))
-    const lockedScanner = externalData(isolatedStore({ locked: true, vaultExists: true }))
+    const scanner = externalData(isolatedStore(), outbound(false))
 
-    expect(noVaultBalances.start.mock.calls).toHaveLength(0)
-    expect(lockedBalances.start.mock.calls).toHaveLength(0)
+    expect(balances.start.mock.calls).toHaveLength(0)
 
-    noVaultScanner.close()
-    lockedScanner.close()
+    scanner.close()
   })
 
-  it('starts once on unlock and immediately scans normal and watch accounts appropriately', () => {
+  it('starts once outbound traffic opens and immediately scans normal and watch accounts appropriately', () => {
     const normalBalances = createBalancesMock()
     const watchBalances = createBalancesMock()
-    const normalStore = isolatedStore({ locked: false, vaultExists: false }, normalAddress)
-    const watchStore = isolatedStore({ locked: true, vaultExists: true }, watchAddress, 'Address')
+    const normalOutbound = outbound(false)
+    const watchOutbound = outbound(false)
     mockBalancesFactory.mockImplementationOnce(() => normalBalances)
     mockBalancesFactory.mockImplementationOnce(() => watchBalances)
-    const normalScanner = externalData(normalStore)
-    const watchScanner = externalData(watchStore)
+    const normalScanner = externalData(isolatedStore(normalAddress), normalOutbound)
+    const watchScanner = externalData(isolatedStore(watchAddress, 'Address'), watchOutbound)
 
-    normalStore.getState().setAppLock({ locked: false, vaultExists: true })
-    watchStore.getState().setAppLock({ locked: false, vaultExists: true })
+    normalOutbound.setOpen(true)
+    watchOutbound.setOpen(true)
 
     expect(normalBalances.start.mock.calls).toHaveLength(1)
     expect(normalBalances.setAddress.mock.calls).toEqual([[normalAddress]])
@@ -146,18 +142,16 @@ describe('wallet lock lifecycle', () => {
     watchScanner.close()
   })
 
-  it('stops on lock and ignores repeated equivalent transitions', () => {
+  it('stops when outbound traffic closes and ignores repeated equivalent transitions', () => {
     const balances = createBalancesMock()
-    const scannerStore = isolatedStore({ locked: false, vaultExists: false }, normalAddress)
+    const gate = outbound(false)
     mockBalancesFactory.mockImplementationOnce(() => balances)
-    const scanner = externalData(scannerStore)
+    const scanner = externalData(isolatedStore(normalAddress), gate)
 
-    scannerStore.getState().setAppLock({ locked: true, vaultExists: true })
-    scannerStore.getState().setAppLock({ locked: false, vaultExists: true })
-    scannerStore.getState().setAppLock({ locked: false, vaultExists: true })
-    scannerStore.getState().setAppLock({ locked: true, vaultExists: true })
-    scannerStore.getState().setAppLock({ locked: true, vaultExists: true })
-    scannerStore.getState().setAppLock({ locked: false, vaultExists: false })
+    gate.setOpen(true)
+    gate.setOpen(true)
+    gate.setOpen(false)
+    gate.setOpen(false)
 
     expect(balances.start.mock.calls).toHaveLength(1)
     expect(balances.stop.mock.calls).toHaveLength(1)
@@ -165,10 +159,10 @@ describe('wallet lock lifecycle', () => {
     scanner.close()
   })
 
-  it('ignores manual refresh while locked', () => {
+  it('ignores manual refresh while outbound traffic is closed', () => {
     const balances = createBalancesMock()
     mockBalancesFactory.mockImplementationOnce(() => balances)
-    const scanner = externalData(isolatedStore({ locked: true, vaultExists: true }, normalAddress))
+    const scanner = externalData(isolatedStore(normalAddress), outbound(false))
 
     scanner.refreshBalances(normalAddress)
     scanner.refreshPositions(normalAddress, 1, [])
@@ -185,7 +179,7 @@ describe('wallet lock lifecycle', () => {
     const start = mock(() => ++startCount > 1)
     const balances = createBalancesMock(start)
     mockBalancesFactory.mockImplementationOnce(() => balances)
-    const scanner = externalData(isolatedStore({ locked: false, vaultExists: true }, normalAddress))
+    const scanner = externalData(isolatedStore(normalAddress), outbound())
 
     scanner.refreshBalances(normalAddress)
 
@@ -201,7 +195,7 @@ describe('wallet lock lifecycle', () => {
     const start = mock(() => ++startCount > 1)
     const balances = createBalancesMock(start)
     mockBalancesFactory.mockImplementationOnce(() => balances)
-    const scanner = externalData(isolatedStore({ locked: false, vaultExists: true }, normalAddress))
+    const scanner = externalData(isolatedStore(normalAddress), outbound())
 
     scanner.refreshPositions(normalAddress, 1, [])
 
@@ -212,11 +206,12 @@ describe('wallet lock lifecycle', () => {
     scanner.close()
   })
 
-  it('does not replay pending store refreshes after locking and unlocking', () => {
+  it('does not replay pending store refreshes after outbound traffic closes and reopens', () => {
     const balances = createBalancesMock()
-    const scannerStore = isolatedStore({ locked: false, vaultExists: true })
+    const scannerStore = isolatedStore()
+    const gate = outbound()
     mockBalancesFactory.mockImplementationOnce(() => balances)
-    const scanner = externalData(scannerStore)
+    const scanner = externalData(scannerStore, gate)
     balances.addNetworks.mockClear()
     balances.addTokens.mockClear()
     balances.refresh.mockClear()
@@ -231,8 +226,8 @@ describe('wallet lock lifecycle', () => {
       }
       state.main.tokens = { ...state.main.tokens }
     })
-    scannerStore.getState().setAppLock({ locked: true, vaultExists: true })
-    scannerStore.getState().setAppLock({ locked: false, vaultExists: true })
+    gate.setOpen(false)
+    gate.setOpen(true)
 
     expect(balances.setAddress.mock.calls).toEqual([[normalAddress]])
     expect(balances.addNetworks.mock.calls).toHaveLength(0)
@@ -248,14 +243,14 @@ describe('wallet lock lifecycle', () => {
     scanner.close()
   })
 
-  it('unsubscribes from lock state when closed', () => {
+  it('unsubscribes from outbound traffic when closed', () => {
     const balances = createBalancesMock()
-    const scannerStore = isolatedStore({ locked: false, vaultExists: false }, normalAddress)
+    const gate = outbound(false)
     mockBalancesFactory.mockImplementationOnce(() => balances)
-    const scanner = externalData(scannerStore)
+    const scanner = externalData(isolatedStore(normalAddress), gate)
 
     scanner.close()
-    scannerStore.getState().setAppLock({ locked: false, vaultExists: true })
+    gate.setOpen(true)
 
     expect(balances.start.mock.calls).toHaveLength(0)
     expect(balances.stop.mock.calls).toHaveLength(1)
@@ -296,8 +291,6 @@ it('keeps refresh state and lifecycle isolated across two production scanner ins
   }
   const firstStore = createCanonicalStore(memoryStorage).store
   const secondStore = createCanonicalStore(memoryStorage).store
-  firstStore.getState().setAppLock({ locked: false, vaultExists: true })
-  secondStore.getState().setAppLock({ locked: false, vaultExists: true })
   const scannerBalances = () => ({
     addNetworks: mock(),
     addTokens: mock(),
@@ -313,8 +306,8 @@ it('keeps refresh state and lifecycle isolated across two production scanner ins
   const secondBalances = scannerBalances()
   mockBalancesFactory.mockImplementationOnce(() => firstBalances)
   mockBalancesFactory.mockImplementationOnce(() => secondBalances)
-  const firstScanner = externalData(firstStore)
-  const secondScanner = externalData(secondStore)
+  const firstScanner = externalData(firstStore, outbound())
+  const secondScanner = externalData(secondStore, outbound())
   const firstAddress = '0x0000000000000000000000000000000000001111'
   const secondAddress = '0x0000000000000000000000000000000000002222'
 

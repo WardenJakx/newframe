@@ -5,6 +5,7 @@ import { addHexPrefix, intToHex } from '@ethereumjs/util'
 import log from 'electron-log'
 
 import { gweiToHex } from '../../../../test/support/util.ts'
+import { createOutbound } from '../../../platform/outbound/index.ts'
 import store from '../../../platform/state-store/index.ts'
 import type { RPCRequestPayload } from '../../../shared/domain/rpc.ts'
 
@@ -217,6 +218,8 @@ const resetChainState = () => {
   })
 }
 
+const outbound = createOutbound(fetch)
+
 const waitForConnection = async () => {
   await new Promise((resolve) => process.nextTick(resolve))
   await Promise.resolve()
@@ -232,7 +235,8 @@ beforeAll(async () => {
 
   // need to import this after mocks are set up
   const { Chains } = await import('./index.ts')
-  chains = new Chains(store)
+  outbound.setOpen(true)
+  chains = new Chains(store, outbound)
   chains.start()
 })
 
@@ -297,12 +301,12 @@ Object.values(mockConnections).forEach((chain) => {
   })
 })
 
-it('closes chain connections while Newframe is locked and restores them on unlock', async () => {
+it('closes chain connections while outbound traffic is closed and restores them when it opens', async () => {
   const sepolia = mockConnections['https://ethereum-sepolia-rpc.publicnode.com']
   await connectChain(sepolia)
   expect(chains.connections.ethereum[sepolia.id]).toBeDefined()
 
-  store.getState().setAppLock({ locked: true, vaultExists: true })
+  outbound.setOpen(false)
 
   expect(chains.connections.ethereum[sepolia.id]).toBeUndefined()
   expect(store.getState().main.networks.ethereum[Number(sepolia.id)].connection.primary.connected).toBe(false)
@@ -310,7 +314,7 @@ it('closes chain connections while Newframe is locked and restores them on unloc
   store.getState().toggleConnection('ethereum', 137, 'primary', true)
   expect(chains.connections.ethereum['137']).toBeUndefined()
 
-  store.getState().setAppLock({ locked: false, vaultExists: true })
+  outbound.setOpen(true)
   await waitForConnection()
 
   expect(chains.connections.ethereum[sepolia.id]).toBeDefined()

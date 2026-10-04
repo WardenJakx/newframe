@@ -1,6 +1,7 @@
 import path from 'path'
 import url from 'url'
 
+// oxlint-disable-next-line no-restricted-imports -- net only serves the app's own files to its windows.
 import { app, clipboard, ipcMain, net, protocol } from 'electron'
 import log from 'electron-log'
 
@@ -17,6 +18,7 @@ import menu from '../../platform/desktop/menu.ts'
 import { lockWithSystem } from '../../platform/desktop/systemLock.ts'
 import { showUnhandledExceptionDialog } from '../../platform/desktop/windows/dialog.ts'
 import windows from '../../platform/desktop/windows/index.ts'
+import { outbound } from '../../platform/outbound/index.ts'
 import { createProductionPersistencePorts } from '../../platform/persistence/index.ts'
 import { getErrorCode } from '../../platform/runtime/errors.ts'
 import { isVisualHarness } from '../../platform/runtime/visualHarness.ts'
@@ -186,11 +188,7 @@ process.on('unhandledRejection', (e) => {
 })
 
 function startUpdater() {
-  store.subscribe(
-    (state) => state.main.appLock.locked,
-    (locked) => (locked ? updater.stop() : updater.start()),
-    { fireImmediately: true }
-  )
+  outbound.subscribe((open) => (open ? updater.start() : updater.stop()))
 }
 
 let domainServicesStarted = false
@@ -259,6 +257,12 @@ void app.whenReady().then(async () => {
   })
   configureWebAuthn()
   startDomainServices()
+  // Outbound traffic stays closed until stored state has loaded, then follows the lock.
+  store.subscribe(
+    (state) => state.main.appLock.locked,
+    (locked) => outbound.setOpen(!locked),
+    { fireImmediately: true }
+  )
   menu()
   windows.init(rendererAuthorization, store)
   // Hiding the Dock icon would relax the harness's stricter 'prohibited' activation policy.

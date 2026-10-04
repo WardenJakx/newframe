@@ -8,7 +8,9 @@ import {
 } from '@newframe/desktop-api/protocol'
 import type { JsonRpcApiProvider, JsonRpcPayload } from 'ethers'
 import { FetchRequest, JsonRpcProvider, WebSocketProvider } from 'ethers'
-import WebSocket from 'ws'
+
+import { ethersGetUrl } from '../../../../platform/outbound/ethers.ts'
+import { outbound } from '../../../../platform/outbound/index.ts'
 
 export type RpcParams = readonly unknown[] | Record<string, unknown>
 
@@ -129,7 +131,7 @@ export function createJsonRpcProvider(target: string, options: ProviderOptions =
     return new FrameWebSocketProvider(
       () => {
         const socketOptions = options.origin ? { origin: options.origin } : undefined
-        const socket = new WebSocket(target, [], socketOptions)
+        const socket = outbound.openWebSocket(target, socketOptions)
         socket.on('error', () => {})
         return socket
       },
@@ -140,6 +142,7 @@ export function createJsonRpcProvider(target: string, options: ProviderOptions =
 
   const request = new FetchRequest(target)
   request.timeout = 60 * 1000
+  request.getUrlFunc = ethersGetUrl(outbound.request)
 
   if (options.origin) {
     request.setHeader('Origin', options.origin)

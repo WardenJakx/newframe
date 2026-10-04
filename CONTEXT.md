@@ -94,6 +94,10 @@ _Avoid_: AI session
 A system outside the computer that Newframe fetches data from or submits to: a network node, the Safe transaction service, a trading service, a portfolio or price source. It never requests operations. How far its responses are trusted is decided per remote service.
 _Avoid_: Provider, backend, API (alone)
 
+**Outbound**:
+The primitive that is the core's only way to reach a remote service. It decides whether a connection may leave at all, which it may not while Newframe is locked, and how it leaves the computer.
+_Avoid_: Network (that is a blockchain), transport, egress
+
 ## Trust
 
 **Trust zone**:

@@ -2,6 +2,7 @@ import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import { formatUnits, getAddress, isAddress, keccak256, toUtf8Bytes } from 'ethers'
 
 import type { TypedData, TypedMessage } from '../../../features/requests/contract/requests.ts'
+import { outbound, type HttpFetch } from '../../outbound/index.ts'
 
 const REGISTRY_BASE_URL = 'https://raw.githubusercontent.com/ethereum/clear-signing-erc7730-registry/master'
 const EIP712_INDEX_URL = `${REGISTRY_BASE_URL}/index.eip712.json`
@@ -82,7 +83,7 @@ type Eip712IndexEntry = {
 }
 
 type Eip712Index = Record<string, Record<string, Eip712IndexEntry[]>>
-type FetchLike = typeof fetch
+type FetchLike = HttpFetch
 type CacheEntry<T> = { value: T; fetchedAt: number }
 type DescriptorResult = { descriptor: Erc7730Descriptor; path?: string }
 type FormatMatch = { formatKey: string; format: DisplayFormat; values: Record<string, unknown> }
@@ -772,7 +773,7 @@ function selectIndexEntry(entries: Eip712IndexEntry[], encodeTypeHash: string) {
 
 export async function getErc7730TypedDataDisplay(
   typedMessage: TypedMessage,
-  fetcher: FetchLike = fetch
+  fetcher: FetchLike = outbound.request
 ): Promise<Erc7730Display | undefined> {
   try {
     const lookup = getTypedDataRegistryLookup(typedMessage)
