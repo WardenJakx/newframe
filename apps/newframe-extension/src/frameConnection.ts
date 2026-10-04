@@ -2,13 +2,13 @@ import EventEmitter from 'events'
 
 import { createDesktopSocket, isDesktopClientError } from '@newframe/desktop-api/client'
 import {
-  CompanionResponseSchema,
-  type CompanionPayload as JsonRpcPayload,
-  type CompanionResponse as JsonRpcResponse
+  ExtensionRpcResponseSchema,
+  type ExtensionRpcPayload as JsonRpcPayload,
+  type ExtensionRpcResponse as JsonRpcResponse
 } from '@newframe/desktop-api/protocol'
 export type {
-  CompanionPayload as JsonRpcPayload,
-  CompanionResponse as JsonRpcResponse
+  ExtensionRpcPayload as JsonRpcPayload,
+  ExtensionRpcResponse as JsonRpcResponse
 } from '@newframe/desktop-api/protocol'
 
 import type { ProviderEvent } from '@newframe/desktop-api/schemas'
@@ -41,7 +41,7 @@ const providerEvents: ProviderEvent[] = [
 ]
 
 function isJsonRpcResponse(value: unknown): value is JsonRpcResponse {
-  return CompanionResponseSchema.safeParse(value).success
+  return ExtensionRpcResponseSchema.safeParse(value).success
 }
 
 async function withTimeout<T>(promise: Promise<T>, timeout: number, message: string) {

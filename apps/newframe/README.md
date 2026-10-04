@@ -208,7 +208,7 @@ only transient interaction state such as an open menu or selected section.
 ## Related
 
 - [Root project README](../../README.md) - overall Newframe overview and monorepo map.
-- [Newframe Browser Extension](../newframe-extension/README.md) - browser companion extension.
+- [Newframe Browser Extension](../newframe-extension/README.md) - browser extension.
 
 ### Use AirGap Vault
 

@@ -33,7 +33,7 @@ export type TrustedCapability = 'wallet:internal-state'
 
 export type LocalApiSource = RequestSourceBrand & {
   readonly kind: 'rpc'
-  readonly participant: 'local-api-client' | 'website' | 'companion-extension'
+  readonly participant: 'local-api-client' | 'website' | 'extension'
   readonly websiteOrigin?: string
   /** Set for the extension's own requests and website requests it relays. */
   readonly extensionId?: string

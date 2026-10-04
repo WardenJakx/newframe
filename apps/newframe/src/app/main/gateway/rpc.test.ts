@@ -94,7 +94,7 @@ it('does not let relayed websites inherit extension controls or internal account
     capabilities: ['wallet:internal-state']
   })
   const extension = createLocalApiSource({
-    participant: 'companion-extension',
+    participant: 'extension',
     extensionId: 'extension-id',
     origin: 'newframe-extension',
     transport: 'websocket',
