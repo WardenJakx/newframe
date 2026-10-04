@@ -1,5 +1,6 @@
 import log from 'electron-log'
 
+import { isVisualHarness } from '../../core/desktop-ui/runtime/visualHarness.ts'
 import { createBindablePersistenceStorage } from '../persistence/bindableStorage.ts'
 import {
   createPersistenceAdapter,
@@ -8,7 +9,6 @@ import {
   type PersistenceSchedulerPort,
   type PersistenceStoragePort
 } from '../persistence/index.ts'
-import { isVisualHarness } from '../runtime/visualHarness.ts'
 import createCanonicalStore from './createCanonicalStore.ts'
 import { connectPersistenceControl } from './persist/index.ts'
 

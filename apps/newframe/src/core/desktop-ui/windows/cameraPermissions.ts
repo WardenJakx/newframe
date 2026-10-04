@@ -1,6 +1,6 @@
 import type { Session } from 'electron'
 
-import type { TrayAuthorizationRegistry } from '../../../core/entry/tray/authorization.ts'
+import type { TrayAuthorizationRegistry } from '../../entry/tray/authorization.ts'
 
 type PermissionSession = Pick<Session, 'setPermissionCheckHandler' | 'setPermissionRequestHandler'>
 const installations = new WeakMap<PermissionSession, symbol>()

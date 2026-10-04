@@ -5,6 +5,14 @@ import url from 'url'
 import { app, clipboard, ipcMain, net, protocol } from 'electron'
 import log from 'electron-log'
 
+import { Updater } from '../../core/desktop-ui/app-update/index.ts'
+import * as launch from '../../core/desktop-ui/launch.ts'
+import menu from '../../core/desktop-ui/menu.ts'
+import { getErrorCode } from '../../core/desktop-ui/runtime/errors.ts'
+import { isVisualHarness } from '../../core/desktop-ui/runtime/visualHarness.ts'
+import { lockWithSystem } from '../../core/desktop-ui/systemLock.ts'
+import { showUnhandledExceptionDialog } from '../../core/desktop-ui/windows/dialog.ts'
+import windows from '../../core/desktop-ui/windows/index.ts'
 import { createProductionApiServer } from '../../core/entry/local-api/api/index.ts'
 import { installInternetDefaults, internet } from '../../core/internet/index.ts'
 import { routeInternet } from '../../core/internet/tor.ts'
@@ -15,15 +23,7 @@ import { lookupChainlistIcon, rpcMatchesChain } from '../../core/services/chains
 import { createProductionAccountOnboardingAdapters } from '../../features/accounts/main/accountOnboarding/production.ts'
 import { createProductionAccountsRuntime } from '../../features/accounts/main/production.ts'
 import { createProductionSecurityAdapters } from '../../features/security/main/production.ts'
-import { Updater } from '../../platform/app-update/index.ts'
-import * as launch from '../../platform/desktop/launch.ts'
-import menu from '../../platform/desktop/menu.ts'
-import { lockWithSystem } from '../../platform/desktop/systemLock.ts'
-import { showUnhandledExceptionDialog } from '../../platform/desktop/windows/dialog.ts'
-import windows from '../../platform/desktop/windows/index.ts'
 import { createProductionPersistencePorts } from '../../platform/persistence/index.ts'
-import { getErrorCode } from '../../platform/runtime/errors.ts'
-import { isVisualHarness } from '../../platform/runtime/visualHarness.ts'
 import biometrics from '../../platform/secrets/biometrics.ts'
 import vault from '../../platform/secrets/vault.ts'
 import { Signers } from '../../platform/signing/signers/index.ts'
@@ -275,7 +275,8 @@ void app.whenReady().then(async () => {
   }
   if (isDev) {
     const loadDev = async () => {
-      const { installDevTools, startCpuMonitoring } = await import('../../platform/runtime/dev/index.ts')
+      const { installDevTools, startCpuMonitoring } =
+        await import('../../core/desktop-ui/runtime/dev/index.ts')
       // Installation logs failures internally; CPU monitoring starts immediately.
       void installDevTools()
       startCpuMonitoring()

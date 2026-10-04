@@ -7,7 +7,7 @@ const config = {
   productName: 'Newframe',
   beforePack: prepareTorBundle,
   extraResources: [{ from: 'build/tor/${os}-${arch}', to: 'tor' }],
-  files: ['compiled', 'bundle', '!compiled/src/platform/runtime/dev']
+  files: ['compiled', 'bundle', '!compiled/src/core/desktop-ui/runtime/dev']
 } satisfies Configuration
 
 export default config

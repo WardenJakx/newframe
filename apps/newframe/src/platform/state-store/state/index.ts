@@ -8,12 +8,12 @@ import {
   MainSchema,
   type Main
 } from '../../../app/contracts/state/main.ts'
+import { getMainRuntime } from '../../../core/desktop-ui/runtime/index.ts'
 import {
   createBuiltInChainMetadata,
   createBuiltInChains
 } from '../../../features/chains/domain/chain/index.ts'
 import { OperationRecordSchema } from '../../operations/operation.ts'
-import { getMainRuntime } from '../../runtime/index.ts'
 import { Derivation } from '../../signing/signers/Signer/derive.ts'
 import type { SignerSummary } from '../../signing/signers/Signer/index.ts'
 import type { OwnedOperation } from '../actions.operation.ts'

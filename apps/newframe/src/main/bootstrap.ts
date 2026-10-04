@@ -2,8 +2,8 @@ import path from 'node:path'
 
 import { app } from 'electron'
 
-import { prepareDevelopmentProfile } from '../platform/runtime/developmentProfile.ts'
-import { isVisualHarness } from '../platform/runtime/visualHarness.ts'
+import { prepareDevelopmentProfile } from '../core/desktop-ui/runtime/developmentProfile.ts'
+import { isVisualHarness } from '../core/desktop-ui/runtime/visualHarness.ts'
 
 process.env.BUNDLE_LOCATION =
   process.env.BUNDLE_LOCATION || path.resolve(import.meta.dirname, '../../..', 'bundle')

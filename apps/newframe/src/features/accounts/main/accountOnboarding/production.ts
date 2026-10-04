@@ -1,11 +1,11 @@
 import { randomBytes } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 
+import { openFileDialog } from '../../../../core/desktop-ui/windows/dialog.ts'
 import {
   createOneResultCallbackBoundary,
   type OneResultCallback
 } from '../../../../platform/callbacks/oneResult.ts'
-import { openFileDialog } from '../../../../platform/desktop/windows/dialog.ts'
 import type Signer from '../../../../platform/signing/signers/Signer/index.ts'
 import { randomLetters } from '../../../../shared/domain/text.ts'
 import type { AccountOnboardingPorts, OnboardingSigner } from './service.ts'
