@@ -5,7 +5,7 @@ import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppS
 import { ConnectedDappsView, type ConnectedExtensionRow } from './ConnectedDappsView.tsx'
 import type { ConnectionsCapability } from './connectionsCapability.ts'
 
-const EMPTY_RECORD: MainTrayProjection['permissions'][string] = {}
+const EMPTY_RECORD: MainTrayProjection['accountAccessGrants'][string] = {}
 
 export function ConnectedDapps({
   capability,
@@ -22,17 +22,17 @@ export function ConnectedDapps({
     accountOrder,
     extensionAccess,
     knownExtensions,
-    permissions: grants
+    accountAccessGrants: grants
   } = useWalletSelector(
     useShallow((state) => {
       const accountId = state.currentAccount || ''
-      const grantsByAccount: Partial<typeof state.permissions> = state.permissions
+      const grantsByAccount: Partial<typeof state.accountAccessGrants> = state.accountAccessGrants
       return {
         accountId,
         accountOrder: state.accountOrder,
         extensionAccess: state.extensionAccess,
         knownExtensions: state.knownExtensions,
-        permissions: accountId ? (grantsByAccount[accountId] ?? EMPTY_RECORD) : EMPTY_RECORD
+        accountAccessGrants: accountId ? (grantsByAccount[accountId] ?? EMPTY_RECORD) : EMPTY_RECORD
       }
     })
   )

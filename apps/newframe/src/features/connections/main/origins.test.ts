@@ -164,7 +164,7 @@ function createOriginHarness() {
       origins[id] = origin
     },
     setAccountAccessGrant(origin: string, provider: boolean, accountAddress: Address = address) {
-      grants[accountAddress] = [{ origin, provider, handlerId: uuidv5(origin, uuidv5.DNS) }]
+      grants[accountAddress] = [{ origin, provider, requestId: uuidv5(origin, uuidv5.DNS) }]
     },
     setKnownExtension(id: string, allowed: boolean) {
       knownExtensions[id] = allowed

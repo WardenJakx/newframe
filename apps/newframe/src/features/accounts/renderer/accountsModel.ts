@@ -18,7 +18,7 @@ export interface AccountListItem {
   signerType: string
   signerLabel: string
   balanceLabel: string
-  agentEnabled: boolean
+  aiSessionsEnabled: boolean
   hot: boolean
   lastSeedAccount: boolean
   profileId: string
@@ -156,7 +156,7 @@ export function buildAccountListModel(input: {
             signerType: accountSignerType(account),
             signerLabel: accountSignerLabel(account),
             balanceLabel: accountBalanceLabel({ ...input, account }),
-            agentEnabled: accountSignerType(account) !== 'safe' && Boolean(account.agentEnabled),
+            aiSessionsEnabled: accountSignerType(account) !== 'safe' && Boolean(account.aiSessionsEnabled),
             hot: isHotAccount(account),
             lastSeedAccount: isLastAccountForSeedPhrase(account, input.accounts, input.signers),
             profileId: account.profileId

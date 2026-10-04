@@ -74,7 +74,7 @@ export type AppOrigin = {
 }
 
 export type AppAccountAccessGrant = {
-  handlerId?: string
+  requestId?: string
   origin?: string
   [key: string]: unknown
 }
@@ -108,7 +108,7 @@ export type CurrentRequest = AppRequest & {
 export type AppAccount = AccountInfo & {
   signer?: string
   safe?: Record<string, SafeDeployment>
-  agentEnabled?: boolean
+  aiSessionsEnabled?: boolean
   requests?: Record<string, AppRequest>
 }
 
@@ -150,7 +150,7 @@ export type AppState = {
     chains?: { ethereum?: Record<string, AppChain> }
     orders?: Record<string, FlashOrder>
     origins?: Record<string, AppOrigin>
-    permissions?: Record<string, Record<string, AppAccountAccessGrant>>
+    accountAccessGrants?: Record<string, Record<string, AppAccountAccessGrant>>
     showTestnets?: boolean
     signers?: Record<string, unknown>
   }

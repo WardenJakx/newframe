@@ -20,7 +20,7 @@ export const AccountSchema = z
     signer: z.string(),
     signerStatus: z.string().optional(),
     safe: z.record(z.string().regex(/^[1-9][0-9]*$/), SafeDeploymentSchema).optional(),
-    agentEnabled: z.boolean().optional(),
+    aiSessionsEnabled: z.boolean().optional(),
     requests: z.record(z.string(), z.unknown()),
     ensName: z.string().optional(),
     created: z.string()

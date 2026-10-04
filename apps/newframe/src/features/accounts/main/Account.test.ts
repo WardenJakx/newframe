@@ -598,11 +598,11 @@ it.each([true, false])(
     ownerAccount.addRequest(request)
     ownerAccount.setAccess(request, approved, target)
     if (approved) {
-      expect(store.getState().main.permissions[target]?.[requestId]?.provider).toBe(true)
+      expect(store.getState().main.accountAccessGrants[target]?.[requestId]?.provider).toBe(true)
     } else {
-      expect(store.getState().main.permissions[target]?.[requestId]?.provider).toBeUndefined()
+      expect(store.getState().main.accountAccessGrants[target]?.[requestId]?.provider).toBeUndefined()
     }
-    expect(store.getState().main.permissions[ownerAccount.address]?.[requestId]).toBeUndefined()
+    expect(store.getState().main.accountAccessGrants[ownerAccount.address]?.[requestId]).toBeUndefined()
     expect(ownerAccount.getRequest(requestId)).toBeUndefined()
     expect(respond).toHaveBeenCalledWith({ id: 19, jsonrpc: '2.0', result: approved ? target : undefined })
     store.getState().revokeAccountAccessGrant(target, requestId)

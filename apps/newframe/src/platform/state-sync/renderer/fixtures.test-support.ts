@@ -44,7 +44,7 @@ const baseWalletState: MainTrayProjection = {
   },
   orders: {},
   origins: {},
-  permissions: {},
+  accountAccessGrants: {},
   portfolioApiKeyConfigured: false,
   portfolioProvider: 'zerion',
   profiles: [

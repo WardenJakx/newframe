@@ -35,9 +35,9 @@ export function hasSubscriptionGrant(
   }
 
   const state = canonicalStore.getState()
-  const grantsByAddress = state.main.permissions as Record<
+  const grantsByAddress = state.main.accountAccessGrants as Record<
     string,
-    (typeof state.main.permissions)[string] | undefined
+    (typeof state.main.accountAccessGrants)[string] | undefined
   >
   const grants = grantsByAddress[address]
   if (!grants) {

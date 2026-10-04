@@ -9,7 +9,7 @@ const address = '0x1111111111111111111111111111111111111111'
 
 beforeEach(() => {
   store.setState((state) => {
-    state.main.permissions = {}
+    state.main.accountAccessGrants = {}
   })
 })
 
@@ -44,8 +44,8 @@ describe('subscription permissions', () => {
       capabilities: []
     }
     store.setState((state) => {
-      state.main.permissions[address] = {
-        grant: { origin, provider: true, handlerId: 'test-handler' }
+      state.main.accountAccessGrants[address] = {
+        grant: { origin, provider: true, requestId: 'test-handler' }
       }
     })
 

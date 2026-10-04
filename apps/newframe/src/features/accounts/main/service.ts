@@ -6,12 +6,12 @@ type AccountState = Pick<
   CanonicalStore,
   'clearAccountAccessGrants' | 'removeOrigin' | 'reorderAccounts' | 'revokeAccountAccessGrant'
 > & {
-  main: Omit<CanonicalStore['main'], 'accounts' | 'origins' | 'permissions'> & {
+  main: Omit<CanonicalStore['main'], 'accounts' | 'origins' | 'accountAccessGrants'> & {
     accounts: Record<string, CanonicalStore['main']['accounts'][string] | undefined>
     origins: Record<string, CanonicalStore['main']['origins'][string] | undefined>
-    permissions: Record<
+    accountAccessGrants: Record<
       string,
-      Record<string, CanonicalStore['main']['permissions'][string][string] | undefined> | undefined
+      Record<string, CanonicalStore['main']['accountAccessGrants'][string][string] | undefined> | undefined
     >
   }
 }
@@ -91,7 +91,7 @@ export function createAccountService(ports: AccountServicePorts) {
 
     clearAccountAccessGrant(accountId: string, originId?: string) {
       const state = ports.store.getState()
-      const grants = state.main.permissions[accountId]
+      const grants = state.main.accountAccessGrants[accountId]
       if (!state.main.accounts[accountId] || !grants || (originId && !grants[originId])) {
         return false
       }

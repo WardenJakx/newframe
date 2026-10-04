@@ -459,7 +459,7 @@ export class NewframeDriver {
       enabled
     })
     await this.waitForState(
-      (state) => state.main?.accounts?.[account.id]?.agentEnabled === enabled,
+      (state) => state.main?.accounts?.[account.id]?.aiSessionsEnabled === enabled,
       5_000,
       `AI access projection did not become ${String(enabled)} for ${account.id}`
     )

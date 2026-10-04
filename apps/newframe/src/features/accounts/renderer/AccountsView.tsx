@@ -255,17 +255,19 @@ function AccountActions({
             {moveError}
           </Text>
         ) : null}
-        {account.signerType !== 'safe' && (account.hot || account.agentEnabled) ? (
+        {account.signerType !== 'safe' && (account.hot || account.aiSessionsEnabled) ? (
           <>
             <Button
               appearance='row'
-              onPress={() => events.onAiSessionsEnabledChange(!account.agentEnabled)}
+              onPress={() => events.onAiSessionsEnabledChange(!account.aiSessionsEnabled)}
               size='small'
               width='full'
             >
-              <Text variant='caption'>{account.agentEnabled ? 'Disable AI access' : 'Enable AI access'}</Text>
+              <Text variant='caption'>
+                {account.aiSessionsEnabled ? 'Disable AI access' : 'Enable AI access'}
+              </Text>
             </Button>
-            {account.agentEnabled ? (
+            {account.aiSessionsEnabled ? (
               <Button appearance='row' onPress={events.onAiSessionsRevoke} size='small' width='full'>
                 <Text variant='caption'>Revoke AI sessions</Text>
               </Button>

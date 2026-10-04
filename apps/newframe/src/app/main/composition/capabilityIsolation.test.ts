@@ -50,7 +50,7 @@ it('keeps mutable state, listeners, and deferred capability ports graph-local', 
     lastSignerType: 'Address',
     signer: '',
     signerStatus: '',
-    agentEnabled: false
+    aiSessionsEnabled: false
   })
   first.capabilities.settingsService.update({
     type: 'settings.update',

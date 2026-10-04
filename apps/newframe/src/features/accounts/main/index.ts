@@ -486,7 +486,7 @@ export class Accounts extends EventEmitter {
     return {
       id: transactionActivityId(hash),
       hash,
-      handlerId: requestId,
+      requestId: requestId,
       account: account.address,
       address: account.address,
       ...(req.safeTxHash && req.safeExecution?.submitted?.executorId
@@ -885,7 +885,7 @@ export class Accounts extends EventEmitter {
 
     return {
       type: 'transaction',
-      requestId: activity.handlerId ?? activity.id,
+      requestId: activity.requestId ?? activity.id,
       origin: (activity.origin as string) || frameOriginId,
       account: this.activityAccount(activity),
       payload: activity.payload

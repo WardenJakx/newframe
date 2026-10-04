@@ -244,6 +244,32 @@ export function selectPersistedState(state: CanonicalStore): PersistedCanonicalS
   } as unknown as PersistedCanonicalState
 }
 
+function renameKey(value: unknown, from: string, to: string): UnknownRecord {
+  const { [from]: legacy, ...rest } = unknownRecord(value)
+  return legacy === undefined ? rest : { ...rest, [to]: legacy }
+}
+
+function mapEntries(value: unknown, map: (entry: unknown) => unknown): UnknownRecord {
+  return Object.fromEntries(Object.entries(unknownRecord(value)).map(([key, entry]) => [key, map(entry)]))
+}
+
+// Before v9, grants were stored under `permissions`, a request's identity as `handlerId`, and an
+// account's AI session switch as `agentEnabled`.
+function renameLegacyKeys(legacy: UnknownRecord): UnknownRecord {
+  const main = renameKey(legacy, 'permissions', 'accountAccessGrants')
+  const each = (key: string, map: (entry: unknown) => unknown) =>
+    main[key] === undefined ? {} : { [key]: mapEntries(main[key], map) }
+
+  return {
+    ...main,
+    ...each('accounts', (account) => renameKey(account, 'agentEnabled', 'aiSessionsEnabled')),
+    ...each('accountAccessGrants', (grants) =>
+      mapEntries(grants, (grant) => renameKey(grant, 'handlerId', 'requestId'))
+    ),
+    ...each('activity', (record) => renameKey(record, 'handlerId', 'requestId'))
+  }
+}
+
 export function migratePersistedState(
   value: unknown,
   fromVersion = PERSISTENCE_VERSION
@@ -255,6 +281,7 @@ export function migratePersistedState(
     fromVersion !== 5 &&
     fromVersion !== 6 &&
     fromVersion !== 7 &&
+    fromVersion !== 8 &&
     fromVersion !== PERSISTENCE_VERSION
   ) {
     log.error('Cannot migrate unsupported canonical state version', fromVersion)
@@ -268,10 +295,11 @@ export function migratePersistedState(
   const storedMain = unknownRecord(raw.main)
   // Before v8, chains were stored under `networks` and `networksMeta`.
   const { networks, networksMeta, ...storedMainWithoutNetworks } = storedMain
-  const rawMain =
+  const chainsMain =
     fromVersion >= 8
       ? storedMain
       : { ...storedMainWithoutNetworks, chains: networks, chainsMeta: networksMeta }
+  const rawMain = fromVersion >= 9 ? chainsMain : renameLegacyKeys(chainsMain)
   const legacyMain =
     fromVersion >= 5
       ? rawMain

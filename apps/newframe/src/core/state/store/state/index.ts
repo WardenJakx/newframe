@@ -151,7 +151,7 @@ const mainState: M = {
   appLock: { locked: false, vaultExists: false },
   accountOrder: [],
   accountsMeta: {},
-  permissions: {},
+  accountAccessGrants: {},
   balances: {},
   activity: {},
   orders: {},

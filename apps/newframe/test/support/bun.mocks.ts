@@ -56,7 +56,7 @@ const defaultState = () => ({
     },
     orders: {},
     origins: {},
-    permissions: {},
+    accountAccessGrants: {},
     portfolioApiKey: '',
     autoDiscoverTokens: false,
     assetRates: {},

@@ -509,8 +509,42 @@ describe('canonical persisted state contract', () => {
 
   it('moves pre-v8 network records to chains', () => {
     const current = selectPersistedState(canonicalState())
-    expect(PERSISTENCE_VERSION).toBe(8)
     expect(migratePersistedState(asPreV8(current), 7)).toEqual(current)
+  })
+
+  it.each([7, 8])('gives the stored keys of v%i their glossary names and keeps their data', (version) => {
+    const id = '0x1111111111111111111111111111111111111111'
+    const current = mutablePersisted(selectPersistedState(canonicalState()))
+    const { chains, chainsMeta, accountAccessGrants: _grants, ...main } = current.main
+    const stored = {
+      main: {
+        ...main,
+        ...(version === 7 ? { networks: chains, networksMeta: chainsMeta } : { chains, chainsMeta }),
+        permissions: {
+          [id]: { 'origin-1': { origin: 'app.example', provider: true, handlerId: 'origin-1' } }
+        },
+        accounts: { [id]: { ...account(id), agentEnabled: true } },
+        activity: { 'tx:1': { id: 'tx:1', status: 'submitted', handlerId: 'request-1' } }
+      }
+    }
+
+    const migrated = migratePersistedState(stored, version)
+
+    expect(PERSISTENCE_VERSION).toBe(9)
+    expect(Object.keys(migrated.main)).not.toContainAnyValues(['networks', 'networksMeta', 'permissions'])
+    expect<unknown>(migrated.main.chains).toEqual(chains)
+    expect<unknown>(migrated.main.chainsMeta).toEqual(chainsMeta)
+    expect(migrated.main.accountAccessGrants).toEqual({
+      [id]: { 'origin-1': { origin: 'app.example', provider: true, requestId: 'origin-1' } }
+    })
+    expect(migrated.main.accounts?.[id]).toMatchObject({ id, aiSessionsEnabled: true })
+    expect(migrated.main.accounts?.[id]).not.toHaveProperty('agentEnabled')
+    expect(migrated.main.activity?.['tx:1']).toEqual({
+      id: 'tx:1',
+      status: 'submitted',
+      requestId: 'request-1'
+    })
+    expect(migratePersistedState(migrated)).toEqual(migrated)
   })
 
   it('migrates every supported profile-less state into the stable default profile', () => {
