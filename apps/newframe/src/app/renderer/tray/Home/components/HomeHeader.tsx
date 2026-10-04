@@ -8,11 +8,12 @@ import { useHomeUiStore } from '../state/HomeUiProvider.tsx'
 import { HomeHeaderView } from './HomeHeaderView.tsx'
 
 export function HomeHeader({ capability }: { capability: Pick<HomeCapability, 'copyText'> }) {
-  const { account, showLocalNameWithENS } = useWalletSelector(
+  const { account, showLocalNameWithENS, tor } = useWalletSelector(
     useShallow((state) => {
       const accounts: Partial<typeof state.accounts> = state.accounts
       return {
         account: accounts[state.currentAccount],
+        tor: state.tor,
         showLocalNameWithENS: !!state.showLocalNameWithENS
       }
     })
@@ -37,6 +38,8 @@ export function HomeHeader({ capability }: { capability: Pick<HomeCapability, 'c
       accountType={type}
       icon='accounts'
       menuOpen={overlay.type === 'menu'}
+      tor={tor}
+      onOpenSettings={() => openOverlay({ type: 'settings' })}
       name={name}
       onCopy={() => {
         if (!account) {

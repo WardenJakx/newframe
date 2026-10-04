@@ -9,7 +9,7 @@ export const CANONICAL_STATE_STORAGE_NAME = 'canonical-wallet-state'
 
 const DerivationSchema = z.enum(['live', 'legacy', 'standard', 'testnet'])
 const PersistedMainSchema = z.strictObject({
-  ...MainSchema.omit({ appLock: true, runtime: true }).partial().shape,
+  ...MainSchema.omit({ appLock: true, runtime: true, tor: true }).partial().shape,
   airgap: z.record(z.string(), AirGapPublicAccountSchema).optional(),
   lattice: z
     .record(

@@ -21,6 +21,7 @@ const baseWalletState: WalletRendererState = {
   appLock: { locked: false, vaultExists: false },
   autoDiscoverTokens: false,
   autohide: false,
+  tor: { available: false, connection: 'direct' },
   biometricUnlock: false,
   currentProfile: 'default-profile',
   extensionAccess: {},

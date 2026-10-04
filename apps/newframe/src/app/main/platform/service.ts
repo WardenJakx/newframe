@@ -43,7 +43,7 @@ export interface PlatformServicePorts {
       | null
       | undefined
   }
-  app: Pick<Electron.App, 'quit'>
+  app: Pick<Electron.App, 'quit' | 'relaunch'>
   clipboard: Pick<Electron.Clipboard, 'writeText'>
   openBlockExplorer(chain: { id: number; type: 'ethereum' }, transactionHash?: string): void
   openExternal(url: string): void
@@ -147,6 +147,11 @@ export function createPlatformService(ports: PlatformServicePorts) {
     },
 
     quitApp() {
+      ports.app.quit()
+    },
+
+    restartApp() {
+      ports.app.relaunch()
       ports.app.quit()
     },
 

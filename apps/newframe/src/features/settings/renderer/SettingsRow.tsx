@@ -8,11 +8,13 @@ import { ToggleButton } from '@newframe/ui/toggle-button'
 
 export function SettingsToggleRow({
   detail,
+  disabled = false,
   label,
   on,
   onToggle
 }: {
   detail?: string
+  disabled?: boolean
   label: string
   on: boolean
   onToggle: () => void
@@ -30,7 +32,7 @@ export function SettingsToggleRow({
             </Text>
           ) : null}
         </Stack>
-        <ToggleButton appearance='switch' label={label} onPress={onToggle} pressed={on} />
+        <ToggleButton appearance='switch' disabled={disabled} label={label} onPress={onToggle} pressed={on} />
       </Stack>
     </Surface>
   )

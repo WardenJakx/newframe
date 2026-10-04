@@ -151,6 +151,10 @@ async function validateRemoteImageUrl(target: string) {
     return targetUrl.toString()
   }
 
+  // Over Tor, names resolve at the exit, which cannot reach this computer's network; a local lookup would leak the name.
+  if (outbound.route().via === 'tor') {
+    return targetUrl.toString()
+  }
   const addresses = await lookup(hostname, { all: true, order: 'verbatim' })
   if (!addresses.length || addresses.some(({ address }) => !isPublicIpAddress(address))) {
     throw new Error('Image URL hostname did not resolve to public addresses')

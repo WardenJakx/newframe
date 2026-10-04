@@ -18,6 +18,7 @@ apps/newframe/.parcel-cache
 apps/newframe/*.tsbuildinfo
 apps/newframe/test/**/.userData
 apps/newframe/build/icons/
+apps/newframe/build/tor/
 
 # Extension outputs
 apps/newframe-extension/dist
@@ -33,3 +34,4 @@ apps/newframe-extension/.cache
 .docs/
 .env
 packages/desktop-api/dist
+packages/network/dist

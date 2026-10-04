@@ -44,6 +44,7 @@ export const buttonRecipe = cva({
         _focusVisible: { background: 'bg.hover', color: 'text.primary' }
       },
       subtle: { background: 'action.primary.subtle', color: 'action.primary' },
+      tor: { background: 'brand.tor', color: 'text.primary' },
       menu: { background: 'bg.primary', color: 'text.primary' },
       control: {
         background: 'bg.control',
@@ -292,6 +293,7 @@ export type ButtonProps = RecipeVariantProps<typeof buttonRecipe> & {
   children: ReactNode
   checked?: boolean
   controls?: string
+  description?: string
   disabled?: boolean
   elementRole?: 'option' | 'switch' | 'tab'
   expanded?: boolean
@@ -313,6 +315,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     children,
     checked,
     controls,
+    description,
     content,
     disabled,
     elementRole,
@@ -339,6 +342,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   return (
     <button
       aria-controls={controls}
+      aria-describedby={description}
       aria-checked={checked}
       aria-activedescendant={activeDescendant}
       aria-expanded={expanded}
