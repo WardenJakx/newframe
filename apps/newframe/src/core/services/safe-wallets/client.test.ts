@@ -2,10 +2,10 @@ import { afterEach, describe, expect, test } from 'bun:test'
 
 import { getBytes, Interface, Wallet, ZeroAddress } from 'ethers'
 
-import { createSafeHandler } from '../../../scripts/local-safe/handler.ts'
-import { abi as multicallAbi, multicallAddress } from '../../core/services/chains/rpc/multicall/constants.ts'
-import type { SafeProposal } from '../../features/accounts/domain/safe.ts'
-import { getEip712Digests } from '../signing/signatures/digests.ts'
+import { createSafeHandler } from '../../../../scripts/local-safe/handler.ts'
+import type { SafeProposal } from '../../../features/accounts/domain/safe.ts'
+import { getEip712Digests } from '../../../platform/signing/signatures/digests.ts'
+import { abi as multicallAbi, multicallAddress } from '../chains/rpc/multicall/constants.ts'
 import { createSafeClient, safeServiceChains } from './client.ts'
 import {
   EIP1271_MAGIC_VALUE,

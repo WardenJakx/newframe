@@ -5,6 +5,8 @@ import type {
   TransactionReplaceCommand
 } from '../../../app/contracts/operations.ts'
 import type { RequestSource } from '../../../app/main/gateway/requestSource.ts'
+import type { SafeMessageApprovalResult } from '../../../core/services/safe-wallets/safeMessage.ts'
+import type { SafeTransactionPort } from '../../../core/services/safe-wallets/safeTransactionPort.ts'
 import {
   findUnavailableSigners,
   isHardwareSigner,
@@ -16,8 +18,6 @@ import type { Chain } from '../../../platform/state-store/state/index.ts'
 import type { EVMError, RPCRequestCallback, RPCResponsePayload } from '../../../shared/domain/rpc.ts'
 import { toBigInt } from '../../../shared/domain/units.ts'
 import type { Accounts } from '../../accounts/main/index.ts'
-import type { SafeMessageApprovalResult } from '../../accounts/main/safeMessage.ts'
-import type { SafeTransactionPort } from '../../accounts/main/safeTransactionPort.ts'
 import { deriveSigningCapability } from '../../accounts/main/signingCapability.ts'
 import { resolveAssetRate } from '../../asset-data/domain/asset/index.ts'
 import { NATIVE_CURRENCY } from '../../tokens/domain/constants.ts'

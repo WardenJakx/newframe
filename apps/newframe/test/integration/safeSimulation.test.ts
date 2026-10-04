@@ -21,17 +21,17 @@ import { createStore } from 'zustand/vanilla'
 
 import { seedSafe, type SafeSeedManifest } from '../../../../harness/newframe/services/safe-contracts.ts'
 import { createSafeHandler } from '../../scripts/local-safe/handler.ts'
+import { createSafeClient } from '../../src/core/services/safe-wallets/client.ts'
+import { createSafeService } from '../../src/core/services/safe-wallets/safe.ts'
+import { simulateSafeProposal } from '../../src/core/services/safe-wallets/safeSimulation.ts'
+import { createSafeSimulationRpc } from '../../src/core/services/safe-wallets/simulation.ts'
 import type { SafeProposal } from '../../src/features/accounts/domain/safe.ts'
-import { createSafeService } from '../../src/features/accounts/main/safe.ts'
-import { simulateSafeProposal } from '../../src/features/accounts/main/safeSimulation.ts'
 import type { TransactionEffect } from '../../src/features/transactions/domain/index.ts'
 import {
   createTransactionSimulationProjection,
   type TraceCall
 } from '../../src/features/transactions/main/simulation.ts'
 import { createOperationService } from '../../src/platform/operations/service.ts'
-import { createSafeClient } from '../../src/platform/safe/client.ts'
-import { createSafeSimulationRpc } from '../../src/platform/safe/simulation.ts'
 import { createTestStore } from '../support/createTestStore.ts'
 
 // Anvil and official Safe contracts are the same local dependencies as the visual harness.

@@ -3,19 +3,19 @@ import { computeAddress, SigningKey, TypedDataEncoder, ZeroAddress } from 'ether
 import { z } from 'zod'
 
 import {
+  getSafeMessageHash,
+  packSafeMessageSignatures,
+  recoverSafeConfirmationOwner,
+  verifySafeConfirmation,
+  verifySafeHash
+} from '../../src/core/services/safe-wallets/integrity.ts'
+import {
   safeAddressSchema,
   safeConfigurationSchema,
   safeProposalSchema,
   type SafeProposal
 } from '../../src/features/accounts/domain/safe.ts'
 import type { LegacyTypedData, TypedData } from '../../src/features/requests/contract/requests.ts'
-import {
-  getSafeMessageHash,
-  packSafeMessageSignatures,
-  recoverSafeConfirmationOwner,
-  verifySafeConfirmation,
-  verifySafeHash
-} from '../../src/platform/safe/integrity.ts'
 import type { OriginalMessage } from '../../src/platform/signing/signatures/digests.ts'
 
 const proposalPostSchema = z.strictObject({

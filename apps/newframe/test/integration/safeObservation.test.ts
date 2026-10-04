@@ -4,9 +4,9 @@ import { subscribeWithSelector } from 'zustand/middleware'
 import { createStore } from 'zustand/vanilla'
 
 import { createSafeHandler } from '../../scripts/local-safe/handler.ts'
-import { createSafeService } from '../../src/features/accounts/main/safe.ts'
+import { createSafeClient } from '../../src/core/services/safe-wallets/client.ts'
+import { createSafeService } from '../../src/core/services/safe-wallets/safe.ts'
 import { createOperationService } from '../../src/platform/operations/service.ts'
-import { createSafeClient } from '../../src/platform/safe/client.ts'
 import { projectTrayState } from '../../src/platform/state-sync/main/projections.ts'
 import { createTestStore } from '../support/createTestStore.ts'
 

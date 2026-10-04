@@ -1,6 +1,9 @@
-import type { SafeOwnerAccount } from '../domain/safe.ts'
-import type { Account } from '../domain/state/account.ts'
-import { safeExecutorCandidates, safeOwnerCandidates } from './signingCapability.ts'
+import type { SafeOwnerAccount } from '../../../features/accounts/domain/safe.ts'
+import type { Account } from '../../../features/accounts/domain/state/account.ts'
+import {
+  safeExecutorCandidates,
+  safeOwnerCandidates
+} from '../../../features/accounts/main/signingCapability.ts'
 
 export function deriveSafeOwners(
   safeAccount: Account,

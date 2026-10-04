@@ -28,6 +28,7 @@ import type { RpcIpcHandlers, TransactionRequestContext } from '../../../../app/
 import chainConfig from '../../../../core/services/chains/config.ts'
 import type { Chains } from '../../../../core/services/chains/index.ts'
 import type { DecodedCallData } from '../../../../core/services/chains/rpc/contracts/index.ts'
+import type { SafeTransactionPort } from '../../../../core/services/safe-wallets/safeTransactionPort.ts'
 import { Type as SignerType } from '../../../../platform/signing/domain/index.ts'
 import type {
   SigningApprovalContext,
@@ -47,7 +48,6 @@ import type {
   RPCResponsePayload
 } from '../../../../shared/domain/rpc.ts'
 import { AccountSchema } from '../../../accounts/domain/state/account.ts'
-import type { SafeTransactionPort } from '../../../accounts/main/safeTransactionPort.ts'
 import type { Origin } from '../../../connections/domain/state/origin.ts'
 import type {
   AccountRequest,

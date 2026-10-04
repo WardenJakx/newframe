@@ -7,10 +7,6 @@ import type {
   SafeConfirmationStatusQuery,
   SafeSimulateQuery
 } from '../../../app/contracts/operations.ts'
-import type { OperationService } from '../../../platform/operations/service.ts'
-import type { OperationOwner } from '../../../platform/operations/types.ts'
-import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.ts'
-import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
 import {
   safeConfigurationSchema,
   safeProposalSchema,
@@ -19,7 +15,11 @@ import {
   type SafeDeployment,
   type SafeProposal,
   type SafeProposalSimulation
-} from '../domain/safe.ts'
+} from '../../../features/accounts/domain/safe.ts'
+import type { OperationService } from '../../../platform/operations/service.ts'
+import type { OperationOwner } from '../../../platform/operations/types.ts'
+import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.ts'
+import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
 import type { SafeSimulationInput, SafeSimulationPorts } from './safeSimulation.ts'
 import {
   createSafeTransactionService,
@@ -62,7 +62,9 @@ export interface SafeServicePorts {
   ) => Promise<SafeProposalSimulation>
   now?: () => number
   transactions?: {
-    accounts: { getFrameAccount(id: string): import('./Account.ts').default | null }
+    accounts: {
+      getFrameAccount(id: string): import('../../../features/accounts/main/Account.ts').default | null
+    }
     provider: SafeTransactionProvider
     submitted?: (result: { safeTxHash: string; outerTxHash: string }) => void
   }

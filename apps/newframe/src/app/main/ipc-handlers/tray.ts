@@ -40,7 +40,7 @@ export interface OperationServices {
     get(accountId: string): unknown
   }
   accountMutations: import('../../../features/accounts/main/service.ts').AccountService
-  safes: import('../../../features/accounts/main/safe.ts').SafeService
+  safes: import('../../../core/services/safe-wallets/safe.ts').SafeService
   accountOnboarding: import('../../../features/accounts/main/accountOnboarding/service.ts').AccountOnboardingService
   aiSession: import('../../../core/entry/ai-session/index.ts').AiSessionService
   chains: import('../../../core/services/chains/service.ts').ChainService

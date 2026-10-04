@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
+import type { SafeTransactionPort } from '../../../core/services/safe-wallets/safeTransactionPort.ts'
 import type { EVMError, RPCRequestCallback, RPCResponsePayload } from '../../../shared/domain/rpc.ts'
-import type { SafeTransactionPort } from '../../accounts/main/safeTransactionPort.ts'
 import { GasFeesSource } from '../../transactions/domain/index.ts'
 import type {
   AccessRequest,

@@ -1,6 +1,7 @@
 import { getProfileAccountIds } from '../../../app/contracts/state/main.ts'
+import { verifySafeConfirmation } from '../../../core/services/safe-wallets/integrity.ts'
+import { deriveSafeExecutors, deriveSafeOwners } from '../../../core/services/safe-wallets/safeOwners.ts'
 import { accountDisplayType } from '../../../features/accounts/domain/accountDisplayType.ts'
-import { deriveSafeExecutors, deriveSafeOwners } from '../../../features/accounts/main/safeOwners.ts'
 import {
   deriveSigningCapability,
   safeExecutorCandidates,
@@ -10,7 +11,6 @@ import { createBalanceSummarySelector } from '../../../features/asset-data/domai
 import type { SignatureRequest, TransactionRequest } from '../../../features/requests/contract/requests.ts'
 import { isSignatureRequest, isTransactionRequest } from '../../../features/requests/domain/index.ts'
 import { OperationRecordSchema, type OperationCollection } from '../../operations/operation.ts'
-import { verifySafeConfirmation } from '../../safe/integrity.ts'
 import type { CanonicalState } from '../../state-store/state/index.ts'
 import {
   WalletHomeCommandSchema,
