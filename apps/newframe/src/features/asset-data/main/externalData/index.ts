@@ -1,4 +1,3 @@
-import { powerMonitor } from 'electron'
 import log from 'electron-log'
 
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
@@ -49,10 +48,6 @@ export default function createExternalDataScanner(
     activeAccount: Address = ''
   let pauseScanningDelay: NodeJS.Timeout | undefined
   let balancesRunning = false
-  let systemSuspended = false
-  let screenLocked = false
-
-  const isScannerInactive = () => systemSuspended || screenLocked || !scanningAllowed()
 
   function clearPauseScanningDelay() {
     if (pauseScanningDelay) {
@@ -66,7 +61,7 @@ export default function createExternalDataScanner(
   }
 
   function startBalances() {
-    if (balancesRunning || isScannerInactive()) {
+    if (balancesRunning || !scanningAllowed()) {
       return balancesRunning
     }
 
@@ -82,7 +77,7 @@ export default function createExternalDataScanner(
     return balancesRunning
   }
 
-  function stopBalances(reason: string) {
+  function stopBalances() {
     clearPauseScanningDelay()
     handleNetworkUpdate.cancel()
     handleAddressUpdate.cancel()
@@ -93,21 +88,12 @@ export default function createExternalDataScanner(
       return
     }
 
-    log.verbose(`stopping external data while system is ${reason}`)
+    log.verbose('stopping external data while Newframe is locked')
     balancesRunning = false
   }
 
-  function resumeBalances(reason: string) {
-    if (isScannerInactive()) {
-      log.verbose(`keeping external data stopped after ${reason}`, {
-        systemSuspended,
-        screenLocked,
-        scanningAllowed: scanningAllowed()
-      })
-      return
-    }
-
-    log.verbose(`resuming external data after system ${reason}`)
+  function resumeBalances() {
+    log.verbose('resuming external data after Newframe unlocked')
     startBalances()
 
     if (!canonicalStore.getState().tray.open && !pauseScanningDelay) {
@@ -115,38 +101,13 @@ export default function createExternalDataScanner(
     }
   }
 
-  const handleSuspend = () => {
-    systemSuspended = true
-    stopBalances('suspending')
-  }
-
-  const handleResume = () => {
-    systemSuspended = false
-    resumeBalances('resumed')
-  }
-
-  const handleLockScreen = () => {
-    screenLocked = true
-    stopBalances('locked')
-  }
-
-  const handleUnlockScreen = () => {
-    screenLocked = false
-    resumeBalances('unlocked')
-  }
-
-  powerMonitor.on('suspend', handleSuspend)
-  powerMonitor.on('resume', handleResume)
-  powerMonitor.on('lock-screen', handleLockScreen)
-  powerMonitor.on('unlock-screen', handleUnlockScreen)
-
   startBalances()
 
   const handleScanningPermissionChange = (allowed: boolean) => {
     if (allowed) {
-      resumeBalances('wallet unlocked')
+      resumeBalances()
     } else {
-      stopBalances('wallet locked')
+      stopBalances()
     }
   }
   const unsubscribeScanningPermission = canonicalStore.subscribe(
@@ -155,7 +116,7 @@ export default function createExternalDataScanner(
   )
 
   const handleNetworkUpdate = debounce((newlyConnected: number[]) => {
-    if (isScannerInactive()) {
+    if (!scanningAllowed()) {
       return
     }
 
@@ -171,7 +132,7 @@ export default function createExternalDataScanner(
   }, 500)
 
   const handleAddressUpdate = debounce(() => {
-    if (isScannerInactive()) {
+    if (!scanningAllowed()) {
       return
     }
 
@@ -186,7 +147,7 @@ export default function createExternalDataScanner(
   }, 800)
 
   const handleTokensUpdate = debounce((tokens: Token[]) => {
-    if (isScannerInactive()) {
+    if (!scanningAllowed()) {
       return
     }
 
@@ -247,7 +208,7 @@ export default function createExternalDataScanner(
   const handleTrayChange = () => {
     const open = canonicalStore.getState().tray.open
 
-    if (isScannerInactive()) {
+    if (!scanningAllowed()) {
       return
     }
 
@@ -267,7 +228,7 @@ export default function createExternalDataScanner(
 
   return {
     refreshBalances: (address = activeAccount) => {
-      if (isScannerInactive() || !address) {
+      if (!scanningAllowed() || !address) {
         return
       }
 
@@ -277,7 +238,7 @@ export default function createExternalDataScanner(
       balances.refresh(address)
     },
     refreshPositions: (address, chainId, tokens) => {
-      if (isScannerInactive() || !address || !shouldScanOnChain(address)) {
+      if (!scanningAllowed() || !address || !shouldScanOnChain(address)) {
         return
       }
 
@@ -296,11 +257,6 @@ export default function createExternalDataScanner(
       unsubscribeCustomTokens()
       unsubscribeTray()
       unsubscribeScanningPermission()
-
-      powerMonitor.off('suspend', handleSuspend)
-      powerMonitor.off('resume', handleResume)
-      powerMonitor.off('lock-screen', handleLockScreen)
-      powerMonitor.off('unlock-screen', handleUnlockScreen)
 
       balances.stop()
       balancesRunning = false

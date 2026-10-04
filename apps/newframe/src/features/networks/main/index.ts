@@ -4,7 +4,6 @@ import type { Common } from '@ethereumjs/common'
 import { Hardfork } from '@ethereumjs/common'
 import { addHexPrefix } from '@ethereumjs/util'
 // status = Network Mismatch, Not Connected, Connected, Standby, Syncing
-import { powerMonitor } from 'electron'
 import log from 'electron-log'
 import { shallow } from 'zustand/vanilla/shallow'
 
@@ -550,10 +549,7 @@ export class Chains extends EventEmitter {
     super()
     this.connections = { ethereum: {} }
 
-    let systemSuspended = false
-    let screenLocked = false
-
-    const isSystemInactive = () => systemSuspended || screenLocked
+    const isLocked = () => this.store.getState().main.appLock.locked
 
     const activeConnectionIds = () =>
       Object.keys(this.connections)
@@ -604,9 +600,9 @@ export class Chains extends EventEmitter {
       markConnectionInactive(chainId, type)
     }
 
-    const sleepConnections = (reason: string) => {
+    const sleepConnections = () => {
       const connections = activeConnectionIds()
-      log.info(`System ${reason}, closing active chain connections`, {
+      log.info('Newframe locked, closing active chain connections', {
         chains: connections
       })
 
@@ -617,11 +613,8 @@ export class Chains extends EventEmitter {
     }
 
     const updateConnections = () => {
-      if (isSystemInactive()) {
-        log.debug('Skipping chain connection updates while system is inactive', {
-          systemSuspended,
-          screenLocked
-        })
+      if (isLocked()) {
+        log.debug('Skipping chain connection updates while Newframe is locked')
         return
       }
 
@@ -677,47 +670,20 @@ export class Chains extends EventEmitter {
       })
     }
 
-    const wakeConnections = (reason: string) => {
-      if (isSystemInactive()) {
-        log.info(`System ${reason}, keeping chain connections closed`, {
-          systemSuspended,
-          screenLocked
-        })
-        return
+    const handleLockChange = (locked: boolean) => {
+      if (locked) {
+        sleepConnections()
+      } else {
+        log.info('Newframe unlocked, restoring chain connections')
+        updateConnections()
       }
-
-      log.info(`System ${reason}, restoring chain connections`)
-      updateConnections()
-    }
-
-    const handleSuspend = () => {
-      systemSuspended = true
-      sleepConnections('suspending')
-    }
-
-    const handleLockScreen = () => {
-      screenLocked = true
-      sleepConnections('locked')
-    }
-
-    const handleResume = () => {
-      systemSuspended = false
-      wakeConnections('resuming')
-    }
-
-    const handleUnlockScreen = () => {
-      screenLocked = false
-      wakeConnections('unlocked')
     }
 
     let unsubscribeNetworks: (() => void) | undefined
+    let unsubscribeLock: (() => void) | undefined
     this.startRuntime = () => {
-      powerMonitor.on('suspend', handleSuspend)
-      powerMonitor.on('lock-screen', handleLockScreen)
-      powerMonitor.on('resume', handleResume)
-      powerMonitor.on('unlock-screen', handleUnlockScreen)
-
       updateConnections()
+      unsubscribeLock = this.store.subscribe((state) => state.main.appLock.locked, handleLockChange)
       unsubscribeNetworks = this.store.subscribe(
         (state) =>
           Object.values(state.main.networks.ethereum)
@@ -730,10 +696,8 @@ export class Chains extends EventEmitter {
     this.disposeRuntime = () => {
       unsubscribeNetworks?.()
       unsubscribeNetworks = undefined
-      powerMonitor.off('suspend', handleSuspend)
-      powerMonitor.off('lock-screen', handleLockScreen)
-      powerMonitor.off('resume', handleResume)
-      powerMonitor.off('unlock-screen', handleUnlockScreen)
+      unsubscribeLock?.()
+      unsubscribeLock = undefined
       activeConnectionIds().forEach((id) => {
         const [type, chainId] = id.split(':')
         removeConnection(chainId, type as Chain['type'])

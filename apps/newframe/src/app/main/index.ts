@@ -1,7 +1,7 @@
 import path from 'path'
 import url from 'url'
 
-import { app, clipboard, ipcMain, net, protocol, powerMonitor } from 'electron'
+import { app, clipboard, ipcMain, net, protocol } from 'electron'
 import log from 'electron-log'
 
 import { createProductionAccountOnboardingAdapters } from '../../features/accounts/main/accountOnboarding/production.ts'
@@ -14,6 +14,7 @@ import { createBundledTokenService } from '../../features/tokens/main/tokens.ts'
 import { Updater } from '../../platform/app-update/index.ts'
 import * as launch from '../../platform/desktop/launch.ts'
 import menu from '../../platform/desktop/menu.ts'
+import { lockWithSystem } from '../../platform/desktop/systemLock.ts'
 import { showUnhandledExceptionDialog } from '../../platform/desktop/windows/dialog.ts'
 import windows from '../../platform/desktop/windows/index.ts'
 import { createProductionPersistencePorts } from '../../platform/persistence/index.ts'
@@ -185,47 +186,11 @@ process.on('unhandledRejection', (e) => {
 })
 
 function startUpdater() {
-  let systemSuspended = false
-  let screenLocked = false
-
-  const isSystemInactive = () => systemSuspended || screenLocked
-
-  const stopUpdater = (reason: string) => {
-    log.debug(`System ${reason}, stopping updater`)
-    updater.stop()
-  }
-
-  const resumeUpdater = (reason: string) => {
-    if (isSystemInactive()) {
-      log.debug(`System ${reason}, keeping updater stopped`, { systemSuspended, screenLocked })
-      return
-    }
-
-    log.debug(`System ${reason}, starting updater`)
-    updater.start()
-  }
-
-  powerMonitor.on('resume', () => {
-    systemSuspended = false
-    resumeUpdater('resuming')
-  })
-
-  powerMonitor.on('suspend', () => {
-    systemSuspended = true
-    stopUpdater('suspending')
-  })
-
-  powerMonitor.on('unlock-screen', () => {
-    screenLocked = false
-    resumeUpdater('unlocked')
-  })
-
-  powerMonitor.on('lock-screen', () => {
-    screenLocked = true
-    stopUpdater('locked')
-  })
-
-  updater.start()
+  store.subscribe(
+    (state) => state.main.appLock.locked,
+    (locked) => (locked ? updater.stop() : updater.start()),
+    { fireImmediately: true }
+  )
 }
 
 let domainServicesStarted = false
@@ -240,6 +205,7 @@ function startDomainServices() {
     (launchEnabled) => (launchEnabled ? launch.enable() : launch.disable()),
     { fireImmediately: true }
   )
+  lockWithSystem(() => signers.lockApp(() => {}))
   apiServer.start()
   bundledTokens.start()
   accounts.startDataScanner()

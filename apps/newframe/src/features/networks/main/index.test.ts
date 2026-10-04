@@ -296,3 +296,24 @@ Object.values(mockConnections).forEach((chain) => {
     expect(gas.levels.fast).toBe(intToHex(expectedBaseFee + expectedPriorityFee))
   })
 })
+
+it('closes chain connections while Newframe is locked and restores them on unlock', async () => {
+  const sepolia = mockConnections['https://ethereum-sepolia-rpc.publicnode.com']
+  await connectChain(sepolia)
+  expect(chains.connections.ethereum[sepolia.id]).toBeDefined()
+
+  store.getState().setAppLock({ locked: true, vaultExists: true })
+
+  expect(chains.connections.ethereum[sepolia.id]).toBeUndefined()
+  expect(store.getState().main.networks.ethereum[Number(sepolia.id)].connection.primary.connected).toBe(false)
+
+  store.getState().toggleConnection('ethereum', 137, 'primary', true)
+  expect(chains.connections.ethereum['137']).toBeUndefined()
+
+  store.getState().setAppLock({ locked: false, vaultExists: true })
+  await waitForConnection()
+
+  expect(chains.connections.ethereum[sepolia.id]).toBeDefined()
+  expect(chains.connections.ethereum['137']).toBeDefined()
+  store.getState().toggleConnection('ethereum', 137, 'primary', false)
+})
