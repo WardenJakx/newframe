@@ -56,16 +56,16 @@ _Avoid_: Signer (when meaning a Safe owner), cosigner
 A Safe wallet transaction awaiting confirmations from Safe owners before it can execute.
 _Avoid_: Safe request, pending Safe transaction
 
-**Network**:
-An EVM blockchain Newframe connects to, identified by its chain ID.
-_Avoid_: Chain
+**Chain**:
+An EVM blockchain Newframe connects to, identified by its chain ID. Trays and the extension label it "network", as other wallets do; nothing else calls it that.
+_Avoid_: Network (outside what the human sees)
 
-**Selected network**:
-The one network that requests use when they do not name a network. There is a single selected network for the whole desktop app, not one per dapp. The human can change it from a tray or from the extension.
-_Avoid_: Active chain, dapp network, origin chain
+**Selected chain**:
+The one chain that requests use when they do not name a chain. There is a single selected chain for the whole desktop app, not one per dapp. The human can change it from a tray or from the extension.
+_Avoid_: Selected network, active chain, dapp chain, origin chain
 
 **Local API**:
-The desktop app's local HTTP and WebSocket interface for programs on the same computer. It is distinct from the desktop app's connection to a network.
+The desktop app's local HTTP and WebSocket interface for programs on the same computer. It is distinct from the desktop app's connections to chains.
 _Avoid_: Local RPC, native RPC, provider
 
 ## Participants
@@ -91,12 +91,8 @@ Newframe's command-line client. Its primary current use is creating and using AI
 _Avoid_: AI session
 
 **Remote service**:
-A system outside the computer that Newframe fetches data from or submits to: a network node, the Safe transaction service, a trading service, a portfolio or price source. It never requests operations. How far its responses are trusted is decided per remote service.
+A system outside the computer that Newframe fetches data from or submits to: a chain node, the Safe transaction service, a trading service, a portfolio or price source. It never requests operations. How far its responses are trusted is decided per remote service.
 _Avoid_: Provider, backend, API (alone)
-
-**Outbound**:
-The primitive that is the core's only way to reach a remote service. It decides whether a connection may leave at all, which it may not while Newframe is locked, and how it leaves the computer.
-_Avoid_: Network (that is a blockchain), transport, egress
 
 ## Trust
 
@@ -201,7 +197,7 @@ _Avoid_: Pending operation, account request, prompt
 ## Parts of the system
 
 **Primitive**:
-A shared part of the desktop app that every feature relies on and none can bypass: the entry points, gateway, vault, wallet services, state, and desktop UI.
+A shared part of the desktop app that every feature relies on and none can bypass: the entry points, gateway, vault, wallet services, state, internet, and desktop UI.
 _Avoid_: Platform, infrastructure, shared
 
 **Feature**:
@@ -221,8 +217,16 @@ The hardened part of the core: the only part that holds secrets and signers, and
 _Avoid_: Protected operations service, keystore, signer service
 
 **Wallet service**:
-A primitive that owns one area of wallet state shared by all features and is its only writer: networks, accounts, Safe wallets, assets, transactions, or settings. It alone talks to the remote services for its area and validates what they return, and it knows nothing about request sources or authority.
+A primitive that owns one area of wallet state shared by all features and is its only writer: chains, accounts, Safe wallets, assets, transactions, or settings. It alone talks to the remote services for its area and validates what they return, and it knows nothing about request sources or authority.
 _Avoid_: Feature, store, manager
+
+**Internet**:
+The primitive that is the core's only way to reach a remote service. It decides whether an internet request may leave at all, which it may not while Newframe is locked, and how it leaves the computer. A connection to this computer never reaches the internet, so it is let through even while Newframe is locked.
+_Avoid_: Network (that is a chain), outbound, transport, egress
+
+**Internet request**:
+One HTTP request or socket the core opens to a remote service through the internet. It is not a request: it has no request source and is not a gateway operation.
+_Avoid_: Network request, outbound call, request (alone)
 
 **Projection**:
 The read-only view of wallet state that a tray receives. A tray sees nothing outside its projection.
