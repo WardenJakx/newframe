@@ -16,7 +16,7 @@ describe('connection presentation', () => {
     })
   })
 
-  it('marks a website connection request as pending instead of successful', () => {
+  it('marks a dapp connection request as pending instead of successful', () => {
     expect(siteConnectionPresentation(false, '0xabc')).toStrictEqual({
       label: 'Approval needed',
       tone: 'warning',

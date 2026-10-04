@@ -229,7 +229,7 @@ export const safeWatchStage: VisualStage = {
       }
       runtime.evidence('extensionSharedAccounts', extensionAccounts.length)
       runtime.evidence('extensionSelectedSafe', true)
-      const dappProvider = extension.website(`http://${harnessOrigin}`, anvilChainId)
+      const dappProvider = extension.dapp(`http://${harnessOrigin}`, anvilChainId)
       const chainProvider = new JsonRpcProvider(anvilRpcUrl, anvilChainId, {
         batchMaxCount: 1,
         staticNetwork: true

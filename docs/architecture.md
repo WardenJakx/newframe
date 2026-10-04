@@ -309,12 +309,12 @@ Most of the endgame is restructuring. These change what Newframe does:
 
 The code predates the glossary. Counts are occurrences outside tests.
 
-| Glossary term           | Code says                                      | Occurrences |
-| ----------------------- | ---------------------------------------------- | ----------- |
-| Tray, main tray         | `renderer`, `wallet-ui`                        | 830         |
-| Side tray               | `sidetray`                                     | 310         |
-| AI session              | `agent`                                        | 310         |
-| Request                 | `handlerId` for its identity                   | 290         |
-| Account access grant    | `permission`                                   | 250         |
-| Dapp                    | `website`, and `origin` for any request source | 17 plus     |
-| Local API message names | `frame_*`, `__frame*`                          | 55          |
+| Glossary term           | Code says                                       | Occurrences |
+| ----------------------- | ----------------------------------------------- | ----------- |
+| Tray, main tray         | `renderer`, `wallet-ui`                         | 830         |
+| Side tray               | `sidetray`                                      | 310         |
+| AI session              | `agent`                                         | 310         |
+| Request                 | `handlerId` for its identity                    | 290         |
+| Account access grant    | `permission`                                    | 250         |
+| Request source          | `origin` for any request source, not just dapps | About 1,200 |
+| Local API message names | `frame_*`, `__frame*`                           | 55          |

@@ -212,12 +212,12 @@ export function createWebSocketRpcTransport({
         }
 
         const origin = parseOrigin(requestOrigin)
-        let participant: 'website' | 'extension' | 'local-api-client' = 'local-api-client'
+        let participant: 'dapp' | 'extension' | 'local-api-client' = 'local-api-client'
         if (socket.frameExtension) {
           participant = 'extension'
         }
         if (proxiedExtensionRequest) {
-          participant = 'website'
+          participant = 'dapp'
         }
 
         if (logTraffic(origin)) {
@@ -235,7 +235,7 @@ export function createWebSocketRpcTransport({
           identity: {
             transport: 'websocket',
             participant,
-            ...(proxiedExtensionRequest ? { websiteOrigin: requestOrigin } : {}),
+            ...(proxiedExtensionRequest ? { dappOrigin: requestOrigin } : {}),
             ...(socket.frameExtension ? { extensionId: socket.frameExtension.id } : {}),
             connectionId: socket.id,
             origin,

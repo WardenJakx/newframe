@@ -47,9 +47,9 @@ export function ConnectedDappsView({
     <IconButton
       appearance='control'
       icon='trash'
-      label='Clear all connected websites'
+      label='Clear all connected dapps'
       onPress={onClearAll}
-      title='Clear all connected websites'
+      title='Clear all connected dapps'
       tone='danger'
     />
   ) : undefined
@@ -97,13 +97,13 @@ export function ConnectedDappsView({
               </Surface>
             ))}
             <Text tone='secondary' variant='overline'>
-              Websites
+              Dapps
             </Text>
           </Stack>
         ) : null}
         {dapps.length === 0 ? (
           <Text align='center' tone='disabled' variant='label'>
-            No Connected Websites
+            No Connected Dapps
           </Text>
         ) : (
           dapps.map((dapp) => (

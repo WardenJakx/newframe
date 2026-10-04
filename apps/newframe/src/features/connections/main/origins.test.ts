@@ -574,8 +574,8 @@ describe('extension account authorization', () => {
   const originId = uuidv5('test.frame.eth', uuidv5.DNS)
   const extensionAddress = '0x0000000000000000000000000000000000000e47'
   const relayed = createLocalApiSource({
-    participant: 'website',
-    websiteOrigin: 'https://test.frame.eth',
+    participant: 'dapp',
+    dappOrigin: 'https://test.frame.eth',
     extensionId: 'extension-id',
     transport: 'websocket',
     connectionId: 'extension-socket',
@@ -632,7 +632,7 @@ describe('extension account authorization', () => {
     expect(ownAccount).toBe(true)
   })
 
-  it('ignores a website grant for the app account the extension may not see', async () => {
+  it('ignores a dapp grant for the app account the extension may not see', async () => {
     const harness = createOriginHarness()
     harness.setOrigin(originId, { name: 'test.frame.eth' })
     harness.setPermission('test.frame.eth', true)

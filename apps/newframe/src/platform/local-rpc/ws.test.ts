@@ -83,8 +83,8 @@ it('adapts a WebSocket message to the shared request contract', async () => {
       transport: 'websocket',
       connectionId: 'socket-connection',
       origin: 'app.example',
-      participant: 'website',
-      websiteOrigin: 'https://app.example',
+      participant: 'dapp',
+      dappOrigin: 'https://app.example',
       extensionId: 'extension-id',
       capabilities: []
     },
