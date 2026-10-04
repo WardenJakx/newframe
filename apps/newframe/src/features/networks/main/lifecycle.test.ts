@@ -1,21 +1,23 @@
-import { expect, it } from 'bun:test'
+import { expect, it, spyOn } from 'bun:test'
 
-import { electronMock } from '../../../../test/support/electron.mock.ts'
 import store from '../../../platform/state-store/index.ts'
 import { Chains } from './index.ts'
 
-it('owns power and store listeners through an idempotent lifecycle', () => {
+it('owns store listeners through an idempotent lifecycle', () => {
+  const subscribe = spyOn(store, 'subscribe')
   const chains = new Chains(store)
 
-  expect(electronMock.powerMonitor.on).not.toHaveBeenCalled()
-
   chains.start()
+  const subscriptions = subscribe.mock.calls.length
   chains.start()
 
-  expect(electronMock.powerMonitor.on).toHaveBeenCalledTimes(4)
+  expect(subscribe).toHaveBeenCalledTimes(subscriptions)
 
   chains.dispose()
   chains.dispose()
+  store.getState().setAppLock({ locked: true, vaultExists: true })
+  store.getState().setAppLock({ locked: false, vaultExists: true })
 
-  expect(electronMock.powerMonitor.off).toHaveBeenCalledTimes(4)
+  expect(chains.connections.ethereum).toEqual({})
+  subscribe.mockRestore()
 })
