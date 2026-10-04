@@ -303,7 +303,7 @@ test('rejects broad singleton access through every supported import form and ser
     ['apps/newframe/src/features/transactions/main/simulation.ts', "void import('../../../platform/secrets/vault')"],
     ['apps/newframe/src/core/entry/tray/operations.ts', "import('@newframe/src/platform/desktop/windows/side-tray')"],
     ['apps/newframe/src/features/accounts/main/service.ts', "import store from '../../../platform/state-store'"],
-    ['apps/newframe/src/features/transactions/trade/main/service.ts', "import type store from '../../../../platform/state-store'"],
+    ['apps/newframe/src/core/features/trading/service.ts', "import type store from '../../../platform/state-store'"],
     ['apps/newframe/src/features/name-resolution/main/nameResolution.ts', "export * from '../../../platform/desktop/windows/window'"],
     ['apps/newframe/src/features/brand-new/main/service.ts', "import windows from '../../../platform/desktop/windows/window'"]
   ] as const

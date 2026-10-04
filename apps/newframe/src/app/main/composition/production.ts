@@ -7,6 +7,14 @@ import {
 } from '../../../core/entry/tray/authorization.ts'
 import { createOperationDispatcher, type IpcMainHandlerPort } from '../../../core/entry/tray/operations.ts'
 import { createStateStream } from '../../../core/entry/tray/stateStream.ts'
+import {
+  createSendService,
+  type SendIdempotencyEntry,
+  type SendService
+} from '../../../core/features/send/service.ts'
+import type { FlashService } from '../../../core/features/trading/index.ts'
+import { createProductionFlashService } from '../../../core/features/trading/instance.ts'
+import { createTradeService, type TradeService } from '../../../core/features/trading/service.ts'
 import { internet } from '../../../core/internet/index.ts'
 import { Chains } from '../../../core/services/chains/index.ts'
 import {
@@ -96,14 +104,6 @@ import {
   simulateTransactionEffects
 } from '../../../features/transactions/main/simulation.ts'
 import { createDeferredTransactionSimulationPort } from '../../../features/transactions/main/simulationPort.ts'
-import {
-  createSendService,
-  type SendIdempotencyEntry,
-  type SendService
-} from '../../../features/transactions/send/main/service.ts'
-import type { FlashService } from '../../../features/transactions/trade/main/index.ts'
-import { createProductionFlashService } from '../../../features/transactions/trade/main/instance.ts'
-import { createTradeService, type TradeService } from '../../../features/transactions/trade/main/service.ts'
 import { createOperationService } from '../../../platform/operations/service.ts'
 import type { PersistenceLifecycle } from '../../../platform/persistence/ports.ts'
 import type store from '../../../platform/state-store/index.ts'

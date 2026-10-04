@@ -5,10 +5,10 @@ import { FLASH_MARKET_ORDER_TYPE } from '@newframe/flash/constants'
 import type { FlashSubmitOrderRequest } from '@newframe/flash/contracts'
 import type { FlashQuote } from '@newframe/flash/schemas'
 
-import { createTestStore } from '../../../../../test/support/createTestStore.ts'
-import type { FlashQuoteRequest, TypedDataV4 } from '../../../../app/contracts/operations.ts'
-import type { RequestSource } from '../../../../app/main/gateway/requestSource.ts'
-import { createOperationService } from '../../../../platform/operations/service.ts'
+import { createTestStore } from '../../../../test/support/createTestStore.ts'
+import type { FlashQuoteRequest, TypedDataV4 } from '../../../app/contracts/operations.ts'
+import type { RequestSource } from '../../../app/main/gateway/requestSource.ts'
+import { createOperationService } from '../../../platform/operations/service.ts'
 import { createTradeService } from './service.ts'
 
 const account = {
