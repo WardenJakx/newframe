@@ -14,11 +14,14 @@ import { HarnessProfileService } from './services/harness-profile.ts'
 import { createLocalSafeService } from './services/local-safe.ts'
 import { createLocalTradeService } from './services/local-trade.ts'
 import type { SafeSeedManifest } from './services/safe-contracts.ts'
+import { XvfbService } from './services/xvfb.ts'
 import { AnvilClient } from './visual/anvil-client.ts'
 import { NewframeDriver, waitForElectronPage } from './visual/driver.ts'
 import { VisualHarnessRuntime } from './visual/runtime.ts'
 import { visualStages } from './visual/stages/index.ts'
 import type { VisualHarnessContext } from './visual/types.ts'
+
+const isLinux = process.platform === 'linux'
 
 function buildCommand(name: string, args: string[], cwd: string) {
   return new ProcessService({
@@ -46,7 +49,12 @@ async function bootstrap(services: HarnessRuntime, visual: VisualHarnessRuntime)
     visual.fail('Newframe unlock password is not configured')
   }
 
-  await Promise.all([ensureCommand('bun'), ensureCommand('anvil'), ensureCommand('forge')])
+  await Promise.all([
+    ensureCommand('bun'),
+    ensureCommand('anvil'),
+    ensureCommand('forge'),
+    ...(isLinux ? [ensureCommand('Xvfb', ['-help'])] : [])
+  ])
 
   visual.currentStage = 'bootstrap build and anvil'
   visual.log('bootstrap build and anvil')
@@ -104,8 +112,9 @@ export async function runVisualHarness() {
     visual.currentStage = 'launch electron'
     visual.log('launch electron')
     const profileDirectory = await services.start(new HarnessProfileService())
+    const display = isLinux ? await services.watch(services.start(new XvfbService())) : undefined
     app = await services.watch(
-      services.start(new ElectronApplicationService(electron, profileDirectory, visual.uiTimeoutMs))
+      services.start(new ElectronApplicationService(electron, profileDirectory, visual.uiTimeoutMs, display))
     )
     visual.monitorElectron(app)
     await visual.startTrace(app)
@@ -135,16 +144,13 @@ export async function runVisualHarness() {
   }
 
   if (process.env.NEWFRAME_HARNESS_OPEN_SCREENSHOTS === '1' && visual.summary.screenshots.length > 0) {
-    await runCommand(
-      'open screenshots in Preview',
-      'open',
-      [
-        '-a',
-        'Preview',
-        ...visual.summary.screenshots.map((name) => path.resolve(visual.screenshotDir, name))
-      ],
-      appDir
-    ).catch((err: unknown) =>
+    const screenshots = visual.summary.screenshots.map((name) => path.resolve(visual.screenshotDir, name))
+    // xdg-open opens one path, so Linux gets the screenshot directory.
+    const [command, args] =
+      process.platform === 'darwin'
+        ? ['open', ['-a', 'Preview', ...screenshots]]
+        : ['xdg-open', [visual.screenshotDir]]
+    await runCommand('open screenshots', command, args, appDir).catch((err: unknown) =>
       visual.log(`could not open screenshots: ${err instanceof Error ? err.message : String(err)}`)
     )
   }

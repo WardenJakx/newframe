@@ -1,6 +1,13 @@
 import type { Electron, ElectronApplication } from 'playwright-core'
 
-import { appDir, electronExecutable, localTradeServiceUrl, newframeEnv, ports } from '../core/config.ts'
+import {
+  appDir,
+  electronExecutable,
+  electronSandboxArgs,
+  localTradeServiceUrl,
+  newframeEnv,
+  ports
+} from '../core/config.ts'
 import { ProcessService } from '../core/process-service.ts'
 import { stopProcess } from '../core/process.ts'
 import { trackProcessGroup } from '../core/reaper.ts'
@@ -8,29 +15,36 @@ import type { HarnessService } from '../core/service.ts'
 import { assertPortFree, sleep } from '../core/utils.ts'
 
 type ElectronLaunchSettings = {
+  /** An X display for the app's windows instead of the developer's desktop (Linux only). */
+  display?: string
   remoteDebugging?: boolean
   visualHarnessProfile?: string
 }
 
 export function electronLaunchSettings(options: ElectronLaunchSettings = {}) {
-  const args = ['./compiled/src/main/bootstrap.js']
+  const args = [...electronSandboxArgs(), './compiled/src/main/bootstrap.js']
   if (options.remoteDebugging) {
     args.unshift(`--remote-debugging-port=${ports.cdp}`)
+  }
+  if (options.display) {
+    // Wayland sessions would otherwise ignore DISPLAY.
+    args.unshift('--ozone-platform=x11')
   }
 
   return {
     args,
     cwd: appDir,
-    env: newframeEnv(
-      options.visualHarnessProfile
+    env: newframeEnv({
+      DISPLAY: options.display,
+      ...(options.visualHarnessProfile
         ? {
             NEWFRAME_VISUAL_HARNESS: 'true',
             NEWFRAME_HARNESS_PROFILE_DIR: options.visualHarnessProfile,
             NEWFRAME_HARNESS_RPC_PORT: String(ports.visualRpc),
             NEWFRAME_FLASH_URL: `${localTradeServiceUrl}/v1`
           }
-        : {}
-    ),
+        : {})
+    }),
     executablePath: electronExecutable()
   }
 }
@@ -64,13 +78,15 @@ export class ElectronApplicationService implements HarnessService<ElectronApplic
   private app?: ElectronApplication
   private readonly launcher: Electron
   private readonly profileDirectory: string
+  private readonly display: string | undefined
   private stopping = false
   private readonly timeoutMs: number
 
-  constructor(launcher: Electron, profileDirectory: string, timeoutMs: number) {
+  constructor(launcher: Electron, profileDirectory: string, timeoutMs: number, display?: string) {
     this.launcher = launcher
     this.profileDirectory = profileDirectory
     this.timeoutMs = timeoutMs
+    this.display = display
   }
 
   async start() {
@@ -80,7 +96,10 @@ export class ElectronApplicationService implements HarnessService<ElectronApplic
 
     await assertPortFree(ports.visualRpc, 'Newframe visual RPC')
 
-    const settings = electronLaunchSettings({ visualHarnessProfile: this.profileDirectory })
+    const settings = electronLaunchSettings({
+      display: this.display,
+      visualHarnessProfile: this.profileDirectory
+    })
     const app = await this.launcher.launch({
       ...settings,
       colorScheme: 'no-preference',

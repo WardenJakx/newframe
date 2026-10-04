@@ -164,12 +164,17 @@ The visual harness runs on the host, next to the developer's own Newframe and `b
 - **Profile.** Each run copies the durable files (`config.json`, `vault.json`, `signers/`) of the canonical
   `Newframe dev` profile (`NEWFRAME_DEV_PROFILE` overrides the source) into a temporary profile, and points its
   local Anvil chain at the run's Anvil. The developer's profiles are never opened, so the single-instance lock
-  never collides with a running Newframe.
+  never collides with a running Newframe. The canonical profile lives in Electron's app data directory:
+  `~/Library/Application Support` on macOS, `$XDG_CONFIG_HOME` or `~/.config` on Linux.
+- **Fresh machines.** Without a canonical profile that has a vault, the run seeds a temporary profile holding
+  only a vault for `NEWFRAME_HARNESS_PASSWORD`, or for a generated password when none is set. Stages then add
+  the harness signer and a `vitalik.eth` watch account themselves.
 - **Ports.** Anvil, the local Flash and Safe services, and the app's local RPC each get a free port per run.
 - **Screen.** Windows render offscreen at 2x scale; Playwright screenshots read that buffer. The native window
   that macOS still creates is fully transparent and ignores the mouse. Harness windows cannot take keyboard
   focus, and the app has no Dock icon, menu bar icon, global shortcuts, or Keychain access. Tray placement
-  uses a fixed 1440x900 work area instead of the host's displays.
+  uses a fixed 1440x900 work area instead of the host's displays. Linux cannot make native windows
+  transparent or click-through, so there Electron runs on a private Xvfb display instead.
 - **Processes.** Every child leads its own process group. Services stop in reverse order; a synchronous
   exit hook kills any group still running; and a detached reaper kills the remaining groups and deletes the
   temporary profile if the harness itself is killed.
@@ -187,13 +192,14 @@ page errors, or renderer crashes fail the responsible stage. The source allowlis
 use a narrow message pattern and document why the underlying browser diagnostic is understood and cannot
 reasonably be fixed.
 
-On macOS, open all screenshots from a successful run together in Preview after service cleanup:
+Open all screenshots from a successful run after service cleanup, together in Preview on macOS or as their
+directory through `xdg-open` on Linux:
 
 ```sh
 NEWFRAME_HARNESS_OPEN_SCREENSHOTS=1 bun run visual:harness:newframe
 ```
 
-Opening screenshots is off by default. A Preview launch failure is logged without failing the harness.
+Opening screenshots is off by default. A launch failure is logged without failing the harness.
 
 Operator-driven provider scripts live under `harness/newframe/scenarios`. They may require manual wallet
 approval or mutate a running developer profile, so they are not part of the automated unit suite or the

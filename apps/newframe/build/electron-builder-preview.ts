@@ -1,4 +1,4 @@
-// Local preview build: an installable Newframe app built without signing/notarization.
+// Local preview build: an installable Newframe app built without signing/notarization, for the host platform.
 
 import type { Configuration } from 'electron-builder'
 
@@ -14,7 +14,13 @@ const config = {
   directories: {
     output: 'dist-preview'
   },
-  linux: null,
+  // A deb installs an AppArmor profile, so Chromium's sandbox works on Ubuntu 24.04+.
+  linux: {
+    target: {
+      target: 'deb',
+      arch: [nativeArch]
+    }
+  },
   win: null,
   extraMetadata: {
     name: 'newframe',

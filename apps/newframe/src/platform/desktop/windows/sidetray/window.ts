@@ -60,7 +60,7 @@ export default {
       y: 0,
       width: 0,
       height: 0,
-      icon: path.join(import.meta.dirname, './AppIcon.png')
+      icon: path.join(import.meta.dirname, '../AppIcon.png')
     }
 
     if (process.platform === 'darwin') {

@@ -36,11 +36,16 @@ Quit Newframe, replace it in Applications with a previously released DMG, and ve
 
 ### Run from source
 
-On Ubuntu, install native build dependencies first:
+On Ubuntu, install native build dependencies first (Xvfb is for the visual harness):
 
 ```bash
-sudo apt-get install build-essential libudev-dev
+sudo apt-get install build-essential libudev-dev xvfb
 ```
+
+Ubuntu 23.10 and later block the user namespaces Chromium's sandbox needs, so `dev` and the harness launch
+Electron with `--no-sandbox` unless its `chrome-sandbox` helper is setuid root. To keep the sandbox, run
+`sudo chown root` and `sudo chmod 4755` on `node_modules/.bun/electron@*/node_modules/electron/dist/chrome-sandbox`
+after each Electron install.
 
 Then clone the repo and run the app:
 
@@ -55,13 +60,15 @@ bun run dev
 
 ### Build locally
 
-On macOS, you can build and install a local preview app:
+Build and install a local preview app:
 
 ```bash
 bun run install:preview
 ```
 
-This replaces `/Applications/Newframe.app` with an unsigned local build. It does not publish anything. Run it again to install updated code.
+On macOS, this replaces `/Applications/Newframe.app` with an unsigned local build. On Linux, it builds a `.deb`
+and installs it with `sudo apt-get`, replacing any installed Newframe; the package's AppArmor profile keeps
+Chromium's sandbox working on Ubuntu 24.04. It does not publish anything. Run it again to install updated code.
 
 The package's `compile`, `bundle`, and `build` scripts are build/release steps. Normal development only needs `dev` or `install:preview`.
 

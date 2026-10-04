@@ -18,6 +18,7 @@ import { trayReadinessStage } from './tray-readiness.ts'
 import { unlockStage } from './unlock.ts'
 import { unlockedHomeStage } from './unlocked-home.ts'
 import { usdcIntegrationStage } from './usdc-integration.ts'
+import { vitalikAccountStage } from './vitalik-account.ts'
 import { vitalikPositionsStage } from './vitalik-positions.ts'
 
 // Adding a visual surface only requires a stage file and one registration here.
@@ -27,6 +28,7 @@ export const visualStages: VisualStage[] = [
   trayReadinessStage,
   resetStateStage,
   harnessSignerStage,
+  vitalikAccountStage,
   unlockedHomeStage,
   trayOverlaysStage,
   vitalikPositionsStage,
