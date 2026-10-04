@@ -7,7 +7,6 @@ import type {
   AccountRequest,
   AccessRequest,
   TransactionRequest,
-  TransactionReceipt,
   TypedMessage,
   PermitSignatureRequest
 } from '@newframe/schema/request-records'
@@ -17,42 +16,32 @@ import {
   RequestMode,
   TxClassification
 } from '@newframe/schema/request-records'
-import type {
-  EVMError,
-  RPC,
-  RPCRequestCallback,
-  RPCRequestPayload,
-  RPCResponsePayload
-} from '@newframe/schema/rpc'
+import type { EVMError, RPC, RPCRequestCallback, RPCResponsePayload } from '@newframe/schema/rpc'
 import type { TransactionData } from '@newframe/schema/transactions'
-import { GasFeesSource, type TransactionEffect } from '@newframe/schema/transactions'
+import { GasFeesSource } from '@newframe/schema/transactions'
 import log from 'electron-log'
 import { v5 as uuidv5 } from 'uuid'
 
 import { authorizeGatewayOperation, type RequestSource } from '../../../app/main/gateway/requestSource.ts'
+import type {
+  TransactionHistoryService,
+  HistoryRequestHandle
+} from '../../../core/services/transactions/history.ts'
 import { getSignerType } from '../../../platform/signing/domain/index.ts'
 import type { SigningApprovalContext } from '../../../platform/signing/signers/Signer/index.ts'
 import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
-import type { ActivityRecord, Token } from '../../../platform/state-store/state/index.ts'
+import type { Token } from '../../../platform/state-store/state/index.ts'
 import type { Callback } from '../../../shared/domain/async.ts'
-import { weiIntToEthInt, hexToInt } from '../../../shared/domain/hex.ts'
-import { resolveAssetRate } from '../../asset-data/domain/asset/index.ts'
+import { internalOriginId } from '../../../shared/domain/internal-origin.ts'
+import { cloneSerializable } from '../../../shared/domain/serialization.ts'
 import type { DataScanner } from '../../asset-data/main/externalData/index.ts'
 import { chainUsesOptimismFees } from '../../chains/domain/chain/fees.ts'
 import type { Chain } from '../../chains/main/index.ts'
 import type { NameResolutionService } from '../../name-resolution/main/nameResolution.ts'
 import type { ApprovalType } from '../../requests/domain/approval.ts'
 import type { PromptedRequestLifecyclePort } from '../../requests/main/service.ts'
-import { NATIVE_CURRENCY } from '../../tokens/domain/constants.ts'
 import { tokensForAccount, toTokenId } from '../../tokens/domain/index.ts'
-import {
-  usesBaseFee,
-  TRANSACTION_CONFIRMATION_TARGET,
-  getTransactionIntent,
-  getTransactionPositionTokens,
-  getTransactionEffects,
-  getPaidTransactionFee
-} from '../../transactions/domain/index.ts'
+import { usesBaseFee } from '../../transactions/domain/index.ts'
 import type { AccountTransactionPolicyPort } from '../../transactions/main/accountPolicyPort.ts'
 import type { ActionType } from '../../transactions/main/actions/index.ts'
 import type { RevealService } from '../../transactions/main/reveal.ts'
@@ -62,92 +51,6 @@ import { getProfileAccountIds } from '../domain/profiles.ts'
 import FrameAccount from './Account.ts'
 import type { AccountChainRpcPort } from './providerPort.ts'
 import type { AccountsRuntime } from './runtime.ts'
-
-function shortHash(hash?: string) {
-  if (!hash) {
-    return ''
-  }
-  return `${hash.substring(0, 6)}...${hash.substring(hash.length - 4)}`
-}
-
-function isBalanceChange(
-  effect: TransactionEffect
-): effect is TransactionEffect & { kind: 'native' | 'erc20'; direction: 'in' | 'out' } {
-  return (
-    (effect.kind === 'native' || effect.kind === 'erc20') &&
-    (effect.direction === 'in' || effect.direction === 'out')
-  )
-}
-
-function cloneForActivity<T>(value: T): T | undefined {
-  if (value === undefined) {
-    return undefined
-  }
-
-  try {
-    return JSON.parse(
-      JSON.stringify(value, (_key, nextValue: unknown) => {
-        if (typeof nextValue === 'function') {
-          return undefined
-        }
-        return nextValue
-      })
-    ) as T
-  } catch {
-    return undefined
-  }
-}
-
-function unknownRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
-}
-
-function transactionReceiptValue(value: unknown): TransactionReceipt | undefined {
-  const receipt = unknownRecord(value)
-  if (typeof receipt.gasUsed !== 'string' || typeof receipt.blockNumber !== 'string') {
-    return undefined
-  }
-  if (receipt.status !== undefined && typeof receipt.status !== 'string') {
-    return undefined
-  }
-  if (receipt.effectiveGasPrice !== undefined && typeof receipt.effectiveGasPrice !== 'string') {
-    return undefined
-  }
-  return receipt as unknown as TransactionReceipt
-}
-
-function transactionActivityId(hash: string) {
-  return hash
-}
-
-function transactionAccountActivityId(hash: string, address: string) {
-  return `${hash}:${address.toLowerCase()}`
-}
-
-function transactionNotificationId(hash: string) {
-  return `transaction:${hash}`
-}
-
-function normalizeQuantity(value?: string | number | null) {
-  if (value === undefined || value === null || value === '') {
-    return ''
-  }
-
-  try {
-    return BigInt(value).toString()
-  } catch {
-    return String(value).toLowerCase()
-  }
-}
-
-function normalizeChainId(value?: string | number | null) {
-  if (value === undefined || value === null || value === '') {
-    return undefined
-  }
-
-  const chainId = typeof value === 'string' ? parseInt(value, value.startsWith('0x') ? 16 : 10) : value
-  return Number.isFinite(chainId) ? chainId : undefined
-}
 
 function toTransactionsByLayer(requests: Record<string, AccountRequest | undefined>, chainId?: number) {
   return Object.entries(requests)
@@ -175,15 +78,13 @@ function toTransactionsByLayer(requests: Record<string, AccountRequest | undefin
     )
 }
 
-const frameOriginId = uuidv5('newframe-internal', uuidv5.DNS)
-const CONFIRMED_REQUEST_CLOSE_MS = 3000
-
 export type { AccountRequest, AccessRequest, TransactionRequest } from '@newframe/schema/request-records'
 
 type RequestWithId = [string, TransactionRequest]
 
 export interface AccountsDependencies {
   chainRpc: AccountChainRpcPort
+  history: TransactionHistoryService
   transactionPolicy: AccountTransactionPolicyPort
   simulation: TransactionSimulationPort
   nameResolution: NameResolutionService
@@ -199,18 +100,8 @@ export class Accounts extends EventEmitter {
 
   private initialized = false
   private dataScanner?: DataScanner
-  private activityMonitors: Record<
-    string,
-    { accountId: string; stop: () => void; token: symbol } | undefined
-  > = {}
-  private requestActivityMonitors: Record<
-    string,
-    { accountId: string; stop: () => void; token: symbol } | undefined
-  > = {}
   private activeProfileAccountIds = new Set<string>()
   private profileObserver?: () => void
-  private pendingPositionRefreshes = new Map<string, TransactionRequest>()
-  private transactionPositionTokensByHash = new Map<string, Token[]>()
   private readonly storeApi = {
     getAccounts: () => this.store.getState().main.accounts as unknown as Record<string, Account | undefined>
   }
@@ -233,7 +124,7 @@ export class Accounts extends EventEmitter {
 
     Object.entries(this.storeApi.getAccounts()).forEach(([id, account]) => {
       if (account && !this.accounts[id]) {
-        const clonedAccount = cloneForActivity(account) ?? account
+        const clonedAccount = cloneSerializable(account) ?? account
         this.accounts[id] = new FrameAccount(
           { ...clonedAccount, lastSignerType: getSignerType(clonedAccount.lastSignerType) },
           this,
@@ -249,7 +140,7 @@ export class Accounts extends EventEmitter {
       }
     })
 
-    this.resumeActivityTracking()
+    this.dependencies.history.start()
     this.profileObserver = this.store.subscribe(
       (state) => [state.main.currentProfile, state.main.accounts, state.main.accountOrder] as const,
       () => this.reconcileProfileChainOwners(),
@@ -285,7 +176,7 @@ export class Accounts extends EventEmitter {
 
     let handle = this.accounts[id]
     if (!handle) {
-      const clonedAccount = cloneForActivity(account) ?? account
+      const clonedAccount = cloneSerializable(account) ?? account
       handle = new FrameAccount(
         { ...clonedAccount, lastSignerType: getSignerType(clonedAccount.lastSignerType) },
         this,
@@ -322,256 +213,26 @@ export class Accounts extends EventEmitter {
       account?.setProfileActive(nextActiveIds.has(id.toLowerCase()))
     })
 
-    Object.entries(this.activityMonitors).forEach(([id, monitor]) => {
-      if (monitor && !nextActiveIds.has(monitor.accountId)) {
-        this.stopActivityMonitor(id)
-      }
-    })
-    Object.entries(this.requestActivityMonitors).forEach(([id, monitor]) => {
-      if (monitor && !nextActiveIds.has(monitor.accountId)) {
-        this.stopRequestActivityMonitor(id)
-      }
-    })
+    this.dependencies.history.reconcileProfile()
+  }
 
-    this.resumeActivityTracking()
+  syncTransactionActivity(account: FrameAccount, request: TransactionRequest) {
+    this.dependencies.history.enrich({ address: account.address }, request)
+  }
+
+  private historyRequestHandle(account: FrameAccount): HistoryRequestHandle {
+    return {
+      address: account.address,
+      exists: () => this.has(account.address),
+      get: (id) => account.getRequest<TransactionRequest>(id),
+      list: () => account.requests,
+      patch: (id, update) => account.patchRequest<TransactionRequest>(id, update),
+      remove: (id) => this.removeRequest(account, id)
+    }
   }
 
   private getTransactionRequest(account: FrameAccount, id: string): TransactionRequest | undefined {
     return account.getRequest(id)
-  }
-
-  private getTransactionChain(req: TransactionRequest): Chain | undefined {
-    const chainId = req.data.chainId ? parseInt(req.data.chainId, 16) : 0
-    if (!chainId) {
-      return undefined
-    }
-
-    return {
-      type: 'ethereum',
-      id: chainId
-    }
-  }
-
-  private getTransactionActivityDisplay(req: TransactionRequest, chain?: Chain) {
-    const value = req.data.value
-    const chains = this.store.getState().main.chains.ethereum as Record<
-      number,
-      { symbol?: string } | undefined
-    >
-    const storedChain = chain ? chains[chain.id] : undefined
-    const chainSymbol =
-      storedChain?.symbol ??
-      (chain ? this.store.getState().main.chainsMeta.ethereum[chain.id].nativeCurrency.symbol : '')
-    const intent = getTransactionIntent(req, chainSymbol)
-
-    if (intent.title !== 'Review transaction') {
-      return intent
-    }
-
-    if (value && value !== '0x0') {
-      return {
-        title: `Send ${chainSymbol}`,
-        subtitle: 'Native transfer'
-      }
-    }
-
-    if (req.decodedData?.method) {
-      return {
-        title: req.decodedData.method,
-        subtitle: req.decodedData.contractName || 'Contract interaction'
-      }
-    }
-
-    return {
-      title: req.classification === 'CONTRACT_DEPLOY' ? 'Deploy contract' : 'Transaction',
-      subtitle: req.classification === 'CONTRACT_DEPLOY' ? 'Contract creation' : 'Submitted transaction'
-    }
-  }
-
-  private getTransactionNativeSymbol(req: TransactionRequest) {
-    const chain = this.getTransactionChain(req)
-    const storedChain = chain
-      ? (this.store.getState().main.chains.ethereum[chain.id] as { symbol?: string })
-      : undefined
-    const metadata = chain ? this.store.getState().main.chainsMeta.ethereum[chain.id] : undefined
-
-    return storedChain?.symbol ?? metadata?.nativeCurrency.symbol ?? 'ETH'
-  }
-
-  private getAccountRelativeActivityDisplay(effects: TransactionEffect[]) {
-    const incoming = effects.filter((effect) => effect.direction === 'in')
-    const outgoing = effects.filter((effect) => effect.direction === 'out')
-
-    if (incoming.length === effects.length) {
-      return effects.length === 1
-        ? { title: `Receive ${effects[0].symbol}`, subtitle: 'Incoming transfer' }
-        : { title: 'Receive assets', subtitle: 'Incoming assets' }
-    }
-
-    if (outgoing.length === effects.length) {
-      return effects.length === 1
-        ? { title: `Send ${effects[0].symbol}`, subtitle: 'Outgoing transfer' }
-        : { title: 'Send assets', subtitle: 'Outgoing assets' }
-    }
-
-    return { title: 'Asset changes', subtitle: 'Incoming and outgoing assets' }
-  }
-
-  private materializeAccountRelativeActivity(req: TransactionRequest) {
-    const hash = req.tx?.hash
-    if (!hash || req.simulation?.status !== 'success') {
-      return
-    }
-
-    const { effectsByAccount, effectsProfileId } = req.simulation
-    if (!effectsByAccount || !effectsProfileId) {
-      return
-    }
-
-    const sourceId = transactionActivityId(hash)
-    const source = this.store.getState().main.activity[sourceId] as ActivityRecord | undefined
-    if (source?.status !== 'succeeded') {
-      return
-    }
-
-    const sourceAddress = String(
-      ((source.account ?? source.address ?? req.account) || req.data.from) ?? ''
-    ).toLowerCase()
-    const sourceEffects = (effectsByAccount[sourceAddress] ?? req.simulation.effects).filter(isBalanceChange)
-    this.store.getState().updateActivity(sourceId, {
-      balanceChanges: cloneForActivity(sourceEffects),
-      updatedAt: source.updatedAt
-    })
-
-    const main = this.store.getState().main
-    const profileAccounts = new Map(
-      getProfileAccountIds(main, effectsProfileId)
-        .map((id) => main.accounts[id]?.address)
-        .filter((address): address is string => Boolean(address))
-        .map((address) => [address.toLowerCase(), address])
-    )
-
-    Object.entries(effectsByAccount).forEach(([mapAddress, effects]) => {
-      const address = mapAddress.toLowerCase()
-      const balanceChanges = effects.filter(isBalanceChange)
-      if (address === sourceAddress || !balanceChanges.length || !profileAccounts.has(address)) {
-        return
-      }
-
-      const id = transactionAccountActivityId(hash, address)
-      const { positionsRefreshedAt: _positionsRefreshedAt, accounts: _accounts, ...shared } = source
-      this.store.getState().finalizeActivity(id, 'succeeded', {
-        ...shared,
-        id,
-        hash,
-        account: address,
-        address,
-        balanceChanges: cloneForActivity(balanceChanges),
-        gasSpent: null,
-        display: this.getAccountRelativeActivityDisplay(balanceChanges)
-      })
-    })
-  }
-
-  private transactionActivityRecord(
-    account: FrameAccount,
-    handlerId: string,
-    req: TransactionRequest,
-    hash: string
-  ): ActivityRecord {
-    const chain = this.getTransactionChain(req)
-    const display = this.getTransactionActivityDisplay(req, chain)
-
-    return {
-      id: transactionActivityId(hash),
-      hash,
-      handlerId,
-      account: account.address,
-      address: account.address,
-      ...(req.safeTxHash && req.safeExecution?.submitted?.executorId
-        ? {
-            accounts: [
-              ...new Set(
-                [account.address, req.safeExecution.submitted.executorId].map((id) => id.toLowerCase())
-              )
-            ]
-          }
-        : {}),
-      chainId: chain?.id,
-      chainType: chain?.type ?? 'ethereum',
-      nonce: req.safeTxHash ? undefined : req.data.nonce,
-      origin: req.origin,
-      submittedAt: this.dependencies.runtime.now(),
-      updatedAt: this.dependencies.runtime.now(),
-      status: 'submitted' as const,
-      confirmations: req.tx?.confirmations ?? 0,
-      receipt: cloneForActivity(req.tx?.receipt),
-      data: cloneForActivity(req.data),
-      payload: cloneForActivity(req.payload),
-      decodedData: cloneForActivity(req.decodedData),
-      tokenData: cloneForActivity(req.tokenData),
-      chainData: cloneForActivity(req.chainData),
-      simulation: cloneForActivity(req.simulation),
-      recognizedActions: cloneForActivity(req.recognizedActions),
-      classification: req.classification,
-      recipient: req.recipient,
-      recipientType: req.recipientType,
-      ...(req.safeTxHash
-        ? {
-            metadata: {
-              safe: {
-                safeTxHash: req.safeTxHash,
-                inner: cloneForActivity(req.data),
-                outer: cloneForActivity(req.safeExecution)
-              }
-            }
-          }
-        : {}),
-      display
-    }
-  }
-
-  private upsertTransactionNotification(account: FrameAccount, req: TransactionRequest, hash: string) {
-    const chain = this.getTransactionChain(req)
-    const display = this.getTransactionActivityDisplay(req, chain)
-    const now = this.dependencies.runtime.now()
-
-    this.store.getState().upsertPendingNotification({
-      id: transactionNotificationId(hash),
-      state: 'pending',
-      title: display.title,
-      detail: shortHash(hash),
-      createdAt: now,
-      updatedAt: now,
-      expiresAt: now + 60 * 1000,
-      leadingIcon: chain ? { chainType: chain.type, chainId: chain.id } : undefined,
-      target: {
-        type: 'transactionActivity',
-        activityId: transactionActivityId(hash),
-        hash,
-        account: account.address,
-        chainId: chain?.id,
-        chainType: chain?.type ?? 'ethereum'
-      }
-    })
-  }
-
-  private recordSubmittedTransaction(
-    account: FrameAccount,
-    handlerId: string,
-    req: TransactionRequest,
-    hash: string
-  ) {
-    const positionTokens = this.saveTransactionPositionTokens(account.address, req)
-    this.transactionPositionTokensByHash.set(hash, positionTokens)
-    this.store
-      .getState()
-      .upsertSubmittedActivity(this.transactionActivityRecord(account, handlerId, req, hash))
-    this.upsertTransactionNotification(account, req, hash)
-  }
-
-  private transactionPositionTokens(req: TransactionRequest) {
-    return getTransactionPositionTokens(req) as Token[]
   }
 
   private savePositionTokens(address: Address, affectedTokens: Token[]) {
@@ -595,10 +256,6 @@ export class Accounts extends EventEmitter {
     return tokens
   }
 
-  private saveTransactionPositionTokens(address: Address, req: TransactionRequest) {
-    return this.savePositionTokens(address, this.transactionPositionTokens(req))
-  }
-
   trackPositionTokens(address: Address, tokens: Token[]) {
     return this.savePositionTokens(address.toLowerCase(), tokens)
   }
@@ -613,526 +270,6 @@ export class Accounts extends EventEmitter {
 
     this.dataScanner.refreshPositions(normalizedAddress, chainId, trackedTokens)
     return true
-  }
-
-  private refreshTransactionPositions(req: TransactionRequest) {
-    const hash = req.tx?.hash
-    const chainId = this.transactionChainId(req)
-    const address = ((req.account || req.data.from) ?? '').toLowerCase()
-    if (!hash || !chainId || !address || !req.tx?.receipt) {
-      return
-    }
-
-    const activity = this.store.getState().main.activity[transactionActivityId(hash)] as
-      | ActivityRecord
-      | undefined
-    if (activity?.positionsRefreshedAt) {
-      return
-    }
-
-    const requestTokens = this.transactionPositionTokens(req)
-    const tokens = requestTokens.length
-      ? requestTokens
-      : (this.transactionPositionTokensByHash.get(hash) ??
-        (activity ? this.transactionPositionTokens(activity as unknown as TransactionRequest) : []))
-    if (!this.refreshPositions(address, chainId, tokens)) {
-      this.pendingPositionRefreshes.set(hash, req)
-      return
-    }
-
-    this.store
-      .getState()
-      .updateActivity(transactionActivityId(hash), { positionsRefreshedAt: this.dependencies.runtime.now() })
-    this.pendingPositionRefreshes.delete(hash)
-    this.transactionPositionTokensByHash.delete(hash)
-  }
-
-  syncTransactionActivity(account: FrameAccount, req: TransactionRequest) {
-    const hash = req.tx?.hash
-    if (!hash) {
-      return
-    }
-
-    this.saveTransactionPositionTokens(account.address, req)
-
-    const id = transactionActivityId(hash)
-    const activity = (this.store.getState().main.activity as Record<string, ActivityRecord | undefined>)[id]
-    if (!activity) {
-      return
-    }
-
-    const display = this.getTransactionActivityDisplay(req, this.getTransactionChain(req))
-
-    this.store.getState().updateActivity(id, {
-      display,
-      data: cloneForActivity(req.data),
-      payload: cloneForActivity(req.payload),
-      decodedData: cloneForActivity(req.decodedData),
-      tokenData: cloneForActivity(req.tokenData),
-      chainData: cloneForActivity(req.chainData),
-      simulation: cloneForActivity(req.simulation),
-      recognizedActions: cloneForActivity(req.recognizedActions),
-      classification: req.classification,
-      recipient: req.recipient,
-      recipientType: req.recipientType,
-      updatedAt: this.dependencies.runtime.now()
-    })
-
-    this.materializeAccountRelativeActivity(req)
-
-    const notificationId = transactionNotificationId(hash)
-    const notifications = this.store.getState().view.notifications
-    const notification = (notifications as Record<string, (typeof notifications)[string] | undefined>)[
-      notificationId
-    ]
-    if (!notification) {
-      return
-    }
-
-    const update = {
-      title: display.title,
-      detail: shortHash(hash),
-      updatedAt: notification.updatedAt,
-      expiresAt: notification.expiresAt,
-      hidden: notification.hidden
-    }
-
-    if (notification.state === 'pending') {
-      this.store.getState().upsertPendingNotification({
-        ...notification,
-        ...update,
-        id: notificationId
-      })
-    } else {
-      this.store.getState().resolveNotification(notificationId, notification.state, update)
-    }
-  }
-
-  private updateTransactionActivity(req: TransactionRequest, confirmations: number) {
-    const hash = req.tx?.hash
-    if (!hash) {
-      return
-    }
-
-    const receipt = cloneForActivity(req.tx?.receipt)
-    const receiptStatus = req.tx?.receipt?.status
-
-    if (receiptStatus === '0x0') {
-      return this.finalizeTransactionActivity(req, 'reverted', {
-        receipt,
-        confirmations
-      })
-    }
-
-    this.store.getState().updateActivity(transactionActivityId(hash), {
-      status: 'confirming',
-      confirmations,
-      receipt,
-      display: this.getTransactionActivityDisplay(req, this.getTransactionChain(req)),
-      decodedData: cloneForActivity(req.decodedData),
-      tokenData: cloneForActivity(req.tokenData),
-      chainData: cloneForActivity(req.chainData),
-      simulation: cloneForActivity(req.simulation),
-      recognizedActions: cloneForActivity(req.recognizedActions),
-      classification: req.classification,
-      recipient: req.recipient,
-      recipientType: req.recipientType,
-      updatedAt: this.dependencies.runtime.now()
-    })
-  }
-
-  private finalizeTransactionActivity(
-    req: TransactionRequest,
-    status: 'succeeded' | 'reverted',
-    update: {
-      completedAt?: number
-      confirmations?: number
-      receipt?: unknown
-      updatedAt?: number
-    } = {}
-  ) {
-    const hash = req.tx?.hash
-    if (!hash) {
-      return
-    }
-
-    const now = this.dependencies.runtime.now()
-    const notificationState = status === 'succeeded' ? 'completed' : 'failed'
-    const display = this.getTransactionActivityDisplay(req, this.getTransactionChain(req))
-    const gasSpent = req.safeTxHash ? null : getPaidTransactionFee(req)
-    const balanceChanges =
-      status === 'succeeded'
-        ? getTransactionEffects(req, this.getTransactionNativeSymbol(req)).filter(isBalanceChange)
-        : []
-
-    this.store.getState().finalizeActivity(transactionActivityId(hash), status, {
-      ...update,
-      display,
-      gasSpent,
-      balanceChanges: cloneForActivity(balanceChanges),
-      decodedData: cloneForActivity(req.decodedData),
-      tokenData: cloneForActivity(req.tokenData),
-      chainData: cloneForActivity(req.chainData),
-      simulation: cloneForActivity(req.simulation),
-      recognizedActions: cloneForActivity(req.recognizedActions),
-      classification: req.classification,
-      recipient: req.recipient,
-      recipientType: req.recipientType,
-      receipt: update.receipt ?? cloneForActivity(req.tx?.receipt),
-      confirmations: update.confirmations ?? req.tx?.confirmations ?? 0,
-      completedAt: update.completedAt ?? now,
-      updatedAt: update.updatedAt ?? now
-    })
-
-    if (status === 'succeeded') {
-      this.materializeAccountRelativeActivity(req)
-    }
-
-    this.store.getState().resolveNotification(transactionNotificationId(hash), notificationState, {
-      title: display.title,
-      detail: shortHash(hash),
-      expiresAt: now + 3000,
-      updatedAt: now
-    })
-    this.stopActivityMonitor(transactionActivityId(hash))
-    this.stopRequestActivityMonitor(transactionActivityId(hash))
-  }
-
-  private pruneTransactionActivity(req: TransactionRequest) {
-    const hash = req.tx?.hash
-    if (!hash) {
-      return
-    }
-
-    const activityId = transactionActivityId(hash)
-    this.store.getState().pruneActivity(activityId)
-    this.stopActivityMonitor(activityId)
-    this.stopRequestActivityMonitor(activityId)
-  }
-
-  private receiptWasReverted(req: TransactionRequest) {
-    return unknownRecord(req.tx?.receipt).status === '0x0'
-  }
-
-  private transactionChainId(req: TransactionRequest) {
-    return normalizeChainId(req.data.chainId)
-  }
-
-  private transactionNonce(req: TransactionRequest) {
-    return normalizeQuantity(req.data.nonce)
-  }
-
-  private inSameNonceLane(a: TransactionRequest, b: TransactionRequest) {
-    const aChainId = this.transactionChainId(a)
-    const bChainId = this.transactionChainId(b)
-    const aNonce = this.transactionNonce(a)
-    const bNonce = this.transactionNonce(b)
-
-    return Boolean(aChainId && bChainId && aChainId === bChainId && aNonce && bNonce && aNonce === bNonce)
-  }
-
-  private activityChainId(activity: ActivityRecord) {
-    const dataChainId = unknownRecord(activity.data).chainId
-    return normalizeChainId(
-      activity.chainId ??
-        (typeof dataChainId === 'string' || typeof dataChainId === 'number' ? dataChainId : undefined)
-    )
-  }
-
-  private activityNonce(activity: ActivityRecord) {
-    const dataNonce = unknownRecord(activity.data).nonce
-    return normalizeQuantity(
-      activity.nonce ??
-        (typeof dataNonce === 'string' || typeof dataNonce === 'number' ? dataNonce : undefined)
-    )
-  }
-
-  private activityAccount(activity: ActivityRecord) {
-    const dataFrom = unknownRecord(activity.data).from
-    return (
-      activity.account ??
-      activity.address ??
-      (typeof dataFrom === 'string' ? dataFrom : '')
-    ).toLowerCase()
-  }
-
-  private isNonTerminalActivity(activity?: ActivityRecord) {
-    return activity?.status === 'submitted' || activity?.status === 'confirming'
-  }
-
-  private getActivityChain(activity: ActivityRecord): Chain | undefined {
-    const chainId = this.activityChainId(activity)
-    if (!chainId) {
-      return undefined
-    }
-
-    return {
-      type: 'ethereum',
-      id: chainId
-    }
-  }
-
-  private toActivityRequest(activity: ActivityRecord): TransactionRequest {
-    const chainId = this.activityChainId(activity)
-    const activityData = unknownRecord(activity.data)
-    const safeMetadata = unknownRecord(unknownRecord(activity.metadata).safe)
-    const data = {
-      ...activityData,
-      chainId: activityData.chainId ?? (chainId ? addHexPrefix(chainId.toString(16)) : undefined),
-      nonce: activityData.nonce ?? activity.nonce
-    }
-
-    return {
-      type: 'transaction',
-      handlerId: activity.handlerId ?? activity.id,
-      origin: (activity.origin as string) || frameOriginId,
-      account: this.activityAccount(activity),
-      payload: activity.payload
-        ? (activity.payload as RPC.SendTransaction.Request)
-        : ({
-            id: 1,
-            jsonrpc: '2.0',
-            method: 'eth_sendTransaction',
-            params: [data]
-          } as RPC.SendTransaction.Request),
-      data,
-      ...(typeof safeMetadata.safeTxHash === 'string'
-        ? {
-            safeTxHash: safeMetadata.safeTxHash,
-            safeExecution: unknownRecord(safeMetadata.outer) as TransactionRequest['safeExecution']
-          }
-        : {}),
-      decodedData: activity.decodedData,
-      tokenData: activity.tokenData,
-      chainData: activity.chainData,
-      simulation: activity.simulation,
-      tx: {
-        hash: activity.hash ?? undefined,
-        receipt: activity.receipt as TransactionReceipt,
-        confirmations: Number(activity.confirmations ?? 0)
-      },
-      approvals: [],
-      status: activity.status === 'confirming' ? RequestStatus.Confirming : RequestStatus.Verifying,
-      mode: RequestMode.Monitor,
-      notice: activity.status === 'confirming' ? 'Confirming' : 'Verifying',
-      feesUpdatedByUser: false,
-      recipient: activity.recipient,
-      recipientType: activity.recipientType ?? '',
-      recognizedActions: activity.recognizedActions ?? [],
-      classification: activity.classification
-    } as unknown as TransactionRequest
-  }
-
-  private async getActivityReceiptConfirmations(
-    activity: ActivityRecord,
-    targetChain: Chain,
-    isCurrentMonitor: () => boolean
-  ) {
-    return new Promise<{ confirmations: number; receipt?: TransactionReceipt; paused?: boolean }>(
-      (resolve, reject) => {
-        const targetChainId = addHexPrefix(targetChain.id.toString(16))
-
-        if (!isCurrentMonitor()) {
-          return resolve({ confirmations: 0, paused: true })
-        }
-
-        this.sendRequest(
-          { method: 'eth_getTransactionReceipt', params: [activity.hash], chainId: targetChainId },
-          (receiptRes: RPCResponsePayload) => {
-            if (!isCurrentMonitor()) {
-              return resolve({ confirmations: 0, paused: true })
-            }
-            if (receiptRes.error) {
-              return reject(receiptRes.error)
-            }
-
-            const receipt = receiptRes.result as TransactionReceipt | undefined
-            if (!receipt) {
-              return resolve({ confirmations: Number(activity.confirmations ?? 0) })
-            }
-
-            this.sendRequest(
-              { method: 'eth_blockNumber', params: [], chainId: targetChainId },
-              (blockRes: RPCResponsePayload) => {
-                if (!isCurrentMonitor()) {
-                  return resolve({ confirmations: 0, paused: true })
-                }
-                if (blockRes.error) {
-                  return reject(new Error(JSON.stringify(blockRes.error)))
-                }
-
-                const blockHeight = parseInt(blockRes.result as string, 16)
-                const receiptBlock = parseInt(receipt.blockNumber, 16)
-
-                resolve({
-                  confirmations: Math.max(blockHeight - receiptBlock, 0),
-                  receipt
-                })
-              }
-            )
-          }
-        )
-      }
-    )
-  }
-
-  private pruneSameNonceActivityLosers(winningActivity: ActivityRecord) {
-    const winnerHash = (winningActivity.hash ?? '').toLowerCase()
-    const winnerAccount = this.activityAccount(winningActivity)
-    const winnerChainId = this.activityChainId(winningActivity)
-    const winnerNonce = this.activityNonce(winningActivity)
-
-    if (!winnerHash || !winnerAccount || !winnerChainId || !winnerNonce) {
-      return
-    }
-
-    const activity = this.store.getState().main.activity
-    Object.values(activity).forEach((candidate) => {
-      if (!this.isNonTerminalActivity(candidate)) {
-        return
-      }
-      if ((candidate.hash ?? '').toLowerCase() === winnerHash) {
-        return
-      }
-      if (this.activityAccount(candidate) !== winnerAccount) {
-        return
-      }
-      if (this.activityChainId(candidate) !== winnerChainId) {
-        return
-      }
-      if (this.activityNonce(candidate) !== winnerNonce) {
-        return
-      }
-
-      this.store.getState().pruneActivity(candidate.id)
-      this.stopActivityMonitor(candidate.id)
-      this.stopRequestActivityMonitor(candidate.id)
-    })
-  }
-
-  private stopActivityMonitor(id: string) {
-    this.activityMonitors[id]?.stop()
-    delete this.activityMonitors[id]
-  }
-
-  private isCurrentActivityMonitor(id: string, token: symbol, accountId: string) {
-    return (
-      this.activityMonitors[id]?.token === token &&
-      this.isActiveProfileAccount(accountId) &&
-      this.isNonTerminalActivity(this.store.getState().main.activity[id])
-    )
-  }
-
-  private resumeActivityMonitor(activity: ActivityRecord) {
-    if (
-      !activity.id ||
-      this.activityMonitors[activity.id] ||
-      this.requestActivityMonitors[activity.id] ||
-      !activity.hash
-    ) {
-      return
-    }
-    if (!this.isNonTerminalActivity(activity)) {
-      return
-    }
-
-    const accountId = this.activityAccount(activity)
-    if (!accountId || !this.isActiveProfileAccount(accountId)) {
-      return
-    }
-
-    const token = Symbol(activity.id)
-    let inFlight = false
-
-    const monitor = async () => {
-      if (inFlight || !this.isCurrentActivityMonitor(activity.id, token, accountId)) {
-        return
-      }
-
-      const currentActivity = (
-        this.store.getState().main.activity as Record<string, ActivityRecord | undefined>
-      )[activity.id]
-      if (!this.isNonTerminalActivity(currentActivity) || !currentActivity?.hash) {
-        return this.stopActivityMonitor(activity.id)
-      }
-
-      const targetChain = this.getActivityChain(currentActivity)
-      if (!targetChain) {
-        return this.stopActivityMonitor(activity.id)
-      }
-
-      inFlight = true
-      try {
-        const { confirmations, receipt, paused } = await this.getActivityReceiptConfirmations(
-          currentActivity,
-          targetChain,
-          () => this.isCurrentActivityMonitor(activity.id, token, accountId)
-        )
-        if (paused || !this.isCurrentActivityMonitor(activity.id, token, accountId)) {
-          return
-        }
-        if (!receipt) {
-          return
-        }
-
-        const txRequest = this.toActivityRequest({
-          ...currentActivity,
-          confirmations,
-          receipt
-        })
-        txRequest.tx = {
-          ...txRequest.tx,
-          confirmations,
-          receipt
-        }
-
-        this.refreshTransactionPositions(txRequest)
-
-        this.pruneSameNonceActivityLosers(currentActivity)
-
-        if (unknownRecord(receipt).status === '0x0') {
-          this.finalizeTransactionActivity(txRequest, 'reverted', { confirmations, receipt })
-          return this.stopActivityMonitor(activity.id)
-        }
-
-        if (confirmations >= TRANSACTION_CONFIRMATION_TARGET) {
-          this.finalizeTransactionActivity(txRequest, 'succeeded', { confirmations, receipt })
-          return this.stopActivityMonitor(activity.id)
-        }
-
-        this.store.getState().updateActivity(activity.id, {
-          status: 'confirming',
-          confirmations,
-          receipt,
-          updatedAt: this.dependencies.runtime.now()
-        })
-      } catch (e) {
-        if (this.isCurrentActivityMonitor(activity.id, token, accountId)) {
-          log.error('error resuming activity transaction monitor', e)
-        }
-      } finally {
-        inFlight = false
-      }
-    }
-
-    const timer = setInterval(() => {
-      // monitor catches failures and owns its in-flight guard.
-      void monitor()
-    }, 15 * 1000)
-    this.activityMonitors[activity.id] = {
-      accountId,
-      token,
-      stop: () => clearInterval(timer)
-    }
-    void monitor()
-  }
-
-  private resumeActivityTracking() {
-    const activity = this.store.getState().main.activity
-
-    Object.values(activity).forEach((record) => {
-      this.resumeActivityMonitor(record)
-    })
   }
 
   private openNextActionableRequest(account: FrameAccount) {
@@ -1235,7 +372,7 @@ export class Accounts extends EventEmitter {
   startDataScanner() {
     if (!this.dataScanner) {
       this.dataScanner = this.dependencies.createDataScanner(this.store)
-      this.pendingPositionRefreshes.forEach((req) => this.refreshTransactionPositions(req))
+      this.dependencies.history.scannerReady()
     }
   }
 
@@ -1331,7 +468,7 @@ export class Accounts extends EventEmitter {
               }
             ]
 
-      const _origin = type === ReplacementType.Speed ? currentAccount.requests[id].origin : frameOriginId
+      const _origin = type === ReplacementType.Speed ? currentAccount.requests[id].origin : internalOriginId
 
       const tx = {
         id: 1,
@@ -1360,7 +497,7 @@ export class Accounts extends EventEmitter {
       method,
       params,
       chainId,
-      _origin = frameOriginId
+      _origin = internalOriginId
     }: { method: string; params: unknown[]; chainId: string; _origin?: string },
     cb: RPCRequestCallback,
     principal?: RequestSource
@@ -1370,467 +507,6 @@ export class Accounts extends EventEmitter {
       cb,
       principal
     )
-  }
-
-  private async confirmations(
-    account: FrameAccount,
-    id: string,
-    hash: string,
-    targetChain: Chain,
-    isCurrentMonitor: () => boolean = () => true
-  ) {
-    return new Promise<number>((resolve, reject) => {
-      // TODO: Route to account even if it's not current
-      const targetChainId = addHexPrefix(targetChain.id.toString(16))
-
-      if (!isCurrentMonitor()) {
-        return resolve(-1)
-      }
-
-      this.sendRequest(
-        { method: 'eth_blockNumber', params: [], chainId: targetChainId },
-        (res: RPCResponsePayload) => {
-          if (!isCurrentMonitor()) {
-            return resolve(-1)
-          }
-          if (res.error) {
-            return reject(new Error(JSON.stringify(res.error)))
-          }
-
-          this.sendRequest(
-            { method: 'eth_getTransactionReceipt', params: [hash], chainId: targetChainId },
-            (receiptRes: RPCResponsePayload) => {
-              if (!isCurrentMonitor()) {
-                return resolve(-1)
-              }
-              if (receiptRes.error) {
-                return reject(receiptRes.error)
-              }
-              if (!this.has(account.address)) {
-                return reject(new Error('account closed'))
-              }
-
-              const receipt = transactionReceiptValue(receiptRes.result)
-              if (receipt && account.requests[id]) {
-                let txRequest = account.patchRequest<TransactionRequest>(id, (request) => {
-                  request.tx = {
-                    ...request.tx,
-                    receipt,
-                    confirmations: request.tx?.confirmations ?? 0
-                  }
-                })
-                if (!txRequest) {
-                  return reject(new Error('request closed'))
-                }
-
-                this.refreshTransactionPositions(txRequest)
-
-                if (!txRequest.feeAtTime) {
-                  const chain = targetChain
-                  if (chain.id === 1) {
-                    const currentState = this.store.getState().main
-                    const ethPrice = resolveAssetRate(
-                      {
-                        chainId: 1,
-                        address: NATIVE_CURRENCY,
-                        nativeTicker: currentState.chainsMeta.ethereum[1].nativeCurrency.symbol
-                      },
-                      currentState.assetRates
-                    )?.usdRate
-
-                    if (ethPrice && txRequest.tx?.receipt && this.has(account.address)) {
-                      const { gasUsed } = txRequest.tx.receipt
-
-                      const feeAtTime = (
-                        Math.round(
-                          weiIntToEthInt(
-                            hexToInt(gasUsed) *
-                              hexToInt(txRequest.data.gasPrice ?? '0x0') *
-                              Number(unknownRecord(res.result).ethusd)
-                          ) * 100
-                        ) / 100
-                      ).toFixed(2)
-                      txRequest = account.patchRequest<TransactionRequest>(id, (request) => {
-                        request.feeAtTime = feeAtTime
-                      })
-                    }
-                  } else {
-                    txRequest = account.patchRequest<TransactionRequest>(id, (request) => {
-                      request.feeAtTime = '?'
-                    })
-                  }
-                }
-
-                const blockHeight = parseInt(res.result as string, 16)
-                const receiptBlock = parseInt(receipt.blockNumber, 16)
-                const confirmations = blockHeight - receiptBlock
-
-                txRequest = account.patchRequest<TransactionRequest>(id, (request) => {
-                  request.tx = { ...request.tx, confirmations }
-                })
-                if (!txRequest) {
-                  return reject(new Error('request closed'))
-                }
-
-                this.updateTransactionActivity(txRequest, confirmations)
-
-                const receiptStatus = unknownRecord(receiptRes.result).status
-
-                if (receiptStatus === '0x0' && txRequest.status === RequestStatus.Verifying) {
-                  txRequest = account.patchRequest<TransactionRequest>(id, (request) => {
-                    request.status = RequestStatus.Error
-                    request.notice = 'Reverted'
-                    request.completed = this.dependencies.runtime.now()
-                  })
-                  if (!txRequest) {
-                    return reject(new Error('request closed'))
-                  }
-                }
-
-                if (receiptStatus && txRequest.data.nonce) {
-                  this.pruneSameNonceActivityLosers(
-                    this.transactionActivityRecord(account, id, txRequest, hash)
-                  )
-
-                  // Drop any other pending txs with same nonce.
-                  Object.keys(account.requests).forEach((k) => {
-                    if (k === id) {
-                      return
-                    }
-
-                    const maybeTxReq = account.requests[k]
-                    if (maybeTxReq?.type !== 'transaction') {
-                      return
-                    }
-
-                    const txReq = maybeTxReq as TransactionRequest
-                    const canStillBePending =
-                      !txReq.tx?.receipt &&
-                      [RequestStatus.Verifying, RequestStatus.Sent, RequestStatus.Sending].includes(
-                        txReq.status as RequestStatus
-                      )
-
-                    if (canStillBePending && this.inSameNonceLane(txReq, txRequest!)) {
-                      this.pruneTransactionActivity(txReq)
-                      account.patchRequest<TransactionRequest>(k, (request) => {
-                        request.status = RequestStatus.Error
-                        request.notice = 'Dropped'
-                      })
-                      this.dependencies.runtime.schedule(
-                        () => this.has(account.address) && this.removeRequest(account, k),
-                        8000
-                      )
-                    }
-                  })
-                }
-
-                if (receiptStatus === '0x1' && txRequest.status === RequestStatus.Verifying) {
-                  txRequest = account.patchRequest<TransactionRequest>(id, (request) => {
-                    request.status = RequestStatus.Confirming
-                    request.notice = 'Confirming'
-                    request.completed = this.dependencies.runtime.now()
-                  })
-                  if (!txRequest) {
-                    return reject(new Error('request closed'))
-                  }
-                  const hash = txRequest.tx?.hash ?? ''
-                  const body = `Transaction ${shortHash(hash)} successful! \n Click for details`
-
-                  // If Newframe is hidden, trigger native notification
-                  this.dependencies.runtime.notify('Transaction Successful', body, () => {
-                    this.dependencies.runtime.openBlockExplorer(targetChain, hash)
-                  })
-                }
-                resolve(confirmations)
-              }
-            }
-          )
-        }
-      )
-    })
-  }
-
-  private stopRequestActivityMonitor(id: string) {
-    this.requestActivityMonitors[id]?.stop()
-    delete this.requestActivityMonitors[id]
-  }
-
-  private isCurrentRequestActivityMonitor(id: string, token: symbol, accountId: string) {
-    return this.requestActivityMonitors[id]?.token === token && this.isActiveProfileAccount(accountId)
-  }
-
-  private canApplyRequestMonitorResult(id: string, confirmations: number, isCurrent: () => boolean) {
-    if (confirmations < 0) {
-      return false
-    }
-    if (isCurrent()) {
-      return true
-    }
-
-    const status = this.store.getState().main.activity[id]?.status
-    return status === 'succeeded' || status === 'reverted'
-  }
-
-  private async txMonitor(account: FrameAccount, requestId: string, hash: string) {
-    const activityId = transactionActivityId(hash)
-    const accountId = account.address.toLowerCase()
-    if (!this.isActiveProfileAccount(accountId) || this.requestActivityMonitors[activityId]) {
-      return
-    }
-
-    const token = Symbol(activityId)
-    this.requestActivityMonitors[activityId] = { accountId, token, stop: () => {} }
-    const isCurrentMonitor = () => this.isCurrentRequestActivityMonitor(activityId, token, accountId)
-    const installStop = (stop: () => void) => {
-      const current = this.requestActivityMonitors[activityId]
-      if (current?.token === token) {
-        current.stop = stop
-      } else {
-        stop()
-      }
-    }
-
-    const request = this.getTransactionRequest(account, requestId)
-    if (!request) {
-      this.stopRequestActivityMonitor(activityId)
-      return
-    }
-    const rawTx = request.data
-    account.patchRequest<TransactionRequest>(requestId, (request) => {
-      request.tx = { hash, confirmations: 0 }
-    })
-
-    const isChainAvailable = (status: string) => !['disconnected', 'degraded'].includes(status.toLowerCase())
-
-    const setTxSent = () => {
-      account.patchRequest<TransactionRequest>(requestId, (request) => {
-        request.status = RequestStatus.Sent
-        request.notice = 'Sent'
-        if (request.tx) {
-          request.tx.confirmations = 0
-        }
-      })
-    }
-
-    if (!rawTx.chainId) {
-      log.error('txMonitor had no target chain')
-      this.dependencies.runtime.schedule(
-        () => this.has(account.address) && this.removeRequest(account, requestId),
-        8 * 1000
-      )
-      this.stopRequestActivityMonitor(activityId)
-    } else {
-      const targetChain: Chain = {
-        type: 'ethereum',
-        id: parseInt(rawTx.chainId, 16)
-      }
-
-      const targetChainId = addHexPrefix(targetChain.id.toString(16))
-      this.sendRequest(
-        { method: 'eth_subscribe', params: ['newHeads'], chainId: targetChainId },
-        (newHeadRes: RPCResponsePayload) => {
-          if (!isCurrentMonitor()) {
-            if (newHeadRes.result) {
-              this.sendRequest(
-                { method: 'eth_unsubscribe', chainId: targetChainId, params: [newHeadRes.result] },
-                () => {}
-              )
-            }
-            return
-          }
-
-          if (newHeadRes.error) {
-            log.warn(newHeadRes.error)
-            const monitor = async () => {
-              if (!isCurrentMonitor() || !this.has(account.address)) {
-                this.stopRequestActivityMonitor(activityId)
-                return
-              }
-
-              let confirmations
-              try {
-                confirmations = await this.confirmations(
-                  account,
-                  requestId,
-                  hash,
-                  targetChain,
-                  isCurrentMonitor
-                )
-                if (!this.canApplyRequestMonitorResult(activityId, confirmations, isCurrentMonitor)) {
-                  return
-                }
-                let txRequest = this.getTransactionRequest(account, requestId)
-                if (!txRequest) {
-                  this.stopRequestActivityMonitor(activityId)
-                  return
-                }
-
-                if (this.receiptWasReverted(txRequest)) {
-                  this.dependencies.runtime.schedule(
-                    () => this.has(account.address) && this.removeRequest(account, requestId),
-                    CONFIRMED_REQUEST_CLOSE_MS
-                  )
-                  this.stopRequestActivityMonitor(activityId)
-                  return
-                }
-
-                if (confirmations >= TRANSACTION_CONFIRMATION_TARGET) {
-                  txRequest = account.patchRequest<TransactionRequest>(requestId, (request) => {
-                    request.status = RequestStatus.Confirmed
-                    request.notice = 'Confirmed'
-                  })
-                  if (txRequest) {
-                    this.finalizeTransactionActivity(txRequest, 'succeeded', { confirmations })
-                  }
-                  this.dependencies.runtime.schedule(
-                    () => this.has(account.address) && this.removeRequest(account, requestId),
-                    CONFIRMED_REQUEST_CLOSE_MS
-                  )
-                  this.stopRequestActivityMonitor(activityId)
-                }
-              } catch (e) {
-                if (!isCurrentMonitor()) {
-                  return
-                }
-                log.error('error awaiting confirmations', e)
-                this.stopRequestActivityMonitor(activityId)
-                setTxSent()
-                this.dependencies.runtime.schedule(
-                  () => this.has(account.address) && this.removeRequest(account, requestId),
-                  60 * 1000
-                )
-              }
-            }
-
-            const runMonitor = () => {
-              // monitor handles confirmation errors and schedules request cleanup.
-              void monitor()
-            }
-            this.dependencies.runtime.schedule(runMonitor, 1000)
-            const monitorTimer = setInterval(runMonitor, 1000)
-
-            const statusHandler = (status: string) => {
-              if (!isChainAvailable(status)) {
-                setTxSent()
-                this.stopRequestActivityMonitor(activityId)
-              }
-            }
-
-            const { type, id } = targetChain
-
-            this.dependencies.chainRpc.on(`status:${type}:${id}`, statusHandler)
-
-            const clear = () => {
-              clearInterval(monitorTimer)
-              this.dependencies.chainRpc.off(`status:${type}:${id}`, statusHandler)
-            }
-            installStop(clear)
-          } else if (newHeadRes.result) {
-            const headSub: unknown = newHeadRes.result
-            let stopped = false
-
-            const removeSubscription = (requestRemoveTimeout: number) => {
-              this.dependencies.runtime.schedule(
-                () => this.has(account.address) && this.removeRequest(account, requestId),
-                requestRemoveTimeout
-              )
-              this.stopRequestActivityMonitor(activityId)
-            }
-
-            const statusHandler = (status: string) => {
-              if (!isChainAvailable(status)) {
-                setTxSent()
-                removeSubscription(60 * 1000)
-              }
-            }
-
-            const handleHead = async (payload: RPCRequestPayload) => {
-              if (!isCurrentMonitor()) {
-                return
-              }
-              if (
-                payload.method === 'eth_subscription' &&
-                unknownRecord(payload.params).subscription === headSub
-              ) {
-                // const newHead = payload.params.result
-                let confirmations
-                try {
-                  confirmations = await this.confirmations(
-                    account,
-                    requestId,
-                    hash,
-                    targetChain,
-                    isCurrentMonitor
-                  )
-                  if (!this.canApplyRequestMonitorResult(activityId, confirmations, isCurrentMonitor)) {
-                    return
-                  }
-                } catch (e) {
-                  if (!isCurrentMonitor()) {
-                    return
-                  }
-                  log.error(e)
-
-                  setTxSent()
-                  return removeSubscription(60 * 1000)
-                }
-
-                let txRequest = this.getTransactionRequest(account, requestId)
-                if (!txRequest) {
-                  return removeSubscription(0)
-                }
-
-                if (this.receiptWasReverted(txRequest)) {
-                  return removeSubscription(CONFIRMED_REQUEST_CLOSE_MS)
-                }
-
-                if (confirmations >= TRANSACTION_CONFIRMATION_TARGET) {
-                  txRequest = account.patchRequest<TransactionRequest>(requestId, (request) => {
-                    request.status = RequestStatus.Confirmed
-                    request.notice = 'Confirmed'
-                  })
-                  if (txRequest) {
-                    this.finalizeTransactionActivity(txRequest, 'succeeded', { confirmations })
-                  }
-
-                  removeSubscription(CONFIRMED_REQUEST_CLOSE_MS)
-                }
-              }
-            }
-
-            const { type, id } = targetChain
-
-            const handler = (payload: RPCRequestPayload) => {
-              handleHead(payload).catch((error: unknown) => {
-                log.error('Could not monitor transaction subscription', error)
-                if (isCurrentMonitor()) {
-                  setTxSent()
-                  removeSubscription(60 * 1000)
-                }
-              })
-            }
-            this.dependencies.chainRpc.on(`status:${type}:${id}`, statusHandler)
-            this.dependencies.chainRpc.on(`data:${type}:${id}`, handler)
-            installStop(() => {
-              if (stopped) {
-                return
-              }
-              stopped = true
-              this.dependencies.chainRpc.off(`data:${targetChain.type}:${targetChain.id}`, handler)
-              this.dependencies.chainRpc.off(`status:${targetChain.type}:${targetChain.id}`, statusHandler)
-              this.sendRequest(
-                { method: 'eth_unsubscribe', chainId: targetChainId, params: [headSub] },
-                (res: RPCResponsePayload) => {
-                  if (res.error) {
-                    log.error('error sending message eth_unsubscribe', res)
-                  }
-                }
-              )
-            })
-          }
-        }
-      )
-    }
   }
 
   // Set Current Account
@@ -2021,10 +697,7 @@ export class Accounts extends EventEmitter {
     this.accounts = {}
     this.dataScanner?.close()
     this.dataScanner = undefined
-    this.pendingPositionRefreshes.clear()
-    this.transactionPositionTokensByHash.clear()
-    Object.keys(this.activityMonitors).forEach((id) => this.stopActivityMonitor(id))
-    Object.keys(this.requestActivityMonitors).forEach((id) => this.stopRequestActivityMonitor(id))
+    this.dependencies.history.close()
     this.activeProfileAccountIds.clear()
     this.initialized = false
     // usbDetect.stopMonitoring()
@@ -2116,13 +789,12 @@ export class Accounts extends EventEmitter {
       return false
     }
 
-    this.recordSubmittedTransaction(account, request.handlerId, request, hash)
-    const activity = this.store.getState().main.activity[transactionActivityId(hash)] as
-      | ActivityRecord
-      | undefined
-    if (activity) {
-      this.resumeActivityMonitor(activity)
-    }
+    this.dependencies.history.trackDetached({
+      account: { address: account.address },
+      requestId: request.handlerId,
+      request,
+      hash
+    })
     return true
   }
 
@@ -2157,7 +829,7 @@ export class Accounts extends EventEmitter {
         const request: TransactionRequest = {
           handlerId: `safe:${normalizedHash}`,
           type: 'transaction',
-          origin: proposal.local?.origin ?? frameOriginId,
+          origin: proposal.local?.origin ?? internalOriginId,
           account: account.id,
           payload: {
             id: normalizedHash,
@@ -2182,13 +854,12 @@ export class Accounts extends EventEmitter {
           classification:
             proposal.data !== '0x' ? TxClassification.CONTRACT_CALL : TxClassification.NATIVE_TRANSFER
         }
-        this.recordSubmittedTransaction(account, request.handlerId, request, outerTxHash)
-        const activity = this.store.getState().main.activity[transactionActivityId(outerTxHash)] as
-          | ActivityRecord
-          | undefined
-        if (activity) {
-          this.resumeActivityMonitor(activity)
-        }
+        this.dependencies.history.trackDetached({
+          account: { address: account.address },
+          requestId: request.handlerId,
+          request,
+          hash: outerTxHash
+        })
         return true
       }
     }
@@ -2315,12 +986,17 @@ export class Accounts extends EventEmitter {
       if (!txRequest) {
         return
       }
-      this.recordSubmittedTransaction(requestAccount, handlerId, txRequest, hash)
+      this.dependencies.history.recordSubmission({
+        account: { address: requestAccount.address },
+        requestId: handlerId,
+        request: txRequest,
+        hash
+      })
       this.store.getState().navClearReq(handlerId, false)
       this.openNextActionableRequest(requestAccount)
-      this.txMonitor(requestAccount, handlerId, hash).catch((error: unknown) =>
-        log.error('Could not start transaction monitor', error)
-      )
+      this.dependencies.history
+        .monitorRequest(this.historyRequestHandle(requestAccount), handlerId, hash)
+        .catch((error: unknown) => log.error('Could not start transaction monitor', error))
     }
   }
 
@@ -2351,23 +1027,9 @@ export class Accounts extends EventEmitter {
     }
   }
 
-  private stopChainMonitorsForAccount(address: string) {
-    const normalizedAddress = address.toLowerCase()
-    Object.entries(this.activityMonitors).forEach(([id, monitor]) => {
-      if (monitor?.accountId === normalizedAddress) {
-        this.stopActivityMonitor(id)
-      }
-    })
-    Object.entries(this.requestActivityMonitors).forEach(([id, monitor]) => {
-      if (monitor?.accountId === normalizedAddress) {
-        this.stopRequestActivityMonitor(id)
-      }
-    })
-  }
-
   remove(address = '') {
     address = address.toLowerCase()
-    this.stopChainMonitorsForAccount(address)
+    this.dependencies.history.stopAccount(address)
 
     const currentAccount = this.current()
     const selectedAccountId = (this.store.getState().main.currentAccount || '').toLowerCase().trim()

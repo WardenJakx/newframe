@@ -9,15 +9,20 @@ import { HDNodeWallet, ZeroAddress } from 'ethers'
 
 import { createSafeHandler } from '../../scripts/local-safe/handler.ts'
 import { RpcIpcHandlers } from '../../src/app/main/ipc-handlers/rpc.ts'
+import { TransactionHistoryService } from '../../src/core/services/transactions/history.ts'
+import { getProfileAccountIds } from '../../src/features/accounts/domain/profiles.ts'
 import { createProductionAirGapService } from '../../src/features/accounts/main/airgap/production.ts'
 import { Accounts } from '../../src/features/accounts/main/index.ts'
+import type { AccountsRuntime } from '../../src/features/accounts/main/runtime.ts'
 import { createSafeTransactionService } from '../../src/features/accounts/main/safeTransaction.ts'
+import { resolveAssetRate } from '../../src/features/asset-data/domain/asset/index.ts'
 import { Chains } from '../../src/features/chains/main/index.ts'
 import { createRequestApprovalAdapter } from '../../src/features/connections/main/provider/infrastructure/production.ts'
 import { createProviderProxyConnection } from '../../src/features/connections/main/provider/proxy.ts'
 import { createProviderStatePort } from '../../src/features/connections/main/provider/statePort.ts'
 import type { NameResolutionService } from '../../src/features/name-resolution/main/nameResolution.ts'
 import { createRequestService } from '../../src/features/requests/main/service.ts'
+import { NATIVE_CURRENCY } from '../../src/features/tokens/domain/constants.ts'
 import { signerCompatibility, maxFee } from '../../src/features/transactions/main/index.ts'
 import { createRevealService } from '../../src/features/transactions/main/reveal.ts'
 import { createInternet } from '../../src/platform/internet/index.ts'
@@ -25,6 +30,7 @@ import { createOperationService } from '../../src/platform/operations/service.ts
 import { createSafeClient } from '../../src/platform/safe/client.ts'
 import { getSafeTypedMessage, verifySafeHash } from '../../src/platform/safe/integrity.ts'
 import type { Callback } from '../../src/shared/domain/async.ts'
+import { internalOriginId } from '../../src/shared/domain/internal-origin.ts'
 import { signerFixture, transaction, uiContext, vectors } from './fixtures/airgap.ts'
 
 function integrationFixture({
@@ -100,7 +106,104 @@ function integrationFixture({
   const reveal = createRevealService(proxy, names)
   const chains = new Chains(f.store, createInternet(fetch))
   chains.send = rpc.send.bind(rpc)
-  const accounts = new Accounts(f.store, {
+  const runtime: AccountsRuntime = {
+    now: () => 1,
+    signers: { get: (id) => (id === f.signer.id ? f.signer : undefined) },
+    navigation: {
+      back() {
+        return undefined
+      },
+      forward() {
+        return undefined
+      }
+    },
+    windows: {
+      showTray() {
+        return undefined
+      }
+    },
+    persistence: {
+      flush() {
+        return undefined
+      }
+    },
+    notify() {
+      return undefined
+    },
+    openBlockExplorer() {
+      return undefined
+    },
+    schedule: setTimeout
+  }
+  const historyRpc = { send: rpc.send.bind(rpc), on: () => undefined, off: () => undefined }
+  const history = new TransactionHistoryService({
+    history: {
+      get: (id) => f.store.getState().main.activity[id],
+      list: () => Object.values(f.store.getState().main.activity),
+      submitted: (record) => f.store.getState().upsertSubmittedActivity(record),
+      update: (id, update) => f.store.getState().updateActivity(id, update),
+      finalize: (id, status, update) => f.store.getState().finalizeActivity(id, status, update),
+      prune: (id) => f.store.getState().pruneActivity(id)
+    },
+    wallet: {
+      isActiveProfileAccount: (accountId) => {
+        const main = f.store.getState().main
+        return getProfileAccountIds(main, main.currentProfile).some(
+          (id) => id.toLowerCase() === accountId.toLowerCase()
+        )
+      },
+      profileAddresses: (profileId) => {
+        const main = f.store.getState().main
+        return getProfileAccountIds(main, profileId)
+          .map((id) => main.accounts[id]?.address)
+          .filter((address): address is string => Boolean(address))
+      },
+      displaySymbol: (chainId) =>
+        f.store.getState().main.chains.ethereum[chainId]?.symbol ??
+        f.store.getState().main.chainsMeta.ethereum[chainId].nativeCurrency.symbol,
+      nativeSymbol: (chainId) =>
+        f.store.getState().main.chains.ethereum[chainId]?.symbol ??
+        f.store.getState().main.chainsMeta.ethereum[chainId]?.nativeCurrency.symbol,
+      ethereumUsdRate: () => {
+        const main = f.store.getState().main
+        return resolveAssetRate(
+          {
+            chainId: 1,
+            address: NATIVE_CURRENCY,
+            nativeTicker: main.chainsMeta.ethereum[1].nativeCurrency.symbol
+          },
+          main.assetRates
+        )?.usdRate
+      }
+    },
+    rpc: {
+      send: (payload, respond) => historyRpc.send(payload, respond),
+      on: () => historyRpc.on(),
+      off: () => historyRpc.off()
+    },
+    positions: {
+      track: (address, tokens) => accounts.trackPositionTokens(address, tokens),
+      refresh: (address, chainId, tokens) => accounts.refreshPositions(address, chainId, tokens)
+    },
+    notifications: {
+      get: (id) => f.store.getState().view.notifications[id],
+      pending: (notification) => f.store.getState().upsertPendingNotification(notification),
+      resolve: (id, state, update) => f.store.getState().resolveNotification(id, state, update),
+      native: (title, body, open) => runtime.notify(title, body, open),
+      openExplorer: (chain, hash) => runtime.openBlockExplorer(chain, hash)
+    },
+    clock: { now: () => runtime.now() },
+    timers: {
+      schedule: (callback, delay) => runtime.schedule(callback, delay),
+      every: (callback, delay) => {
+        const timer = setInterval(callback, delay)
+        return () => clearInterval(timer)
+      }
+    },
+    internalOriginId
+  })
+  const accounts: Accounts = new Accounts(f.store, {
+    history,
     chainRpc: {
       send: (payload, callback) => rpc.send(payload, callback),
       sendAsync: (payload, callback) => rpc.sendAsync(payload, callback),
@@ -120,35 +223,7 @@ function integrationFixture({
     },
     nameResolution: names,
     reveal,
-    runtime: {
-      now: () => 1,
-      signers: { get: (id) => (id === f.signer.id ? f.signer : undefined) },
-      navigation: {
-        back() {
-          return undefined
-        },
-        forward() {
-          return undefined
-        }
-      },
-      windows: {
-        showTray() {
-          return undefined
-        }
-      },
-      persistence: {
-        flush() {
-          return undefined
-        }
-      },
-      notify() {
-        return undefined
-      },
-      openBlockExplorer() {
-        return undefined
-      },
-      schedule: setTimeout
-    },
+    runtime,
     requests: service,
     createDataScanner: () => {
       throw new Error('Scanner not used')

@@ -82,6 +82,8 @@
         "src/features/tokens/main/service.ts",
         "src/features/accounts/main/accountOnboarding/service.ts",
         "src/features/accounts/main/index.ts",
+        "src/core/services/transactions/history.ts",
+        "src/shared/domain/serialization.ts",
         "src/features/accounts/main/providerPort.ts",
         "src/app/main/ipc-handlers/rpc.ts",
         "src/features/transactions/main/accountPolicyPort.ts",

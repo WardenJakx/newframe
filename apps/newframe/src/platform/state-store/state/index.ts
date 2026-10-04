@@ -67,7 +67,7 @@ export const CanonicalStateSchema = z
   })
   .loose()
 
-type StatusNotification = z.infer<typeof StatusNotificationSchema>
+export type StatusNotification = z.infer<typeof StatusNotificationSchema>
 
 export interface Frame {
   id: string

@@ -1,5 +1,7 @@
 import log from 'electron-log'
 
+import { TransactionHistoryService } from '../../../core/services/transactions/history.ts'
+import { getProfileAccountIds } from '../../../features/accounts/domain/profiles.ts'
 import {
   createAccountOnboardingService,
   type AccountOnboardingPorts,
@@ -28,6 +30,7 @@ import { simulateSafeProposal } from '../../../features/accounts/main/safeSimula
 import type { SafeTransactionPort } from '../../../features/accounts/main/safeTransactionPort.ts'
 import { createAccountService, type AccountService } from '../../../features/accounts/main/service.ts'
 import { createAgentService, type AgentService } from '../../../features/agent-access/main/index.ts'
+import { resolveAssetRate } from '../../../features/asset-data/domain/asset/index.ts'
 import { createAssetRateService } from '../../../features/asset-data/main/assetRates/service.ts'
 import createExternalDataScanner from '../../../features/asset-data/main/externalData/index.ts'
 import {
@@ -73,6 +76,7 @@ import {
   type SecurityServicePorts
 } from '../../../features/security/main/service.ts'
 import { createSettingsService } from '../../../features/settings/main/service.ts'
+import { NATIVE_CURRENCY } from '../../../features/tokens/domain/constants.ts'
 import { createTokenLookupAdapter } from '../../../features/tokens/main/production.ts'
 import { createTokenService, type TokenService } from '../../../features/tokens/main/service.ts'
 import { createDeferredAccountTransactionPolicyPort } from '../../../features/transactions/main/accountPolicyPort.ts'
@@ -108,6 +112,7 @@ import { createSafeClient, safeServiceChains } from '../../../platform/safe/clie
 import { createSafeSimulationRpc } from '../../../platform/safe/simulation.ts'
 import type store from '../../../platform/state-store/index.ts'
 import { projectRendererState } from '../../../platform/state-sync/main/projections.ts'
+import { internalOriginId } from '../../../shared/domain/internal-origin.ts'
 import { createMainProcessSource } from '../gateway/requestSource.ts'
 import type { OperationServices } from '../ipc-handlers/renderer.ts'
 import { RpcIpcHandlers } from '../ipc-handlers/rpc.ts'
@@ -251,7 +256,74 @@ export function createProductionCapabilities(
     transactionPolicy: accountCapabilities.transactionPolicy.port,
     vault: adapters.security.vault
   })
-  const accounts = new Accounts(store, {
+  const history = new TransactionHistoryService({
+    history: {
+      get: (id) => store.getState().main.activity[id],
+      list: () => Object.values(store.getState().main.activity),
+      submitted: (record) => store.getState().upsertSubmittedActivity(record),
+      update: (id, update) => store.getState().updateActivity(id, update),
+      finalize: (id, status, update) => store.getState().finalizeActivity(id, status, update),
+      prune: (id) => store.getState().pruneActivity(id)
+    },
+    wallet: {
+      isActiveProfileAccount: (accountId) => {
+        const main = store.getState().main
+        return getProfileAccountIds(main, main.currentProfile).some(
+          (id) => id.toLowerCase() === accountId.toLowerCase()
+        )
+      },
+      profileAddresses: (profileId) => {
+        const main = store.getState().main
+        return getProfileAccountIds(main, profileId)
+          .map((id) => main.accounts[id]?.address)
+          .filter((address): address is string => Boolean(address))
+      },
+      displaySymbol: (chainId) =>
+        store.getState().main.chains.ethereum[chainId]?.symbol ??
+        store.getState().main.chainsMeta.ethereum[chainId].nativeCurrency.symbol,
+      nativeSymbol: (chainId) =>
+        store.getState().main.chains.ethereum[chainId]?.symbol ??
+        store.getState().main.chainsMeta.ethereum[chainId]?.nativeCurrency.symbol,
+      ethereumUsdRate: () => {
+        const main = store.getState().main
+        return resolveAssetRate(
+          {
+            chainId: 1,
+            address: NATIVE_CURRENCY,
+            nativeTicker: main.chainsMeta.ethereum[1].nativeCurrency.symbol
+          },
+          main.assetRates
+        )?.usdRate
+      }
+    },
+    rpc: {
+      send: (payload, respond) => accountCapabilities.chainRpc.port.send(payload, respond),
+      on: (event, listener) => accountCapabilities.chainRpc.port.on(event, listener),
+      off: (event, listener) => accountCapabilities.chainRpc.port.off(event, listener)
+    },
+    positions: {
+      track: (address, tokens) => accounts.trackPositionTokens(address, tokens),
+      refresh: (address, chainId, tokens) => accounts.refreshPositions(address, chainId, tokens)
+    },
+    notifications: {
+      get: (id) => store.getState().view.notifications[id],
+      pending: (notification) => store.getState().upsertPendingNotification(notification),
+      resolve: (id, state, update) => store.getState().resolveNotification(id, state, update),
+      native: (title, body, open) => adapters.accounts.notify(title, body, open),
+      openExplorer: (chain, hash) => adapters.accounts.openBlockExplorer(chain, hash)
+    },
+    clock: { now: () => adapters.accounts.now() },
+    timers: {
+      schedule: (callback, delay) => adapters.accounts.schedule(callback, delay),
+      every: (callback, delay) => {
+        const timer = setInterval(callback, delay)
+        return () => clearInterval(timer)
+      }
+    },
+    internalOriginId
+  })
+  const accounts: Accounts = new Accounts(store, {
+    history,
     chainRpc: accountCapabilities.chainRpc.port,
     transactionPolicy: accountCapabilities.transactionPolicy.port,
     simulation: accountCapabilities.simulation.port,

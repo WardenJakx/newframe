@@ -40,9 +40,14 @@ import {
   createLocalApiSource,
   type RequestSource
 } from '../../../app/main/gateway/requestSource.ts'
+import { TransactionHistoryService } from '../../../core/services/transactions/history.ts'
 import store from '../../../platform/state-store/index.ts'
 import type { Callback } from '../../../shared/domain/async.ts'
+import { internalOriginId } from '../../../shared/domain/internal-origin.ts'
+import { resolveAssetRate } from '../../asset-data/domain/asset/index.ts'
+import { NATIVE_CURRENCY } from '../../tokens/domain/constants.ts'
 import { TRANSACTION_CONFIRMATION_TARGET } from '../../transactions/domain/index.ts'
+import { getProfileAccountIds } from '../domain/profiles.ts'
 
 const providerMock = {
   send: mock((_payload: RPCRequestPayload, _callback: RPCRequestCallback) => {}),
@@ -151,7 +156,92 @@ const simulationMock = {
 }
 
 function createAccounts(chainRpc = providerMock) {
-  return new AccountsClass(store, {
+  const runtime = {
+    navigation: navMock,
+    now: Date.now,
+    notify: notificationMock,
+    openBlockExplorer: openBlockExplorerMock,
+    persistence: persistenceMock,
+    schedule: (callback: () => void, delay: number) => setTimeout(callback, delay),
+    signers: signersMock,
+    windows: windowsMock
+  }
+  const history = new TransactionHistoryService({
+    history: {
+      get: (id) => store.getState().main.activity[id],
+      list: () => Object.values(store.getState().main.activity),
+      submitted: (record) => store.getState().upsertSubmittedActivity(record),
+      update: (id, update) => store.getState().updateActivity(id, update),
+      finalize: (id, status, update) => store.getState().finalizeActivity(id, status, update),
+      prune: (id) => store.getState().pruneActivity(id)
+    },
+    wallet: {
+      isActiveProfileAccount: (accountId) => {
+        const main = store.getState().main
+        return getProfileAccountIds(main, main.currentProfile).some(
+          (id) => id.toLowerCase() === accountId.toLowerCase()
+        )
+      },
+      profileAddresses: (profileId) => {
+        const main = store.getState().main
+        return getProfileAccountIds(main, profileId)
+          .map((id) => main.accounts[id]?.address)
+          .filter((address): address is string => Boolean(address))
+      },
+      displaySymbol: (chainId) =>
+        store.getState().main.chains.ethereum[chainId]?.symbol ??
+        store.getState().main.chainsMeta.ethereum[chainId].nativeCurrency.symbol,
+      nativeSymbol: (chainId) =>
+        store.getState().main.chains.ethereum[chainId]?.symbol ??
+        store.getState().main.chainsMeta.ethereum[chainId]?.nativeCurrency.symbol,
+      ethereumUsdRate: () => {
+        const main = store.getState().main
+        return resolveAssetRate(
+          {
+            chainId: 1,
+            address: NATIVE_CURRENCY,
+            nativeTicker: main.chainsMeta.ethereum[1].nativeCurrency.symbol
+          },
+          main.assetRates
+        )?.usdRate
+      }
+    },
+    rpc: {
+      send: (payload, respond) => chainRpc.send(payload, respond),
+      on: (event, listener) => {
+        chainRpc.on(event, listener)
+      },
+      off: (event, listener) => {
+        chainRpc.off(event, listener)
+      }
+    },
+    positions: {
+      track: (address, tokens) => accounts.trackPositionTokens(address, tokens),
+      refresh: (address, chainId, tokens) => accounts.refreshPositions(address, chainId, tokens)
+    },
+    notifications: {
+      get: (id) => store.getState().view.notifications[id],
+      pending: (notification) => store.getState().upsertPendingNotification(notification),
+      resolve: (id, state, update) => store.getState().resolveNotification(id, state, update),
+      native: (title, body, open) => {
+        runtime.notify(title, body, open)
+      },
+      openExplorer: (chain, hash) => {
+        runtime.openBlockExplorer(chain, hash)
+      }
+    },
+    clock: { now: () => runtime.now() },
+    timers: {
+      schedule: (callback, delay) => runtime.schedule(callback, delay),
+      every: (callback, delay) => {
+        const timer = setInterval(callback, delay)
+        return () => clearInterval(timer)
+      }
+    },
+    internalOriginId
+  })
+  const accounts: import('./index.ts').Accounts = new AccountsClass(store, {
+    history,
     chainRpc,
     transactionPolicy: transactionMock,
     simulation: simulationMock,
@@ -159,17 +249,9 @@ function createAccounts(chainRpc = providerMock) {
     reveal: revealMock,
     createDataScanner: externalDataScannerFactoryMock,
     requests: requestLifecycle,
-    runtime: {
-      navigation: navMock,
-      now: Date.now,
-      notify: notificationMock,
-      openBlockExplorer: openBlockExplorerMock,
-      persistence: persistenceMock,
-      schedule: (callback: () => void, delay: number) => setTimeout(callback, delay),
-      signers: signersMock,
-      windows: windowsMock
-    }
+    runtime
   })
+  return accounts
 }
 
 const storeState = () => store.getState()
