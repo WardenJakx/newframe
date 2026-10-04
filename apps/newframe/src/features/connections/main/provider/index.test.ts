@@ -25,7 +25,9 @@ import {
   type RequestSource
 } from '../../../../app/main/gateway/requestSource.ts'
 import type { RpcIpcHandlers, TransactionRequestContext } from '../../../../app/main/ipc-handlers/rpc.ts'
-import type { DecodedCallData } from '../../../../platform/chain-rpc/contracts/index.ts'
+import chainConfig from '../../../../core/services/chains/config.ts'
+import type { Chains } from '../../../../core/services/chains/index.ts'
+import type { DecodedCallData } from '../../../../core/services/chains/rpc/contracts/index.ts'
 import { Type as SignerType } from '../../../../platform/signing/domain/index.ts'
 import type {
   SigningApprovalContext,
@@ -46,8 +48,6 @@ import type {
 } from '../../../../shared/domain/rpc.ts'
 import { AccountSchema } from '../../../accounts/domain/state/account.ts'
 import type { SafeTransactionPort } from '../../../accounts/main/safeTransactionPort.ts'
-import chainConfig from '../../../chains/main/config.ts'
-import type { Chains } from '../../../chains/main/index.ts'
 import type { Origin } from '../../../connections/domain/state/origin.ts'
 import type {
   AccountRequest,
@@ -339,7 +339,7 @@ const expectQueuedRequestRejection = (sendRequest: (callback: RPCRequestCallback
     void sendRequest(callback)
   })
 
-await mock.module('../../../chains/main/index.ts', () => {
+await mock.module('../../../../core/services/chains/index.ts', () => {
   const chains = { send: mock(), syncDataEmit: mock(), on: mock(), off: mock(), refreshGasFees: mock() }
   return { default: chains, ...chains }
 })
@@ -362,7 +362,7 @@ await mock.module('./subscriptions.ts', () => ({
 beforeAll(async () => {
   log.transports.console.level = false
 
-  const connectionModule = (await import('../../../chains/main/index.ts')) as unknown as {
+  const connectionModule = (await import('../../../../core/services/chains/index.ts')) as unknown as {
     default: TestChains
   }
   connection = connectionModule.default

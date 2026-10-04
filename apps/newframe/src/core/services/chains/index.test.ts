@@ -5,9 +5,9 @@ import { addHexPrefix, intToHex } from '@ethereumjs/util'
 import log from 'electron-log'
 
 import { gweiToHex } from '../../../../test/support/util.ts'
-import { createInternet } from '../../../core/internet/index.ts'
 import store from '../../../platform/state-store/index.ts'
 import type { RPCRequestPayload } from '../../../shared/domain/rpc.ts'
+import { createInternet } from '../../internet/index.ts'
 
 log.transports.console.level = false
 
@@ -183,14 +183,14 @@ const state = {
   }
 }
 
-await mock.module('../../connections/main/provider/connection.ts', () => ({
+await mock.module('../../../features/connections/main/provider/connection.ts', () => ({
   createJsonRpcProvider: (target: keyof typeof mockConnections) => mockConnections[target].connection,
   listenForProviderClose: mock(),
   sendRpcPayload: (provider: MockConnection, payload: RPCRequestPayload) =>
     provider.send(payload.method, payload.params)
 }))
 await mock.module('../../../platform/state-store/state/index.ts', () => () => state)
-await mock.module('../../accounts/main/index.ts', () => ({ updatePendingFees: mock() }))
+await mock.module('../../../features/accounts/main/index.ts', () => ({ updatePendingFees: mock() }))
 
 const mockConnections = {
   'https://ethereum-sepolia-rpc.publicnode.com': {

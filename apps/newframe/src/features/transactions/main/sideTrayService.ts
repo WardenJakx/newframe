@@ -2,7 +2,7 @@ import { v5 as uuidv5 } from 'uuid'
 
 import type { TypedDataV4 } from '../../../app/contracts/operations.ts'
 import type { RequestSource } from '../../../app/main/gateway/requestSource.ts'
-import type { TokenData } from '../../../platform/chain-rpc/contracts/erc20.ts'
+import type { TokenData } from '../../../core/services/chains/rpc/contracts/erc20.ts'
 import type { RPC, RPCRequestPayload, RPCResponsePayload } from '../../../shared/domain/rpc.ts'
 
 const internalOriginName = 'newframe-internal'

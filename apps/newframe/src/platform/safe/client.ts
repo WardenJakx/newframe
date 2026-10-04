@@ -3,6 +3,13 @@ import { Interface } from 'ethers'
 import { z } from 'zod'
 
 import {
+  decodeCallDataWithSignature,
+  type DecodedCallData
+} from '../../core/services/chains/rpc/contracts/index.ts'
+import { getLocalFunctionSelectorSignatures } from '../../core/services/chains/rpc/contracts/selectors.ts'
+import { multicallAddress, type Call } from '../../core/services/chains/rpc/multicall/constants.ts'
+import { aggregate3 } from '../../core/services/chains/rpc/multicall/index.ts'
+import {
   safeAddressSchema,
   safeConfigurationSchema,
   safeDecodedSchema,
@@ -11,10 +18,6 @@ import {
   type SafeProposal
 } from '../../features/accounts/domain/safe.ts'
 import type { TypedData, TypedMessage } from '../../features/requests/contract/requests.ts'
-import { decodeCallDataWithSignature, type DecodedCallData } from '../chain-rpc/contracts/index.ts'
-import { getLocalFunctionSelectorSignatures } from '../chain-rpc/contracts/selectors.ts'
-import { multicallAddress, type Call } from '../chain-rpc/multicall/constants.ts'
-import { aggregate3 } from '../chain-rpc/multicall/index.ts'
 import type { OriginalMessage } from '../signing/signatures/digests.ts'
 import {
   EIP1271_SIGNATURE,

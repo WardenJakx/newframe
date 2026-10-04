@@ -71,7 +71,7 @@
         "src/features/transactions/main/sideTrayService.ts",
         "src/features/requests/main/service.ts",
         "src/features/accounts/main/service.ts",
-        "src/features/chains/main/service.ts",
+        "src/core/services/chains/service.ts",
         "src/features/tokens/main/service.ts",
         "src/features/accounts/main/accountOnboarding/service.ts",
         "src/features/accounts/main/index.ts",

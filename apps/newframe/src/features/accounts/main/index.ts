@@ -6,6 +6,7 @@ import { v5 as uuidv5 } from 'uuid'
 
 import { getProfileAccountIds } from '../../../app/contracts/state/main.ts'
 import { authorizeGatewayOperation, type RequestSource } from '../../../app/main/gateway/requestSource.ts'
+import type { Chain } from '../../../core/services/chains/index.ts'
 import { getSignerType } from '../../../platform/signing/domain/index.ts'
 import type { SigningApprovalContext } from '../../../platform/signing/signers/Signer/index.ts'
 import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
@@ -23,7 +24,6 @@ import type {
 import { resolveAssetRate } from '../../asset-data/domain/asset/index.ts'
 import type { DataScanner } from '../../asset-data/main/externalData/index.ts'
 import { chainUsesOptimismFees } from '../../chains/domain/chain/fees.ts'
-import type { Chain } from '../../chains/main/index.ts'
 import type { NameResolutionService } from '../../name-resolution/main/nameResolution.ts'
 import type {
   AccountRequest,

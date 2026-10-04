@@ -4,7 +4,7 @@ import { getAddress, isAddress } from 'ethers'
 
 import { getProfileAccountIds } from '../../../app/contracts/state/main.ts'
 import type { RpcIpcHandlers } from '../../../app/main/ipc-handlers/rpc.ts'
-import type { Erc20ProviderPort, TokenData } from '../../../platform/chain-rpc/contracts/erc20.ts'
+import type { Erc20ProviderPort, TokenData } from '../../../core/services/chains/rpc/contracts/erc20.ts'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
 import type { Token } from '../../../platform/state-store/state/index.ts'
 import { persistedImageSource } from '../../asset-data/domain/image/index.ts'
@@ -445,10 +445,10 @@ async function resolveTokenMetadata(
   }
 
   try {
-    const loaded = (await import('../../../platform/chain-rpc/contracts/erc20.ts')).default as unknown
+    const loaded = (await import('../../../core/services/chains/rpc/contracts/erc20.ts')).default as unknown
     const Erc20Contract = (
       loaded && typeof loaded === 'object' && 'default' in loaded ? loaded.default : loaded
-    ) as typeof import('../../../platform/chain-rpc/contracts/erc20.ts').default
+    ) as typeof import('../../../core/services/chains/rpc/contracts/erc20.ts').default
     const tokenData = await new Erc20Contract(address, chainId, provider).getTokenData()
     return {
       ...tokenData,

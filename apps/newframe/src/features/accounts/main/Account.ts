@@ -1,7 +1,7 @@
 import log from 'electron-log'
 
 import { ProtectedAccountSigning } from '../../../app/main/protected-operations/signing.ts'
-import Erc20Contract from '../../../platform/chain-rpc/contracts/erc20.ts'
+import Erc20Contract from '../../../core/services/chains/rpc/contracts/erc20.ts'
 import { Type as SignerType, getSignerType } from '../../../platform/signing/domain/index.ts'
 import { getErc7730TypedDataDisplay } from '../../../platform/signing/signatures/erc7730.ts'
 import type { SignerSummary } from '../../../platform/signing/signers/Signer/index.ts'

@@ -1,6 +1,12 @@
 import log from 'electron-log'
 
 import { internet } from '../../../core/internet/index.ts'
+import { Chains } from '../../../core/services/chains/index.ts'
+import {
+  createChainService,
+  type ChainService,
+  type ChainServicePorts
+} from '../../../core/services/chains/service.ts'
 import {
   createAccountOnboardingService,
   type AccountOnboardingPorts,
@@ -36,12 +42,6 @@ import {
   type ImageService,
   type ImageServiceAdapters
 } from '../../../features/asset-data/main/images/index.ts'
-import { Chains } from '../../../features/chains/main/index.ts'
-import {
-  createChainService,
-  type ChainService,
-  type ChainServicePorts
-} from '../../../features/chains/main/service.ts'
 import { createProductionOriginsService } from '../../../features/connections/main/origins.ts'
 import {
   createProviderRequestAdapter,

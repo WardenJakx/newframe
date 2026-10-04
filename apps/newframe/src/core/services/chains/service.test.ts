@@ -1,7 +1,7 @@
 import { describe, expect, it, mock } from 'bun:test'
 
 import { createTestStore } from '../../../../test/support/createTestStore.ts'
-import { createBuiltInChains } from '../domain/chain/catalog.ts'
+import { createBuiltInChains } from '../../../features/chains/domain/chain/catalog.ts'
 import { createChainService } from './service.ts'
 
 describe('chain mutation service', () => {

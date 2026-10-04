@@ -186,7 +186,9 @@ const applicationOwnedMainModule = (file: string) =>
   productionMain(file) &&
   file !== path.join(sourceRoot, 'app', 'main', 'index.ts') &&
   file !== path.join(sourceRoot, 'app', 'main', 'platform', 'production.ts') &&
-  !/(?:accounts|asset-data|chains|portfolio|security|tokens)[\\/]main[\\/]production\.ts$/.test(file) &&
+  !/(?:(?:accounts|asset-data|portfolio|security|tokens)[\\/]main|core[\\/]services[\\/]chains)[\\/]production\.ts$/.test(
+    file
+  ) &&
   !file.endsWith(path.join('asset-data', 'main', 'images', 'production.ts')) &&
   !file.endsWith(path.join('main', 'accountOnboarding', 'production.ts')) &&
   file !== path.join(sourceRoot, 'features', 'accounts', 'main', 'airgap', 'production.ts') &&

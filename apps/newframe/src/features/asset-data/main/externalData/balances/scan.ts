@@ -3,10 +3,10 @@ import log from 'electron-log'
 import { Interface, toBeHex } from 'ethers'
 import type { BytesLike } from 'ethers'
 
-import type { Call } from '../../../../../platform/chain-rpc/multicall/index.ts'
+import type { Call } from '../../../../../core/services/chains/rpc/multicall/index.ts'
 import multicall, {
   supportsChain as multicallSupportsChain
-} from '../../../../../platform/chain-rpc/multicall/index.ts'
+} from '../../../../../core/services/chains/rpc/multicall/index.ts'
 import type { Token } from '../../../../../platform/state-store/state/index.ts'
 import type { Address } from '../../../../../shared/domain/address.ts'
 import erc20TokenAbi from '../../../../../shared/domain/erc20-abi.ts'

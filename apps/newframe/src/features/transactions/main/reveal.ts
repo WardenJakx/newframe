@@ -3,15 +3,15 @@
 import { addHexPrefix } from '@ethereumjs/util'
 import log from 'electron-log'
 
-import ensContracts from '../../../platform/chain-rpc/contracts/deployments/ens/index.ts'
-import Erc20Contract, { type Erc20ProviderPort } from '../../../platform/chain-rpc/contracts/erc20.ts'
-import type { ContractSource } from '../../../platform/chain-rpc/contracts/index.ts'
+import ensContracts from '../../../core/services/chains/rpc/contracts/deployments/ens/index.ts'
+import Erc20Contract, { type Erc20ProviderPort } from '../../../core/services/chains/rpc/contracts/erc20.ts'
+import type { ContractSource } from '../../../core/services/chains/rpc/contracts/index.ts'
 import {
   decodeCallData,
   decodeCallDataWithSelectorRegistry,
   fetchContract,
   type DecodedCallData
-} from '../../../platform/chain-rpc/contracts/index.ts'
+} from '../../../core/services/chains/rpc/contracts/index.ts'
 import type { Callback } from '../../../shared/domain/async.ts'
 import type {
   JSONRPCRequestPayload,
