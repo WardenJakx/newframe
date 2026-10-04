@@ -528,6 +528,8 @@ export function projectWalletState(
     appLock: main.appLock,
     autoDiscoverTokens: main.autoDiscoverTokens,
     autohide: main.autohide,
+    torEnabled: main.torEnabled,
+    tor: main.tor,
     balances: main.balances,
     biometricUnlock: main.biometricUnlock,
     currentAccount: main.currentAccount,

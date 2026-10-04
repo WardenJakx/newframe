@@ -58,7 +58,7 @@ const trezorDerivation = (value: string | undefined): 'standard' | 'legacy' | 't
   value === 'legacy' || value === 'testnet' ? value : 'standard'
 
 export interface SettingsProps {
-  capability: Pick<SettingsCapability, 'update'>
+  capability: Pick<SettingsCapability, 'update' | 'restart'>
   onBack: () => void
   onPostLockNavigation: () => void
   onSelectedChainChange: (chainId: number) => void
@@ -79,6 +79,8 @@ export function Settings({
       autoDiscoverTokens: !!state.autoDiscoverTokens,
       appLocked: !!state.appLock.locked,
       autohide: !!state.autohide,
+      torEnabled: state.torEnabled ?? state.tor.connection !== 'direct',
+      tor: state.tor,
       biometricUnlock: !!state.biometricUnlock,
       latticeAccountLimit: accountLimit(state.latticeSettings.accountLimit),
       latticeDerivation: latticeDerivation(state.latticeSettings.derivation),
@@ -251,6 +253,7 @@ export function Settings({
       onBiometricUnlockChange={(enabled) => void setBiometricUnlock(enabled)}
       onLock={() => void lockWallet()}
       onReset={(scope) => void resetWallet(scope)}
+      onRestart={() => void capability.restart()}
       onShowTestnetsChange={setShowTestnets}
       onUpdate={persist}
       settings={{ ...shared, biometricsBusy, biometricsError }}

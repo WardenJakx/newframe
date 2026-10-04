@@ -432,6 +432,7 @@ export function createOperationRegistry(services: OperationServices) {
       security.reset(command, operationOwner(context))
     ),
     'app.quit': defineAcknowledgedCommand('app.quit', () => platform.quitApp()),
+    'app.restart': defineAcknowledgedCommand('app.restart', () => platform.restartApp()),
     'permission.clear': defineAcknowledgedCommand('permission.clear', ({ accountId, originId }) =>
       accountMutations.clearPermission(accountId, originId)
     ),

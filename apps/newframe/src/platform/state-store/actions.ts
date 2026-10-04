@@ -24,6 +24,7 @@ import type { CanonicalAccountRequest } from '../../features/requests/contract/r
 import { NATIVE_CURRENCY } from '../../features/tokens/domain/constants.ts'
 import { toTokenId } from '../../features/tokens/domain/index.ts'
 import type { Token, TokenImage, TokenSource } from '../../features/tokens/domain/state/token.ts'
+import type { TorStatus } from '../outbound/contract/status.ts'
 import { AirGapPublicAccountSchema, type AirGapPublicAccount } from '../signing/domain/airgap.ts'
 import type { Derivation } from '../signing/signers/Signer/derive.ts'
 import type { SignerSummary } from '../signing/signers/Signer/index.ts'
@@ -1097,6 +1098,18 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     setAutohide: (value: boolean) => {
       set((draft) => {
         mutableMain(draft).autohide = value
+      })
+    },
+
+    setTorEnabled: (value: boolean) => {
+      set((draft) => {
+        mutableMain(draft).torEnabled = value
+      })
+    },
+
+    setTorStatus: (value: TorStatus) => {
+      set((draft) => {
+        mutableMain(draft).tor = value
       })
     },
 

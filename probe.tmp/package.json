@@ -1,0 +1,5 @@
+{
+  "name": "tor-probe",
+  "type": "module",
+  "main": "main.mjs"
+}

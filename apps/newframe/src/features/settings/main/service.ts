@@ -7,6 +7,7 @@ type SettingsState = Pick<
   | 'setGasDefault'
   | 'setAutoDiscoverTokens'
   | 'setAutohide'
+  | 'setTorEnabled'
   | 'setLatticeAccountLimit'
   | 'setLatticeDerivation'
   | 'setLatticeEndpointCustom'
@@ -44,6 +45,8 @@ export function createSettingsService(
       }
       case 'autohide':
         return state.setAutohide(command.value)
+      case 'tor-enabled':
+        return state.setTorEnabled(command.value)
       case 'launch':
         if (state.main.launch !== command.value) {
           state.toggleLaunch()

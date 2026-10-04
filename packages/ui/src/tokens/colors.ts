@@ -20,6 +20,8 @@ export const colorPrimitives = {
   'yellow-400': '#f1c950',
   'violet-500': '#866eff',
   'lime-400': '#c4f867',
+  // Tor Project brand purple: https://styleguide.torproject.org/visuals/
+  'tor-purple': '#7D4698',
 
   black: '#000000',
   white: '#ffffff'
@@ -68,6 +70,7 @@ export const darkColorSemantics = {
   'status-pending': 'violet-500',
   'status-special': 'lime-400',
   'status-special-subtle': { color: 'lime-400', alpha: 0.14 },
+  'brand-tor': 'tor-purple',
 
   'border-subtle': { color: 'ice-50', alpha: 0.06 },
   'border-default': { color: 'ice-50', alpha: 0.1 },

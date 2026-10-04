@@ -98,6 +98,30 @@ describe('settings security operations', () => {
 
   beforeEach(resetHarness)
 
+  it('saves a Tor change, keeps the active status until restart, and sends an explicit restart command', async () => {
+    publish({ tor: { available: true, connection: 'connected' } })
+    const { user } = renderSettings({
+      createWebAuthnCredential: async () => {
+        throw new Error('unused')
+      },
+      isBiometricUserCanceled: () => false,
+      isWebAuthnSupported: async () => false
+    })
+    const toggle = screen.getByRole('switch', { name: 'Proxy traffic via Tor' })
+    expect(toggle.getAttribute('aria-checked')).toBe('true')
+    await user.click(toggle)
+    expect(lastCommand()).toEqual({ type: 'settings.update', setting: 'tor-enabled', value: false })
+    publish({ torEnabled: false })
+    expect(screen.getByText('Restart to apply. Traffic still uses Tor.')).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: 'Restart Newframe' }))
+    expect(lastCommand()).toEqual({ type: 'app.restart' })
+    publish({ torEnabled: true })
+    expect(screen.queryByRole('button', { name: 'Restart Newframe' })).toBeNull()
+    publish({ tor: { available: true, connection: 'error' } })
+    expect(screen.getByText('Tor could not connect. Restart to retry, or turn Tor off.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Restart Newframe' })).toBeTruthy()
+  })
+
   it('covers configure, fallback, cancellation, failure, lock, and reset operation projections', async () => {
     {
       const enrollment = {

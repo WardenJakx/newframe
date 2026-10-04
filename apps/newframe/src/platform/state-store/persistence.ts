@@ -224,6 +224,7 @@ export function selectPersistedState(state: CanonicalStore): PersistedCanonicalS
     focusedFrame: _focusedFrame,
     frames: _frames,
     runtime: _runtime,
+    tor: _tor,
     signers: _signers,
     rates: _legacyRates,
     ...durableMain

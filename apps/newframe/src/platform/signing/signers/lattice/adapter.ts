@@ -1,5 +1,6 @@
 import log from 'electron-log'
 
+import { outbound, type OutboundGate } from '../../../outbound/index.ts'
 import type canonicalStore from '../../../state-store/index.ts'
 import { SignerAdapter } from '../adapters.ts'
 import type { Derivation } from '../Signer/derive.ts'
@@ -49,10 +50,12 @@ export default class LatticeAdapter extends SignerAdapter {
   private unsubscribeSettings?: () => void
   private lifecycleGeneration = 0
   private opened = false
+  private readonly pendingConnects = new Set<() => void>()
 
   constructor(
     private readonly store: typeof canonicalStore,
-    createLattice: CreateLattice = (deviceId, deviceName, tag) => new Lattice(deviceId, deviceName, tag)
+    createLattice: CreateLattice = (deviceId, deviceName, tag) => new Lattice(deviceId, deviceName, tag),
+    private readonly gate: OutboundGate = outbound
   ) {
     super('lattice')
 
@@ -186,10 +189,15 @@ export default class LatticeAdapter extends SignerAdapter {
           if (device.paired) {
             // don't attempt to automatically connect if the Lattice isn't
             // paired as this could happen without the user noticing
-            lattice.connect(baseUrl, privKey).catch(() => {
-              if (this.isActive(generation, deviceId, lattice)) {
-                this.store.getState().updateLattice(deviceId, { paired: false })
+            this.whenOutboundOpen(() => {
+              if (!this.isActive(generation, deviceId, lattice)) {
+                return
               }
+              lattice.connect(baseUrl, privKey).catch(() => {
+                if (this.isActive(generation, deviceId, lattice)) {
+                  this.store.getState().updateLattice(deviceId, { paired: false })
+                }
+              })
             })
           }
         })
@@ -209,8 +217,27 @@ export default class LatticeAdapter extends SignerAdapter {
     this.unsubscribeSigners = undefined
     this.unsubscribeSettings?.()
     this.unsubscribeSettings = undefined
+    this.pendingConnects.forEach((unsubscribe) => unsubscribe())
+    this.pendingConnects.clear()
 
     this.knownSigners = {}
+  }
+
+  // Connecting reaches the Lattice relay, which outbound refuses while locked or while Tor
+  // connects. Failing then would mark the device unpaired, so wait for outbound to open.
+  private whenOutboundOpen(connect: () => void) {
+    if (this.gate.isOpen()) {
+      connect()
+      return
+    }
+    const unsubscribe = this.gate.subscribe((open) => {
+      if (open) {
+        unsubscribe()
+        this.pendingConnects.delete(unsubscribe)
+        connect()
+      }
+    })
+    this.pendingConnects.add(unsubscribe)
   }
 
   private isActive(generation: number, deviceId: string, lattice: Lattice) {
