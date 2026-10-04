@@ -13,8 +13,8 @@ let chainAvailable = true
 const address = '0x1111111111111111111111111111111111111111'
 const target = '0x2222222222222222222222222222222222222222'
 const requestSource = createNewframeInternalSource({
-  clientType: 'sidetray',
-  entrypoint: 'sidetray',
+  clientType: 'side-tray',
+  entrypoint: 'side-tray',
   webContentsId: 1,
   windowInstanceId: 'side-tray-test'
 })

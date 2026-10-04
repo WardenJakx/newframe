@@ -84,7 +84,7 @@ function defineAcknowledgedCommand<TKey extends keyof CommandMap>(
   entrypoints: readonly RendererEntrypoint[] = ['tray']
 ) {
   return defineOperation<CommandMap[TKey], unknown>({
-    roles: ['wallet-ui'],
+    roles: ['main-tray'],
     entrypoints,
     async handle(input, event, context) {
       try {
@@ -194,7 +194,7 @@ function defineOwnedCommand<TKey extends keyof CommandMap>(
   ) => Promise<boolean | void> | boolean | void
 ) {
   return defineCommand(operationType, {
-    roles: ['wallet-ui'],
+    roles: ['main-tray'],
     entrypoints: ['tray'],
     async handle(input, _event, context) {
       return operationCommandAcknowledgement(await handle(input, context))
@@ -326,8 +326,8 @@ export function createOperationRegistry(services: OperationServices) {
       'not_found'
     ),
     'request.create': defineCommand('request.create', {
-      roles: ['sidetray'],
-      entrypoints: ['sidetray'],
+      roles: ['side-tray'],
+      entrypoints: ['side-tray'],
       handle(command, _event, context) {
         const requestSource = context.source
         const owner = operationOwner(context)
@@ -340,24 +340,24 @@ export function createOperationRegistry(services: OperationServices) {
       failure: { ok: false, error: 'operation_failed' }
     }),
     'trade.submit': defineCommand('trade.submit', {
-      roles: ['sidetray'],
-      entrypoints: ['sidetray'],
+      roles: ['side-tray'],
+      entrypoints: ['side-tray'],
       handle(command, _event, context) {
         return operationCommandAcknowledgement(trade.submit(command, context.source, operationOwner(context)))
       },
       failure: { ok: false, error: 'operation_failed' }
     }),
     'operation.cancel': defineCommand('operation.cancel', {
-      roles: ['sidetray'],
-      entrypoints: ['sidetray'],
+      roles: ['side-tray'],
+      entrypoints: ['side-tray'],
       handle(command, _event, context) {
         return operationCommandAcknowledgement(trade.cancelOperation(command, operationOwner(context)))
       },
       failure: { ok: false, error: 'operation_failed' }
     }),
-    'sidetray.close': defineCommand('sidetray.close', {
-      roles: ['sidetray'],
-      entrypoints: ['sidetray'],
+    'side-tray.close': defineCommand('side-tray.close', {
+      roles: ['side-tray'],
+      entrypoints: ['side-tray'],
       handle(_command, event) {
         platform.closeSideTray(event)
         return { ok: true } as const
@@ -365,8 +365,8 @@ export function createOperationRegistry(services: OperationServices) {
       failure: { ok: false, error: 'operation_failed' }
     }),
     'renderer.context-menu': defineCommand('renderer.context-menu', {
-      roles: ['wallet-ui', 'sidetray'],
-      entrypoints: ['tray', 'sidetray'],
+      roles: ['main-tray', 'side-tray'],
+      entrypoints: ['tray', 'side-tray'],
       handle({ x, y }: RendererContextMenuCommand, event) {
         platform.inspectRenderer(event, x, y)
         return { ok: true } as const
@@ -405,7 +405,9 @@ export function createOperationRegistry(services: OperationServices) {
     'chain.activation-set': defineAcknowledgedCommand('chain.activation-set', ({ chainId, enabled }) =>
       chains.setActivation(chainId, enabled)
     ),
-    'sidetray.open': defineAcknowledgedCommand('sidetray.open', (command) => platform.openSideTray(command)),
+    'side-tray.open': defineAcknowledgedCommand('side-tray.open', (command) =>
+      platform.openSideTray(command)
+    ),
     'flash.order-cancel': defineAcknowledgedCommand('flash.order-cancel', (command, _event, context) =>
       trade.cancel(command, context.source, operationOwner(context))
     ),
@@ -563,8 +565,8 @@ export function createOperationRegistry(services: OperationServices) {
       tokens.add(command, operationOwner(context))
     ),
     'token.image-hydrate': defineCommand('token.image-hydrate', {
-      roles: ['wallet-ui', 'sidetray'],
-      entrypoints: ['tray', 'sidetray'],
+      roles: ['main-tray', 'side-tray'],
+      entrypoints: ['tray', 'side-tray'],
       handle({ tokenId }) {
         requestTokenImage(tokenId)
         return { ok: true } as const
@@ -642,13 +644,13 @@ export function createOperationRegistry(services: OperationServices) {
 
   const queryRegistry = {
     'signer.session-frames': defineQuery('signer.session-frames', {
-      roles: ['wallet-ui'],
+      roles: ['main-tray'],
       entrypoints: ['tray'],
       handle: (query, _event, context) => airgap.request(query, operationOwner(context)),
       failure: { ok: false, error: 'unavailable' }
     }),
     'keystore.locate': defineQuery('keystore.locate', {
-      roles: ['wallet-ui'],
+      roles: ['main-tray'],
       entrypoints: ['tray'],
       async handle(_query: KeystoreLocateQuery) {
         const keystore = await accountOnboarding.locateKeystore()
@@ -661,7 +663,7 @@ export function createOperationRegistry(services: OperationServices) {
       failure: { ok: false, error: 'invalid_keystore', message: 'Could not read the keystore.' }
     }),
     'profile.movable-accounts': defineQuery('profile.movable-accounts', {
-      roles: ['wallet-ui'],
+      roles: ['main-tray'],
       entrypoints: ['tray'],
       handle(_query: ProfileMovableAccountsQuery) {
         return profiles.movableAccounts()
@@ -669,7 +671,7 @@ export function createOperationRegistry(services: OperationServices) {
       failure: { ok: false, error: 'operation_failed' }
     }),
     'address.chain-usage': defineQuery('address.chain-usage', {
-      roles: ['wallet-ui'],
+      roles: ['main-tray'],
       entrypoints: ['tray'],
       async handle({ addresses }: AddressChainUsageQuery) {
         return {
@@ -680,16 +682,16 @@ export function createOperationRegistry(services: OperationServices) {
       failure: { ok: false, error: 'lookup_failed' }
     }),
     'flash.quote': defineQuery('flash.quote', {
-      roles: ['sidetray'],
-      entrypoints: ['sidetray'],
+      roles: ['side-tray'],
+      entrypoints: ['side-tray'],
       async handle({ request }: FlashQuoteQuery, _event, context) {
         return FlashQuoteResultSchema.parse(await trade.quote(request, operationOwner(context)))
       },
       failure: { ok: false, error: 'quote_failed', message: 'Flash quote failed.' }
     }),
     'name.resolve': defineQuery('name.resolve', {
-      roles: ['wallet-ui', 'sidetray'],
-      entrypoints: ['tray', 'sidetray'],
+      roles: ['main-tray', 'side-tray'],
+      entrypoints: ['tray', 'side-tray'],
       async handle({ name }: NameResolveQuery) {
         const address = await services.resolveName(name)
         return address ? ({ ok: true, address } as const) : ({ ok: false, error: 'not_found' } as const)
@@ -697,25 +699,25 @@ export function createOperationRegistry(services: OperationServices) {
       failure: { ok: false, error: 'resolution_failed' }
     }),
     'safe.discover': defineQuery('safe.discover', {
-      roles: ['wallet-ui'],
+      roles: ['main-tray'],
       entrypoints: ['tray'],
       handle: ({ address, chainId }) => safes.discoverChains(address, chainId),
       failure: []
     }),
     'safe.simulate': defineQuery('safe.simulate', {
-      roles: ['wallet-ui'],
+      roles: ['main-tray'],
       entrypoints: ['tray'],
       handle: (query) => safes.simulate(query),
       failure: { status: 'unavailable', error: 'Safe simulation unavailable.' }
     }),
     'safe.confirmation-status': defineQuery('safe.confirmation-status', {
-      roles: ['wallet-ui'],
+      roles: ['main-tray'],
       entrypoints: ['tray'],
       handle: (query, _event, context) => safes.confirmationStatus(query, operationOwner(context)),
       failure: { status: 'validation_failed', message: 'Safe confirmation status is unavailable.' }
     }),
     'safe.execution-prepare': defineQuery('safe.execution-prepare', {
-      roles: ['wallet-ui'],
+      roles: ['main-tray'],
       entrypoints: ['tray'],
       async handle(query) {
         try {
@@ -730,7 +732,7 @@ export function createOperationRegistry(services: OperationServices) {
       failure: { ok: false, error: 'Safe execution preparation failed.' }
     }),
     'token.lookup': defineQuery('token.lookup', {
-      roles: ['wallet-ui'],
+      roles: ['main-tray'],
       entrypoints: ['tray'],
       async handle({ address, chainId }: TokenLookupQuery) {
         const token = await tokens.lookup(address, chainId)
@@ -739,7 +741,7 @@ export function createOperationRegistry(services: OperationServices) {
       failure: { ok: false, error: 'lookup_failed' }
     }),
     'security.status': defineQuery('security.status', {
-      roles: ['wallet-ui'],
+      roles: ['main-tray'],
       entrypoints: ['tray'],
       handle(_query: SecurityStatusQuery) {
         return { ok: true, ...security.status() } as const
@@ -747,7 +749,7 @@ export function createOperationRegistry(services: OperationServices) {
       failure: { ok: false, error: 'operation_failed', message: 'Could not read security status.' }
     }),
     'account.private-key-export': defineQuery('account.private-key-export', {
-      roles: ['wallet-ui'],
+      roles: ['main-tray'],
       entrypoints: ['tray'],
       async handle({ accountId }: AccountPrivateKeyExportQuery) {
         const privateKey = await services.protectedOperations.exportPrivateKey(accountId)
@@ -759,7 +761,7 @@ export function createOperationRegistry(services: OperationServices) {
       failure: { ok: false, error: 'export_failed', message: 'Could not export the private key.' }
     }),
     'seed.generate': defineQuery('seed.generate', {
-      roles: ['wallet-ui'],
+      roles: ['main-tray'],
       entrypoints: ['tray'],
       async handle(_query: SeedGenerateQuery) {
         return { ok: true, phrase: await accountOnboarding.generateSeedPhrase() } as const

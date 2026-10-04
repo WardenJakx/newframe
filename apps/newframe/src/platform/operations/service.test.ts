@@ -3,11 +3,11 @@ import { describe, expect, it } from 'bun:test'
 import { createTestStore } from '../../../test/support/createTestStore.ts'
 import { createOperationService } from './service.ts'
 
-const owner = { clientType: 'wallet-ui', windowInstanceId: 'wallet-window' } as const
+const owner = { clientType: 'main-tray', windowInstanceId: 'wallet-window' } as const
 const reference = (
   id: string,
   type = 'account.create',
-  targetOwner: { clientType: 'wallet-ui'; windowInstanceId: string } = owner
+  targetOwner: { clientType: 'main-tray'; windowInstanceId: string } = owner
 ) => ({
   id,
   type,
@@ -115,7 +115,7 @@ describe('operation service', () => {
     {
       const { service } = harness()
       const started = service.start({ id: 'protected', type: 'transaction.submit', owner })
-      const otherOwner = { clientType: 'wallet-ui', windowInstanceId: 'other-window' } as const
+      const otherOwner = { clientType: 'main-tray', windowInstanceId: 'other-window' } as const
 
       expect(service.lookup(reference(started.id, started.type, otherOwner))).toBeUndefined()
       expect(service.complete(reference(started.id, 'account.create'))).toBeUndefined()

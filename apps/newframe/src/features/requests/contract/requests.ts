@@ -111,8 +111,8 @@ interface Request {
 type RequestSourceSummary =
   | {
       kind: 'renderer'
-      role: 'wallet-ui' | 'sidetray'
-      entrypoint: 'tray' | 'sidetray'
+      role: 'main-tray' | 'side-tray'
+      entrypoint: 'tray' | 'side-tray'
       webContentsId: number
       windowInstanceId: string
     }

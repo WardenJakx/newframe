@@ -13,7 +13,7 @@ export function installCameraPermissions(
   installations.set(session, owner)
   const trusted = (input: Parameters<RendererAuthorizationRegistry['authorizeMedia']>[0]) => {
     const identity = registry.authorizeMedia(input)
-    return identity?.clientType === 'wallet-ui' && identity.entrypoint === 'tray'
+    return identity?.clientType === 'main-tray' && identity.entrypoint === 'tray'
   }
   session.setPermissionCheckHandler(
     (webContents, permission, _origin, details) =>

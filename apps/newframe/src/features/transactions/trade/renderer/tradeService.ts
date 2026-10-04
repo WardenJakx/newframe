@@ -38,7 +38,7 @@ export function createTradeCapability(host: TradeHost): TradeCapability {
     prepare: (input) => host.executeCommand({ type: 'request.create', ...input }),
     submit: (input) => host.executeCommand({ type: 'trade.submit', ...input }),
     cancel: (input) => host.executeCommand({ type: 'operation.cancel', ...input }),
-    close: () => host.executeCommand({ type: 'sidetray.close' }),
+    close: () => host.executeCommand({ type: 'side-tray.close' }),
     hydrateTokenImage: (tokenId) => host.executeCommand({ type: 'token.image-hydrate', tokenId })
   }
 }

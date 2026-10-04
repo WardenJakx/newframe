@@ -1842,7 +1842,7 @@ describe('#executeAccountTransaction', () => {
     }
     let ownerActive = true
     const ui: SigningUiContext = {
-      owner: { clientType: 'wallet-ui', windowInstanceId: 'executor-review' },
+      owner: { clientType: 'main-tray', windowInstanceId: 'executor-review' },
       isOwnerActive: () => ownerActive,
       subscribeOwnerDisposed: () => () => {}
     }

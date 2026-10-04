@@ -675,7 +675,7 @@ describe('profile actions', () => {
     harness.actions.deleteProfile(DEFAULT_PROFILE_ID)
     expect(harness.getState().main.profileOrder).toEqual([DEFAULT_PROFILE_ID])
 
-    const operationOwner = { clientType: 'wallet-ui', windowInstanceId: 'window-1' } as const
+    const operationOwner = { clientType: 'main-tray', windowInstanceId: 'window-1' } as const
     const pendingOperation = {
       id: 'operation-1',
       type: 'transaction.submit',

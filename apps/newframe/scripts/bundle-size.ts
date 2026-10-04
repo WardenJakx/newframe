@@ -20,7 +20,7 @@ type BundleReport = {
 
 const bundleDir = path.resolve(process.cwd(), 'bundle')
 const packageJsonPath = path.resolve(process.cwd(), 'package.json')
-const entrypointFields = ['bridge', 'tray', 'sidetray']
+const entrypointFields = ['bridge', 'tray', 'side-tray']
 const outputAsJson = process.argv.includes('--json')
 
 function bytes(files: string[]) {

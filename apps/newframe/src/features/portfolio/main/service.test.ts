@@ -8,7 +8,7 @@ import { createBuiltInChains } from '../../chains/domain/chain/catalog.ts'
 import { createPortfolioService } from './service.ts'
 
 const address = '0x1111111111111111111111111111111111111111'
-const owner = { clientType: 'wallet-ui' as const, windowInstanceId: 'tray-test' }
+const owner = { clientType: 'main-tray' as const, windowInstanceId: 'tray-test' }
 const account: Account = {
   id: address,
   profileId: DEFAULT_PROFILE_ID,

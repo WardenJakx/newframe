@@ -311,8 +311,7 @@ The code predates the glossary. Counts are occurrences outside tests.
 
 | Glossary term           | Code says                                                  | Occurrences |
 | ----------------------- | ---------------------------------------------------------- | ----------- |
-| Tray, main tray         | `renderer`, `wallet-ui`                                    | 830         |
-| Side tray               | `sidetray`                                                 | 310         |
+| Tray, main tray         | `renderer`, and `tray` alone for the main tray             | About 1,000 |
 | AI session              | `agentEnabled`, the stored account flag                    | 18          |
 | Request                 | `handlerId`, the stored key on activity records and grants | 12          |
 | Account access grant    | `permission`                                               | 250         |

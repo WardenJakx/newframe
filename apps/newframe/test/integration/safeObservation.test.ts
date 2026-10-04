@@ -12,7 +12,7 @@ import { createTestStore } from '../support/createTestStore.ts'
 
 it('projects the paginated local Safe service through public observation capabilities', async () => {
   const address = '0x1111111111111111111111111111111111111111'
-  const owner = { clientType: 'wallet-ui', windowInstanceId: 'safe-integration' } as const
+  const owner = { clientType: 'main-tray', windowInstanceId: 'safe-integration' } as const
   const handler = createSafeHandler({
     chainId: 31337,
     safe: address,
@@ -98,7 +98,7 @@ it('projects the paginated local Safe service through public observation capabil
 
 it('ignores a real HTTP refresh response released after Safe removal', async () => {
   const address = '0x1111111111111111111111111111111111111111'
-  const owner = { clientType: 'wallet-ui', windowInstanceId: 'safe-removal' } as const
+  const owner = { clientType: 'main-tray', windowInstanceId: 'safe-removal' } as const
   const handler = createSafeHandler({
     chainId: 31337,
     safe: address,

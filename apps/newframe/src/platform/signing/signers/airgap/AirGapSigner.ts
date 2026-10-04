@@ -91,7 +91,7 @@ export default class AirGapSigner extends Signer {
     }
   }
   private approved(index: number, context?: SignerRequestContext) {
-    if (this.closed || !context || !context.isOwnerActive() || context.owner.clientType !== 'wallet-ui') {
+    if (this.closed || !context || !context.isOwnerActive() || context.owner.clientType !== 'main-tray') {
       throw new Error('AirGap requires an active approving wallet window')
     }
     if (context.signal.aborted) {

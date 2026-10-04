@@ -84,10 +84,10 @@ describe('platform service', () => {
     expect(service.respondToExtension('extension-b', false)).toBeTrue()
     expect(store.getState().main.knownExtensions['extension-b']).toBeFalse()
 
-    expect(service.openSideTray({ type: 'sidetray.open', feature: 'trade', chainId: 99 })).toBeFalse()
-    expect(service.openSideTray({ type: 'sidetray.open', feature: 'send' })).toBeTrue()
+    expect(service.openSideTray({ type: 'side-tray.open', feature: 'trade', chainId: 99 })).toBeFalse()
+    expect(service.openSideTray({ type: 'side-tray.open', feature: 'send' })).toBeTrue()
     expect(store.getState().main.frames).toHaveProperty('sideTray')
-    expect(service.openSideTray({ type: 'sidetray.open', feature: 'send' })).toBeTrue()
+    expect(service.openSideTray({ type: 'side-tray.open', feature: 'send' })).toBeTrue()
     expect(refocusSideTray.mock.calls).toEqual([['sideTray']])
     expect(service.openTransactionExplorer(99)).toBeFalse()
     expect(service.openTransactionExplorer(1, '0xabc')).toBeTrue()

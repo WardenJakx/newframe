@@ -6,7 +6,7 @@ import { createProductionSecurityAdapters } from './production.ts'
 import type { SecurityServicePorts } from './service.ts'
 import { createSecurityService } from './service.ts'
 
-const owner = { clientType: 'wallet-ui' as const, windowInstanceId: 'security-test' }
+const owner = { clientType: 'main-tray' as const, windowInstanceId: 'security-test' }
 const flush = () => new Promise((resolve) => setImmediate(resolve))
 
 function harness(overrides: Partial<SecurityServicePorts> = {}) {

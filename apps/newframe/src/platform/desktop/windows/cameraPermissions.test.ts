@@ -27,7 +27,7 @@ function fixture() {
     }
   }
   let id = 0
-  const renderer = (entrypoint: 'tray' | 'sidetray') => {
+  const renderer = (entrypoint: 'tray' | 'side-tray') => {
     const frame = { parent: null, url: `file:///app/bundle/${entrypoint}.html` }
     let destroyed = () => {}
     const webContents = {
@@ -38,11 +38,11 @@ function fixture() {
         destroyed = handler
       }
     } as unknown as WebContents
-    registry.registerRenderer(webContents, entrypoint === 'tray' ? 'wallet-ui' : 'sidetray', entrypoint)
+    registry.registerRenderer(webContents, entrypoint === 'tray' ? 'main-tray' : 'side-tray', entrypoint)
     return { webContents, frame, destroy: () => destroyed() }
   }
   const wallet = renderer('tray')
-  const side = renderer('sidetray')
+  const side = renderer('side-tray')
   const dispose = installCameraPermissions(session, registry)
   const details = { requestingUrl: wallet.frame.url, isMainFrame: true, mediaType: 'video' as const }
   const allowed = () => check(wallet.webContents, 'media', 'file://', details)

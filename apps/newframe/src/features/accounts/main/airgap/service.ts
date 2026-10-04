@@ -46,7 +46,7 @@ export function createAirGapService(ports: AirGapServicePorts) {
       command: Extract<CommandMap['signer.import'], { source: 'airgap' }>,
       context: SigningUiContext
     ) {
-      if (disposed || context.owner.clientType !== 'wallet-ui' || !context.isOwnerActive()) {
+      if (disposed || context.owner.clientType !== 'main-tray' || !context.isOwnerActive()) {
         return false
       }
       const reference = { id: command.operationId, owner: context.owner, type }

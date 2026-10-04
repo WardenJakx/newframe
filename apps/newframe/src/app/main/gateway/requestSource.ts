@@ -238,7 +238,7 @@ function sourceMayRequest(requestSource: RequestSource, requestType: RequestType
   if (requestSource.kind !== 'renderer') {
     return true
   }
-  if (requestSource.role === 'sidetray') {
+  if (requestSource.role === 'side-tray') {
     return sideTrayRequestTypes.has(requestType)
   }
 

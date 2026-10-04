@@ -104,18 +104,18 @@ const servicesWithMocks = [
 
 const event = {} as Electron.IpcMainInvokeEvent
 const trayContext = {
-  clientType: 'wallet-ui' as const,
+  clientType: 'main-tray' as const,
   entrypoint: 'tray' as const,
   webContentsId: 1,
   windowInstanceId: 'tray-test'
 }
 const sideTrayContext = {
-  clientType: 'sidetray' as const,
-  entrypoint: 'sidetray' as const,
+  clientType: 'side-tray' as const,
+  entrypoint: 'side-tray' as const,
   webContentsId: 2,
   windowInstanceId: 'side-tray-test'
 }
-const owner = { clientType: 'wallet-ui', windowInstanceId: 'tray-test' } as const
+const owner = { clientType: 'main-tray', windowInstanceId: 'tray-test' } as const
 
 function createTestServices() {
   return {
@@ -183,7 +183,7 @@ describe('typed operation dispatcher', () => {
 
     authorizeRenderer.mockReturnValue(trayContext)
     for (const input of [
-      { type: 'sidetray.close' },
+      { type: 'side-tray.close' },
       { type: 'account.select', accountId: '', injected: true },
       { type: 'request.reject', requestId: 'request-1', request: {} },
       { type: 'x'.repeat(129) },
@@ -191,7 +191,7 @@ describe('typed operation dispatcher', () => {
     ]) {
       expect(dispatcher.dispatchCommand(event, input)).resolves.toEqual({
         ok: false,
-        error: input.type === 'sidetray.close' ? 'unauthorized' : 'invalid_command'
+        error: input.type === 'side-tray.close' ? 'unauthorized' : 'invalid_command'
       })
     }
   })
@@ -203,7 +203,7 @@ describe('typed operation dispatcher', () => {
       { type: 'account.select', accountId: 'account-1' },
       { type: 'home.command-consume', commandId: 1 },
       { type: 'chain.activation-set', chainId: 1, enabled: true },
-      { type: 'sidetray.open', feature: 'trade', chainId: 1 },
+      { type: 'side-tray.open', feature: 'trade', chainId: 1 },
       {
         type: 'account.update',
         accountId: address,
@@ -299,7 +299,7 @@ describe('typed operation dispatcher', () => {
     expect(send.submit).toHaveBeenCalledWith(
       sendCommand,
       expect.objectContaining({ kind: 'renderer', windowInstanceId: 'side-tray-test' }),
-      { clientType: 'sidetray', windowInstanceId: 'side-tray-test' }
+      { clientType: 'side-tray', windowInstanceId: 'side-tray-test' }
     )
 
     expect(
@@ -313,7 +313,7 @@ describe('typed operation dispatcher', () => {
     const cancelCommand = { type: 'operation.cancel', operationId: 'trade-operation' }
     expect(dispatcher.dispatchCommand(event, cancelCommand)).resolves.toEqual({ ok: true })
     expect(trade.cancelOperation).toHaveBeenCalledWith(cancelCommand, {
-      clientType: 'sidetray',
+      clientType: 'side-tray',
       windowInstanceId: 'side-tray-test'
     })
 
@@ -434,7 +434,7 @@ describe('typed operation dispatcher', () => {
 
   it('binds close/context-menu effects to the invoking event', async () => {
     authorizeRenderer.mockReturnValue(sideTrayContext)
-    expect(dispatcher.dispatchCommand(event, { type: 'sidetray.close' })).resolves.toEqual({ ok: true })
+    expect(dispatcher.dispatchCommand(event, { type: 'side-tray.close' })).resolves.toEqual({ ok: true })
     expect(
       dispatcher.dispatchCommand(event, { type: 'renderer.context-menu', x: 12, y: 34 })
     ).resolves.toEqual({ ok: true })
@@ -573,7 +573,7 @@ it('binds AirGap and approval contexts to the authorized sender lifecycle', asyn
   expect(
     await dispatcher.dispatchCommand(liveEvent, {
       ...start,
-      owner: { clientType: 'wallet-ui', windowInstanceId: 'forged' }
+      owner: { clientType: 'main-tray', windowInstanceId: 'forged' }
     })
   ).toMatchObject({ ok: false })
   expect(await dispatcher.dispatchCommand(liveEvent, start)).toEqual({ ok: true })

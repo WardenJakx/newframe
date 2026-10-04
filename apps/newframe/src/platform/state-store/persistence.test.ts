@@ -262,7 +262,7 @@ describe('canonical persisted state contract', () => {
   it('never persists runtime operations and discards legacy rate caches', () => {
     const state = canonicalState()
     state.operations.secret = {
-      owner: { clientType: 'wallet-ui', windowInstanceId: 'wallet-window' },
+      owner: { clientType: 'main-tray', windowInstanceId: 'wallet-window' },
       operation: {
         id: 'secret',
         type: 'vault.unlock',
@@ -831,8 +831,8 @@ it('retains Safe metadata through persistence and projects only the current prof
   )
   const merged = mergePersistedState(persisted, canonicalState())
   expect(merged.main.accounts[address].safe).toEqual(safe)
-  const audience = { clientType: 'wallet-ui' as const, windowInstanceId: 'test' }
-  const projected = projectionStateSchemas['wallet-ui'].parse(projectRendererState(merged, audience))
+  const audience = { clientType: 'main-tray' as const, windowInstanceId: 'test' }
+  const projected = projectionStateSchemas['main-tray'].parse(projectRendererState(merged, audience))
   expect(projected.accounts[address].safe).toEqual(safe)
   merged.main.currentProfile = 'other'
   expect(projectRendererState(merged, audience)).toMatchObject({ accounts: {} })

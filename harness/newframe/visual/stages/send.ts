@@ -16,7 +16,7 @@ export const sendStage: VisualStage = {
     }
 
     await sendEthButton.click()
-    const sendPage = await driver.waitForElectronPage('bundle/sidetray.html')
+    const sendPage = await driver.waitForElectronPage('bundle/side-tray.html')
     await sendPage.getByRole('textbox', { name: 'Recipient' }).waitFor({ state: 'visible', timeout: 15_000 })
     await sendPage.getByRole('button', { name: 'Select send token' }).click()
     const tokenMenu = sendPage.getByRole('listbox', { name: 'Select send token' }).locator('..')

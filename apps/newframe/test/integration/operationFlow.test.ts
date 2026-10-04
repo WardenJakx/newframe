@@ -14,7 +14,7 @@ import createInitialState from '../../src/platform/state-store/state/index.ts'
 import { projectRendererState } from '../../src/platform/state-sync/main/projections.ts'
 import { createTestStore } from '../support/createTestStore.ts'
 
-const owner = { clientType: 'wallet-ui', entrypoint: 'tray', windowInstanceId: 'wallet-window' } as const
+const owner = { clientType: 'main-tray', entrypoint: 'tray', windowInstanceId: 'wallet-window' } as const
 
 it('authorizes and validates final adjustments against canonical state before signing once', async () => {
   const accountId = '0x1111111111111111111111111111111111111111'
@@ -217,7 +217,7 @@ it('acknowledges a real command and projects its completion only to the owning w
     result,
     owned: projectRendererState(store.getState(), owner).operations['add-token'],
     otherWindow: projectRendererState(store.getState(), {
-      clientType: 'wallet-ui',
+      clientType: 'main-tray',
       windowInstanceId: 'other-window'
     }).operations
   }).toEqual({

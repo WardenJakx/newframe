@@ -15,7 +15,7 @@ const account = {
   id: 'account-1',
   address: '0x1111111111111111111111111111111111111111'
 }
-const owner = { clientType: 'sidetray' as const, windowInstanceId: 'trade-window' }
+const owner = { clientType: 'side-tray' as const, windowInstanceId: 'trade-window' }
 const requestSource = { kind: 'renderer' } as RequestSource
 const typedData = {
   domain: { chainId: 1 },

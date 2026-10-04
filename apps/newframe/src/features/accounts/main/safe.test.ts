@@ -11,7 +11,7 @@ import { createSafeService, type SafeServicePorts } from './safe.ts'
 
 const address = '0x1111111111111111111111111111111111111111'
 const ownerAddress = '0x2222222222222222222222222222222222222222'
-const owner = { clientType: 'wallet-ui' as const, windowInstanceId: 'test' }
+const owner = { clientType: 'main-tray' as const, windowInstanceId: 'test' }
 const cleanup: (() => void | Promise<void>)[] = []
 afterEach(async () => {
   await Promise.all(cleanup.splice(0).map(async (dispose) => dispose()))

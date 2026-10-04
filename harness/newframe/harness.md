@@ -79,7 +79,7 @@ playwright-cli --s=newframe screenshot --filename=/tmp/newframe-harness-shots/tr
 Notes:
 
 - Follow-up commands must use `--s=newframe`.
-- Attach exposes `Tray` and on-demand `sidetray` Send/Trade windows; hardware recovery stays in Tray notifications;
+- Attach exposes `Tray` and on-demand `side-tray` Send/Trade windows; hardware recovery stays in Tray notifications;
   verify the current tab is `Tray`.
 - Snapshot refs such as `e5` are temporary. Use them only within the current interactive session.
 - `playwright-cli screenshot` requires `--filename=/path/file.png`; a positional argument is treated as an element selector or snapshot ref.

@@ -52,9 +52,9 @@ export function createWindow(
   }
 
   if (name === 'tray') {
-    registerRenderer(browserWindow.webContents, 'wallet-ui', 'tray')
-  } else if (name === 'sidetray') {
-    registerRenderer(browserWindow.webContents, 'sidetray', 'sidetray')
+    registerRenderer(browserWindow.webContents, 'main-tray', 'tray')
+  } else if (name === 'side-tray') {
+    registerRenderer(browserWindow.webContents, 'side-tray', 'side-tray')
   }
 
   browserWindow.webContents.once('did-finish-load', () => {

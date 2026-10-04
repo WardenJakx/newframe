@@ -4,8 +4,8 @@ import { fileURLToPath } from 'url'
 
 import type { IpcMainInvokeEvent, WebContents } from 'electron'
 
-export type RendererRole = 'wallet-ui' | 'sidetray'
-export type RendererEntrypoint = 'tray' | 'sidetray'
+export type RendererRole = 'main-tray' | 'side-tray'
+export type RendererEntrypoint = 'tray' | 'side-tray'
 
 type RendererRegistration = {
   webContents: WebContents

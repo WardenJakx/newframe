@@ -9,8 +9,8 @@ let nextId = 1
 let authorization: RendererAuthorizationRegistry
 
 function renderer(
-  entrypoint: 'tray' | 'sidetray',
-  clientType: 'wallet-ui' | 'sidetray',
+  entrypoint: 'tray' | 'side-tray',
+  clientType: 'main-tray' | 'side-tray',
   registry = authorization
 ) {
   const frame: { parent: WebFrameMain | null; url: string } = {
@@ -51,11 +51,11 @@ beforeEach(() => {
 
 describe('renderer authorization', () => {
   it('derives the registered role from Electron-owned WebContents identity', () => {
-    const wallet = renderer('tray', 'wallet-ui')
+    const wallet = renderer('tray', 'main-tray')
     const result = authorization.authorizeRenderer(wallet.event)
 
     expect(result).toMatchObject({
-      clientType: 'wallet-ui',
+      clientType: 'main-tray',
       entrypoint: 'tray',
       webContentsId: wallet.webContents.id
     })
@@ -63,17 +63,17 @@ describe('renderer authorization', () => {
   })
 
   it('rejects subframes and unexpected renderer URLs', () => {
-    const wallet = renderer('tray', 'wallet-ui')
+    const wallet = renderer('tray', 'main-tray')
     wallet.frame.parent = {} as unknown as WebFrameMain
     expect(authorization.authorizeRenderer(wallet.event)).toBeUndefined()
 
     wallet.frame.parent = null
-    wallet.frame.url = pathToFileURL('/app/bundle/sidetray.html').toString()
+    wallet.frame.url = pathToFileURL('/app/bundle/side-tray.html').toString()
     expect(authorization.authorizeRenderer(wallet.event)).toBeUndefined()
   })
 
   it('removes a registration when its WebContents is destroyed', () => {
-    const sideTray = renderer('sidetray', 'sidetray')
+    const sideTray = renderer('side-tray', 'side-tray')
     sideTray.destroy()
 
     expect(authorization.authorizeRenderer(sideTray.event)).toBeUndefined()
@@ -81,12 +81,12 @@ describe('renderer authorization', () => {
 
   it('only accepts the exact development entrypoint on the local app server', () => {
     process.env.NODE_ENV = 'development'
-    const sideTray = renderer('sidetray', 'sidetray')
-    sideTray.frame.url = 'http://localhost:1234/sidetray/index.dev.html#/send'
+    const sideTray = renderer('side-tray', 'side-tray')
+    sideTray.frame.url = 'http://localhost:1234/side-tray/index.dev.html#/send'
 
     expect(authorization.authorizeRenderer(sideTray.event)).toMatchObject({
-      clientType: 'sidetray',
-      entrypoint: 'sidetray'
+      clientType: 'side-tray',
+      entrypoint: 'side-tray'
     })
 
     sideTray.frame.url = 'http://localhost:1234/tray/index.dev.html'
@@ -95,7 +95,7 @@ describe('renderer authorization', () => {
 
   it('keeps registrations isolated across registries and clears them on dispose', () => {
     const other = createRendererAuthorizationRegistry()
-    const wallet = renderer('tray', 'wallet-ui')
+    const wallet = renderer('tray', 'main-tray')
 
     expect(other.authorizeRenderer(wallet.event)).toBeUndefined()
     expect(authorization.authorizeRenderer(wallet.event)).toBeDefined()

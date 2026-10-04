@@ -207,7 +207,7 @@ describe('#addRequest', () => {
       recognizedActions: [{ id: 'erc20:approve', data: actionData, update }]
     }
     const rendererRequestSource = createNewframeInternalSource({
-      clientType: 'wallet-ui',
+      clientType: 'main-tray',
       entrypoint: 'tray',
       webContentsId: 7,
       windowInstanceId: 'wallet-window'
@@ -233,7 +233,7 @@ describe('#addRequest', () => {
 
     const renderer = Object.assign(new EventEmitter(), { id: 7 })
     const renderers = createRendererAuthorizationRegistry(() => 'wallet-window')
-    renderers.registerRenderer(renderer as never, 'wallet-ui', 'tray')
+    renderers.registerRenderer(renderer as never, 'main-tray', 'tray')
     renderer.emit('destroyed')
 
     expect(account.requests[request.requestId]).toMatchObject({

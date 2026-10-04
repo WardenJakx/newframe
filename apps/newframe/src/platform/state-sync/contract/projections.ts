@@ -16,7 +16,7 @@ import { TokenCatalogSchema, TokenImageSchema } from '../../../features/tokens/d
 import { OperationCollectionSchema } from '../../operations/operation.ts'
 import { AirGapPendingSummarySchema } from '../../signing/domain/airgap.ts'
 
-export const RendererProjectionSchema = z.enum(['wallet-ui', 'sidetray'])
+export const RendererProjectionSchema = z.enum(['main-tray', 'side-tray'])
 export type RendererProjection = z.infer<typeof RendererProjectionSchema>
 
 const WalletNavigationChainSchema = z
@@ -595,7 +595,7 @@ const SideTrayChainMetadataSchema = z.strictObject({
   nativeCurrency: NativeCurrencySchema
 })
 
-// `sidetray` is the restricted capability projection used by the bundled
+// `side-tray` is the restricted capability projection used by the bundled
 // Send/Trade renderer.
 // Origin-controlled web content must never be registered for this projection.
 const SideTrayRendererStateSchema = z.strictObject({
@@ -623,8 +623,8 @@ export type SideTrayRendererState = z.infer<typeof SideTrayRendererStateSchema>
 export type WalletPanelNavigationEntry = z.infer<typeof WalletPanelNavigationEntrySchema>
 
 export const projectionStateSchemas = {
-  'wallet-ui': WalletRendererStateSchema,
-  sidetray: SideTrayRendererStateSchema
+  'main-tray': WalletRendererStateSchema,
+  'side-tray': SideTrayRendererStateSchema
 } as const
 
 function createProjectionChangesSchema<TShape extends z.ZodRawShape>(schema: z.ZodObject<TShape>) {
@@ -668,6 +668,6 @@ function createProjectionChangesSchema<TShape extends z.ZodRawShape>(schema: z.Z
 // Zod defaults inside a normal `.partial()` populate omitted slices. Parse
 // only keys that are actually present so a one-slice update stays one slice.
 export const projectionStateChangeSchemas = {
-  'wallet-ui': createProjectionChangesSchema(WalletRendererStateSchema),
-  sidetray: createProjectionChangesSchema(SideTrayRendererStateSchema)
+  'main-tray': createProjectionChangesSchema(WalletRendererStateSchema),
+  'side-tray': createProjectionChangesSchema(SideTrayRendererStateSchema)
 } as const
