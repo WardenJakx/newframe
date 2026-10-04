@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
 import type {
-  NetworkRequestResolveCommand,
+  ChainRequestResolveCommand,
   TransactionReplaceCommand
 } from '../../../app/contracts/operations.ts'
 import type { RequestSource } from '../../../app/main/gateway/requestSource.ts'
@@ -84,7 +84,7 @@ export interface RequestServicePorts {
   clock: {
     delay(ms: number): Promise<void>
   }
-  network: {
+  chain: {
     rpcMatchesChain(url: unknown, chainId: number): Promise<boolean>
   }
   provider: {
@@ -324,18 +324,15 @@ export function createRequestService(ports: RequestServicePorts) {
     }
 
     const chainId = parseInt(request.data.chainId, 16)
-    const networks = state.networks.ethereum as Record<
+    const chains = state.chains.ethereum as Record<number, (typeof state.chains.ethereum)[number] | undefined>
+    const metadata = state.chainsMeta.ethereum as Record<
       number,
-      (typeof state.networks.ethereum)[number] | undefined
+      (typeof state.chainsMeta.ethereum)[number] | undefined
     >
-    const metadata = state.networksMeta.ethereum as Record<
-      number,
-      (typeof state.networksMeta.ethereum)[number] | undefined
-    >
-    const network = networks[chainId]
+    const chain = chains[chainId]
     const nativeCurrency = metadata[chainId]?.nativeCurrency
     const currentSymbol = nativeCurrency?.symbol ?? '?'
-    const nativeUSD = !network?.isTestnet
+    const nativeUSD = !chain?.isTestnet
       ? resolveAssetRate(
           { chainId, address: NATIVE_CURRENCY, nativeTicker: nativeCurrency?.symbol },
           state.assetRates
@@ -787,15 +784,15 @@ export function createRequestService(ports: RequestServicePorts) {
         const state = ports.store.getState()
         const chainId = Number(request.chain?.id)
         const origins = state.main.origins as Record<string, (typeof state.main.origins)[string] | undefined>
-        const networks = state.main.networks.ethereum as Record<
+        const chains = state.main.chains.ethereum as Record<
           number,
-          (typeof state.main.networks.ethereum)[number] | undefined
+          (typeof state.main.chains.ethereum)[number] | undefined
         >
         if (
           request.chain?.type !== 'ethereum' ||
           !Number.isInteger(chainId) ||
           !origins[request.origin] ||
-          !networks[chainId]
+          !chains[chainId]
         ) {
           return false
         }
@@ -852,7 +849,7 @@ export function createRequestService(ports: RequestServicePorts) {
       return true
     },
 
-    async resolveNetwork(command: NetworkRequestResolveCommand) {
+    async resolveChain(command: ChainRequestResolveCommand) {
       const state = ports.store.getState()
       const located = command.requestId ? locate<AddChainRequest>(command.requestId) : undefined
       const request = located?.request.type === 'addChain' ? located.request : undefined
@@ -879,23 +876,23 @@ export function createRequestService(ports: RequestServicePorts) {
 
       if (command.approved) {
         const chainId = Number(chain.id)
-        const networks = state.main.networks.ethereum as Record<
+        const chains = state.main.chains.ethereum as Record<
           number,
-          (typeof state.main.networks.ethereum)[number] | undefined
+          (typeof state.main.chains.ethereum)[number] | undefined
         >
-        const existing = networks[chainId]
+        const existing = chains[chainId]
         if (existing) {
-          state.activateNetwork('ethereum', chainId, true)
+          state.activateChain('ethereum', chainId, true)
         } else {
           if (
-            !(await ports.network.rpcMatchesChain(
+            !(await ports.chain.rpcMatchesChain(
               (chain as Chain & { primaryRpc?: string }).primaryRpc,
               chainId
             ))
           ) {
             throw new Error('The RPC endpoint returned a different chain ID.')
           }
-          state.addNetwork(chain)
+          state.addChain(chain)
         }
         if (request) {
           located?.account.resolveRequest(request, null)

@@ -34,7 +34,7 @@ const StoredSignerBase = {
   version: z.literal(1),
   id: z.string().min(1),
   addresses: z.array(z.string().min(1)),
-  network: z.string().optional()
+  chain: z.string().optional()
 }
 
 export const StoredHotSignerSchema = z.discriminatedUnion('type', [

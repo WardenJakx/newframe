@@ -12,7 +12,7 @@ const ignoredDirectories = new Set(
 )
 const allowedFiles = new Set([
   'packages/ui/src/tokens/colors.ts',
-  'apps/newframe/src/features/networks/domain/chain/colors.ts'
+  'apps/newframe/src/features/chains/domain/chain/colors.ts'
 ])
 const semanticNames = [...Object.keys(darkColorSemantics), ...Object.keys(systemColors)]
 const semanticTokens = new Set(

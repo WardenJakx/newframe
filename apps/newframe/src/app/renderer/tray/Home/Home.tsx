@@ -1,7 +1,7 @@
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
 import type { AccountsCapability } from '../../../../features/accounts/renderer/accountsCapability.ts'
+import type { ChainsCapability } from '../../../../features/chains/renderer/chainsCapability.ts'
 import type { ConnectionsCapability } from '../../../../features/connections/renderer/connectionsCapability.ts'
-import type { NetworksCapability } from '../../../../features/networks/renderer/networksCapability.ts'
 import type { PortfolioCapability } from '../../../../features/portfolio/renderer/portfolioCapability.ts'
 import { PortfolioHero } from '../../../../features/portfolio/renderer/PortfolioHero.tsx'
 import type { RequestRendererCapabilities } from '../../../../features/requests/renderer/requestCapabilities.ts'
@@ -33,7 +33,7 @@ export interface HomeCapabilities {
   activity: ActivityCapability
   connections: ConnectionsCapability
   home: HomeCapability
-  networks: NetworksCapability
+  chains: ChainsCapability
   orders: OrdersCapability
   portfolio: PortfolioCapability
   requests: Pick<RequestRendererCapabilities, 'panel' | 'review' | 'safe' | 'external'>

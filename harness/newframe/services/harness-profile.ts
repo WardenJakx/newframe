@@ -14,7 +14,7 @@ type PersistedConfig = {
     'canonical-wallet-state'?: {
       state?: {
         main?: {
-          networks?: {
+          chains?: {
             ethereum?: Record<string, { connection?: { primary?: { custom?: string } } }>
           }
         }
@@ -27,7 +27,7 @@ type PersistedConfig = {
 async function pointAnvilChainAtHarness(configPath: string) {
   const config = JSON.parse(await readFile(configPath, 'utf8')) as PersistedConfig
   const primary =
-    config.zustand?.['canonical-wallet-state']?.state?.main?.networks?.ethereum?.[anvilChainId]?.connection
+    config.zustand?.['canonical-wallet-state']?.state?.main?.chains?.ethereum?.[anvilChainId]?.connection
       ?.primary
   if (primary) {
     primary.custom = anvilRpcUrl

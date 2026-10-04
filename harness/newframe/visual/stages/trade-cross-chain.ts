@@ -16,12 +16,12 @@ export const tradeCrossChainStage: VisualStage = {
   name: 'trade cross-chain market and cancel e2e',
   async run({ driver, runtime, tray }) {
     await driver.executeCommand(tray, {
-      type: 'network.activation-set',
+      type: 'chain.activation-set',
       chainId: FLASH_BASE_CHAIN_ID,
       enabled: true
     })
     await driver.waitForState(
-      (state) => state.main?.networks?.ethereum?.[String(FLASH_BASE_CHAIN_ID)]?.on !== false,
+      (state) => state.main?.chains?.ethereum?.[String(FLASH_BASE_CHAIN_ID)]?.on !== false,
       5_000,
       'Base did not become active for the cross-chain trade'
     )

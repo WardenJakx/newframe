@@ -6,7 +6,7 @@ import { createSafeHandler } from '../../../scripts/local-safe/handler.ts'
 import type { SafeProposal } from '../../features/accounts/domain/safe.ts'
 import { abi as multicallAbi, multicallAddress } from '../chain-rpc/multicall/constants.ts'
 import { getEip712Digests } from '../signing/signatures/digests.ts'
-import { createSafeClient, safeServiceNetworks } from './client.ts'
+import { createSafeClient, safeServiceChains } from './client.ts'
 import {
   EIP1271_MAGIC_VALUE,
   EIP1271_SIGNATURE,
@@ -52,7 +52,7 @@ function setup(transform?: (request: Request, response: Response) => Promise<Res
   servers.push(server)
   const client = createSafeClient({
     request: (url, init) => fetch(url, init),
-    networks: { 31337: `${server.url}api` },
+    chains: { 31337: `${server.url}api` },
     timeoutMs: 100
   })
   return { client, handler }
@@ -198,18 +198,18 @@ describe('Safe service client over HTTP', () => {
     abort.abort()
     expect(client.configuration(31337, safe, abort.signal)).rejects.toThrow()
   })
-  test('resolves hosted services across the supported Safe networks', () => {
-    const networks = safeServiceNetworks({ development: false })
-    expect(Object.keys(networks)).toHaveLength(53)
-    expect(networks[10]).toBe('https://api.safe.global/tx-service/oeth/api')
-    expect(networks[56]).toBe('https://api.safe.global/tx-service/bnb/api')
-    expect(networks[137]).toBe('https://api.safe.global/tx-service/pol/api')
-    expect(networks[143]).toBe('https://api.safe.global/tx-service/monad/api')
-    expect(networks[999]).toBe('https://api.safe.global/tx-service/hyper/api')
-    expect(networks[8453]).toBe('https://api.safe.global/tx-service/base/api')
-    expect(networks[9745]).toBe('https://api.safe.global/tx-service/plasma/api')
-    expect(networks[42161]).toBe('https://api.safe.global/tx-service/arb1/api')
-    expect(networks[81224]).toBe('https://api.safe.global/tx-service/codex/api')
+  test('resolves hosted services across the supported Safe chains', () => {
+    const chains = safeServiceChains({ development: false })
+    expect(Object.keys(chains)).toHaveLength(53)
+    expect(chains[10]).toBe('https://api.safe.global/tx-service/oeth/api')
+    expect(chains[56]).toBe('https://api.safe.global/tx-service/bnb/api')
+    expect(chains[137]).toBe('https://api.safe.global/tx-service/pol/api')
+    expect(chains[143]).toBe('https://api.safe.global/tx-service/monad/api')
+    expect(chains[999]).toBe('https://api.safe.global/tx-service/hyper/api')
+    expect(chains[8453]).toBe('https://api.safe.global/tx-service/base/api')
+    expect(chains[9745]).toBe('https://api.safe.global/tx-service/plasma/api')
+    expect(chains[42161]).toBe('https://api.safe.global/tx-service/arb1/api')
+    expect(chains[81224]).toBe('https://api.safe.global/tx-service/codex/api')
   })
   test('rejects an unsupported hosted chain before sending a request', async () => {
     let requests = 0
@@ -231,17 +231,17 @@ describe('Safe service client over HTTP', () => {
   })
   test('production ignores development overrides', () => {
     expect(
-      safeServiceNetworks({ development: false, url: 'http://localhost:1234/api', chainId: '31337' })[31337]
+      safeServiceChains({ development: false, url: 'http://localhost:1234/api', chainId: '31337' })[31337]
     ).toBeUndefined()
   })
   test('development override replaces one hosted service without dropping the others', () => {
-    const networks = safeServiceNetworks({
+    const chains = safeServiceChains({
       development: true,
       url: 'http://localhost:1234/api/',
       chainId: '8453'
     })
-    expect(networks[8453]).toBe('http://localhost:1234/api')
-    expect(networks[1]).toBe('https://api.safe.global/tx-service/eth/api')
+    expect(chains[8453]).toBe('http://localhost:1234/api')
+    expect(chains[1]).toBe('https://api.safe.global/tx-service/eth/api')
   })
 })
 
@@ -263,7 +263,7 @@ test('creates, reconciles, and reads an anonymous proposal with its exact retain
   })
   const headers: Headers[] = []
   const client = createSafeClient({
-    networks: { 31337: 'http://safe.example/api' },
+    chains: { 31337: 'http://safe.example/api' },
     request: async (url, init) => {
       headers.push(new Headers(init.headers))
       return handler.fetch(new Request(url, init))
@@ -308,7 +308,7 @@ test('rejects proposal signature, reconciliation, Safe identity, and service con
     proposals: []
   })
   const client = createSafeClient({
-    networks: { 31337: 'http://safe.example/api' },
+    chains: { 31337: 'http://safe.example/api' },
     request: (url, init) => handler.fetch(new Request(url, init))
   })
   expect(
@@ -352,7 +352,7 @@ test('rejects proposal signature, reconciliation, Safe identity, and service con
     })
   ]) {
     const mismatched = createSafeClient({
-      networks: { 31337: 'http://safe.example/api' },
+      chains: { 31337: 'http://safe.example/api' },
       request: async (url, init) => {
         const response = await handler.fetch(new Request(url, init))
         if (init.method !== 'GET' || !url.includes(`/multisig-transactions/${proposal.safeTxHash}/`)) {
@@ -365,7 +365,7 @@ test('rejects proposal signature, reconciliation, Safe identity, and service con
   }
 
   const unsupportedDescription = createSafeClient({
-    networks: { 31337: 'http://safe.example/api' },
+    chains: { 31337: 'http://safe.example/api' },
     request: async (url, init) => {
       const response = await handler.fetch(new Request(url, init))
       if (init.method !== 'GET' || !url.includes(`/multisig-transactions/${proposal.safeTxHash}/`)) {
@@ -402,7 +402,7 @@ test('keeps contract-owner confirmations visible without exposing them as execut
     { owner: contractOwner, signature: contractSignature, signatureType: 'CONTRACT_SIGNATURE' }
   ]
   const client = createSafeClient({
-    networks: { 31337: 'http://safe.example/api' },
+    chains: { 31337: 'http://safe.example/api' },
     request: async (url) =>
       Response.json(
         url.endsWith('/confirmations/')
@@ -429,7 +429,7 @@ test('rejects a foreign confirmation owner during queue refresh', async () => {
   const foreign = new Wallet(`0x${'79'.repeat(32)}`)
   const proposal = localProposal(signer)
   const client = createSafeClient({
-    networks: { 31337: 'http://safe.example/api' },
+    chains: { 31337: 'http://safe.example/api' },
     request: async () =>
       Response.json({
         next: null,
@@ -463,7 +463,7 @@ test('rejects a malformed EOA confirmation during queue refresh', async () => {
   const signer = new Wallet(`0x${'78'.repeat(32)}`)
   const proposal = localProposal(signer)
   const client = createSafeClient({
-    networks: { 31337: 'http://safe.example/api' },
+    chains: { 31337: 'http://safe.example/api' },
     request: async () =>
       Response.json({
         next: null,
@@ -493,7 +493,7 @@ test('keeps a current contract-owner confirmation display-only during queue refr
   const proposal = localProposal(signer)
   const signature = signer.signingKey.sign(proposal.safeTxHash).serialized
   const client = createSafeClient({
-    networks: { 31337: 'http://safe.example/api' },
+    chains: { 31337: 'http://safe.example/api' },
     request: async () =>
       Response.json({
         next: null,
@@ -609,7 +609,7 @@ test('discovers contracts through the requested chain and imports configuration 
     request: async () => {
       throw new Error('Discovery must not use HTTP')
     },
-    networks: {},
+    chains: {},
     call: async (chainId, address, data) => {
       expect(chainId).toBe(8453)
       expect(address).toBe(multicallAddress)
@@ -667,7 +667,7 @@ test('publishes real owner signatures over HTTP and retrieves the retained bytes
   })
   const server = Bun.serve({ port: 0, hostname: '127.0.0.1', fetch: (request) => handler.fetch(request) })
   servers.push(server)
-  const client = createSafeClient({ request: fetch, networks: { 31337: `${server.url}api` } })
+  const client = createSafeClient({ request: fetch, chains: { 31337: `${server.url}api` } })
   const configuration = await client.configuration(31337, safe)
   const [proposal, other] = await client.pending(31337, safe, configuration)
   const signature = signers[0].signingKey.sign(proposal.safeTxHash).serialized
@@ -701,7 +701,7 @@ test('confirmation pagination isolates malformed entries and rejects unsafe or r
   const signature = signer.signingKey.sign(hash).serialized
   let next: string | null = null
   const client = createSafeClient({
-    networks: { 1: 'https://safe.example/api' },
+    chains: { 1: 'https://safe.example/api' },
     request: async () =>
       Response.json({
         next,
@@ -788,7 +788,7 @@ test('creates, confirms, and retrieves locally verified Safe messages', async ()
     version: configuration.version
   })
   const client = createSafeClient({
-    networks: { 31337: 'http://safe.local/api' },
+    chains: { 31337: 'http://safe.local/api' },
     request: (url, init) => handler.fetch(new Request(url, init))
   })
   const message = 'Safe says hello'
@@ -835,7 +835,7 @@ test('rejects service message identity, hash, confirmation, and prepared-signatu
     { preparedSignature: `0x${'00'.repeat(65)}` }
   ]) {
     const client = createSafeClient({
-      networks: { 1: 'https://safe.example/api' },
+      chains: { 1: 'https://safe.example/api' },
       request: async () => Response.json({ ...valid, ...replacement })
     })
     expect(client.getMessage(1, safe, hash, configuration)).rejects.toThrow()

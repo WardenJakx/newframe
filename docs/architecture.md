@@ -298,10 +298,10 @@ Most of the endgame is restructuring. These change what Newframe does:
 | `platform/safe`, `features/accounts/main/safe*`                                                                                                                           | `core/services/safe-wallets`                                         |
 | `features/asset-data`, `features/tokens`, `features/portfolio`                                                                                                            | `core/services/assets`                                               |
 | `features/transactions/trade`                                                                                                                                             | `core/features/trading`                                              |
-| `platform/chain-rpc`, `features/networks`                                                                                                                                 | `core/services/chains`                                               |
+| `platform/chain-rpc`, `features/chains`                                                                                                                                   | `core/services/chains`                                               |
 | `platform/state-store` (one store, about 100 mutators open to every holder), `platform/state-sync`, `platform/persistence`                                                | `core/state`, with each piece owned as above                         |
 | `platform/desktop`, `platform/app-update`, `platform/runtime`                                                                                                             | `core/desktop-ui`                                                    |
-| `platform/outbound`                                                                                                                                                       | `core/internet`                                                      |
+| `platform/internet`                                                                                                                                                       | `core/internet`                                                      |
 | `app/renderer`, every `features/*/renderer`, `shared/renderer`                                                                                                            | `trays`                                                              |
 | `scripts/check-architecture.ts`                                                                                                                                           | Deleted as each rule becomes a compile error                         |
 
@@ -309,16 +309,14 @@ Most of the endgame is restructuring. These change what Newframe does:
 
 The code predates the glossary. Counts are occurrences outside tests.
 
-| Glossary term           | Code says                                                   | Occurrences |
-| ----------------------- | ----------------------------------------------------------- | ----------- |
-| Tray, main tray         | `renderer`, `wallet-ui`                                     | 830         |
-| Side tray               | `sidetray`                                                  | 310         |
-| AI session              | `agent`                                                     | 310         |
-| Request                 | `handlerId` for its identity                                | 290         |
-| Account access grant    | `permission`                                                | 250         |
-| Request source          | `principal`                                                 | 220         |
-| Dapp                    | `website`, and `origin` for any request source              | 17 plus     |
-| Extension               | `companion`                                                 | 13          |
-| Local API message names | `frame_*`, `__frame*`                                       | 55          |
-| Chain                   | `network` (`networks`, `networksMeta`, `features/networks`) | About 1,600 |
-| Internet                | `outbound`                                                  | 110         |
+| Glossary term           | Code says                                      | Occurrences |
+| ----------------------- | ---------------------------------------------- | ----------- |
+| Tray, main tray         | `renderer`, `wallet-ui`                        | 830         |
+| Side tray               | `sidetray`                                     | 310         |
+| AI session              | `agent`                                        | 310         |
+| Request                 | `handlerId` for its identity                   | 290         |
+| Account access grant    | `permission`                                   | 250         |
+| Request source          | `principal`                                    | 220         |
+| Dapp                    | `website`, and `origin` for any request source | 17 plus     |
+| Extension               | `companion`                                    | 13          |
+| Local API message names | `frame_*`, `__frame*`                          | 55          |

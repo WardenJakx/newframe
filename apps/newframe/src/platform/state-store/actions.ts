@@ -13,13 +13,13 @@ import {
 import { accountNS, isDefaultAccountName } from '../../features/accounts/domain/index.ts'
 import type { Account } from '../../features/accounts/domain/state/account.ts'
 import type { Balance } from '../../features/asset-data/domain/state/balance.ts'
+import type { GasFees } from '../../features/chains/domain/state/gas.ts'
+import type { NativeCurrency } from '../../features/chains/domain/state/nativeCurrency.ts'
 import {
   canExtensionSee,
   grantExtensionAccess,
   visibleExtensionAccountIds
 } from '../../features/connections/domain/extensionAccess.ts'
-import type { GasFees } from '../../features/networks/domain/state/gas.ts'
-import type { NativeCurrency } from '../../features/networks/domain/state/nativeCurrency.ts'
 import type { CanonicalAccountRequest } from '../../features/requests/contract/requests.ts'
 import { NATIVE_CURRENCY } from '../../features/tokens/domain/constants.ts'
 import { toTokenId } from '../../features/tokens/domain/index.ts'
@@ -44,10 +44,10 @@ type AccountPatch = Partial<Omit<Account, 'id' | 'address' | 'profileId' | 'requ
 }
 type ActivityUpdate = Partial<ActivityRecord> & Record<string, unknown>
 type OrderUpdate = Partial<OrderRecord> & Record<string, unknown>
-type NetworkType = keyof CanonicalState['main']['networks']
-type NetworkConnection = Chain['connection']['primary']
+type ChainType = keyof CanonicalState['main']['chains']
+type ChainConnection = Chain['connection']['primary']
 type GasPrice = ChainMetadata['gas']['price']
-type NetworkConnectionUpdate = Omit<Partial<NetworkConnection>, 'status'> & { status?: string }
+type ChainConnectionUpdate = Omit<Partial<ChainConnection>, 'status'> & { status?: string }
 type LatticeState = CanonicalState['main']['lattice'][string]
 type ShortcutUpdate = Omit<Partial<CanonicalState['main']['shortcuts']['summon']>, 'shortcutKey'> & {
   shortcutKey?: string
@@ -66,7 +66,7 @@ type AccountUpsert = Partial<Omit<Account, 'id' | 'profileId' | 'requests'>> &
 type MutableMain = Draft<CanonicalState['main']> & MutableRecord
 type MutableCanonicalState = Draft<CanonicalState> & MutableRecord
 type DynamicFields = Record<string, unknown>
-type NetworkSettingsInput = DynamicFields & {
+type ChainSettingsInput = DynamicFields & {
   explorer?: string
   icon?: string
   id?: number | string
@@ -99,12 +99,12 @@ type MutableConnection = MutableRecord & {
   custom?: unknown
   on?: boolean
 }
-type MutableNetwork = MutableRecord & {
+type MutableChain = MutableRecord & {
   connection: MutableRecord & { primary: MutableConnection; secondary: MutableConnection }
   on?: boolean
 }
 
-const supportedNetworkTypes = ['ethereum']
+const supportedChainTypes = ['ethereum']
 const completedActivityStatuses = new Set(['succeeded', 'reverted'])
 
 const mutable = (state: Draft<CanonicalState>) => state as MutableCanonicalState
@@ -175,9 +175,9 @@ function switchChainForOrigins(origins: MutableRecord, oldChainId: number, newCh
   })
 }
 
-function validateNetworkSettings(value: unknown) {
-  const network = record(value) as NetworkSettingsInput
-  const networkId = parseInt(String(network.id ?? ''))
+function validateChainSettings(value: unknown) {
+  const chain = record(value) as ChainSettingsInput
+  const chainId = parseInt(String(chain.id ?? ''))
   const validHttpUrl = (value: unknown, optional = false) => {
     if (optional && !value) {
       return true
@@ -191,20 +191,20 @@ function validateNetworkSettings(value: unknown) {
   }
 
   if (
-    !Number.isInteger(networkId) ||
-    typeof network.type !== 'string' ||
-    typeof network.name !== 'string' ||
-    typeof network.explorer !== 'string' ||
-    typeof network.symbol !== 'string' ||
-    !validHttpUrl(network.primaryRpc, true) ||
-    !validHttpUrl(network.secondaryRpc, true) ||
-    !validHttpUrl(network.explorer, true) ||
-    !supportedNetworkTypes.includes(network.type)
+    !Number.isInteger(chainId) ||
+    typeof chain.type !== 'string' ||
+    typeof chain.name !== 'string' ||
+    typeof chain.explorer !== 'string' ||
+    typeof chain.symbol !== 'string' ||
+    !validHttpUrl(chain.primaryRpc, true) ||
+    !validHttpUrl(chain.secondaryRpc, true) ||
+    !validHttpUrl(chain.explorer, true) ||
+    !supportedChainTypes.includes(chain.type)
   ) {
-    throw new Error(`Invalid network settings: ${JSON.stringify(network)}`)
+    throw new Error(`Invalid chain settings: ${JSON.stringify(chain)}`)
   }
 
-  return networkId
+  return chainId
 }
 
 function tokenFromValue(value: unknown): Token | undefined {
@@ -300,7 +300,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
 
   const toHomeCommand = (command: NavigationCrumb | null | undefined) => ({
     id: ++homeCommandId,
-    view: command?.view === 'chains' ? 'networks' : command?.view,
+    view: command?.view,
     data: command?.data ?? {}
   })
 
@@ -308,11 +308,11 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     ...createPanelActions(set, get),
     ...createOperationActions(set, get),
 
-    activateNetwork: (type: string, chainId: number, active: boolean) => {
+    activateChain: (type: string, chainId: number, active: boolean) => {
       set((draft) => {
         const main = mutableMain(draft)
-        const network = record(record(main.networks)[type])[chainId] as MutableNetwork
-        network.on = active
+        const chain = record(record(main.chains)[type])[chainId] as MutableChain
+        chain.on = active
 
         if (!active) {
           switchChainForOrigins(record(main.origins), chainId, 1)
@@ -322,8 +322,8 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
 
     selectPrimary: (netType: string, netId: number, value: string) => {
       set((draft) => {
-        const network = record(record(mutableMain(draft).networks)[netType])[netId] as MutableNetwork
-        network.connection.primary.current = value
+        const chain = record(record(mutableMain(draft).chains)[netType])[netId] as MutableChain
+        chain.connection.primary.current = value
       })
     },
 
@@ -332,8 +332,8 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         return
       }
       set((draft) => {
-        const network = record(record(mutableMain(draft).networks)[netType])[netId] as MutableNetwork
-        network.connection.primary.custom = target
+        const chain = record(record(mutableMain(draft).chains)[netType])[netId] as MutableChain
+        chain.connection.primary.custom = target
       })
     },
 
@@ -342,30 +342,30 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         return
       }
       set((draft) => {
-        const network = record(record(mutableMain(draft).networks)[netType])[netId] as MutableNetwork
-        network.connection.secondary.custom = target
+        const chain = record(record(mutableMain(draft).chains)[netType])[netId] as MutableChain
+        chain.connection.secondary.custom = target
       })
     },
 
     toggleConnection: (netType: string, netId: number, node: string, on?: boolean) => {
       set((draft) => {
-        const connection = (record(record(mutableMain(draft).networks)[netType])[netId] as MutableNetwork)
+        const connection = (record(record(mutableMain(draft).chains)[netType])[netId] as MutableChain)
           .connection
         const target = record(connection[node])
         target.on = on ?? !target.on
       })
     },
 
-    setPrimary: (netType: NetworkType, netId: number, status: NetworkConnectionUpdate) => {
+    setPrimary: (netType: ChainType, netId: number, status: ChainConnectionUpdate) => {
       set((draft) => {
-        const connection = mutableMain(draft).networks[netType][netId].connection
+        const connection = mutableMain(draft).chains[netType][netId].connection
         Object.assign(connection.primary, status)
       })
     },
 
-    setSecondary: (netType: NetworkType, netId: number, status: NetworkConnectionUpdate) => {
+    setSecondary: (netType: ChainType, netId: number, status: ChainConnectionUpdate) => {
       set((draft) => {
-        const connection = mutableMain(draft).networks[netType][netId].connection
+        const connection = mutableMain(draft).chains[netType][netId].connection
         Object.assign(connection.secondary, status)
       })
     },
@@ -1102,7 +1102,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
 
     setGasFees: (netType: string, netId: number, fees: GasFees | null) => {
       set((draft) => {
-        const meta = record(record(mutableMain(draft).networksMeta)[netType])[netId] as {
+        const meta = record(record(mutableMain(draft).chainsMeta)[netType])[netId] as {
           gas: { price: MutableRecord & { fees?: unknown } }
         }
         meta.gas.price.fees = fees
@@ -1111,16 +1111,16 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
 
     setGasPrices: (netType: string, netId: number, prices: GasPrice['levels']) => {
       set((draft) => {
-        const meta = record(record(mutableMain(draft).networksMeta)[netType])[netId] as {
+        const meta = record(record(mutableMain(draft).chainsMeta)[netType])[netId] as {
           gas: { price: MutableRecord & { levels?: unknown } }
         }
         meta.gas.price.levels = prices
       })
     },
 
-    setGasDefault: (netType: NetworkType, netId: number, level: GasPrice['selected'], price?: string) => {
+    setGasDefault: (netType: ChainType, netId: number, level: GasPrice['selected'], price?: string) => {
       set((draft) => {
-        const gasPrice = mutableMain(draft).networksMeta[netType][netId].gas.price
+        const gasPrice = mutableMain(draft).chainsMeta[netType][netId].gas.price
         gasPrice.selected = level
 
         if (level === 'custom') {
@@ -1133,27 +1133,27 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
 
     setNativeCurrencyData: (netType: string, netId: number, currency: Partial<NativeCurrency>) => {
       set((draft) => {
-        const meta = record(record(mutableMain(draft).networksMeta)[netType])[netId] as MutableRecord & {
+        const meta = record(record(mutableMain(draft).chainsMeta)[netType])[netId] as MutableRecord & {
           nativeCurrency?: unknown
         }
         meta.nativeCurrency = { ...record(meta.nativeCurrency), ...currency }
       })
     },
 
-    addNetwork: (value: unknown) => {
+    addChain: (value: unknown) => {
       try {
-        const net = record(value) as NetworkSettingsInput
-        const networkId = validateNetworkSettings(net)
-        const networkType = typeof net.type === 'string' ? net.type : ''
-        const network = { ...net, id: networkId, type: networkType }
-        const icon = network.icon ?? ''
-        const primaryRpc = network.primaryRpc ?? ''
-        const secondaryRpc = network.secondaryRpc ?? ''
-        delete network.icon
-        delete network.primaryRpc
-        delete network.secondaryRpc
+        const net = record(value) as ChainSettingsInput
+        const chainId = validateChainSettings(net)
+        const chainType = typeof net.type === 'string' ? net.type : ''
+        const chain = { ...net, id: chainId, type: chainType }
+        const icon = chain.icon ?? ''
+        const primaryRpc = chain.primaryRpc ?? ''
+        const secondaryRpc = chain.secondaryRpc ?? ''
+        delete chain.icon
+        delete chain.primaryRpc
+        delete chain.secondaryRpc
 
-        const defaultNetwork = {
+        const defaultChain = {
           id: 0,
           isTestnet: false,
           type: '',
@@ -1173,7 +1173,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
               status: 'loading',
               connected: false,
               type: '',
-              network: '',
+              chain: '',
               custom: primaryRpc
             },
             secondary: {
@@ -1182,7 +1182,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
               status: 'loading',
               connected: false,
               type: '',
-              network: '',
+              chain: '',
               custom: secondaryRpc
             }
           },
@@ -1190,13 +1190,13 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         }
 
         const defaultMeta = {
-          name: network.name,
-          primaryColor: /^accent[1-8]$/.test(network.primaryColor ?? '') ? network.primaryColor : 'accent1',
+          name: chain.name,
+          primaryColor: /^accent[1-8]$/.test(chain.primaryColor ?? '') ? chain.primaryColor : 'accent1',
           icon,
           nativeCurrency: {
-            symbol: network.symbol,
-            icon: network.nativeCurrencyIcon ?? '',
-            name: network.nativeCurrencyName ?? '',
+            symbol: chain.symbol,
+            icon: chain.nativeCurrencyIcon ?? '',
+            name: chain.nativeCurrencyName ?? '',
             decimals: 18
           },
           gas: {
@@ -1209,46 +1209,46 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
 
         set((draft) => {
           const main = mutableMain(draft)
-          const networks = record(main.networks) as Record<string, Record<number, MutableRecord | undefined>>
-          const networksMeta = record(main.networksMeta) as Record<string, Record<number, MutableRecord>>
-          networks[network.type] ??= {}
-          networksMeta[network.type] ??= {}
-          if (networks[network.type][network.id]) {
+          const chains = record(main.chains) as Record<string, Record<number, MutableRecord | undefined>>
+          const chainsMeta = record(main.chainsMeta) as Record<string, Record<number, MutableRecord>>
+          chains[chain.type] ??= {}
+          chainsMeta[chain.type] ??= {}
+          if (chains[chain.type][chain.id]) {
             return
           }
 
-          networks[network.type][network.id] = { ...defaultNetwork, ...network }
-          networksMeta[network.type][network.id] = defaultMeta
+          chains[chain.type][chain.id] = { ...defaultChain, ...chain }
+          chainsMeta[chain.type][chain.id] = defaultMeta
         })
       } catch (error) {
         log.error(error)
       }
     },
 
-    removeNetwork: (value: unknown) => {
+    removeChain: (value: unknown) => {
       try {
         const net = record(value)
-        const networkId =
+        const chainId =
           typeof net.id === 'string' || typeof net.id === 'number' ? parseInt(String(net.id)) : Number.NaN
-        const networkType = typeof net.type === 'string' ? net.type : ''
-        if (!Number.isInteger(networkId)) {
+        const chainType = typeof net.type === 'string' ? net.type : ''
+        if (!Number.isInteger(chainId)) {
           throw new Error('Invalid chain id')
         }
-        if (networkType === 'ethereum' && networkId === 1) {
+        if (chainType === 'ethereum' && chainId === 1) {
           throw new Error('Cannot remove mainnet')
         }
 
         set((draft) => {
           const main = mutableMain(draft)
-          const networks = record(main.networks)
-          const typeNetworks = record(networks[networkType])
-          if (Object.keys(typeNetworks).length <= 1) {
+          const chains = record(main.chains)
+          const typeChains = record(chains[chainType])
+          if (Object.keys(typeChains).length <= 1) {
             return
           }
 
-          switchChainForOrigins(record(main.origins), networkId, 1)
-          delete typeNetworks[networkId]
-          delete record(record(main.networksMeta)[networkType])[networkId]
+          switchChainForOrigins(record(main.origins), chainId, 1)
+          delete typeChains[chainId]
+          delete record(record(main.chainsMeta)[chainType])[chainId]
         })
       } catch (error) {
         log.error(error)
@@ -1385,22 +1385,22 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
-    setNetworkImage: (netType: string, chainId: number, sourceUrl: string, image: TokenImage) => {
+    setChainImage: (netType: string, chainId: number, sourceUrl: string, image: TokenImage) => {
       set((draft) => {
-        const chainsMeta = record(record(mutableMain(draft).networksMeta)[netType])
+        const chainsMeta = record(record(mutableMain(draft).chainsMeta)[netType])
         if (chainsMeta[chainId]) {
           const chainMetadata = chainsMeta[chainId] as MutableRecord
           chainMetadata.icon = sourceUrl
           chainMetadata.image = image
         } else {
-          log.error(`Action Error: setNetworkImage chainId: ${chainId} not found in chainsMeta`)
+          log.error(`Action Error: setChainImage chainId: ${chainId} not found in chainsMeta`)
         }
       })
     },
 
     setNativeCurrencyImage: (netType: string, chainId: number, image: TokenImage) => {
       set((draft) => {
-        const chainsMeta = record(record(mutableMain(draft).networksMeta)[netType])
+        const chainsMeta = record(record(mutableMain(draft).chainsMeta)[netType])
         if (chainsMeta[chainId]) {
           const chainMetadata = chainsMeta[chainId] as { nativeCurrency: MutableRecord }
           chainMetadata.nativeCurrency.image = image

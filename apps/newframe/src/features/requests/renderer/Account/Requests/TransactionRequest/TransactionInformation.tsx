@@ -18,7 +18,7 @@ import type {
 import { useTokenImageHydration } from '../../../../../../shared/renderer/hooks/useTokenImageHydration.ts'
 import { CopyButton } from '../../../../../../shared/renderer/ui/CopyButton.tsx'
 import { imageSource, persistedImageSource } from '../../../../../asset-data/domain/image/index.ts'
-import type { NativeCurrency } from '../../../../../networks/domain/state/nativeCurrency.ts'
+import type { NativeCurrency } from '../../../../../chains/domain/state/nativeCurrency.ts'
 import type { TransactionEffect } from '../../../../../transactions/domain/index.ts'
 import type { SourceValue } from '../../../format/displayValue.ts'
 import { DisplayCoinBalance } from '../../../ui/DisplayValue.tsx'
@@ -49,8 +49,8 @@ export type TransactionInformationProps = {
   imageCapability: TokenImageCapability
   originName: ReactNode
   favicon?: string
-  networkName: ReactNode
-  networkIcon?: string
+  chainName: ReactNode
+  chainIcon?: string
   statusLabel: ReactNode
   notice?: ReactNode
   statusDetails?: ReactNode
@@ -225,18 +225,18 @@ function TransactionEffects({
   notice,
   imageCapability,
   nativeCurrency,
-  networkName,
-  networkIcon
+  chainName,
+  chainIcon
 }: {
   effects: TransactionInformationEffect[]
   emptyText: ReactNode
   notice?: ReactNode
   imageCapability: TokenImageCapability
   nativeCurrency: TransactionInformationNativeCurrency
-  networkName: ReactNode
-  networkIcon?: string
+  chainName: ReactNode
+  chainIcon?: string
 }) {
-  const chainIcon = imageSource(networkIcon)
+  const chainIconSource = imageSource(chainIcon)
   let effectsContent: ReactNode = null
   if (effects.length) {
     effectsContent = (
@@ -304,11 +304,11 @@ function TransactionEffects({
               <Text shrink={false} tone='secondary' variant='caption'>
                 on
               </Text>
-              <MediaIcon size='inline' source={chainIcon} surface='transparent' tone='accent'>
+              <MediaIcon size='inline' source={chainIconSource} surface='transparent' tone='accent'>
                 <Icon name='ethereum' size='small' />
               </MediaIcon>
               <Text truncate variant='caption'>
-                {networkName}
+                {chainName}
               </Text>
             </span>
           </Inline>
@@ -447,8 +447,8 @@ export default function TransactionInformation({
   imageCapability,
   originName,
   favicon,
-  networkName,
-  networkIcon,
+  chainName,
+  chainIcon,
   statusLabel,
   notice,
   statusDetails,
@@ -508,8 +508,8 @@ export default function TransactionInformation({
               notice={effectsNotice}
               imageCapability={imageCapability}
               nativeCurrency={nativeCurrency}
-              networkIcon={networkIcon}
-              networkName={networkName}
+              chainIcon={chainIcon}
+              chainName={chainName}
             />
           ) : null}
 

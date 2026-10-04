@@ -48,8 +48,8 @@ export function HomeNotifications({
       const deployments = Object.values(account?.safe ?? {})
       return {
         currentAccount: state.currentAccount || '',
-        networks: state.networks.ethereum,
-        networksMeta: state.networksMeta.ethereum,
+        chains: state.chains.ethereum,
+        chainsMeta: state.chainsMeta.ethereum,
         notifications: state.view.notifications,
         hasSafeQueueError: deployments.some((deployment) => deployment.error),
         requestCount:
@@ -140,8 +140,8 @@ export function HomeNotifications({
           return chainId ? (
             <ChainIcon
               chainId={chainId}
-              networks={shared.networks}
-              networksMeta={shared.networksMeta}
+              chains={shared.chains}
+              chainsMeta={shared.chainsMeta}
               size='medium'
             />
           ) : null

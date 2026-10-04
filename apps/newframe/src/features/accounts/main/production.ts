@@ -6,7 +6,7 @@ import { createBlockExplorerOpener } from '../../../platform/desktop/windows/win
 import type { CanonicalStore } from '../../../platform/state-store/actions.ts'
 import type store from '../../../platform/state-store/index.ts'
 import { arraysEqual } from '../../../shared/domain/collections.ts'
-import type { Chains } from '../../networks/main/index.ts'
+import type { Chains } from '../../chains/main/index.ts'
 import type { Account } from '../domain/state/account.ts'
 import type { Accounts } from './index.ts'
 import type { AccountsRuntime } from './runtime.ts'
@@ -71,7 +71,7 @@ export function createAddressChainUsageAdapter(
 ): AccountServicePorts['addressChainUsage'] & { dispose(): void } {
   const callbacks = createOneResultCallbackBoundary()
   const addressChainUsage = async (addresses: string[]) => {
-    const enabledChainIds = Object.values(canonicalStore.getState().main.networks.ethereum)
+    const enabledChainIds = Object.values(canonicalStore.getState().main.chains.ethereum)
       .filter((chain) => chain.on)
       .map((chain) => chain.id)
       .sort((a, b) => a - b)

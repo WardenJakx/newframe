@@ -6,22 +6,22 @@ import { cva } from '../../../../../../generated/styled-system/css/cva.js'
 import { AddChainDetails } from '../../../../../shared/renderer/ui/AddChainDetails.tsx'
 import { RequestStatusNotice } from '../../ui/RequestStatusNotice.tsx'
 import type { ChainRequestView } from './requestViewTypes.ts'
-import { useNetwork, useOriginName } from './state.ts'
+import { useChain, useOriginName } from './state.ts'
 
 type ChainRequestProps = {
   req: ChainRequestView
   originName: string
-  networkName?: string
+  chainName?: string
 }
 
-type ChainRequestWithStateProps = Omit<ChainRequestProps, 'originName' | 'networkName'>
+type ChainRequestWithStateProps = Omit<ChainRequestProps, 'originName' | 'chainName'>
 
 const detailsRecipe = cva({ base: { paddingInline: '6', paddingBlockEnd: '9' } })
 
 function ChainRequest(props: ChainRequestProps) {
   const { status, notice, type, chain } = props.req
 
-  const { originName, networkName } = props
+  const { originName, chainName } = props
   if (notice) {
     return (
       <Surface key={props.req.id ?? props.req.handlerId} padding='large' radius='card'>
@@ -48,7 +48,7 @@ function ChainRequest(props: ChainRequestProps) {
           wants to switch to chain
         </Text>
         <Text align='center' tone='accent' variant='sectionTitle'>
-          {networkName}
+          {chainName}
         </Text>
       </Stack>
     </Surface>
@@ -58,6 +58,6 @@ function ChainRequest(props: ChainRequestProps) {
 export default function ChainRequestWithState(props: ChainRequestWithStateProps) {
   const { req } = props
   const originName = useOriginName(req.origin)
-  const network = useNetwork(req.chain.type, Number(req.chain.id))
-  return <ChainRequest {...props} originName={originName} networkName={network.name ?? ''} />
+  const chain = useChain(req.chain.type, Number(req.chain.id))
+  return <ChainRequest {...props} originName={originName} chainName={chain.name ?? ''} />
 }

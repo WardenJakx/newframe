@@ -20,8 +20,8 @@ export function Activity({
       return {
         accountAddress: account?.address ?? '',
         activity: state.activity,
-        networks: state.networks.ethereum,
-        networksMeta: state.networksMeta.ethereum,
+        chains: state.chains.ethereum,
+        chainsMeta: state.chainsMeta.ethereum,
         tokens: state.tokens,
         showTestnets: !!state.showTestnets
       }
@@ -34,8 +34,8 @@ export function Activity({
       activity={activity}
       clipboard={capability}
       imageCapability={capability}
-      networks={shared.networks}
-      networksMeta={shared.networksMeta}
+      chains={shared.chains}
+      chainsMeta={shared.chainsMeta}
       tokens={shared.tokens}
       onOpen={onOpenActivity}
       onOpenExplorer={(record) => {

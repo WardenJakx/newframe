@@ -31,7 +31,7 @@ beforeEach(() => {
     accounts: { current: currentAccount },
     store: {
       getState: () => ({
-        main: { networks: { ethereum: { 1: { id: 1, on: chainAvailable } } } },
+        main: { chains: { ethereum: { 1: { id: 1, on: chainAvailable } } } },
         initOrigin
       })
     },

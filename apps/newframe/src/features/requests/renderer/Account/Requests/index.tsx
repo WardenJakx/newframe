@@ -20,8 +20,8 @@ import { RequestList } from '../../ui/RequestList.tsx'
 import {
   useAddressIdentities,
   useAccountRequests,
-  useEthereumNetworkMetadata,
-  useEthereumNetworks,
+  useEthereumChainMetadata,
+  useEthereumChains,
   useOrigins
 } from './state.ts'
 import TxOverview from './TransactionRequest/TxMainNew/overview.tsx'
@@ -45,17 +45,16 @@ type RequestsWithStateProps = {
 type RequestsProps = RequestsWithStateProps & {
   identities: ReturnType<typeof useAddressIdentities>
   accountRequests: Record<string, RenderableRequest>
-  networks: ReturnType<typeof useEthereumNetworks>
-  networkMetadata: ReturnType<typeof useEthereumNetworkMetadata>
+  chains: ReturnType<typeof useEthereumChains>
+  chainMetadata: ReturnType<typeof useEthereumChainMetadata>
   origins: ReturnType<typeof useOrigins>
 }
 
 const requestsRecipe = cva({ base: { width: '100%', paddingBlockStart: '10' } })
 
 function Requests(props: RequestsProps) {
-  const networks: Record<number, (typeof props.networks)[number] | undefined> = props.networks
-  const networkMetadata: Record<number, (typeof props.networkMetadata)[number] | undefined> =
-    props.networkMetadata
+  const chains: Record<number, (typeof props.chains)[number] | undefined> = props.chains
+  const chainMetadata: Record<number, (typeof props.chainMetadata)[number] | undefined> = props.chainMetadata
   const requestCard = (req: RenderableRequest, index: number) => {
     let title: string
     let svgName: IconName | undefined
@@ -76,8 +75,8 @@ function Requests(props: RequestsProps) {
       svgName = 'edit'
     } else if (req.type === 'signErc20Permit') {
       const chainId = req.typedMessage.data.domain.chainId
-      title = `${networks[chainId]?.name ?? 'Network'} Token Permit`
-      img = persistedImageSource(networkMetadata[chainId]?.image)
+      title = `${chains[chainId]?.name ?? 'Network'} Token Permit`
+      img = persistedImageSource(chainMetadata[chainId]?.image)
     } else if (req.type === 'addChain') {
       title = 'Add Chain'
       svgName = 'window'
@@ -89,8 +88,8 @@ function Requests(props: RequestsProps) {
       svgName = 'tokens'
     } else {
       const chainId = parseInt(req.data.chainId, 16)
-      const chainName = networks[chainId]?.name
-      const metadata = networkMetadata[chainId]
+      const chainName = chains[chainId]?.name
+      const metadata = chainMetadata[chainId]
       const currentSymbol = metadata?.nativeCurrency.symbol ?? '?'
       title = `${chainName ?? 'Network'} Transaction`
       img = persistedImageSource(metadata?.image)
@@ -171,8 +170,8 @@ export default function RequestsWithState(props: RequestsWithStateProps) {
       {...props}
       identities={useAddressIdentities()}
       accountRequests={accountRequests}
-      networkMetadata={useEthereumNetworkMetadata()}
-      networks={useEthereumNetworks()}
+      chainMetadata={useEthereumChainMetadata()}
+      chains={useEthereumChains()}
       origins={useOrigins()}
     />
   )

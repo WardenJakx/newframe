@@ -1,9 +1,9 @@
-export interface NetworkLike {
+export interface ChainLike {
   name?: string
   [key: string]: unknown
 }
 
-export interface NetworkMetaLike {
+export interface ChainMetaLike {
   icon?: string
   image?: {
     base64?: string

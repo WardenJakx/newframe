@@ -362,8 +362,8 @@ const RequestWarningConfirmCommandSchema = z.strictObject({
   gate: z.enum(['signer-compatibility', 'gas-fee'])
 })
 
-const NetworkRemoveCommandSchema = z.strictObject({
-  type: z.literal('network.remove'),
+const ChainRemoveCommandSchema = z.strictObject({
+  type: z.literal('chain.remove'),
   chainId: ChainIdSchema
 })
 
@@ -501,14 +501,14 @@ const WalletLockCommandSchema = z.strictObject({
 })
 export type WalletLockCommand = z.infer<typeof WalletLockCommandSchema>
 
-const NetworkPrimaryRpcSetCommandSchema = z.strictObject({
-  type: z.literal('network.primary-rpc-set'),
+const ChainPrimaryRpcSetCommandSchema = z.strictObject({
+  type: z.literal('chain.primary-rpc-set'),
   chainId: ChainIdSchema,
   url: HttpUrlSchema
 })
 
-const NetworkActivationSetCommandSchema = z.strictObject({
-  type: z.literal('network.activation-set'),
+const ChainActivationSetCommandSchema = z.strictObject({
+  type: z.literal('chain.activation-set'),
   chainId: ChainIdSchema,
   enabled: z.boolean()
 })
@@ -909,9 +909,9 @@ const PermissionClearCommandSchema = z.strictObject({
   originId: OperationIdSchema.optional()
 })
 
-const NetworkRequestResolveCommandSchema = z
+const ChainRequestResolveCommandSchema = z
   .strictObject({
-    type: z.literal('network.request-resolve'),
+    type: z.literal('chain.request-resolve'),
     approved: z.boolean(),
     requestId: OperationIdSchema.optional(),
     homeCommandId: z.number().int().positive().optional()
@@ -920,7 +920,7 @@ const NetworkRequestResolveCommandSchema = z
     ({ requestId, homeCommandId }) => Number(Boolean(requestId)) + Number(Boolean(homeCommandId)) === 1,
     'Exactly one canonical request identifier is required'
   )
-export type NetworkRequestResolveCommand = z.infer<typeof NetworkRequestResolveCommandSchema>
+export type ChainRequestResolveCommand = z.infer<typeof ChainRequestResolveCommandSchema>
 
 const NotificationUpdateCommandSchema = z.strictObject({
   type: z.literal('notification.update'),
@@ -1178,10 +1178,10 @@ export const commandContracts = defineOperationContracts({
   'extension.access-respond': acknowledged(ExtensionAccessRespondCommandSchema),
   'flash.order-cancel': acknowledged(FlashOrderCancelCommandSchema),
   'home.command-consume': acknowledged(HomeCommandConsumeCommandSchema),
-  'network.activation-set': acknowledged(NetworkActivationSetCommandSchema),
-  'network.primary-rpc-set': acknowledged(NetworkPrimaryRpcSetCommandSchema),
-  'network.remove': acknowledged(NetworkRemoveCommandSchema),
-  'network.request-resolve': acknowledged(NetworkRequestResolveCommandSchema),
+  'chain.activation-set': acknowledged(ChainActivationSetCommandSchema),
+  'chain.primary-rpc-set': acknowledged(ChainPrimaryRpcSetCommandSchema),
+  'chain.remove': acknowledged(ChainRemoveCommandSchema),
+  'chain.request-resolve': acknowledged(ChainRequestResolveCommandSchema),
   'notification.update': acknowledged(NotificationUpdateCommandSchema),
   'origin.remove': acknowledged(OriginRemoveCommandSchema),
   'panel.back': acknowledged(PanelBackCommandSchema),

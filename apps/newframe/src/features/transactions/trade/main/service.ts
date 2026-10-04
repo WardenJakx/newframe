@@ -51,7 +51,7 @@ type TradeOrder = {
 interface TradeCanonicalSnapshot {
   currentAccount: string
   accounts: Record<string, TradeAccount | undefined>
-  networks: Record<number, { on?: boolean } | undefined>
+  chains: Record<number, { on?: boolean } | undefined>
   orders: Record<string, TradeOrder | undefined>
 }
 
@@ -272,8 +272,8 @@ export function createTradeService(ports: TradeServicePorts) {
         'Flash quote expired. Review the refreshed quote and try again.'
       )
     }
-    if (record.chainIds.some((chainId) => !snapshot.networks[chainId]?.on)) {
-      throw new TradeFailure('network_unavailable', 'Chain is unavailable.')
+    if (record.chainIds.some((chainId) => !snapshot.chains[chainId]?.on)) {
+      throw new TradeFailure('chain_unavailable', 'Chain is unavailable.')
     }
     return record
   }
@@ -540,8 +540,8 @@ export function createTradeService(ports: TradeServicePorts) {
       throw new TradeFailure('account_changed', 'Order account changed.')
     }
     const chainId = Number(order.spentAsset?.chainId)
-    if (!Number.isInteger(chainId) || chainId <= 0 || !snapshot.networks[chainId]?.on) {
-      throw new TradeFailure('network_unavailable', 'Chain is unavailable.')
+    if (!Number.isInteger(chainId) || chainId <= 0 || !snapshot.chains[chainId]?.on) {
+      throw new TradeFailure('chain_unavailable', 'Chain is unavailable.')
     }
     if (order.open === false || order.cancellable === false) {
       throw new TradeFailure('order_not_cancellable', 'Order is no longer cancellable.')
@@ -632,8 +632,8 @@ export function createTradeService(ports: TradeServicePorts) {
             'Flash cross-chain trades support market orders only.'
           )
         }
-        if (chainIds.some((chainId) => !snapshot.networks[chainId]?.on)) {
-          throw new TradeFailure('network_unavailable', 'Chain is unavailable.')
+        if (chainIds.some((chainId) => !snapshot.chains[chainId]?.on)) {
+          throw new TradeFailure('chain_unavailable', 'Chain is unavailable.')
         }
         const result = await ports.flash.quote({
           ...request,
@@ -643,8 +643,8 @@ export function createTradeService(ports: TradeServicePorts) {
           targetChain: chains.targetChainId
         })
         const current = currentAccount(account.id)
-        if (chainIds.some((chainId) => !current.snapshot.networks[chainId]?.on)) {
-          throw new TradeFailure('network_unavailable', 'Chain is unavailable.')
+        if (chainIds.some((chainId) => !current.snapshot.chains[chainId]?.on)) {
+          throw new TradeFailure('chain_unavailable', 'Chain is unavailable.')
         }
         if (quoteGenerations.get(ownerScope) !== generation || quoteIsUnavailable()) {
           throw new TradeFailure('quote_unavailable', 'Flash quote is no longer available.')

@@ -64,8 +64,8 @@ function viewProps() {
   }
   const model: TradeViewModel = {
     action: { enabled: true, label: 'Review/sign' },
-    networks: {},
-    networksMeta: {},
+    chains: {},
+    chainsMeta: {},
     progress: {
       status: 'Review order in Newframe',
       steps: [

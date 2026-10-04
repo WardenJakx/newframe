@@ -4,7 +4,7 @@ import { persistedImageSource } from '../../../asset-data/domain/image/index.ts'
 import TransactionInformation from '../../../requests/renderer/Account/Requests/TransactionRequest/TransactionInformation.tsx'
 import type { ActivityCapability } from './activityCapability.ts'
 import { activityBalanceChanges, transactionStatusLabel } from './activityModel.ts'
-import type { ActivityDetailNetworkMetadata, ActivityNetworkMap, ActivityRecord } from './activityTypes.ts'
+import type { ActivityDetailChainMetadata, ActivityChainMap, ActivityRecord } from './activityTypes.ts'
 
 const shortHash = (address: string | null | undefined = '') =>
   address ? `${address.substring(0, 5)}…${address.substring(address.length - 4)}` : ''
@@ -14,8 +14,8 @@ export function ActivityDetailsView({
   fromAccountType,
   toAccountType,
   capability,
-  network,
-  networkMeta,
+  chain,
+  chainMeta,
   onBack,
   originName
 }: {
@@ -23,14 +23,14 @@ export function ActivityDetailsView({
   fromAccountType?: string
   toAccountType?: string
   capability: Pick<ActivityCapability, 'copyText' | 'hydrateTokenImage'>
-  network: ActivityNetworkMap[number]
-  networkMeta: ActivityDetailNetworkMetadata
+  chain: ActivityChainMap[number]
+  chainMeta: ActivityDetailChainMetadata
   onBack: () => void
   originName: string
 }) {
   const chainId = Number(activity.chainId)
-  const symbol = [networkMeta.nativeCurrency.symbol, network.symbol].find(Boolean) ?? 'ETH'
-  const nativeCurrency = { ...networkMeta.nativeCurrency, symbol }
+  const symbol = [chainMeta.nativeCurrency.symbol, chain.symbol].find(Boolean) ?? 'ETH'
+  const nativeCurrency = { ...chainMeta.nativeCurrency, symbol }
   const effects = activityBalanceChanges(activity, symbol)
   const receiptBlock = activity.receipt?.blockNumber ? parseInt(activity.receipt.blockNumber, 16) : undefined
   const copy = (value?: string | null) => {
@@ -85,8 +85,8 @@ export function ActivityDetailsView({
         effects={effects}
         effectsEmptyText='No direct asset changes detected'
         nativeCurrency={nativeCurrency}
-        networkName={network.name ?? `Chain ${chainId}`}
-        networkIcon={persistedImageSource(networkMeta.image)}
+        chainName={chain.name ?? `Chain ${chainId}`}
+        chainIcon={persistedImageSource(chainMeta.image)}
         notice={activity.status === 'reverted' ? 'Transaction reverted on-chain' : undefined}
         statusLabel={transactionStatusLabel(activity.status)}
       />

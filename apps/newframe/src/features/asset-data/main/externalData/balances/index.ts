@@ -30,8 +30,8 @@ type ManualRefreshTokenOptions = {
   balances: Balance[]
   customTokens: Token[]
   knownTokens: Token[]
-  networks: Record<number, Chain>
-  networksMeta: Record<number, ChainMetadata>
+  chains: Record<number, Chain>
+  chainsMeta: Record<number, ChainMetadata>
   assetRates: AssetRateMap
 }
 
@@ -53,9 +53,9 @@ function scanToken(token: Token): Token {
   return { address, chainId, decimals, name, symbol }
 }
 
-function isCuratedToken(token: Token, networksMeta: Record<number, ChainMetadata>) {
+function isCuratedToken(token: Token, chainsMeta: Record<number, ChainMetadata>) {
   const symbol = token.symbol.trim().toUpperCase()
-  const nativeSymbol = networksMeta[token.chainId]?.nativeCurrency?.symbol?.trim().toUpperCase()
+  const nativeSymbol = chainsMeta[token.chainId]?.nativeCurrency?.symbol?.trim().toUpperCase()
 
   return symbol === 'USDC' || Boolean(nativeSymbol && symbol === `W${nativeSymbol}`)
 }
@@ -64,8 +64,8 @@ function selectManualRefreshTokens({
   balances,
   customTokens,
   knownTokens,
-  networks,
-  networksMeta,
+  chains,
+  chainsMeta,
   assetRates
 }: ManualRefreshTokenOptions) {
   const tokenBalances = balances.filter((balance) => balance.address !== NATIVE_CURRENCY)
@@ -88,8 +88,8 @@ function selectManualRefreshTokens({
         accountTokenIds: {}
       },
       assetRates,
-      networks,
-      networksMeta
+      chains,
+      chainsMeta
     })
       .filter((balance) => balance.hasPrice && !isLowValueTokenBalance(balance))
       .map(toTokenId)
@@ -101,7 +101,7 @@ function selectManualRefreshTokens({
     (token) =>
       customTokenIds.has(toTokenId(token)) ||
       nonDustTokenIds.has(toTokenId(token)) ||
-      isCuratedToken(token, networksMeta)
+      isCuratedToken(token, chainsMeta)
   )
 }
 
@@ -113,19 +113,19 @@ export default function (
     const balances = store.getState().main.balances as Record<string, Balance[] | undefined>
     return balances[address] ?? []
   }
-  const networkFor = (chainId: number) => {
-    const networks = store.getState().main.networks.ethereum as Record<
+  const chainFor = (chainId: number) => {
+    const chains = store.getState().main.chains.ethereum as Record<
       number,
-      ReturnType<typeof store.getState>['main']['networks']['ethereum'][number] | undefined
+      ReturnType<typeof store.getState>['main']['chains']['ethereum'][number] | undefined
     >
-    return networks[chainId]
+    return chains[chainId]
   }
   const storeApi = {
     getActiveAddress: () => store.getState().main.currentAccount || '',
-    getNetwork: (id: number) => networkFor(id) ?? {},
-    getConnectedNetworks: () => {
-      const networks = Object.values(store.getState().main.networks.ethereum)
-      return networks.filter((n) => n.connection.primary.connected || n.connection.secondary.connected)
+    getChain: (id: number) => chainFor(id) ?? {},
+    getConnectedChains: () => {
+      const chains = Object.values(store.getState().main.chains.ethereum)
+      return chains.filter((n) => n.connection.primary.connected || n.connection.secondary.connected)
     },
     getCustomTokens: () => customTokens(store.getState().main.tokens).map(scanToken),
     getKnownTokens: (address?: Address): Token[] =>
@@ -135,11 +135,11 @@ export default function (
             .map(scanToken)
         : [],
     getBalances: balancesFor,
-    getNetworks: () => store.getState().main.networks.ethereum,
-    getNetworksMeta: () =>
-      store.getState().main.networksMeta.ethereum as Record<
+    getChains: () => store.getState().main.chains.ethereum,
+    getChainsMeta: () =>
+      store.getState().main.chainsMeta.ethereum as Record<
         number,
-        ReturnType<typeof store.getState>['main']['networksMeta']['ethereum'][number] | undefined
+        ReturnType<typeof store.getState>['main']['chainsMeta']['ethereum'][number] | undefined
       >,
     getAssetRates: () => store.getState().main.assetRates,
     getCurrencyBalances: (address: Address) => {
@@ -369,8 +369,8 @@ export default function (
   }
 
   function updateActiveBalances(address: Address) {
-    const activeNetworkIds = storeApi.getConnectedNetworks().map((network) => network.id)
-    updateBalances(address, activeNetworkIds)
+    const activeChainIds = storeApi.getConnectedChains().map((chain) => chain.id)
+    updateBalances(address, activeChainIds)
   }
 
   function refresh(address: Address = storeApi.getActiveAddress()) {
@@ -388,15 +388,15 @@ export default function (
       balances: storeApi.getBalances(address),
       customTokens: storeApi.getCustomTokens(),
       knownTokens: storeApi.getKnownTokens(address),
-      networks: storeApi.getNetworks(),
-      networksMeta: storeApi.getNetworksMeta() as Record<number, ChainMetadata>,
+      chains: storeApi.getChains(),
+      chainsMeta: storeApi.getChainsMeta() as Record<number, ChainMetadata>,
       assetRates: storeApi.getAssetRates()
     })
 
     runWhenReady(() =>
       updateBalances(
         address,
-        storeApi.getConnectedNetworks().map((network) => network.id),
+        storeApi.getConnectedChains().map((chain) => chain.id),
         tokens
       )
     )
@@ -484,17 +484,17 @@ export default function (
 
   function handleChainBalanceUpdate(balances: CurrencyBalance[], address: Address) {
     const currentChainBalances = storeApi.getCurrencyBalances(address)
-    const networksMeta = storeApi.getNetworksMeta()
+    const chainsMeta = storeApi.getChainsMeta()
 
     // only update balances that have changed
     balances
       .filter(
         (balance) =>
-          networksMeta[balance.chainId] &&
+          chainsMeta[balance.chainId] &&
           currentChainBalances.find((b) => b.chainId === balance.chainId)?.balance !== balance.balance
       )
       .forEach((balance) => {
-        const nativeCurrency = networksMeta[balance.chainId]!.nativeCurrency
+        const nativeCurrency = chainsMeta[balance.chainId]!.nativeCurrency
         store.getState().setBalance(address, {
           ...balance,
           name: nativeCurrency.name,
@@ -508,12 +508,12 @@ export default function (
   function handleTokenBalanceUpdate(balances: TokenBalance[], address: Address) {
     // only update balances if any have changed
     const currentTokenBalances = storeApi.getTokenBalances(address)
-    const networks = storeApi.getNetworks() as Record<number, unknown>
+    const chains = storeApi.getChains() as Record<number, unknown>
     const customTokens = new Set(storeApi.getCustomTokens().map(toTokenId))
     const isCustomToken = (balance: Balance) => customTokens.has(toTokenId(balance))
 
     const changedBalances = balances.filter((newBalance) => {
-      if (!networks[newBalance.chainId]) {
+      if (!chains[newBalance.chainId]) {
         return false
       }
 
@@ -581,9 +581,9 @@ export default function (
     }
   }
 
-  function addNetworks(address: Address, chains: number[]) {
+  function addChains(address: Address, chains: number[]) {
     if (!workerController) {
-      log.warn('tried to add networks but balances controller is not running')
+      log.warn('tried to add chains but balances controller is not running')
       return
     }
 
@@ -615,7 +615,7 @@ export default function (
     refresh,
     refreshPositions,
     setAddress,
-    addNetworks,
+    addChains,
     addTokens
   }
 }

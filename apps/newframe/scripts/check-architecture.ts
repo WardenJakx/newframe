@@ -186,7 +186,7 @@ const applicationOwnedMainModule = (file: string) =>
   productionMain(file) &&
   file !== path.join(sourceRoot, 'app', 'main', 'index.ts') &&
   file !== path.join(sourceRoot, 'app', 'main', 'platform', 'production.ts') &&
-  !/(?:accounts|asset-data|networks|portfolio|security|tokens)[\\/]main[\\/]production\.ts$/.test(file) &&
+  !/(?:accounts|asset-data|chains|portfolio|security|tokens)[\\/]main[\\/]production\.ts$/.test(file) &&
   !file.endsWith(path.join('asset-data', 'main', 'images', 'production.ts')) &&
   !file.endsWith(path.join('main', 'accountOnboarding', 'production.ts')) &&
   file !== path.join(sourceRoot, 'features', 'accounts', 'main', 'airgap', 'production.ts') &&
@@ -593,7 +593,7 @@ export function checkPlatformCommandAuthority(file: string, source: string) {
   const walletWorkflow = path.join('apps', 'newframe', 'src', 'platform', 'operations', 'walletWorkflows.ts')
   if (file === walletWorkflow) {
     const migratedForwarder = source.match(
-      /\b(?:addAccountFromSigner|addToken|addWatchAccount|adjustTransactionNonce|clearPermission|configureSecurity|consumeHomeCommand|createLatticeSigner|disconnectSigner|dismissTransactionFeeNotice|handleTrayMouseout|importSigner|inspectOwnTrayWindow|loadLedgerAccounts|locateKeystore|lockWallet|navigatePanelBack|openExternalUrl|openRequestPanel|openSideTray|openTransactionExplorer|pairLattice|quitApp|refreshPortfolio|reloadSigner|removeAccount|removeToken|renameAccount|reorderAccounts|resetTransactionNonce|resetWallet|respondToExtension|respondToUpdater|securityStatus|setNetworkActivation|setNetworkPrimaryRpc|setTransactionFeeDefault|submitTrezorInput|toggleWarning|unlockSecurity|updateNotification|updateSettings|updateTokenApproval|updateTransactionFee|writeClipboard)\s*(?=[:,=(])/
+      /\b(?:addAccountFromSigner|addToken|addWatchAccount|adjustTransactionNonce|clearPermission|configureSecurity|consumeHomeCommand|createLatticeSigner|disconnectSigner|dismissTransactionFeeNotice|handleTrayMouseout|importSigner|inspectOwnTrayWindow|loadLedgerAccounts|locateKeystore|lockWallet|navigatePanelBack|openExternalUrl|openRequestPanel|openSideTray|openTransactionExplorer|pairLattice|quitApp|refreshPortfolio|reloadSigner|removeAccount|removeToken|renameAccount|reorderAccounts|resetTransactionNonce|resetWallet|respondToExtension|respondToUpdater|securityStatus|setChainActivation|setChainPrimaryRpc|setTransactionFeeDefault|submitTrezorInput|toggleWarning|unlockSecurity|updateNotification|updateSettings|updateTokenApproval|updateTransactionFee|writeClipboard)\s*(?=[:,=(])/
     )
     if (migratedForwarder?.index !== undefined) {
       violations.push(

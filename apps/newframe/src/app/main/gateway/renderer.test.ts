@@ -33,7 +33,7 @@ const accountOnboarding = fakes(
   'sessionInput'
 )
 const agent = fakes('resolveAgentAccessRequest', 'revokeAgentSessions', 'setAgentAccess')
-const networks = fakes('remove', 'setActivation', 'setPrimaryRpc')
+const chains = fakes('remove', 'setActivation', 'setPrimaryRpc')
 const portfolio = fakes('refresh')
 const requestEdits = fakes('updateTokenApproval')
 const requests = fakes(
@@ -45,7 +45,7 @@ const requests = fakes(
   'replaceTransaction',
   'resolveAccess',
   'resolveAgentAccess',
-  'resolveNetwork',
+  'resolveChain',
   'resolveSwitchChain',
   'reviewAddChain',
   'reviewAddToken'
@@ -74,7 +74,7 @@ const settings = fakes('update')
 const safes = fakes(
   'import',
   'refresh',
-  'discoverNetworks',
+  'discoverChains',
   'simulate',
   'confirm',
   'confirmationStatus',
@@ -89,7 +89,7 @@ const servicesWithMocks = [
   accountOnboarding,
   safes,
   agent,
-  networks,
+  chains,
   portfolio,
   requestEdits,
   requests,
@@ -126,7 +126,7 @@ function createTestServices() {
     protectedOperations: { exportPrivateKey: accountOnboarding.exportPrivateKey },
     safes,
     agent,
-    networks,
+    chains,
     portfolio,
     platform,
     profiles,
@@ -202,7 +202,7 @@ describe('typed operation dispatcher', () => {
     const commands = [
       { type: 'account.select', accountId: 'account-1' },
       { type: 'home.command-consume', commandId: 1 },
-      { type: 'network.activation-set', chainId: 1, enabled: true },
+      { type: 'chain.activation-set', chainId: 1, enabled: true },
       { type: 'sidetray.open', feature: 'trade', chainId: 1 },
       {
         type: 'account.update',
@@ -215,7 +215,7 @@ describe('typed operation dispatcher', () => {
       { type: 'settings.update', setting: 'show-testnets', value: true },
       { type: 'app.quit' },
       { type: 'permission.clear', accountId: address },
-      { type: 'network.request-resolve', approved: true, requestId: 'request-1' },
+      { type: 'chain.request-resolve', approved: true, requestId: 'request-1' },
       { type: 'notification.update', notificationId: 'notice-1', action: 'dismiss' },
       { type: 'request.reject', requestId: 'request-1' },
       { type: 'request.access-resolve', requestId: 'request-1', approved: true },
@@ -235,7 +235,7 @@ describe('typed operation dispatcher', () => {
       { type: 'token.remove', address, chainId: 1 },
       { type: 'origin.remove', originId: 'origin-1' },
       { type: 'warning.toggle', warning: 'gas-fee' },
-      { type: 'network.remove', chainId: 1 },
+      { type: 'chain.remove', chainId: 1 },
       { type: 'account.remove', address }
     ]
     for (const command of commands) {
@@ -494,7 +494,7 @@ it('authorizes Safe commands and delegates owned imports with generic acknowledg
   authorizeRenderer.mockReturnValue(trayContext)
   safes.import.mockReturnValue(true)
   expect(await dispatcher.dispatchCommand({} as never, command)).toEqual({ ok: true })
-  safes.discoverNetworks.mockReturnValue([{ chainId: 1, name: 'Ethereum', supported: true }])
+  safes.discoverChains.mockReturnValue([{ chainId: 1, name: 'Ethereum', supported: true }])
   expect(
     await dispatcher.dispatchQuery({} as never, {
       type: 'safe.discover',
@@ -502,7 +502,7 @@ it('authorizes Safe commands and delegates owned imports with generic acknowledg
       chainId: 1
     })
   ).toEqual([{ chainId: 1, name: 'Ethereum', supported: true }])
-  expect(safes.discoverNetworks).toHaveBeenCalledWith(command.address, 1)
+  expect(safes.discoverChains).toHaveBeenCalledWith(command.address, 1)
   safes.refresh.mockReturnValue(true)
   const refresh = { type: 'account.refresh', accountId: command.address, force: true }
   expect(await dispatcher.dispatchCommand({} as never, refresh)).toEqual({ ok: true })

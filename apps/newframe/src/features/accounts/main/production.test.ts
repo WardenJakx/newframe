@@ -6,7 +6,7 @@ const address = '0x1111111111111111111111111111111111111111'
 
 const state = {
   main: {
-    networks: {
+    chains: {
       ethereum: {
         1: { id: 1, type: 'ethereum', on: true }
       }

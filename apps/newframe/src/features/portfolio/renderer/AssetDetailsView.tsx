@@ -9,7 +9,7 @@ import { AddressIdentity } from '../../../shared/renderer/ui/AddressIdentity.tsx
 import { ChainIcon } from '../../../shared/renderer/ui/ChainIcon.tsx'
 import ChainTokenIcon from '../../../shared/renderer/ui/ChainTokenIcon.tsx'
 import { DetailRow } from '../../../shared/renderer/ui/DetailRow.tsx'
-import type { NetworkLike, NetworkMetaLike } from '../../../shared/renderer/ui/tokenSelectorTypes.ts'
+import type { ChainLike, ChainMetaLike } from '../../../shared/renderer/ui/tokenSelectorTypes.ts'
 import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay.tsx'
 import {
   formatUsdRate,
@@ -27,8 +27,8 @@ export function AssetDetailsView({
   canTrade,
   clipboard,
   imageCapability,
-  networks,
-  networksMeta,
+  chains,
+  chainsMeta,
   onBack,
   onSend,
   onTrade
@@ -39,13 +39,13 @@ export function AssetDetailsView({
   canTrade: boolean
   clipboard: ClipboardCapability
   imageCapability: TokenImageCapability
-  networks: Partial<Record<string | number, NetworkLike>>
-  networksMeta: Partial<Record<string | number, NetworkMetaLike>>
+  chains: Partial<Record<string | number, ChainLike>>
+  chainsMeta: Partial<Record<string | number, ChainMetaLike>>
   onBack: () => void
   onSend: () => void
   onTrade: () => void
 }) {
-  const chain = networks[asset.chainId] ?? {}
+  const chain = chains[asset.chainId] ?? {}
   const price = Number(asset.rate?.usdRate ?? 0)
   const nativeAsset = isNativeCurrency(asset.address)
   const footer = (
@@ -102,8 +102,8 @@ export function AssetDetailsView({
               chainId={asset.chainId}
               imageCapability={imageCapability}
               logoURI={asset.logoURI}
-              networks={networks}
-              networksMeta={networksMeta}
+              chains={chains}
+              chainsMeta={chainsMeta}
               size='md'
               symbol={asset.symbol}
               tokenId={`${asset.chainId}:${asset.address}`}
@@ -129,12 +129,7 @@ export function AssetDetailsView({
               label='Chain'
               value={
                 <Stack align='center' direction='row' gap='xsmall' justify='end'>
-                  <ChainIcon
-                    chainId={asset.chainId}
-                    networks={networks}
-                    networksMeta={networksMeta}
-                    size='large'
-                  />
+                  <ChainIcon chainId={asset.chainId} chains={chains} chainsMeta={chainsMeta} size='large' />
                   <Text truncate variant='label'>
                     {chain.name ?? `Chain ${asset.chainId}`}
                   </Text>

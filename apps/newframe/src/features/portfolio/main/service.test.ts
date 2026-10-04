@@ -4,7 +4,7 @@ import { createTestStore } from '../../../../test/support/createTestStore.ts'
 import { DEFAULT_PROFILE_ID } from '../../../app/contracts/state/main.ts'
 import { createOperationService } from '../../../platform/operations/service.ts'
 import type { Account } from '../../accounts/domain/state/account.ts'
-import { createBuiltInNetworks } from '../../networks/domain/chain/catalog.ts'
+import { createBuiltInChains } from '../../chains/domain/chain/catalog.ts'
 import { createPortfolioService } from './service.ts'
 
 const address = '0x1111111111111111111111111111111111111111'
@@ -20,7 +20,7 @@ const account: Account = {
   requests: {},
   created: ''
 }
-const mainnet = createBuiltInNetworks()[1]
+const mainnet = createBuiltInChains()[1]
 
 describe('portfolio refresh service', () => {
   it('lists orders only on manual refresh for the selected account', async () => {
@@ -28,7 +28,7 @@ describe('portfolio refresh service', () => {
       main: {
         currentAccount: '',
         accounts: { [address]: account },
-        networks: { ethereum: { 1: mainnet } }
+        chains: { ethereum: { 1: mainnet } }
       }
     })
     const assetRates = [{ chainId: 1, address, usdRate: 2 }]
@@ -79,7 +79,7 @@ describe('portfolio refresh service', () => {
       main: {
         currentAccount: address,
         accounts: { [address]: account },
-        networks: { ethereum: { 1: mainnet } }
+        chains: { ethereum: { 1: mainnet } }
       }
     })
     const listError = new Error('Flash unavailable')

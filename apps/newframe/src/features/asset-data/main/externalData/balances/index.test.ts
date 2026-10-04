@@ -64,8 +64,8 @@ type TestMainState = {
   accounts: Record<string, { address: string; id: string; requests: Record<string, unknown> }>
   assetRates: Record<string, { observedAt: number; source: string; usdRate: number }>
   balances: Record<string, Array<Record<string, unknown>>>
-  networks: { ethereum: Record<number, Record<string, unknown>> }
-  networksMeta: { ethereum: Record<number, Record<string, unknown>> }
+  chains: { ethereum: Record<number, Record<string, unknown>> }
+  chainsMeta: { ethereum: Record<number, Record<string, unknown>> }
   tokens: ReturnType<typeof catalogFor>
 }
 
@@ -94,13 +94,13 @@ beforeEach(() => {
   store.setState((state) => {
     const main = state.main as unknown as TestMainState
     main.tokens = catalogFor(knownTokens)
-    main.networks.ethereum[10] = {
+    main.chains.ethereum[10] = {
       id: 10,
       name: 'Optimism',
       on: true,
       connection: { primary: { connected: true } }
     }
-    main.networksMeta.ethereum[10] = {
+    main.chainsMeta.ethereum[10] = {
       nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 }
     }
     main.balances[address] = [
@@ -339,12 +339,12 @@ it('stores native worker balances without duplicating currency metadata', () => 
   })
 })
 
-it('ignores a late worker update after its network has been removed', () => {
+it('ignores a late worker update after its chain has been removed', () => {
   store.setState((state) => {
     const main = state.main as unknown as TestMainState
     main.accounts[address] = { id: address, address, requests: {} }
-    delete main.networks.ethereum[10]
-    delete main.networksMeta.ethereum[10]
+    delete main.chains.ethereum[10]
+    delete main.chainsMeta.ethereum[10]
   })
 
   expect(() => {

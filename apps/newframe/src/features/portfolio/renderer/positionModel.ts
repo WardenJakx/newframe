@@ -11,12 +11,12 @@ export interface PositionGroups {
 
 export function createPositionGroups({
   balances,
-  networks,
+  chains,
   query,
   selectedChainId
 }: {
   balances: BalanceSummary[]
-  networks: Record<string | number, { name?: string }>
+  chains: Record<string | number, { name?: string }>
   query: string
   selectedChainId: number
 }): PositionGroups {
@@ -24,7 +24,7 @@ export function createPositionGroups({
     if (selectedChainId !== 0 && balance.chainId !== selectedChainId) {
       return false
     }
-    const chainName = networks[balance.chainId]?.name ?? ''
+    const chainName = chains[balance.chainId]?.name ?? ''
     return matchFilter(query, [chainName, balance.name, balance.symbol])
   })
   const matchedTotal = matched.reduce((sum, balance) => sum + balance.totalValue, 0)

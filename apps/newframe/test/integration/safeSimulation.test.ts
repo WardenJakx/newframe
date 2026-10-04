@@ -385,7 +385,7 @@ beforeAll(async () => {
   const client = createSafeClient({
     call: (chain, address, data, blockTag, signal) => rpc.call(chain, address, data, blockTag, signal),
     request: (url, init) => handler(new Request(url, init)),
-    networks: { [chainId]: 'http://safe-fixture.local/api' }
+    chains: { [chainId]: 'http://safe-fixture.local/api' }
   })
   unsubscribe = base.store.subscribe((state) => selectors.setState(state, true))
   service = createSafeService({

@@ -23,8 +23,8 @@ import {
   transactionStatusLabel
 } from './activityModel.ts'
 import type {
-  ActivityNetworkMap,
-  ActivityNetworkMetadataMap,
+  ActivityChainMap,
+  ActivityChainMetadataMap,
   ActivityRecord,
   ActivityViewRecord,
   ActivityTokenCatalog
@@ -55,30 +55,30 @@ function ActivityIcon({
   record,
   chainId,
   nativeSymbol,
-  networks,
-  networksMeta,
+  chains,
+  chainsMeta,
   tokens
 }: {
   imageCapability: TokenImageCapability
   record: ActivityRecord
   chainId: number
   nativeSymbol: string
-  networks: ActivityNetworkMap
-  networksMeta: ActivityNetworkMetadataMap
+  chains: ActivityChainMap
+  chainsMeta: ActivityChainMetadataMap
   tokens: ActivityTokenCatalog
 }) {
   const effect = activityAssetEffect(record, nativeSymbol)
   if (!effect) {
     return (
       <MediaBadge
-        badge={<ChainIcon chainId={chainId} networks={networks} networksMeta={networksMeta} size='medium' />}
+        badge={<ChainIcon chainId={chainId} chains={chains} chainsMeta={chainsMeta} size='medium' />}
       >
         <StatusGlyph state={activityGlyphState(record.status)} />
       </MediaBadge>
     )
   }
 
-  const nativeCurrency = networksMeta[chainId]?.nativeCurrency ?? {}
+  const nativeCurrency = chainsMeta[chainId]?.nativeCurrency ?? {}
   const address = effect.assetAddress?.toLowerCase()
   const tokenId = address ? `${chainId}:${address}` : undefined
   const canonicalImage = tokenId ? tokenImageSource(tokenForId(tokens, tokenId)) : ''
@@ -89,8 +89,8 @@ function ActivityIcon({
       chainId={chainId}
       imageCapability={imageCapability}
       logoURI={canonicalImage || (effect.logoURI ?? nativeImage) || nativeCurrency.icon}
-      networks={networks}
-      networksMeta={networksMeta}
+      chains={chains}
+      chainsMeta={chainsMeta}
       symbol={effect.symbol ?? nativeSymbol}
       tokenId={tokenId}
     />
@@ -100,21 +100,21 @@ function ActivityIcon({
 function ActivityRowContent({
   imageCapability,
   record,
-  networks,
-  networksMeta,
+  chains,
+  chainsMeta,
   right,
   tokens
 }: {
   imageCapability: TokenImageCapability
   record: ActivityRecord
-  networks: ActivityNetworkMap
-  networksMeta: ActivityNetworkMetadataMap
+  chains: ActivityChainMap
+  chainsMeta: ActivityChainMetadataMap
   right: ReactNode
   tokens: ActivityTokenCatalog
 }) {
   const chainId = Number(record.chainId)
-  const chain = (networks as Partial<typeof networks>)[chainId] ?? {}
-  const nativeSymbol = networksMeta[chainId]?.nativeCurrency?.symbol ?? chain.symbol ?? 'ETH'
+  const chain = (chains as Partial<typeof chains>)[chainId] ?? {}
+  const nativeSymbol = chainsMeta[chainId]?.nativeCurrency?.symbol ?? chain.symbol ?? 'ETH'
   const title = record.display?.title ?? 'Transaction'
   const subtitle = record.display?.subtitle ?? chain.name ?? `Chain ${chainId}`
   const balanceChanges =
@@ -134,8 +134,8 @@ function ActivityRowContent({
         chainId={chainId}
         imageCapability={imageCapability}
         nativeSymbol={nativeSymbol}
-        networks={networks}
-        networksMeta={networksMeta}
+        chains={chains}
+        chainsMeta={chainsMeta}
         record={record}
         tokens={tokens}
       />
@@ -166,8 +166,8 @@ export function ActivityView<TRecord extends ActivityViewRecord>({
   activity,
   clipboard,
   imageCapability,
-  networks,
-  networksMeta,
+  chains,
+  chainsMeta,
   onOpen,
   onOpenExplorer,
   tokens
@@ -175,8 +175,8 @@ export function ActivityView<TRecord extends ActivityViewRecord>({
   activity: TRecord[]
   clipboard: ClipboardCapability
   imageCapability: TokenImageCapability
-  networks: ActivityNetworkMap
-  networksMeta: ActivityNetworkMetadataMap
+  chains: ActivityChainMap
+  chainsMeta: ActivityChainMetadataMap
   onOpen: (activityId: string) => void
   onOpenExplorer: (record: TRecord) => void
   tokens: ActivityTokenCatalog
@@ -196,7 +196,7 @@ export function ActivityView<TRecord extends ActivityViewRecord>({
           const status = transactionStatusLabel(record.status)
           const submitted = activityTimestampLabel(record)
           const confirmed = record.status === 'succeeded'
-          const canOpenExplorer = confirmed && !!record.hash && !!networks[Number(record.chainId)]?.explorer
+          const canOpenExplorer = confirmed && !!record.hash && !!chains[Number(record.chainId)]?.explorer
           const right = (
             <Stack align='end' gap='xsmall'>
               {confirmed ? (
@@ -243,8 +243,8 @@ export function ActivityView<TRecord extends ActivityViewRecord>({
           const content = (
             <ActivityRowContent
               imageCapability={imageCapability}
-              networks={networks}
-              networksMeta={networksMeta}
+              chains={chains}
+              chainsMeta={chainsMeta}
               record={record}
               right={right}
               tokens={tokens}

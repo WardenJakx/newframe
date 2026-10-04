@@ -86,11 +86,11 @@ export function useTradeController({ assetId, capability, chainId }: TradeContro
   model: TradeViewModel
 } {
   const selectSideTrayWallet = React.useMemo(() => createSideTrayWalletSelector(), [])
-  const { balanceSummaries, currentAccount, networks, networksMeta, operations, orders, runtime } =
+  const { balanceSummaries, currentAccount, chains, chainsMeta, operations, orders, runtime } =
     useSideTraySelector(selectSideTrayWallet)
   const tradeAssets = React.useMemo(
-    () => buildTradeAssetOptions({ balances: balanceSummaries, networks, networksMeta, runtime }),
-    [balanceSummaries, networks, networksMeta, runtime]
+    () => buildTradeAssetOptions({ balances: balanceSummaries, chains, chainsMeta, runtime }),
+    [balanceSummaries, chains, chainsMeta, runtime]
   )
   const tradeBalanceIndex = React.useMemo(() => createTradeBalanceIndex(balanceSummaries), [balanceSummaries])
   const flashBalanceEntries = React.useMemo(
@@ -186,10 +186,10 @@ export function useTradeController({ assetId, capability, chainId }: TradeContro
 
       return (
         balance?.logoURI ??
-        (asset.isNative ? persistedImageSource(networksMeta[asset.chainId]?.nativeCurrency?.image) : '')
+        (asset.isNative ? persistedImageSource(chainsMeta[asset.chainId]?.nativeCurrency?.image) : '')
       )
     },
-    [networksMeta, tradeBalanceIndex]
+    [chainsMeta, tradeBalanceIndex]
   )
 
   const createTradeSelectorItem = React.useCallback(
@@ -342,8 +342,8 @@ export function useTradeController({ assetId, capability, chainId }: TradeContro
       enabled: actionEnabled,
       label: tradeValidationError && quote ? 'Adjust order' : actionLabel
     },
-    networks,
-    networksMeta,
+    chains,
+    chainsMeta,
     progress: {
       status: operationStatuses[execution.state.phase] || (state.quoteLoading ? 'Getting quote' : ''),
       steps

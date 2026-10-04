@@ -179,9 +179,9 @@ callback-to-Promise bridge must settle once and reject pending work during shutd
 `src/platform/operations/sideTrayTransactions.ts` helpers must not be recreated or imported; cohesive
 orchestration belongs to its feature service or infrastructure adapter.
 
-For example, `network.remove` is a generic-acknowledgement command handled by the network service,
+For example, `chain.remove` is a generic-acknowledgement command handled by the chain service,
 while `token.lookup` is a typed query handled by the token service and its provider adapter. The
-visual reset harness may retain `network.remove` and `origin.remove` commands because those are
+visual reset harness may retain `chain.remove` and `origin.remove` commands because those are
 real state-changing intents, not private reset shortcuts. Provider account requests depend on the
 `AccountRequestPort` interface supplied by composition; they do not use a deferred global port.
 

@@ -32,8 +32,8 @@ const defaultState = () => ({
     trezor: {
       derivation: 'standard'
     },
-    networks: { ethereum: {} },
-    networksMeta: {
+    chains: { ethereum: {} },
+    chainsMeta: {
       ethereum: {
         1: {
           gas: {

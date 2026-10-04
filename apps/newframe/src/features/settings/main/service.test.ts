@@ -7,7 +7,7 @@ describe('settings service', () => {
   it('persists an available fee preference without modifying requests', () => {
     const store = createTestStore()
     store.store.setState((state) => {
-      const metadata = state.main.networksMeta.ethereum[1]
+      const metadata = state.main.chainsMeta.ethereum[1]
       metadata.gas.price.selected = 'slow'
       metadata.gas.price.levels.fast = '0x5'
       Reflect.deleteProperty(metadata.gas.price.levels, 'asap')
@@ -16,7 +16,7 @@ describe('settings service', () => {
     const service = createSettingsService(store, { flush })
     const accounts = store.getState().main.accounts
     service.update({ type: 'settings.update', setting: 'gas-fee-level', chainId: 1, value: 'fast' })
-    expect(store.getState().main.networksMeta.ethereum[1].gas.price.selected).toBe('fast')
+    expect(store.getState().main.chainsMeta.ethereum[1].gas.price.selected).toBe('fast')
     expect(store.getState().main.accounts).toBe(accounts)
     expect(flush).toHaveBeenCalledTimes(1)
     expect(() =>

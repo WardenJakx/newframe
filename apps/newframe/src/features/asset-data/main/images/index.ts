@@ -1,7 +1,7 @@
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
 import type { ChainMetadata, TokenRecord } from '../../../../platform/state-store/state/index.ts'
+import { builtInChainIconUrl } from '../../../chains/domain/chain/index.ts'
 import type { Origin } from '../../../connections/domain/state/origin.ts'
-import { builtInChainIconUrl } from '../../../networks/domain/chain/index.ts'
 import type { getTokenDiscoveryProvider } from '../../../portfolio/main/index.ts'
 import { toTokenId } from '../../../tokens/domain/index.ts'
 import { embeddedImageSource } from '../../domain/image/index.ts'
@@ -38,7 +38,7 @@ function originImageSource(value: unknown) {
   return httpsImageUrl(value) || embeddedImageSource(value)
 }
 
-function configuredNetworkImageSource(chainId: number, metadata: ChainMetadata) {
+function configuredChainImageSource(chainId: number, metadata: ChainMetadata) {
   return (
     httpsImageUrl(metadata.icon) ||
     embeddedImageSource(metadata.icon) ||
@@ -56,13 +56,13 @@ export function createImageService(
   let activeHydrations = 0
   let active = false
   let unsubscribeOrigins: (() => void) | undefined
-  let unsubscribeNetworks: (() => void) | undefined
+  let unsubscribeChains: (() => void) | undefined
   const tokenById = (tokenId: string) => {
     const tokens = canonicalStore.getState().main.tokens.byId as Record<string, TokenRecord | undefined>
     return tokens[tokenId]
   }
-  const networkMetadata = (chainId: number) => {
-    const metadata = canonicalStore.getState().main.networksMeta.ethereum as Record<
+  const chainMetadata = (chainId: number) => {
+    const metadata = canonicalStore.getState().main.chainsMeta.ethereum as Record<
       number,
       ChainMetadata | undefined
     >
@@ -152,8 +152,8 @@ export function createImageService(
     }
   }
 
-  const networkImageSource = async (chainId: number, metadata: ChainMetadata) => {
-    const configured = configuredNetworkImageSource(chainId, metadata)
+  const chainImageSource = async (chainId: number, metadata: ChainMetadata) => {
+    const configured = configuredChainImageSource(chainId, metadata)
     if (configured) {
       return configured
     }
@@ -165,9 +165,9 @@ export function createImageService(
     return httpsImageUrl((await discovery.provider.getChainImage(chainId))?.url)
   }
 
-  const hydrateNetwork = (chainId: number, metadata: ChainMetadata) => {
-    const hydrationId = `network:${chainId}`
-    if (metadata.image?.sourceUrl === configuredNetworkImageSource(chainId, metadata)) {
+  const hydrateChain = (chainId: number, metadata: ChainMetadata) => {
+    const hydrationId = `chain:${chainId}`
+    if (metadata.image?.sourceUrl === configuredChainImageSource(chainId, metadata)) {
       return
     }
 
@@ -175,7 +175,7 @@ export function createImageService(
       hydrationId,
       async () => {
         try {
-          const sourceUrl = await networkImageSource(chainId, metadata)
+          const sourceUrl = await chainImageSource(chainId, metadata)
           if (!sourceUrl || metadata.image?.sourceUrl === sourceUrl) {
             return
           }
@@ -184,16 +184,16 @@ export function createImageService(
           if (!active) {
             return
           }
-          const current = networkMetadata(chainId)
+          const current = chainMetadata(chainId)
           if (!current) {
             return
           }
-          const currentSource = configuredNetworkImageSource(chainId, current)
+          const currentSource = configuredChainImageSource(chainId, current)
           if (!currentSource || currentSource === sourceUrl) {
-            canonicalStore.getState().setNetworkImage('ethereum', chainId, sourceUrl, image)
+            canonicalStore.getState().setChainImage('ethereum', chainId, sourceUrl, image)
           }
         } catch (error) {
-          adapters.log.warn('Could not hydrate network image', { chainId, error })
+          adapters.log.warn('Could not hydrate chain image', { chainId, error })
         }
       },
       'background'
@@ -211,7 +211,7 @@ export function createImageService(
       hydrationId,
       async () => {
         try {
-          const current = networkMetadata(chainId)?.nativeCurrency
+          const current = chainMetadata(chainId)?.nativeCurrency
           if (httpsImageUrl(current?.icon) !== sourceUrl || current?.image?.sourceUrl === sourceUrl) {
             return
           }
@@ -220,7 +220,7 @@ export function createImageService(
           if (!active) {
             return
           }
-          const latest = networkMetadata(chainId)?.nativeCurrency
+          const latest = chainMetadata(chainId)?.nativeCurrency
           if (httpsImageUrl(latest?.icon) === sourceUrl) {
             canonicalStore.getState().setNativeCurrencyImage('ethereum', chainId, image)
           }
@@ -266,10 +266,10 @@ export function createImageService(
     }
   }
 
-  const hydrateNetworks = (networks: Record<number, ChainMetadata>) => {
-    Object.entries(networks).forEach(([id, metadata]) => {
+  const hydrateChains = (chains: Record<number, ChainMetadata>) => {
+    Object.entries(chains).forEach(([id, metadata]) => {
       const chainId = Number(id)
-      void hydrateNetwork(chainId, metadata)
+      void hydrateChain(chainId, metadata)
       void hydrateNativeCurrency(chainId, metadata)
     })
   }
@@ -282,11 +282,9 @@ export function createImageService(
       active = true
       unsubscribeOrigins = canonicalStore.subscribe((state) => state.main.origins, hydrateOrigins)
       hydrateOrigins(canonicalStore.getState().main.origins)
-      unsubscribeNetworks = canonicalStore.subscribe(
-        (state) => state.main.networksMeta.ethereum,
-        hydrateNetworks,
-        { fireImmediately: true }
-      )
+      unsubscribeChains = canonicalStore.subscribe((state) => state.main.chainsMeta.ethereum, hydrateChains, {
+        fireImmediately: true
+      })
     },
     requestTokenImage,
     dispose() {
@@ -296,8 +294,8 @@ export function createImageService(
       active = false
       unsubscribeOrigins?.()
       unsubscribeOrigins = undefined
-      unsubscribeNetworks?.()
-      unsubscribeNetworks = undefined
+      unsubscribeChains?.()
+      unsubscribeChains = undefined
       queuedVisible.clear()
       queuedBackground.clear()
     }

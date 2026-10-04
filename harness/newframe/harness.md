@@ -44,7 +44,7 @@ task profile is never visible in a partially copied state.
 
 Implications:
 
-- Current accounts, networks, balances, permissions, and unlocked/locked state are whatever the local profile contains.
+- Current accounts, chains, balances, permissions, and unlocked/locked state are whatever the local profile contains.
 - Live RPC, IPFS, updater, and balance refresh behavior can still run.
 - Automation must avoid destructive actions unless the user explicitly asks for them.
 - Assertions must not depend on exact balances, account counts, token counts, or dapp rows.

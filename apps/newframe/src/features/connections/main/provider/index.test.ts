@@ -42,9 +42,9 @@ import type {
 } from '../../../../shared/domain/rpc.ts'
 import { AccountSchema } from '../../../accounts/domain/state/account.ts'
 import type { SafeTransactionPort } from '../../../accounts/main/safeTransactionPort.ts'
+import chainConfig from '../../../chains/main/config.ts'
+import type { Chains } from '../../../chains/main/index.ts'
 import type { Origin } from '../../../connections/domain/state/origin.ts'
-import chainConfig from '../../../networks/main/config.ts'
-import type { Chains } from '../../../networks/main/index.ts'
 import type {
   AccountRequest,
   AddChainRequest,
@@ -260,7 +260,7 @@ const setPermissions = (account: string, permissions: Record<string, PermissionI
   })
 }
 type ConnectionOverride = Partial<StoredChain['connection']['primary']>
-interface NetworkOverrides extends Partial<Omit<StoredChain, 'connection'>> {
+interface ChainOverrides extends Partial<Omit<StoredChain, 'connection'>> {
   connection?: {
     primary?: ConnectionOverride
     secondary?: ConnectionOverride
@@ -274,25 +274,25 @@ const storedConnection = (override: ConnectionOverride = {}): StoredChain['conne
   custom: '',
   ...override
 })
-const setNetwork = (id: number, network: NetworkOverrides | undefined) => {
+const setChain = (id: number, chain: ChainOverrides | undefined) => {
   store.setState((state) => {
-    if (network === undefined) {
-      delete state.main.networks.ethereum[id]
+    if (chain === undefined) {
+      delete state.main.chains.ethereum[id]
     } else {
-      state.main.networks.ethereum[id] = {
+      state.main.chains.ethereum[id] = {
         id,
         type: 'ethereum',
         name: `chain-${id}`,
         explorer: '',
         on: true,
         isTestnet: false,
-        ...network,
+        ...chain,
         connection: {
-          primary: storedConnection(network.connection?.primary),
-          secondary: storedConnection(network.connection?.secondary)
+          primary: storedConnection(chain.connection?.primary),
+          secondary: storedConnection(chain.connection?.secondary)
         }
       }
-      state.main.networksMeta.ethereum[id] ??= {
+      state.main.chainsMeta.ethereum[id] ??= {
         gas: { samples: [], price: { selected: 'fast', levels: {} } },
         primaryColor: 'accent1',
         nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18, icon: '' }
@@ -300,14 +300,14 @@ const setNetwork = (id: number, network: NetworkOverrides | undefined) => {
     }
   })
 }
-const setNetworkGas = (id: number, gas: Gas) => {
+const setChainGas = (id: number, gas: Gas) => {
   store.setState((state) => {
-    state.main.networksMeta.ethereum[id] ??= {
+    state.main.chainsMeta.ethereum[id] ??= {
       gas,
       primaryColor: 'accent1',
       nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18, icon: '' }
     }
-    state.main.networksMeta.ethereum[id].gas = gas
+    state.main.chainsMeta.ethereum[id].gas = gas
   })
 }
 const expectQueuedRequestRejection = (sendRequest: (callback: RPCRequestCallback) => void | Promise<void>) =>
@@ -335,7 +335,7 @@ const expectQueuedRequestRejection = (sendRequest: (callback: RPCRequestCallback
     void sendRequest(callback)
   })
 
-await mock.module('../../../networks/main/index.ts', () => {
+await mock.module('../../../chains/main/index.ts', () => {
   const chains = { send: mock(), syncDataEmit: mock(), on: mock(), off: mock(), refreshGasFees: mock() }
   return { default: chains, ...chains }
 })
@@ -358,7 +358,7 @@ await mock.module('./subscriptions.ts', () => ({
 beforeAll(async () => {
   log.transports.console.level = false
 
-  const connectionModule = (await import('../../../networks/main/index.ts')) as unknown as {
+  const connectionModule = (await import('../../../chains/main/index.ts')) as unknown as {
     default: TestChains
   }
   connection = connectionModule.default
@@ -435,7 +435,7 @@ beforeEach(() => {
     state.main.accounts = {}
     state.main.balances = {}
     state.main.currentAccount = ''
-    state.main.networks.ethereum = {}
+    state.main.chains.ethereum = {}
     state.main.origins = {}
     state.main.assetRates = {}
   })
@@ -565,13 +565,13 @@ describe('#send', () => {
       ] as const
     ).forEach(([description, chain]) => {
       it(`returns the ${description} chain id from the store`, async () => {
-        setNetwork(chain, { id: chain, on: true })
+        setChain(chain, { id: chain, on: true })
         expect((await sendResult({ method: 'eth_chainId', chainId: `0x${chain}` })).result).toBe(`0x${chain}`)
       })
     })
 
     it('returns an error for a disabled chain', async () => {
-      setNetwork(5, { id: 5, on: false })
+      setChain(5, { id: 5, on: false })
       const response = await sendResult({ method: 'eth_chainId', chainId: '0x5' })
       expect(responseError(response).message).toBe('not connected')
       expect(response.result).toBeUndefined()
@@ -700,7 +700,7 @@ describe('#send', () => {
     })
 
     it('switches immediately when an add-chain target already exists', async () => {
-      setNetwork(1, {
+      setChain(1, {
         id: 1,
         on: true,
         connection: { primary: { custom: 'https://trusted.example.com' } }
@@ -721,13 +721,13 @@ describe('#send', () => {
 
       expect(accountRequests).toHaveLength(0)
       expect(switchOriginChain).toHaveBeenCalledWith('8073729a-5e59-53b7-9e69-5d9bcff94087', 1, 'ethereum')
-      expect(storeState().main.networks.ethereum[1].connection.primary.custom).toBe(
+      expect(storeState().main.chains.ethereum[1].connection.primary.custom).toBe(
         'https://trusted.example.com'
       )
     })
 
     it('enriches a disabled chain with its Chainlist icon and ignores requested RPC replacements', async () => {
-      setNetwork(31337, {
+      setChain(31337, {
         id: 31337,
         on: false,
         connection: {
@@ -760,10 +760,10 @@ describe('#send', () => {
 
       expect(accountRequests).toHaveLength(1)
       expect(lookupChainIcon).toHaveBeenCalledWith(31337)
-      const network = storeState().main.networks.ethereum[31337]
-      expect(network.on).toBe(false)
-      expect(network.connection.primary.on).toBe(false)
-      expect(network.connection.primary.custom).toBe('')
+      const chain = storeState().main.chains.ethereum[31337]
+      expect(chain.on).toBe(false)
+      expect(chain.connection.primary.on).toBe(false)
+      expect(chain.connection.primary.custom).toBe('')
       expect((accountRequests[0] as AddChainRequest).chain.icon).toBe(
         'https://icons.llamao.fi/icons/chains/rsz_newframe-local-anvil.jpg'
       )
@@ -773,7 +773,7 @@ describe('#send', () => {
 
   describe('#wallet_switchEthereumChain', () => {
     it('switches an origin to an existing chain without prompting', async () => {
-      setNetwork(1, { id: 1, on: true })
+      setChain(1, { id: 1, on: true })
       setOrigins({
         '8073729a-5e59-53b7-9e69-5d9bcff94087': { chain: { id: 42161, type: 'ethereum' } }
       })
@@ -825,7 +825,7 @@ describe('#send', () => {
     let request: WatchAssetRequest
 
     beforeEach(() => {
-      setNetwork(1, { id: 1, on: true })
+      setChain(1, { id: 1, on: true })
       store.setState((state) => {
         state.main.tokens = { byId: {}, accountTokenIds: {} }
       })
@@ -876,7 +876,7 @@ describe('#send', () => {
     })
 
     it('uses the requested chain and supports ERC-1046 token suggestions', async () => {
-      setNetwork(5, { id: 5, on: true })
+      setChain(5, { id: 5, on: true })
       request.params.type = 'ERC1046'
       Object.assign(request.params.options, { chainId: 5 })
 
@@ -912,13 +912,13 @@ describe('#send', () => {
       expect((await sendResult(request)).result).toBe(true)
       expect(accountRequests).toHaveLength(0)
     })
-    const networkCases: Array<[string, NetworkOverrides | undefined]> = [
+    const chainCases: Array<[string, ChainOverrides | undefined]> = [
       ['does not exist', undefined],
       ['is disabled', { id: 1, on: false }]
     ]
-    networkCases.forEach(([description, network]) => {
+    chainCases.forEach(([description, chain]) => {
       it(`rejects a request when the chain ${description}`, async () => {
-        setNetwork(1, network)
+        setChain(1, chain)
         const error = responseError(await sendResult(request))
         expect(error.code).toBe(-1)
         expect(error.message).toContain('not connected')
@@ -951,8 +951,8 @@ describe('#send', () => {
 
   describe('#wallet_getEthereumChains', () => {
     it('returns only enabled chains through the provider', async () => {
-      setNetwork(1, { name: 'mainnet', on: true, connection: { primary: { connected: true } } })
-      setNetwork(137, { name: 'polygon', on: false, connection: { primary: { connected: false } } })
+      setChain(1, { name: 'mainnet', on: true, connection: { primary: { connected: true } } })
+      setChain(137, { name: 'polygon', on: false, connection: { primary: { connected: false } } })
 
       const response = await sendResult({ method: 'wallet_getEthereumChains', id: 14, jsonrpc: '2.0' })
       expect(response).toMatchObject({ id: 14, jsonrpc: '2.0' })
@@ -1124,7 +1124,7 @@ describe('#send', () => {
       const chainIds = [1, 137]
 
       chainIds.forEach((chainId) => {
-        setNetworkGas(chainId, {
+        setChainGas(chainId, {
           samples: [],
           price: {
             selected: 'standard',
@@ -1338,7 +1338,7 @@ describe('#send', () => {
       expect((accountRequests[0] as TransactionRequest).data.from?.toLowerCase()).toBe(nextAddress)
     })
 
-    it('pads the gas estimate from the network by 50 percent', async () => {
+    it('pads the gas estimate from the chain by 50 percent', async () => {
       connection.send.mockImplementationOnce((payload, cb) => {
         expect(payload.method).toBe('eth_estimateGas')
         cb({ id: payload.id, jsonrpc: payload.jsonrpc, result: addHexPrefix((150000).toString(16)) })
@@ -1954,7 +1954,7 @@ describe('#signAndSend', () => {
         cb({ id: payload.id, jsonrpc: payload.jsonrpc, result: addHexPrefix((150000).toString(16)) })
       })
 
-      setNetworkGas(1, {
+      setChainGas(1, {
         samples: [],
         price: {
           selected: 'standard',

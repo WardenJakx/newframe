@@ -397,7 +397,7 @@ export function RequestCommand(props: RequestCommandProps) {
     if (capability?.type === 'safe') {
       const progress = req.safeMessageProgress
       const confirmed = new Set(progress?.confirmations.map((address) => address.toLowerCase()) ?? [])
-      const networkDescription = props.shared.chain.name
+      const chainDescription = props.shared.chain.name
         ? `${props.shared.chain.name} (chain ${capability.chainId})`
         : `chain ${capability.chainId}`
       const retryPublication = progress?.status === 'failed'
@@ -439,7 +439,7 @@ export function RequestCommand(props: RequestCommandProps) {
           ) : (
             <div aria-label='Safe network unavailable' role='alert'>
               <Text tone='danger' variant='caption'>
-                This Safe is not configured on {networkDescription}.
+                This Safe is not configured on {chainDescription}.
               </Text>
             </div>
           )}
@@ -575,7 +575,7 @@ export default function RequestCommandContainer(props: Omit<RequestCommandProps,
           requestId: matching ? pending.requestId : undefined,
           sessionId: matching ? pending.sessionId : undefined,
           appLocked: state.appLock.locked,
-          chain: (state.networks.ethereum as Partial<typeof state.networks.ethereum>)[chainId] ?? EMPTY_CHAIN,
+          chain: (state.chains.ethereum as Partial<typeof state.chains.ethereum>)[chainId] ?? EMPTY_CHAIN,
           explorerWarningMuted: !!state.mute.explorerWarning,
           transactionSignerAttached: Boolean(account?.signer && signers[account.signer])
         }

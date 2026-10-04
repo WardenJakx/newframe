@@ -35,7 +35,7 @@ beforeEach(() => {
   subscribe.mockImplementation(() => mock())
 })
 
-it('hydrates networks in the background and tokens only when requested by the renderer', async () => {
+it('hydrates chains in the background and tokens only when requested by the renderer', async () => {
   const token = {
     address: '0x1111111111111111111111111111111111111111',
     chainId: 1,
@@ -59,10 +59,10 @@ it('hydrates networks in the background and tokens only when requested by the re
     main: {
       origins: {},
       tokens: { byId: { [`1:${token.address}`]: token } },
-      networksMeta: { ethereum: { 1: metadata } }
+      chainsMeta: { ethereum: { 1: metadata } }
     },
     setNativeCurrencyImage: mock(),
-    setNetworkImage: mock(),
+    setChainImage: mock(),
     setTokenImage: mock()
   }
   getState.mockReturnValue(state)
@@ -81,7 +81,7 @@ it('hydrates networks in the background and tokens only when requested by the re
   await flushHydration()
 
   expect(state.setTokenImage).toHaveBeenCalledWith(`1:${token.address}`, imageFor(token.logoURI))
-  expect(state.setNetworkImage).toHaveBeenCalledWith('ethereum', 1, metadata.icon, imageFor(metadata.icon))
+  expect(state.setChainImage).toHaveBeenCalledWith('ethereum', 1, metadata.icon, imageFor(metadata.icon))
   expect(state.setNativeCurrencyImage).toHaveBeenCalledWith(
     'ethereum',
     1,
@@ -92,7 +92,7 @@ it('hydrates networks in the background and tokens only when requested by the re
   images.dispose()
 })
 
-it('hydrates an embedded icon after adding a network', async () => {
+it('hydrates an embedded icon after adding a chain', async () => {
   const canonical = await createOriginImageStore()
   const source = 'data:image/png;base64,iVBORw0KGgoBAgM='
   const download = mock(async (sourceUrl: string) => imageFor(sourceUrl))
@@ -103,7 +103,7 @@ it('hydrates an embedded icon after adding a network', async () => {
   })
 
   images.start()
-  canonical.getState().addNetwork({
+  canonical.getState().addChain({
     id: 4663,
     type: 'ethereum',
     name: 'Robinhood Mainnet',
@@ -115,7 +115,7 @@ it('hydrates an embedded icon after adding a network', async () => {
   await flushHydration()
 
   expect(download).toHaveBeenCalledWith(source)
-  expect(canonical.getState().main.networksMeta.ethereum[4663].image).toEqual(imageFor(source))
+  expect(canonical.getState().main.chainsMeta.ethereum[4663].image).toEqual(imageFor(source))
   images.dispose()
 })
 
@@ -125,7 +125,7 @@ it('does not download images that already match their configured sources', async
     main: {
       origins: {},
       tokens: { byId: {} },
-      networksMeta: {
+      chainsMeta: {
         ethereum: {
           1: {
             gas: {},
@@ -138,7 +138,7 @@ it('does not download images that already match their configured sources', async
       }
     },
     setNativeCurrencyImage: mock(),
-    setNetworkImage: mock(),
+    setChainImage: mock(),
     setTokenImage: mock()
   }
   getState.mockReturnValue(state)
@@ -174,10 +174,10 @@ it('ignores object image URLs instead of stringifying them', async () => {
           }
         }
       },
-      networksMeta: { ethereum: {} }
+      chainsMeta: { ethereum: {} }
     },
     setNativeCurrencyImage: mock(),
-    setNetworkImage: mock(),
+    setChainImage: mock(),
     setTokenImage: mock()
   }
   getState.mockReturnValue(state)
@@ -208,9 +208,9 @@ it('limits concurrent image work even when many visible tokens request hydration
     })
   )
   const state = {
-    main: { origins: {}, tokens: { byId: tokens }, networksMeta: { ethereum: {} } },
+    main: { origins: {}, tokens: { byId: tokens }, chainsMeta: { ethereum: {} } },
     setNativeCurrencyImage: mock(),
-    setNetworkImage: mock(),
+    setChainImage: mock(),
     setTokenImage: mock()
   }
   getState.mockReturnValue(state)
@@ -314,7 +314,7 @@ async function createOriginImageStore() {
     )
   )
   canonical.setState(({ main }) => ({
-    main: { ...main, networksMeta: { ...main.networksMeta, ethereum: {} } }
+    main: { ...main, chainsMeta: { ...main.chainsMeta, ethereum: {} } }
   }))
   return canonical
 }

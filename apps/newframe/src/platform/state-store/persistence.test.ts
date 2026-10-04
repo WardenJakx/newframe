@@ -4,7 +4,7 @@ import { Wallet } from 'ethers'
 
 import { createTestStore } from '../../../test/support/createTestStore.ts'
 import { DEFAULT_PROFILE_ID, DEFAULT_PROFILE_NAME } from '../../app/contracts/state/main.ts'
-import { builtInChainIconUrl } from '../../features/networks/domain/chain/index.ts'
+import { builtInChainIconUrl } from '../../features/chains/domain/chain/index.ts'
 import type { TokenImage } from '../../features/tokens/domain/state/token.ts'
 import {
   CanonicalStatePersistenceError,
@@ -76,7 +76,7 @@ class ManualScheduler implements PersistenceSchedulerPort {
 
 const storageKey = `zustand.${CANONICAL_STATE_STORAGE_NAME}`
 const canonicalState = () => createInitialState() as unknown as CanonicalStore
-type TestNetworkMetadata = Record<string, unknown> & {
+type TestChainMetadata = Record<string, unknown> & {
   blockHeight?: number
   gas: { price: { levels: { custom: string } } }
   icon?: string
@@ -87,8 +87,8 @@ type TestPersistedMain = Record<string, unknown> & {
   accounts: Record<string, Record<string, unknown>>
   assetRates?: Record<string, unknown>
   autohide: boolean
-  networks: { ethereum: Record<number, { connection: { primary: { connected: boolean } } }> }
-  networksMeta: { ethereum: Record<number, TestNetworkMetadata> }
+  chains: { ethereum: Record<number, { connection: { primary: { connected: boolean } } }> }
+  chainsMeta: { ethereum: Record<number, TestChainMetadata> }
   orders: Record<string, unknown>
 }
 type TestPersistedState = Omit<PersistedCanonicalState, 'main'> & { main: TestPersistedMain }
@@ -122,6 +122,12 @@ function createTestRuntime(entries: Iterable<readonly [string, unknown]> = []) {
   })
 
   return { adapter, scheduler, service, storage, store: canonical.store }
+}
+
+// Before v8, chains were stored under `networks` and `networksMeta`.
+function asPreV8(persisted: unknown) {
+  const { chains, chainsMeta, ...main } = (persisted as { main: Record<string, unknown> }).main
+  return { ...(persisted as object), main: { ...main, networks: chains, networksMeta: chainsMeta } }
 }
 
 function envelope(state: unknown, version = PERSISTENCE_VERSION) {
@@ -276,15 +282,15 @@ describe('canonical persisted state contract', () => {
       legacy.main.assetRates = {
         stale: { usdRate: 3, source: 'zerion', observedAt: 1 }
       }
-      legacy.main.networksMeta.ethereum[1].nativeCurrency.usd = {
+      legacy.main.chainsMeta.ethereum[1].nativeCurrency.usd = {
         price: 0,
         change24hr: 0
       }
 
-      const migrated = mutablePersisted(migratePersistedState(legacy, version))
+      const migrated = mutablePersisted(migratePersistedState(asPreV8(legacy), version))
       expect(migrated.main.assetRates).toEqual({})
       expect(migrated.main).not.toHaveProperty('rates')
-      expect(migrated.main.networksMeta.ethereum[1].nativeCurrency).not.toHaveProperty('usd')
+      expect(migrated.main.chainsMeta.ethereum[1].nativeCurrency).not.toHaveProperty('usd')
     }
   })
 
@@ -341,9 +347,9 @@ describe('canonical persisted state contract', () => {
       observedAt: 1
     }
     durable.main.signers.runtime = { id: 'runtime' } as never
-    durable.main.networks.ethereum[1].connection.primary.connected = true
+    durable.main.chains.ethereum[1].connection.primary.connected = true
     ;(
-      durable.main.networksMeta.ethereum[1] as (typeof durable.main.networksMeta.ethereum)[1] & {
+      durable.main.chainsMeta.ethereum[1] as (typeof durable.main.chainsMeta.ethereum)[1] & {
         blockHeight?: number
       }
     ).blockHeight = 123
@@ -359,8 +365,8 @@ describe('canonical persisted state contract', () => {
         account: projected.accounts[id],
         appLock: projected.appLock,
         balances: projected.balances,
-        connected: projected.networks.ethereum[1].connection.primary.connected,
-        networkBlockHeight: projected.networksMeta.ethereum[1].blockHeight,
+        connected: projected.chains.ethereum[1].connection.primary.connected,
+        chainBlockHeight: projected.chainsMeta.ethereum[1].blockHeight,
         assetRates: projected.assetRates,
         runtime: projected.runtime,
         signers: projected.signers
@@ -390,7 +396,7 @@ describe('canonical persisted state contract', () => {
         appLock: undefined,
         balances: durable.main.balances,
         connected: false,
-        networkBlockHeight: undefined,
+        chainBlockHeight: undefined,
         assetRates: durable.main.assetRates,
         runtime: undefined,
         signers: undefined
@@ -422,7 +428,7 @@ describe('canonical persisted state contract', () => {
     delete v3.main.balances
     delete v3.main.assetRates
 
-    expect(migratePersistedState(v3, 3)).toEqual({
+    expect(migratePersistedState(asPreV8(v3), 3)).toEqual({
       ...v3,
       main: { ...v3.main, assetRates: {} }
     } as unknown as PersistedCanonicalState)
@@ -460,7 +466,7 @@ describe('canonical persisted state contract', () => {
         }
       }
 
-      const migrated = migratePersistedState(legacy, version)
+      const migrated = migratePersistedState(asPreV8(legacy), version)
       expect({ orders: migrated.main.orders, autohide: migrated.main.autohide }).toEqual({
         orders: {},
         autohide: true
@@ -495,11 +501,16 @@ describe('canonical persisted state contract', () => {
     current.main.autohide = true
     current.main.orders = { [order.orderId]: order }
 
-    expect(PERSISTENCE_VERSION).toBe(7)
-    const migrated = migratePersistedState(current, 7)
+    const migrated = migratePersistedState(asPreV8(current), 7)
     expect(migrated.main.orders).toEqual({ [order.orderId]: order })
     expect(migrated.main.autohide).toBeTrue()
     expect(migratePersistedState(migrated)).toEqual(migrated)
+  })
+
+  it('moves pre-v8 network records to chains', () => {
+    const current = selectPersistedState(canonicalState())
+    expect(PERSISTENCE_VERSION).toBe(8)
+    expect(migratePersistedState(asPreV8(current), 7)).toEqual(current)
   })
 
   it('migrates every supported profile-less state into the stable default profile', () => {
@@ -515,7 +526,7 @@ describe('canonical persisted state contract', () => {
       legacy.main.accountOrder = [id]
       legacy.main.currentAccount = id
 
-      const migrated = migratePersistedState(legacy, version)
+      const migrated = migratePersistedState(asPreV8(legacy), version)
       expect({
         profiles: migrated.main.profiles,
         profileOrder: migrated.main.profileOrder,
@@ -610,11 +621,11 @@ describe('canonical persisted state contract', () => {
     })
   })
 
-  it('deep-merges sparse network preferences while repairing retired image sources', () => {
+  it('deep-merges sparse chain preferences while repairing retired image sources', () => {
     const current = canonicalState()
     const persisted = selectPersistedState(current)
-    const metadata = mutablePersisted(persisted).main.networksMeta.ethereum
-    current.main.networksMeta.ethereum[1].icon = {
+    const metadata = mutablePersisted(persisted).main.chainsMeta.ethereum
+    current.main.chainsMeta.ethereum[1].icon = {
       toString: () => builtInChainIconUrl(1)
     } as unknown as string
     metadata[1].gas.price.levels.custom = '0x2a'
@@ -631,12 +642,12 @@ describe('canonical persisted state contract', () => {
 
     expect({
       mainnet: {
-        icon: merged.main.networksMeta.ethereum[1].icon,
-        levels: merged.main.networksMeta.ethereum[1].gas.price.levels
+        icon: merged.main.chainsMeta.ethereum[1].icon,
+        levels: merged.main.chainsMeta.ethereum[1].gas.price.levels
       },
       optimism: {
-        icon: merged.main.networksMeta.ethereum[10].icon,
-        image: merged.main.networksMeta.ethereum[10].image
+        icon: merged.main.chainsMeta.ethereum[10].icon,
+        image: merged.main.chainsMeta.ethereum[10].image
       }
     }).toEqual({
       mainnet: {
@@ -661,7 +672,7 @@ it('restores an added chain with its embedded Chainlist icon', () => {
   const store = createTestStore()
   const icon = 'data:image/png;base64,aWNvbg=='
   const image = { base64: 'aWNvbg==', contentHash: 'hash', mimeType: 'image/png', sourceUrl: icon }
-  store.getState().addNetwork({
+  store.getState().addChain({
     id: 46630,
     type: 'ethereum',
     name: 'Robinhood Chain',
@@ -670,12 +681,12 @@ it('restores an added chain with its embedded Chainlist icon', () => {
     primaryRpc: 'https://rpc.example',
     icon
   })
-  store.getState().setNetworkImage('ethereum', 46630, icon, image)
+  store.getState().setChainImage('ethereum', 46630, icon, image)
   const saved: unknown = JSON.parse(JSON.stringify(selectPersistedState(store.getState())))
 
   const restored = mergePersistedState(saved, createTestStore().getState())
 
-  expect(restored.main.networksMeta.ethereum[46630]).toMatchObject({ icon, image })
+  expect(restored.main.chainsMeta.ethereum[46630]).toMatchObject({ icon, image })
 })
 
 describe('canonical persistence failure boundaries', () => {

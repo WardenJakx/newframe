@@ -315,12 +315,12 @@ interface AccountBodyProps {
 
 function AccountBody(props: AccountBodyProps) {
   const requestView = useRequestView()
-  const { accounts, crumb, networks, networksMeta, origins } = useWalletSelector(
+  const { accounts, crumb, chains, chainsMeta, origins } = useWalletSelector(
     useShallow((state: WalletRendererState) => ({
       accounts: state.accounts,
       crumb: state.windows.panel.nav[0],
-      networks: state.networks.ethereum,
-      networksMeta: state.networksMeta.ethereum,
+      chains: state.chains.ethereum,
+      chainsMeta: state.chainsMeta.ethereum,
       origins: state.origins
     }))
   )
@@ -333,13 +333,13 @@ function AccountBody(props: AccountBodyProps) {
 
   const renderRequest = (request: RenderableRequestView) => {
     const chainId = request.type === 'signErc20Permit' ? request.typedMessage.data.domain.chainId : undefined
-    const metadata = chainId === undefined ? undefined : networksMeta[chainId]
+    const metadata = chainId === undefined ? undefined : chainsMeta[chainId]
     const chainData =
       chainId === undefined
         ? {}
         : {
             chainId,
-            chainName: networks[chainId]?.name,
+            chainName: chains[chainId]?.name,
             chainColor: metadata?.primaryColor,
             icon: persistedImageSource(metadata?.image)
           }

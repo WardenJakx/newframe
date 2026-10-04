@@ -49,8 +49,8 @@ describe('accounts model', () => {
       assetRates: projection.assetRates,
       balances: projection.balances,
       currentAccountId: first.id,
-      networks: projection.networks.ethereum,
-      networksMeta: projection.networksMeta.ethereum,
+      chains: projection.chains.ethereum,
+      chainsMeta: projection.chainsMeta.ethereum,
       profiles: [],
       query: 'primary',
       selectBalanceSummaries: createBalanceSummarySelector(),
@@ -80,17 +80,17 @@ describe('accounts model', () => {
           }
         ]
       },
-      networks: {
+      chains: {
         ethereum: { 1: { id: 1, name: 'Mainnet', on: true, isTestnet: false, explorer: '' } }
-      } as unknown as WalletRendererState['networks'],
-      networksMeta: {
+      } as unknown as WalletRendererState['chains'],
+      chainsMeta: {
         ethereum: {
           1: {
             primaryColor: 'accent1',
             nativeCurrency: { symbol: 'ETH', icon: '', name: 'Ether', decimals: 18 }
           }
         }
-      } as unknown as WalletRendererState['networksMeta'],
+      } as unknown as WalletRendererState['chainsMeta'],
       tokens: {
         byId: {
           [`1:${token}`]: {
@@ -113,8 +113,8 @@ describe('accounts model', () => {
         account: primary,
         assetRates,
         balances,
-        networks: projection.networks.ethereum,
-        networksMeta: projection.networksMeta.ethereum,
+        chains: projection.chains.ethereum,
+        chainsMeta: projection.chainsMeta.ethereum,
         selectBalanceSummaries: createBalanceSummarySelector(),
         showTestnets: false,
         tokens: projection.tokens

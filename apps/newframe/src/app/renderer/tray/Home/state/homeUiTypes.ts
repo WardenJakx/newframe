@@ -34,7 +34,7 @@ export type HomeOverlay =
   | { type: 'none' }
   | { type: 'menu' }
   | { type: 'accounts' }
-  | { type: 'networks' }
+  | { type: 'chains' }
   | { type: 'settings' }
   | { type: 'about' }
   | { type: 'requests' }

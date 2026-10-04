@@ -3,9 +3,9 @@ import { useEffect, useLayoutEffect, useRef, type KeyboardEvent, type ReactNode 
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
 import { Accounts } from '../../../../features/accounts/renderer/Accounts.tsx'
 import { Receive } from '../../../../features/accounts/renderer/Receive.tsx'
+import { AddChain } from '../../../../features/chains/renderer/AddChain.tsx'
+import { Chains } from '../../../../features/chains/renderer/Chains.tsx'
 import { ConnectedDapps } from '../../../../features/connections/renderer/ConnectedDapps.tsx'
-import { AddChain } from '../../../../features/networks/renderer/AddChain.tsx'
-import { Networks } from '../../../../features/networks/renderer/Networks.tsx'
 import { AssetDetails } from '../../../../features/portfolio/renderer/AssetDetails.tsx'
 import { RequestsOverlay } from '../../../../features/requests/renderer/RequestsOverlay.tsx'
 import { About } from '../../../../features/settings/renderer/About.tsx'
@@ -192,10 +192,10 @@ function OverlayRoute({
       return (
         <Accounts capability={capabilities.accounts} camera={capabilities.camera} onClose={closeOverlay} />
       )
-    case 'networks':
+    case 'chains':
       return (
-        <Networks
-          capability={capabilities.networks}
+        <Chains
+          capability={capabilities.chains}
           onClose={closeOverlay}
           onSelectionChange={setSelectedChainId}
           selectedChainId={selectedChainId}
@@ -231,14 +231,14 @@ function OverlayRoute({
           capability={capabilities.tokens}
           initialToken={overlay.initialToken}
           onBack={backToMenu}
-          onOpenNetworks={() => {
+          onOpenChains={() => {
             if (!activeRef.current) {
               return
             }
             if (hasMenuHistory) {
-              push({ type: 'networks' })
+              push({ type: 'chains' })
             } else {
-              openOverlay({ type: 'networks' })
+              openOverlay({ type: 'chains' })
             }
           }}
         />
@@ -246,10 +246,10 @@ function OverlayRoute({
     case 'addChain':
       return (
         <AddChain
-          capability={capabilities.networks}
+          capability={capabilities.chains}
           onResolved={(outcome) => {
             if (outcome === 'approved') {
-              openOverlay({ type: 'networks' })
+              openOverlay({ type: 'chains' })
             } else {
               closeOverlay()
             }

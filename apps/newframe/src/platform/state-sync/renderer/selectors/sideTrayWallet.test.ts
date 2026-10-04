@@ -48,7 +48,7 @@ describe('createSideTrayWalletSelector', () => {
         ]
       },
       currentAccount: sender.id,
-      networks: {
+      chains: {
         ethereum: {
           31337: {
             id: 31337,
@@ -59,7 +59,7 @@ describe('createSideTrayWalletSelector', () => {
           }
         }
       },
-      networksMeta: {
+      chainsMeta: {
         ethereum: {
           31337: {
             primaryColor: 'accent1',
@@ -96,8 +96,8 @@ describe('createSideTrayWalletSelector', () => {
       operations: {},
       balances: {},
       currentAccount: account.id,
-      networks: { ethereum: {} },
-      networksMeta: { ethereum: {} },
+      chains: { ethereum: {} },
+      chainsMeta: { ethereum: {} },
       assetRates: {},
       runtime: {},
       tokens: emptyCatalog()
@@ -131,12 +131,12 @@ describe('createSideTrayWalletSelector', () => {
       operations: {},
       balances: { [account.address]: [] },
       currentAccount: account.id,
-      networks: {
+      chains: {
         ethereum: {
           1: { id: 1, name: 'Mainnet', on: true, isTestnet: false, explorer: '' }
         }
       },
-      networksMeta: {
+      chainsMeta: {
         ethereum: {
           1: {
             primaryColor: 'accent1',
@@ -182,12 +182,12 @@ describe('createSideTrayWalletSelector', () => {
       operations: {},
       balances: { [account.address]: [] },
       currentAccount: account.id,
-      networks: {
+      chains: {
         ethereum: {
           1: { id: 1, name: 'Mainnet', on: true, isTestnet: false, explorer: '' }
         }
       },
-      networksMeta: {
+      chainsMeta: {
         ethereum: {
           1: {
             primaryColor: 'accent1',

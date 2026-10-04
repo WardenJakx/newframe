@@ -36,7 +36,7 @@ import {
   type FlashWebSocketFactory
 } from '@newframe/flash/websocket'
 
-import type { Outbound } from '../../../../platform/outbound/index.ts'
+import type { Internet } from '../../../../platform/internet/index.ts'
 import { getMainRuntime } from '../../../../platform/runtime/index.ts'
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
 import type { Token } from '../../../../platform/state-store/state/index.ts'
@@ -45,7 +45,7 @@ import type { AssetRateService } from '../../../asset-data/main/assetRates/servi
 import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
 
 const flashApi = (state: FlashServiceState) =>
-  createFlashApi({ runtime: runtime(), fetch: state.outbound.request })
+  createFlashApi({ runtime: runtime(), fetch: state.internet.request })
 
 interface FlashOrderPositionUpdate {
   address: string
@@ -79,13 +79,13 @@ interface FlashAgentSessionStream {
   streaming: boolean
 }
 
-type FlashOutbound = Pick<Outbound, 'isOpen' | 'openWebSocket' | 'request' | 'subscribe'>
+type FlashInternet = Pick<Internet, 'isOpen' | 'openWebSocket' | 'request' | 'subscribe'>
 
 interface FlashServiceState {
   agentSessionStreams: Map<string, FlashAgentSessionStream>
   createWebSocket: FlashWebSocketFactory
   marketOrderPollers: Map<string, FlashMarketOrderPoller>
-  outbound: FlashOutbound
+  internet: FlashInternet
   openOrderPoller: ReturnType<typeof setInterval> | null
   openOrderRefresh: Promise<FlashOrderRecord[]> | null
   positionSync: FlashPositionSync | null
@@ -94,15 +94,15 @@ interface FlashServiceState {
 
 function createFlashServiceState(
   canonicalStore: Pick<CanonicalStoreReader, 'getState'>,
-  outbound: FlashOutbound,
+  internet: FlashInternet,
   positionSync?: FlashPositionSync,
-  createWebSocket: FlashWebSocketFactory = (url) => outbound.openWebSocket(url)
+  createWebSocket: FlashWebSocketFactory = (url) => internet.openWebSocket(url)
 ): FlashServiceState {
   return {
     agentSessionStreams: new Map(),
     createWebSocket,
     marketOrderPollers: new Map(),
-    outbound,
+    internet,
     openOrderPoller: null,
     openOrderRefresh: null,
     positionSync: positionSync ?? null,
@@ -937,7 +937,7 @@ async function pollMarketOrder(state: FlashServiceState, orderId: string, poller
 }
 
 function startMarketOrderPolling(state: FlashServiceState, record: FlashOrderRecord) {
-  if (!state.outbound.isOpen() || record.orderType !== FLASH_MARKET_ORDER_TYPE) {
+  if (!state.internet.isOpen() || record.orderType !== FLASH_MARKET_ORDER_TYPE) {
     return
   }
   if (hasStreamingSessionForFunder(state, record.accountAddress)) {
@@ -972,7 +972,7 @@ function stopOpenOrderPolling(state: FlashServiceState) {
 }
 
 function ensureOpenOrderPolling(state: FlashServiceState) {
-  if (!state.outbound.isOpen() || !hasOrdersRequiringPolling(state)) {
+  if (!state.internet.isOpen() || !hasOrdersRequiringPolling(state)) {
     stopOpenOrderPolling(state)
     return
   }
@@ -1093,7 +1093,7 @@ function scheduleAgentSessionFallback(
 ) {
   const session = state.agentSessionStreams.get(sessionId)
   if (
-    !state.outbound.isOpen() ||
+    !state.internet.isOpen() ||
     !session ||
     session.streaming ||
     hasStreamingSessionForFunder(state, session.accountAddress)
@@ -1222,14 +1222,14 @@ function startAgentSessionStream(
 
   state.agentSessionStreams.set(sessionId, session)
   scheduleAgentSessionExpiration(state, sessionId)
-  if (state.outbound.isOpen()) {
+  if (state.internet.isOpen()) {
     scheduleAgentSessionFallback(state, sessionId)
     stream.start()
   }
   return true
 }
 
-function pauseFlashOutbound(state: FlashServiceState) {
+function pauseFlashInternet(state: FlashServiceState) {
   stopOpenOrderPolling(state)
   for (const orderId of state.marketOrderPollers.keys()) {
     stopMarketOrderPolling(state, orderId)
@@ -1240,7 +1240,7 @@ function pauseFlashOutbound(state: FlashServiceState) {
   }
 }
 
-function resumeFlashOutbound(state: FlashServiceState) {
+function resumeFlashInternet(state: FlashServiceState) {
   for (const [sessionId, session] of state.agentSessionStreams) {
     scheduleAgentSessionFallback(state, sessionId)
     session.stream.start()
@@ -1375,19 +1375,19 @@ async function cancelOrder(state: FlashServiceState, request: FlashCancelOrderRe
 export function createFlashService({
   assetRateService,
   createWebSocket,
-  outbound,
+  internet,
   positionSync,
   store
 }: {
   assetRateService: Pick<AssetRateService, 'observe'>
   createWebSocket?: FlashWebSocketFactory
-  outbound: FlashOutbound
+  internet: FlashInternet
   positionSync?: FlashPositionSync
   store: Pick<CanonicalStoreReader, 'getState'>
 }) {
-  const state = createFlashServiceState(store, outbound, positionSync, createWebSocket)
-  const unsubscribeOutbound = outbound.subscribe((open) =>
-    open ? resumeFlashOutbound(state) : pauseFlashOutbound(state)
+  const state = createFlashServiceState(store, internet, positionSync, createWebSocket)
+  const unsubscribeInternet = internet.subscribe((open) =>
+    open ? resumeFlashInternet(state) : pauseFlashInternet(state)
   )
 
   return {
@@ -1417,7 +1417,7 @@ export function createFlashService({
     stopAgentSessionsForAccount: (accountAddress: string) =>
       stopAgentSessionStreamsForAccount(state, accountAddress),
     dispose: () => {
-      unsubscribeOutbound()
+      unsubscribeInternet()
       for (const sessionId of state.agentSessionStreams.keys()) {
         stopAgentSessionStream(state, sessionId)
       }

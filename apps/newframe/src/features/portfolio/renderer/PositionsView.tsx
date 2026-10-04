@@ -9,7 +9,7 @@ import { Fragment } from 'react'
 import { cva } from '../../../../generated/styled-system/css/cva.js'
 import type { TokenImageCapability } from '../../../shared/renderer/capabilities.ts'
 import TokenOptionRow from '../../../shared/renderer/ui/TokenOptionRow.tsx'
-import type { NetworkLike, NetworkMetaLike } from '../../../shared/renderer/ui/tokenSelectorTypes.ts'
+import type { ChainLike, ChainMetaLike } from '../../../shared/renderer/ui/tokenSelectorTypes.ts'
 import {
   createDisplayBalance,
   formatBalanceNotionalValue,
@@ -19,8 +19,8 @@ import {
 import { formatUsdRate } from '../../asset-data/domain/balance/index.ts'
 import type { PositionGroups } from './positionModel.ts'
 
-type PortfolioNetworks = Record<string | number, NetworkLike>
-type PortfolioNetworkMetadata = Record<string | number, NetworkMetaLike>
+type PortfolioChains = Record<string | number, ChainLike>
+type PortfolioChainMetadata = Record<string | number, ChainMetaLike>
 
 const searchRecipe = cva({ base: { flexShrink: 0, paddingInline: '5', paddingBlockEnd: '4' } })
 const listRecipe = cva({
@@ -42,8 +42,8 @@ export interface PositionsViewProps {
   dustRowsVisible: number
   groups: PositionGroups
   imageCapability: TokenImageCapability
-  networks: PortfolioNetworks
-  networksMeta: PortfolioNetworkMetadata
+  chains: PortfolioChains
+  chainsMeta: PortfolioChainMetadata
   onChangeQuery: (query: string) => void
   onOpenAsset: (asset: DisplayedBalance) => void
   onShowMoreDust: () => void
@@ -58,14 +58,14 @@ export interface PositionsViewProps {
 function PositionRow({
   balance,
   imageCapability,
-  networks,
-  networksMeta,
+  chains,
+  chainsMeta,
   onOpen
 }: {
   balance: BalanceSummary
   imageCapability: TokenImageCapability
-  networks: PortfolioNetworks
-  networksMeta: PortfolioNetworkMetadata
+  chains: PortfolioChains
+  chainsMeta: PortfolioChainMetadata
   onOpen: (balance: DisplayedBalance) => void
 }) {
   const displayed = createDisplayBalance(balance)
@@ -90,8 +90,8 @@ function PositionRow({
       <TokenOptionRow
         imageCapability={imageCapability}
         item={item}
-        networks={networks}
-        networksMeta={networksMeta}
+        chains={chains}
+        chainsMeta={chainsMeta}
         showRightSubLabel
       />
     </Button>
@@ -126,8 +126,8 @@ export function PositionsView({
   dustRowsVisible,
   groups,
   imageCapability,
-  networks,
-  networksMeta,
+  chains,
+  chainsMeta,
   onChangeQuery,
   onOpenAsset,
   onShowMoreDust,
@@ -150,8 +150,8 @@ export function PositionsView({
         key={`${balance.chainId}:${balance.address}`}
         balance={balance}
         imageCapability={imageCapability}
-        networks={networks}
-        networksMeta={networksMeta}
+        chains={chains}
+        chainsMeta={chainsMeta}
         onOpen={onOpenAsset}
       />
     ))

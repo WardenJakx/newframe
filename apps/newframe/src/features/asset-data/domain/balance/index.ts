@@ -60,18 +60,18 @@ interface NativeCurrencyInfo {
   symbol?: string
 }
 
-interface NetworkMetaLike {
+interface ChainMetaLike {
   nativeCurrency?: NativeCurrencyInfo
 }
 
-type NetworkMap = Record<string | number, ChainLike>
-type NetworkMetaMap = Record<string | number, NetworkMetaLike>
+type ChainMap = Record<string | number, ChainLike>
+type ChainMetaMap = Record<string | number, ChainMetaLike>
 
 interface BalanceSummaryOptions {
   rawBalances: BalanceInput[]
   assetRates?: AssetRateMap
-  networks?: NetworkMap
-  networksMeta?: NetworkMetaMap
+  chains?: ChainMap
+  chainsMeta?: ChainMetaMap
   tokens?: TokenCatalog
   includeChain?: (chain: ChainLike, balance: BalanceInput) => boolean
   includeBalance?: (balance: BalanceInput) => boolean
@@ -83,8 +83,8 @@ interface BalanceSummarySelectorOptions extends BalanceSummaryOptions {
 
 const UNKNOWN = '?'
 const includeAllChains = () => true
-const EMPTY_NETWORKS: NetworkMap = {}
-const EMPTY_NETWORKS_META: NetworkMetaMap = {}
+const EMPTY_CHAINS: ChainMap = {}
+const EMPTY_CHAINS_META: ChainMetaMap = {}
 const EMPTY_ASSET_RATES: AssetRateMap = {}
 const EMPTY_TOKENS: TokenCatalog = { byId: {}, accountTokenIds: {} }
 export const MAINNET_ETH_ICON = 'https://assets.coingecko.com/coins/images/279/large/ethereum.png?1595348880'
@@ -145,19 +145,19 @@ export function createBalance(
 function createBalanceSummary({
   rawBalance,
   assetRates = {},
-  networks = {},
-  networksMeta = {},
+  chains = {},
+  chainsMeta = {},
   tokens = { byId: {}, accountTokenIds: {} }
 }: {
   rawBalance: BalanceInput
   assetRates?: AssetRateMap
-  networks?: NetworkMap
-  networksMeta?: NetworkMetaMap
+  chains?: ChainMap
+  chainsMeta?: ChainMetaMap
   tokens?: TokenCatalog
 }): BalanceSummary {
-  const chain = networks[rawBalance.chainId] ?? {}
+  const chain = chains[rawBalance.chainId] ?? {}
   const isNative = isNativeCurrency(rawBalance.address)
-  const nativeCurrencyInfo = networksMeta[rawBalance.chainId]?.nativeCurrency ?? {}
+  const nativeCurrencyInfo = chainsMeta[rawBalance.chainId]?.nativeCurrency ?? {}
   const token = tokenFromBalance(tokens, rawBalance, nativeCurrencyInfo)
   const decimals = token?.decimals ?? rawBalance.decimals ?? 18
   const resolvedRate = resolveAssetRate(
@@ -192,19 +192,19 @@ function createBalanceSummary({
 export function createBalanceSummaries({
   rawBalances,
   assetRates = EMPTY_ASSET_RATES,
-  networks = EMPTY_NETWORKS,
-  networksMeta = EMPTY_NETWORKS_META,
+  chains = EMPTY_CHAINS,
+  chainsMeta = EMPTY_CHAINS_META,
   tokens = EMPTY_TOKENS,
   includeChain = includeAllChains,
   includeBalance = hasPositiveBalance
 }: BalanceSummaryOptions) {
   return rawBalances
     .filter((rawBalance) => {
-      const chain = networks[rawBalance.chainId]
-      return !!chain && !!networksMeta[rawBalance.chainId] && includeChain(chain, rawBalance)
+      const chain = chains[rawBalance.chainId]
+      return !!chain && !!chainsMeta[rawBalance.chainId] && includeChain(chain, rawBalance)
     })
     .filter(includeBalance)
-    .map((rawBalance) => createBalanceSummary({ rawBalance, assetRates, networks, networksMeta, tokens }))
+    .map((rawBalance) => createBalanceSummary({ rawBalance, assetRates, chains, chainsMeta, tokens }))
     .sort(sortBalanceSummariesByTotalValue)
 }
 
@@ -214,16 +214,16 @@ export function createBalanceSummarySelector() {
     rawBalances: unknown
     assetRates: unknown
     tokens: unknown
-    networks: unknown
-    networksMeta: unknown
+    chains: unknown
+    chainsMeta: unknown
     balances: BalanceSummary[]
   } | null = null
 
   return ({
     rawBalances,
     assetRates = EMPTY_ASSET_RATES,
-    networks = EMPTY_NETWORKS,
-    networksMeta = EMPTY_NETWORKS_META,
+    chains = EMPTY_CHAINS,
+    chainsMeta = EMPTY_CHAINS_META,
     tokens = EMPTY_TOKENS,
     includeChain = includeAllChains,
     includeBalance = hasPositiveBalance,
@@ -235,8 +235,8 @@ export function createBalanceSummarySelector() {
       cache.rawBalances === rawBalances &&
       cache.assetRates === assetRates &&
       cache.tokens === tokens &&
-      cache.networks === networks &&
-      cache.networksMeta === networksMeta
+      cache.chains === chains &&
+      cache.chainsMeta === chainsMeta
     ) {
       return cache.balances
     }
@@ -244,8 +244,8 @@ export function createBalanceSummarySelector() {
     const balances = createBalanceSummaries({
       rawBalances,
       assetRates,
-      networks,
-      networksMeta,
+      chains,
+      chainsMeta,
       tokens,
       includeChain,
       includeBalance
@@ -256,8 +256,8 @@ export function createBalanceSummarySelector() {
       rawBalances,
       assetRates,
       tokens,
-      networks,
-      networksMeta,
+      chains,
+      chainsMeta,
       balances
     }
 

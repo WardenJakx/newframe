@@ -1,4 +1,4 @@
-import { outbound } from '../../../../platform/outbound/index.ts'
+import { internet } from '../../../../platform/internet/index.ts'
 import type { Balance, Token } from '../../../../platform/state-store/state/index.ts'
 import type { Address } from '../../../../shared/domain/address.ts'
 import { formatUnits } from '../../../../shared/domain/units.ts'
@@ -12,7 +12,7 @@ import type {
   PortfolioSnapshot
 } from '../types.ts'
 
-type Fetch = typeof outbound.request
+type Fetch = typeof internet.request
 
 interface ZerionProviderOptions {
   apiKey: string
@@ -428,7 +428,7 @@ export default class ZerionPortfolioProvider implements PortfolioProvider {
   constructor({
     apiKey,
     baseUrl = 'https://api.zerion.io/v1',
-    fetch: fetchImpl = outbound.request,
+    fetch: fetchImpl = internet.request,
     requestPolicy,
     requestPolicyOptions
   }: ZerionProviderOptions) {
@@ -440,7 +440,7 @@ export default class ZerionPortfolioProvider implements PortfolioProvider {
     this.baseUrl = baseUrl.replace(/\/+$/, '')
     this.requestPolicy =
       requestPolicy ??
-      (fetchImpl === outbound.request
+      (fetchImpl === internet.request
         ? getSharedRequestPolicy(fetchImpl)
         : new ProviderRequestPolicy(fetchImpl, requestPolicyOptions))
   }

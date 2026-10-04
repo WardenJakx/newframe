@@ -102,8 +102,8 @@ export function accountBalanceLabel(input: {
   account: AccountProjection
   assetRates: WalletRendererState['assetRates']
   balances: WalletRendererState['balances']
-  networks: WalletRendererState['networks']['ethereum']
-  networksMeta: WalletRendererState['networksMeta']['ethereum']
+  chains: WalletRendererState['chains']['ethereum']
+  chainsMeta: WalletRendererState['chainsMeta']['ethereum']
   selectBalanceSummaries: BalanceSummarySelector
   showTestnets: boolean
   tokens: WalletRendererState['tokens']
@@ -116,8 +116,8 @@ export function accountBalanceLabel(input: {
     rawBalances,
     assetRates: input.assetRates,
     tokens: input.tokens,
-    networks: input.networks,
-    networksMeta: input.networksMeta,
+    chains: input.chains,
+    chainsMeta: input.chainsMeta,
     includeChain: (chain) => (!chain.isTestnet || input.showTestnets) && Boolean(chain.on),
     cacheKey: `${input.account.address}:${input.showTestnets ? 'testnets' : 'mainnets'}`
   })
@@ -134,8 +134,8 @@ export function buildAccountListModel(input: {
   assetRates: WalletRendererState['assetRates']
   balances: WalletRendererState['balances']
   currentAccountId: string
-  networks: WalletRendererState['networks']['ethereum']
-  networksMeta: WalletRendererState['networksMeta']['ethereum']
+  chains: WalletRendererState['chains']['ethereum']
+  chainsMeta: WalletRendererState['chainsMeta']['ethereum']
   profiles: ProfileProjection[]
   query: string
   selectBalanceSummaries: BalanceSummarySelector

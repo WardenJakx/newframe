@@ -25,7 +25,7 @@ const AddToken = (props: Omit<ComponentProps<typeof AddTokenController>, 'capabi
   <AddTokenController {...props} capability={tokensCapability} />
 )
 
-const networks = {
+const chains = {
   ethereum: {
     1: {
       id: 1,
@@ -44,7 +44,7 @@ const networks = {
   }
 }
 
-const networksMeta = {
+const chainsMeta = {
   ethereum: {
     1: { primaryColor: 'accent1', nativeCurrency: { symbol: 'ETH' } },
     137: { primaryColor: 'accent7', nativeCurrency: { symbol: 'MATIC' } }
@@ -54,8 +54,8 @@ const networksMeta = {
 beforeEach(() => {
   fixture.state.reset({
     accounts: {},
-    networks,
-    networksMeta,
+    chains,
+    chainsMeta,
     operations: {},
     tokens: { byId: {}, accountTokenIds: {} }
   })

@@ -42,7 +42,7 @@ it('projects the paginated local Safe service through public observation capabil
         })
       }
     },
-    client: createSafeClient({ request: fetch, networks: { '31337': `${server.url}api` } })
+    client: createSafeClient({ request: fetch, chains: { '31337': `${server.url}api` } })
   })
   try {
     expect(
@@ -144,7 +144,7 @@ it('ignores a real HTTP refresh response released after Safe removal', async () 
         })
       }
     },
-    client: createSafeClient({ request: fetch, networks: { '31337': `${server.url}api` } })
+    client: createSafeClient({ request: fetch, chains: { '31337': `${server.url}api` } })
   })
   try {
     service.import(

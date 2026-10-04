@@ -43,7 +43,7 @@ export interface OperationServices {
   safes: import('../../../features/accounts/main/safe.ts').SafeService
   accountOnboarding: import('../../../features/accounts/main/accountOnboarding/service.ts').AccountOnboardingService
   agent: import('../../../features/agent-access/main/index.ts').AgentService
-  networks: import('../../../features/networks/main/service.ts').NetworkService
+  chains: import('../../../features/chains/main/service.ts').ChainService
   portfolio: import('../../../features/portfolio/main/service.ts').PortfolioService
   profiles: import('../../../features/accounts/main/profiles/service.ts').ProfileService
   platform: import('../platform/service.ts').PlatformService
@@ -226,7 +226,7 @@ export function createOperationRegistry(services: OperationServices) {
     accountOnboarding,
     safes,
     agent,
-    networks,
+    chains,
     portfolio,
     platform,
     profiles,
@@ -399,11 +399,11 @@ export function createOperationRegistry(services: OperationServices) {
     'wallet.lock': defineOwnedCommand('wallet.lock', (command, context) =>
       security.lock(command, operationOwner(context))
     ),
-    'network.primary-rpc-set': defineAcknowledgedCommand('network.primary-rpc-set', ({ chainId, url }) =>
-      networks.setPrimaryRpc(chainId, url)
+    'chain.primary-rpc-set': defineAcknowledgedCommand('chain.primary-rpc-set', ({ chainId, url }) =>
+      chains.setPrimaryRpc(chainId, url)
     ),
-    'network.activation-set': defineAcknowledgedCommand('network.activation-set', ({ chainId, enabled }) =>
-      networks.setActivation(chainId, enabled)
+    'chain.activation-set': defineAcknowledgedCommand('chain.activation-set', ({ chainId, enabled }) =>
+      chains.setActivation(chainId, enabled)
     ),
     'sidetray.open': defineAcknowledgedCommand('sidetray.open', (command) => platform.openSideTray(command)),
     'flash.order-cancel': defineAcknowledgedCommand('flash.order-cancel', (command, _event, context) =>
@@ -435,9 +435,9 @@ export function createOperationRegistry(services: OperationServices) {
     'permission.clear': defineAcknowledgedCommand('permission.clear', ({ accountId, originId }) =>
       accountMutations.clearPermission(accountId, originId)
     ),
-    'network.request-resolve': defineAcknowledgedCommand(
-      'network.request-resolve',
-      (command) => requests.resolveNetwork(command),
+    'chain.request-resolve': defineAcknowledgedCommand(
+      'chain.request-resolve',
+      (command) => requests.resolveChain(command),
       'request_not_found',
       ['tray']
     ),
@@ -625,9 +625,9 @@ export function createOperationRegistry(services: OperationServices) {
       'request_not_found',
       ['tray']
     ),
-    'network.remove': defineAcknowledgedCommand(
-      'network.remove',
-      ({ chainId }) => networks.remove(chainId),
+    'chain.remove': defineAcknowledgedCommand(
+      'chain.remove',
+      ({ chainId }) => chains.remove(chainId),
       'not_found',
       ['tray']
     ),
@@ -699,7 +699,7 @@ export function createOperationRegistry(services: OperationServices) {
     'safe.discover': defineQuery('safe.discover', {
       roles: ['wallet-ui'],
       entrypoints: ['tray'],
-      handle: ({ address, chainId }) => safes.discoverNetworks(address, chainId),
+      handle: ({ address, chainId }) => safes.discoverChains(address, chainId),
       failure: []
     }),
     'safe.simulate': defineQuery('safe.simulate', {

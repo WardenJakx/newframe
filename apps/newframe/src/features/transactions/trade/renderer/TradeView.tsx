@@ -365,8 +365,8 @@ export function TradeView({
         }}
         items={asset.selectorItems}
         searchableItems={asset.searchableItems}
-        networks={model.networks}
-        networksMeta={model.networksMeta}
+        chains={model.chains}
+        chainsMeta={model.chainsMeta}
         onOpenChange={(open) => events.onAssetOpenChange(asset.field, open)}
         onSelect={(assetId) => events.onSelectAsset(asset.field, assetId)}
         open={asset.open}

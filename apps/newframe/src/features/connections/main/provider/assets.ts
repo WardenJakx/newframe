@@ -20,7 +20,7 @@ const createStoreApi = (store: CanonicalStoreApi) => ({
     return balances[account] ?? []
   },
   getNativeCurrency: (chainId: number): NativeCurrency | undefined =>
-    store.getState().main.networksMeta.ethereum[chainId]?.nativeCurrency,
+    store.getState().main.chainsMeta.ethereum[chainId]?.nativeCurrency,
   getToken: (balance: Balance): Token | undefined => {
     const tokens = store.getState().main.tokens.byId as Record<string, Token | undefined>
     return tokens[toTokenId(balance)]

@@ -3,21 +3,21 @@ import { Text } from '@newframe/ui/text'
 
 import type { TokenImageCapability } from '../capabilities.ts'
 import ChainTokenIcon from './ChainTokenIcon.tsx'
-import type { NetworkLike, NetworkMetaLike, TokenSelectorItem } from './tokenSelectorTypes.ts'
+import type { ChainLike, ChainMetaLike, TokenSelectorItem } from './tokenSelectorTypes.ts'
 
 interface TokenOptionRowProps {
   imageCapability: TokenImageCapability
   item: TokenSelectorItem
-  networks: Record<string | number, NetworkLike>
-  networksMeta: Record<string | number, NetworkMetaLike>
+  chains: Record<string | number, ChainLike>
+  chainsMeta: Record<string | number, ChainMetaLike>
   showRightSubLabel?: boolean
 }
 
 export default function TokenOptionRow({
   imageCapability,
   item,
-  networks,
-  networksMeta,
+  chains,
+  chainsMeta,
   showRightSubLabel = false
 }: TokenOptionRowProps) {
   const symbol = item.symbol || '?'
@@ -28,8 +28,8 @@ export default function TokenOptionRow({
         chainId={item.chainId}
         imageCapability={imageCapability}
         logoURI={item.logoURI}
-        networks={networks}
-        networksMeta={networksMeta}
+        chains={chains}
+        chainsMeta={chainsMeta}
         size='md'
         symbol={symbol}
         tokenId={item.id}

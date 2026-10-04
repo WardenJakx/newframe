@@ -468,7 +468,7 @@ export const safeWatchStage: VisualStage = {
         await activityDetails.getByText('Confirmed', { exact: true }).waitFor()
         await runtime.screenshot(tray, '08j-safe-execution-activity-confirmed.png')
         await activityDetails.getByRole('button', { name: 'Back to activity', exact: true }).click()
-        await driver.selectNetwork('Newframe Local Anvil')
+        await driver.selectChain('Newframe Local Anvil')
         const activityList = tray.getByRole('group', { name: 'Activity list' })
         for (const [accountId, filename] of [
           [id, '08k-safe-account-activity.png'],

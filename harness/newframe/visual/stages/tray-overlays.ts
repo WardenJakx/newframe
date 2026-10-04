@@ -90,12 +90,12 @@ export const trayOverlaysStage: VisualStage = {
     await receive.waitFor({ state: 'hidden' })
 
     await tray.getByRole('button', { name: 'Network filter' }).click()
-    const networks = tray.getByRole('dialog', { name: 'Networks' })
-    await networks.waitFor({ state: 'visible' })
+    const chains = tray.getByRole('dialog', { name: 'Networks' })
+    await chains.waitFor({ state: 'visible' })
     await sleep(500)
-    await runtime.screenshot(tray, '02i-networks-overlay.png')
-    await networks.getByRole('button', { name: 'Back' }).click()
-    await networks.waitFor({ state: 'hidden' })
+    await runtime.screenshot(tray, '02i-chains-overlay.png')
+    await chains.getByRole('button', { name: 'Back' }).click()
+    await chains.waitFor({ state: 'hidden' })
 
     await tray.getByRole('button', { name: 'Accounts', exact: true }).click()
     const accounts = tray.getByRole('dialog', { name: 'Accounts' })

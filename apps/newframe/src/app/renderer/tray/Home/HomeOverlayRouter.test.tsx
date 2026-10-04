@@ -18,7 +18,7 @@ import { homeCapability } from '../../capabilities/home.ts'
 import {
   activityCapability,
   connectionsCapability,
-  networksCapability,
+  chainsCapability,
   ordersCapability,
   portfolioCapability,
   securityCapability,
@@ -43,7 +43,7 @@ const capabilities: HomeCapabilities = {
   activity: activityCapability,
   connections: connectionsCapability,
   home: homeCapability,
-  networks: networksCapability,
+  chains: chainsCapability,
   orders: ordersCapability,
   portfolio: portfolioCapability,
   requests: requestCapabilities,
@@ -149,7 +149,7 @@ describe('HomeOverlayRouter feature navigation', () => {
     fixture.state.reset(walletState({}))
   })
 
-  it('translates an approved add-chain outcome into network navigation', async () => {
+  it('translates an approved add-chain outcome into chains navigation', async () => {
     const { user } = render(
       <HomeUiProvider>
         <Harness />
@@ -158,7 +158,7 @@ describe('HomeOverlayRouter feature navigation', () => {
     await user.click(screen.getByRole('button', { name: 'Open add chain' }))
     await user.click(screen.getByRole('button', { name: 'Add chain' }))
 
-    expect(screen.getByLabelText('Overlay state').textContent).toBe('networks')
+    expect(screen.getByLabelText('Overlay state').textContent).toBe('chains')
   })
 
   it('translates a rejected add-chain outcome into closing the overlay', async () => {
@@ -250,8 +250,8 @@ describe('HomeOverlayRouter retained menu layers', () => {
     await user.click(within(menu).getByRole('button', { name: 'Custom Tokens' }))
     const tokens = screen.getByRole('dialog', { name: 'Custom Tokens' })
     await user.click(screen.getByRole('button', { name: 'Add New Token' }))
-    const networksTrigger = screen.getByRole('link', { name: 'Enable it in Chains' })
-    await user.click(networksTrigger)
+    const chainsTrigger = screen.getByRole('link', { name: 'Enable it in Chains' })
+    await user.click(chainsTrigger)
 
     expect(tokens.parentElement!.hasAttribute('inert')).toBe(true)
     expect(menu.parentElement!.hasAttribute('inert')).toBe(true)
@@ -259,7 +259,7 @@ describe('HomeOverlayRouter retained menu layers', () => {
 
     expect(screen.getByRole('dialog', { name: 'Custom Tokens' })).toBe(tokens)
     expect(screen.getByText("Select token's chain")).toBeTruthy()
-    expect(document.activeElement).toBe(networksTrigger)
+    expect(document.activeElement).toBe(chainsTrigger)
     await user.keyboard('{Escape}')
     expect(screen.getByRole('dialog', { name: 'Custom Tokens' })).toBe(tokens)
     expect(screen.getByRole('button', { name: 'Add New Token' })).toBeTruthy()

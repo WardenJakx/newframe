@@ -1,7 +1,7 @@
 import { expect, it, mock, spyOn } from 'bun:test'
 
+import { internet } from '../../../platform/internet/index.ts'
 import type { IpcMainHandlerPort } from '../../../platform/ipc/main/operations.ts'
-import { outbound } from '../../../platform/outbound/index.ts'
 import createCanonicalStore from '../../../platform/state-store/createCanonicalStore.ts'
 import {
   createProductionCapabilities,
@@ -23,7 +23,7 @@ function createAdapters(): ProductionCapabilityAdapters {
     },
     accounts: { now: () => 42, persistence: { flush: mock() } } as never,
     images: { log: { warn: mock() } } as never,
-    network: {} as never,
+    chain: {} as never,
     platform: {} as never,
     portfolio: {} as never,
     security: {
@@ -176,7 +176,7 @@ it('releases registered handlers, account listeners, and Flash polling on dispos
         receiveAsset: asset
       }
     })
-    spyOn(outbound, 'isOpen').mockReturnValue(true)
+    spyOn(internet, 'isOpen').mockReturnValue(true)
     capabilities.flashService.startOpenOrderPolling()
 
     app.dispose()

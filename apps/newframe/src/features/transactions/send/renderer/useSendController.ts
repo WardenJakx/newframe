@@ -40,7 +40,7 @@ export function useSendController({
   capability: SendCapability
 }): { events: SendViewEvents; model: SendViewModel } {
   const selector = React.useMemo(() => createSideTrayWalletSelector(), [])
-  const { accounts, activity, balanceSummaries, currentAccount, networks, networksMeta, operations } =
+  const { accounts, activity, balanceSummaries, currentAccount, chains, chainsMeta, operations } =
     useSideTraySelector(selector)
   const [state, dispatch] = React.useReducer(sendReducer, assetId, createInitialSendState)
   const previousAccountIdRef = React.useRef(currentAccount?.id ?? '')
@@ -178,8 +178,8 @@ export function useSendController({
         recipientAddress: state.recipient.address,
         senderAddress: currentAccount?.address
       }),
-    networks,
-    networksMeta,
+    chains,
+    chainsMeta,
     recipient: state.recipient,
     recipientAccounts,
     recipientInput: state.recipientInput,

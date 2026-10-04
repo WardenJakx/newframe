@@ -8,7 +8,7 @@ export const anvilPositionsStage: VisualStage = {
     const { harness } = await requireAccounts(context)
     await driver.clearPanelAndOverlays()
     await driver.setSelectedAccount(harness)
-    await driver.selectNetwork('Newframe Local Anvil')
+    await driver.selectChain('Newframe Local Anvil')
     await tray.getByRole('tab', { name: 'Positions' }).click()
     await driver.waitForState(
       (state) => Boolean(driver.nativeAnvilBalance(state, harness.address)),
@@ -17,10 +17,10 @@ export const anvilPositionsStage: VisualStage = {
     )
     const ethAssetDetails = await revealAssetDetailsButton(tray, 'ETH')
     await ethAssetDetails.waitFor({ state: 'visible', timeout: 5_000 }).catch(async (err: unknown) => {
-      await runtime.screenshot(tray, '09-anvil-network-positions.png')
+      await runtime.screenshot(tray, '09-anvil-chain-positions.png')
       throw err
     })
-    await runtime.screenshot(tray, '09-anvil-network-positions.png')
+    await runtime.screenshot(tray, '09-anvil-chain-positions.png')
     await ethAssetDetails.click()
     await tray.getByRole('dialog', { name: 'Asset details' }).waitFor({ state: 'visible' })
     await runtime.screenshot(tray, '10-eth-asset-details.png')

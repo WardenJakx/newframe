@@ -10,16 +10,16 @@ import type { Token } from '../../../../features/tokens/domain/state/token.ts'
 import type { SideTrayRendererState } from '../../contract/projections.ts'
 
 type SideTrayWalletAccount = SideTrayRendererState['accounts'][string]
-type SideTrayWalletEthereumNetwork = SideTrayRendererState['networks']['ethereum'][number]
-type SideTrayWalletEthereumNetworkMeta = SideTrayRendererState['networksMeta']['ethereum'][number]
+type SideTrayWalletEthereumChain = SideTrayRendererState['chains']['ethereum'][number]
+type SideTrayWalletEthereumChainMeta = SideTrayRendererState['chainsMeta']['ethereum'][number]
 
 export interface SideTrayWalletSelectorValue {
   accounts: SideTrayWalletAccount[]
   activity: SideTrayRendererState['activity']
   balanceSummaries: BalanceSummary[]
   currentAccount: SideTrayWalletAccount | null
-  networks: Record<string | number, SideTrayWalletEthereumNetwork>
-  networksMeta: Record<string | number, SideTrayWalletEthereumNetworkMeta>
+  chains: Record<string | number, SideTrayWalletEthereumChain>
+  chainsMeta: Record<string | number, SideTrayWalletEthereumChainMeta>
   operations: SideTrayRendererState['operations']
   orders: NonNullable<SideTrayRendererState['orders']>
   runtime: SideTrayRendererState['runtime']
@@ -98,8 +98,8 @@ export function createSideTrayWalletSelector() {
     const globalTokens = previousGlobalTokens
     const rawBalances = selectSelectableBalances(accountBalances, globalTokens)
     const globalTokenIds = new Set(globalTokens.map(toTokenId))
-    const networks = state.networks.ethereum
-    const networksMeta = state.networksMeta.ethereum
+    const chains = state.chains.ethereum
+    const chainsMeta = state.chainsMeta.ethereum
     const operations = state.operations
     const orders = state.orders ?? EMPTY_ORDERS
     const assetRates = state.assetRates
@@ -110,8 +110,8 @@ export function createSideTrayWalletSelector() {
       rawBalances,
       assetRates,
       tokens,
-      networks,
-      networksMeta,
+      chains,
+      chainsMeta,
       includeChain: (chain) => !!chain.on,
       includeBalance: (balance) => hasPositiveBalance(balance) || globalTokenIds.has(toTokenId(balance)),
       cacheKey: currentAccount?.address ?? ''
@@ -122,8 +122,8 @@ export function createSideTrayWalletSelector() {
       previousResult.activity === activity &&
       previousResult.balanceSummaries === balanceSummaries &&
       previousResult.currentAccount === currentAccount &&
-      previousResult.networks === networks &&
-      previousResult.networksMeta === networksMeta &&
+      previousResult.chains === chains &&
+      previousResult.chainsMeta === chainsMeta &&
       previousResult.operations === operations &&
       previousResult.orders === orders &&
       previousResult.runtime === runtime
@@ -136,8 +136,8 @@ export function createSideTrayWalletSelector() {
       activity,
       balanceSummaries,
       currentAccount,
-      networks,
-      networksMeta,
+      chains,
+      chainsMeta,
       operations,
       orders,
       runtime

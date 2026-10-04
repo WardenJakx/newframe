@@ -63,7 +63,7 @@ type AddTokenProps = {
   onBack?: () => void
   onDone?: () => void
   onNavigate?: (data: AddTokenNotifyData) => void
-  onOpenNetworks?: () => void
+  onOpenChains?: () => void
 }
 
 export type AddTokenNotifyData = {
@@ -97,16 +97,16 @@ const TokenError = ({ text, onBack, onContinue }: TokenErrorProps) => {
 }
 
 const selectChainState = (state: WalletRendererState) => ({
-  chains: state.networks.ethereum,
-  chainMetadata: state.networksMeta.ethereum
+  chains: state.chains.ethereum,
+  chainMetadata: state.chainsMeta.ethereum
 })
 
 function SelectChain({
   onNavigate,
-  onOpenNetworks
+  onOpenChains
 }: {
   onNavigate: (data: AddTokenNotifyData) => void
-  onOpenNetworks: () => void
+  onOpenChains: () => void
 }) {
   const { chains, chainMetadata } = useWalletSelector(useShallow(selectChainState))
   const metadataByChain: Record<number, (typeof chainMetadata)[number] | undefined> = chainMetadata
@@ -128,7 +128,7 @@ function SelectChain({
                 onPress={() => onNavigate({ chain: { id: chainId, color: primaryColor, name: chain.name } })}
                 width='full'
               >
-                <ChainIcon chainId={chainId} networks={chains} networksMeta={chainMetadata} size='large' />
+                <ChainIcon chainId={chainId} chains={chains} chainsMeta={chainMetadata} size='large' />
                 <Text variant='label'>{chain.name}</Text>
               </Button>
             )
@@ -139,7 +139,7 @@ function SelectChain({
         <Text tone='muted' variant='supporting'>
           Chain not listed?
         </Text>
-        <Link href='#networks' label='Enable it in Chains' onPress={onOpenNetworks}>
+        <Link href='#chains' label='Enable it in Chains' onPress={onOpenChains}>
           <Text tone='accent' variant='compactAction'>
             Enable it in Chains
           </Text>
@@ -482,12 +482,12 @@ const AddToken = ({
   onBack = () => {},
   onDone = () => {},
   onNavigate = () => {},
-  onOpenNetworks = () => {}
+  onOpenChains = () => {}
 }: AddTokenProps) => {
   const { address, chain, error, tokenData, isEdit } = data?.notifyData ?? {}
 
   if (!chain) {
-    return <SelectChain onNavigate={onNavigate} onOpenNetworks={onOpenNetworks} />
+    return <SelectChain onNavigate={onNavigate} onOpenChains={onOpenChains} />
   }
   if (!address) {
     return <EnterAddress capability={capability} chain={chain} onNavigate={onNavigate} />

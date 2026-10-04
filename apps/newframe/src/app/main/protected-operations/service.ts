@@ -3,6 +3,7 @@ import crypto from 'crypto'
 import { recoverTypedSignature } from '@metamask/eth-sig-util'
 import log from 'electron-log'
 
+import type { Chain, Chains } from '../../../features/chains/main/index.ts'
 import type { AccountRequestPort } from '../../../features/connections/main/provider/accountRequestPort.ts'
 import {
   feeTotalOverMax,
@@ -10,7 +11,6 @@ import {
   resError,
   encodePersonalSignMessage
 } from '../../../features/connections/main/provider/helpers.ts'
-import type { Chain, Chains } from '../../../features/networks/main/index.ts'
 import type {
   AccountRequest,
   TransactionRequest,
@@ -259,7 +259,7 @@ export class ProtectedOperationsService {
 
     if (feeTotalOverMax(rawTx, maxTotalFee)) {
       const chainId = parseInt(rawTx.chainId)
-      const symbol = this.store.getState().main.networks.ethereum[chainId]?.symbol
+      const symbol = this.store.getState().main.chains.ethereum[chainId]?.symbol
       const displayAmount = symbol ? ` (${Math.floor(maxTotalFee / 1e18)} ${symbol})` : ''
 
       const err = `Max fee is over hard limit${displayAmount}`

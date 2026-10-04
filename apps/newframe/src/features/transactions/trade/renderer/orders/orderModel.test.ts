@@ -117,7 +117,7 @@ describe('orderModel', () => {
     }
     const options = {
       accountAddress: order.accountAddress,
-      networks: {
+      chains: {
         1: { id: 1, isTestnet: false },
         8453: { id: 8453, isTestnet: false }
       },

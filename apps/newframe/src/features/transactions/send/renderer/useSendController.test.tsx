@@ -48,7 +48,7 @@ function initializeSendState(balances: BalanceFixture[] = [nativeBalance()]) {
       [sender.address]: balances,
       [recipient.address]: balances
     },
-    networks: {
+    chains: {
       ethereum: {
         [chainId]: {
           id: chainId,
@@ -59,7 +59,7 @@ function initializeSendState(balances: BalanceFixture[] = [nativeBalance()]) {
         }
       }
     },
-    networksMeta: {
+    chainsMeta: {
       ethereum: {
         [chainId]: {
           nativeCurrency: {

@@ -25,7 +25,7 @@ export function createAssetRateService({ store, clock }: AssetRateServiceDepende
   const nativeTicker = (asset: AssetRateReference) =>
     asset.nativeTicker ??
     (asset.address === NATIVE_CURRENCY
-      ? store.getState().main.networksMeta.ethereum[asset.chainId]?.nativeCurrency.symbol
+      ? store.getState().main.chainsMeta.ethereum[asset.chainId]?.nativeCurrency.symbol
       : undefined)
 
   return {

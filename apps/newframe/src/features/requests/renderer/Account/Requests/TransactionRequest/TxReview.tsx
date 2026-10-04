@@ -11,7 +11,7 @@ import { getAddress } from '../../../../../../shared/domain/address.ts'
 import { toBigInt } from '../../../../../../shared/domain/units.ts'
 import { AddressIdentity, shortAddress } from '../../../../../../shared/renderer/ui/AddressIdentity.tsx'
 import { persistedImageSource } from '../../../../../asset-data/domain/image/index.ts'
-import { chainUsesOptimismFees } from '../../../../../networks/domain/chain/fees.ts'
+import { chainUsesOptimismFees } from '../../../../../chains/domain/chain/fees.ts'
 import { NATIVE_CURRENCY } from '../../../../../tokens/domain/constants.ts'
 import { tokenForId, tokenImageSource } from '../../../../../tokens/domain/index.ts'
 import type { TransactionFeeLevel } from '../../../../../transactions/domain/fees.ts'
@@ -29,8 +29,8 @@ import type { TransactionDataView, TransactionRequestView } from '../requestView
 import {
   useAddressIdentities,
   useAssetRate,
-  useNetwork,
-  useNetworkMetadata,
+  useChain,
+  useChainMetadata,
   useOriginName,
   useOrigins,
   useTokens
@@ -82,14 +82,14 @@ export type TxReviewProps = {
   identities?: ReturnType<typeof useAddressIdentities>
   nativeCurrencyRate: ReturnType<typeof useAssetRate>
   req: TxReviewData
-  network: Pick<ReturnType<typeof useNetwork>, 'name' | 'isTestnet'>
-  networkMetadata: Pick<ReturnType<typeof useNetworkMetadata>, 'image'> & {
+  chain: Pick<ReturnType<typeof useChain>, 'name' | 'isTestnet'>
+  chainMetadata: Pick<ReturnType<typeof useChainMetadata>, 'image'> & {
     nativeCurrency?: Pick<
-      NonNullable<ReturnType<typeof useNetworkMetadata>['nativeCurrency']>,
+      NonNullable<ReturnType<typeof useChainMetadata>['nativeCurrency']>,
       'symbol' | 'decimals' | 'image'
     >
   }
-  networkIcon?: string
+  chainIcon?: string
   originName: string
   favicon?: string
   tokens?: ReturnType<typeof useTokens>
@@ -318,10 +318,10 @@ export function TxReviewView(props: TxReviewProps) {
   const { req } = props
   const chainId = parseInt(req.data.chainId, 16)
   const chain = { type: 'ethereum' as const, id: chainId }
-  const { network, networkMetadata: meta } = props
+  const { chain: storedChain, chainMetadata: meta } = props
   const nativeCurrency = meta.nativeCurrency ?? { symbol: '?', icon: undefined }
   const symbol = nativeCurrency.symbol || '?'
-  const chainName = network.name ?? `Chain ${chainId}`
+  const chainName = storedChain.name ?? `Chain ${chainId}`
   const originName = props.originName || req.origin
   const to = req.data.to ? getAddress(req.data.to) : ''
   const calldata = req.data.data
@@ -458,8 +458,8 @@ export function TxReviewView(props: TxReviewProps) {
       wrapDetailValues
       originName={originName}
       favicon={props.favicon}
-      networkName={chainName}
-      networkIcon={props.networkIcon ?? persistedImageSource(meta.image)}
+      chainName={chainName}
+      chainIcon={props.chainIcon ?? persistedImageSource(meta.image)}
       statusLabel={displayStatus(req)}
       notice={notice}
       effectsEmptyText={effectsEmptyText}
@@ -485,7 +485,7 @@ export function TxReviewView(props: TxReviewProps) {
           <TxFeeSummary
             {...props.fee}
             chain={chain}
-            isTestnet={Boolean(network.isTestnet)}
+            isTestnet={Boolean(storedChain.isTestnet)}
             nativeCurrencyRate={props.nativeCurrencyRate}
             nativeCurrency={nativeCurrency}
           />
@@ -498,8 +498,8 @@ export function TxReviewView(props: TxReviewProps) {
 
 export default function TxReviewWithState(props: TxReviewWithStateProps) {
   const chainId = parseInt(props.req.data.chainId, 16)
-  const network = useNetwork('ethereum', chainId)
-  const networkMetadata = useNetworkMetadata('ethereum', chainId)
+  const chain = useChain('ethereum', chainId)
+  const chainMetadata = useChainMetadata('ethereum', chainId)
   const originName = useOriginName(props.req.origin)
   const origins = useOrigins()
   const tokens = useTokens()
@@ -507,7 +507,7 @@ export default function TxReviewWithState(props: TxReviewWithStateProps) {
   const nativeCurrencyRate = useAssetRate({
     chainId,
     address: NATIVE_CURRENCY,
-    nativeTicker: networkMetadata.nativeCurrency?.symbol ?? '?'
+    nativeTicker: chainMetadata.nativeCurrency?.symbol ?? '?'
   })
   const { open, feeLevel, selectFeeLevel } = useRequestView()
   const paidFee = getPaidTransactionFee(props.req)
@@ -521,17 +521,17 @@ export default function TxReviewWithState(props: TxReviewWithStateProps) {
         editable: !paidFee && !props.req.status && !props.req.locked,
         selectedRate:
           (!props.req.status && !props.req.locked ? feeLevel : undefined) ??
-          (props.req.feesUpdatedByUser ? 'custom' : (networkMetadata.gas?.price.selected ?? 'fast')),
+          (props.req.feesUpdatedByUser ? 'custom' : (chainMetadata.gas?.price.selected ?? 'fast')),
         onSelectRate: (level) => {
-          selectFeeLevel(props.req, level, networkMetadata.gas?.price)
+          selectFeeLevel(props.req, level, chainMetadata.gas?.price)
           void props.capabilities.transaction.setFeePreference({ chainId, level })
         },
         openAdjustFee: () => open({ step: 'adjustFee' })
       }}
       identities={identities}
       nativeCurrencyRate={nativeCurrencyRate}
-      network={network}
-      networkMetadata={networkMetadata}
+      chain={chain}
+      chainMetadata={chainMetadata}
       originName={originName}
       favicon={persistedImageSource(origins[props.req.origin]?.image)}
       tokens={tokens}

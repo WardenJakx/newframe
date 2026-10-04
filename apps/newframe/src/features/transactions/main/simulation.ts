@@ -75,9 +75,9 @@ export function createTransactionSimulationProjection(
 ): TransactionSimulationProjection {
   return {
     getNativeCurrency(chainId) {
-      const metadata = canonicalStore.getState().main.networksMeta.ethereum as Record<
+      const metadata = canonicalStore.getState().main.chainsMeta.ethereum as Record<
         number,
-        ReturnType<typeof canonicalStore.getState>['main']['networksMeta']['ethereum'][number] | undefined
+        ReturnType<typeof canonicalStore.getState>['main']['chainsMeta']['ethereum'][number] | undefined
       >
       return metadata[chainId]?.nativeCurrency ?? {}
     },

@@ -60,12 +60,12 @@ beforeEach(() => {
   fixture.state.reset({
     accounts: {},
     assetRates: {},
-    networks: {
+    chains: {
       ethereum: {
         137: { name: 'Polygon', isTestnet: false }
       }
     },
-    networksMeta: {
+    chainsMeta: {
       ethereum: {
         137: {
           nativeCurrency: { symbol: 'MATIC' }
@@ -154,8 +154,8 @@ function safeRequestFixture() {
       }
     },
     assetRates: {},
-    networks: { ethereum: { 137: { name: 'Polygon', isTestnet: false } } },
-    networksMeta: { ethereum: { 137: { nativeCurrency: { symbol: 'MATIC', decimals: 18 } } } },
+    chains: { ethereum: { 137: { name: 'Polygon', isTestnet: false } } },
+    chainsMeta: { ethereum: { 137: { nativeCurrency: { symbol: 'MATIC', decimals: 18 } } } },
     origins: { 'test-origin': { name: 'Test Dapp' } },
     tokens: { byId: {}, accountTokenIds: {} },
     windows: { panel: { nav: [] } }
@@ -442,8 +442,8 @@ describe('confirm', () => {
           requests: {}
         }
       },
-      networks: { ethereum: { 137: { name: 'Polygon', isTestnet: false } } },
-      networksMeta: { ethereum: { 137: { nativeCurrency: { symbol: 'MATIC' } } } },
+      chains: { ethereum: { 137: { name: 'Polygon', isTestnet: false } } },
+      chainsMeta: { ethereum: { 137: { nativeCurrency: { symbol: 'MATIC' } } } },
       origins: { 'test-origin': { name: 'Test Dapp' } },
       signers: {},
       tokens: { byId: {}, accountTokenIds: {} },
@@ -612,8 +612,8 @@ describe('confirm', () => {
     fixture.state.reset({
       accounts: {},
       assetRates: {},
-      networks: { ethereum: { 137: { name: 'Polygon', isTestnet: false } } },
-      networksMeta: { ethereum: { 137: { nativeCurrency: { symbol: 'MATIC' } } } },
+      chains: { ethereum: { 137: { name: 'Polygon', isTestnet: false } } },
+      chainsMeta: { ethereum: { 137: { nativeCurrency: { symbol: 'MATIC' } } } },
       origins: { 'test-origin': { name: 'Test Dapp' } },
       tokens: {
         byId: {

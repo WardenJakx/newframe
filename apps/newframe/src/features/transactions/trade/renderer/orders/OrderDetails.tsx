@@ -25,8 +25,8 @@ export function OrderDetails({
             (account) => account.address.toLowerCase() === order?.accountAddress.toLowerCase()
           )
         ),
-        networks: state.networks.ethereum,
-        networksMeta: state.networksMeta.ethereum,
+        chains: state.chains.ethereum,
+        chainsMeta: state.chainsMeta.ethereum,
         order,
         tokens: state.tokens
       }
@@ -41,8 +41,8 @@ export function OrderDetails({
       assetImages={assetImages}
       accountType={shared.accountType}
       imageCapability={capability}
-      networks={shared.networks}
-      networksMeta={shared.networksMeta}
+      chains={shared.chains}
+      chainsMeta={shared.chainsMeta}
       onBack={onBack}
       order={shared.order}
       orderId={orderId}

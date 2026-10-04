@@ -53,16 +53,16 @@ export const resetStateStage: VisualStage = {
       await driver.executeCommand(driver.tray, { type: 'extension.forget', extensionId: harnessExtensionId })
     }
 
-    if (state.main?.networks?.ethereum?.[String(anvilChainId)]) {
-      await driver.executeCommand(driver.tray, { type: 'network.remove', chainId: anvilChainId })
+    if (state.main?.chains?.ethereum?.[String(anvilChainId)]) {
+      await driver.executeCommand(driver.tray, { type: 'chain.remove', chainId: anvilChainId })
     }
     await driver.setShowTestnets(true)
     await driver.waitForState(
       (candidate) => {
-        const networks = (candidate.main?.networks?.ethereum ?? {}) as Record<string, unknown>
+        const chains = (candidate.main?.chains?.ethereum ?? {}) as Record<string, unknown>
         const orders = candidate.main?.orders ?? {}
         return (
-          !networks[String(anvilChainId)] &&
+          !chains[String(anvilChainId)] &&
           Object.keys(orders).length === 0 &&
           candidate.main?.knownExtensions?.[harnessExtensionId] === undefined
         )

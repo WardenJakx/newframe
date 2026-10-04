@@ -311,7 +311,7 @@ it('rejects malformed overrides and pending-transaction options before forwardin
   expect(calls).toBe(0)
 })
 
-it('gives dapps no accounts and no network reads while locked, before any other check', async () => {
+it('gives dapps no accounts and no chain reads while locked, before any other check', async () => {
   let locked = true
   const executed: string[] = []
   const replies: RPCResponsePayload[] = []

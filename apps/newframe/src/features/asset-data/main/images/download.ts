@@ -2,7 +2,7 @@ import crypto from 'crypto'
 import { lookup } from 'dns/promises'
 import { isIP } from 'net'
 
-import { outbound } from '../../../../platform/outbound/index.ts'
+import { internet } from '../../../../platform/internet/index.ts'
 import type { TokenImage } from '../../../../platform/state-store/state/index.ts'
 import {
   embeddedImageSource,
@@ -198,7 +198,7 @@ function decodeEmbeddedImage(target: string) {
 export async function fetchRemoteResource(target: string, signal: AbortSignal) {
   let currentUrl = await validateRemoteImageUrl(target)
   for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects++) {
-    const response = await outbound.request(currentUrl, { signal, redirect: 'manual' })
+    const response = await internet.request(currentUrl, { signal, redirect: 'manual' })
     if (!isRedirect(response.status)) {
       return response
     }

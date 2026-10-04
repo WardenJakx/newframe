@@ -1,5 +1,5 @@
 import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections.ts'
-import type { NetworkLike, NetworkMetaLike } from '../../../../shared/renderer/ui/tokenSelectorTypes.ts'
+import type { ChainLike, ChainMetaLike } from '../../../../shared/renderer/ui/tokenSelectorTypes.ts'
 import type { TransactionEffect } from '../../domain/index.ts'
 
 export type WalletActivityRecord = WalletRendererState['activity'][string]
@@ -45,12 +45,12 @@ export type ActivityRecord = Partial<
   status?: string
 }
 
-export type ActivityNetworkMap = Record<
+export type ActivityChainMap = Record<
   string | number,
-  NetworkLike & { explorer?: string; isTestnet?: boolean; symbol?: string }
+  ChainLike & { explorer?: string; isTestnet?: boolean; symbol?: string }
 >
-export type ActivityNetworkMetadataMap = Record<string | number, NetworkMetaLike>
-export type ActivityDetailNetworkMetadata = WalletRendererState['networksMeta']['ethereum'][number]
+export type ActivityChainMetadataMap = Record<string | number, ChainMetaLike>
+export type ActivityDetailChainMetadata = WalletRendererState['chainsMeta']['ethereum'][number]
 export type ActivityTokenCatalog = WalletRendererState['tokens']
 export type ActivityViewRecord = ActivityRecord & { id: string }
 

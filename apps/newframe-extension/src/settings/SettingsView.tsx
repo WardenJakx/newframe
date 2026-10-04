@@ -10,8 +10,8 @@ import { ToggleButton } from '@newframe/ui/toggle-button'
 
 import type { FrameState } from '../frameState.ts'
 import { AccountSelector } from './AccountSelector.tsx'
+import { ChainSelector } from './ChainSelector.tsx'
 import { frameConnectionPresentation, siteConnectionPresentation } from './connectionPresentation.ts'
-import { NetworkSelector } from './NetworkSelector.tsx'
 import { SettingsMessage } from './SettingsMessage.tsx'
 import { SettingsPanel } from './SettingsPanel.tsx'
 import { parseOrigin } from './siteOrigin.ts'
@@ -184,7 +184,7 @@ function ChainSelect({ settings, onSelectChain }: Pick<SettingsViewProps, 'setti
   const { availableChains, currentChain } = settings
 
   return (
-    <NetworkSelector
+    <ChainSelector
       label='Network'
       onSelect={onSelectChain}
       options={availableChains.map((chain) => ({

@@ -77,7 +77,7 @@ const storedBalance = (token: { address: string; chainId: number }, balance: str
   displayBalance: ''
 })
 
-type NetworkSettings = Parameters<ReturnType<typeof createActionHarness>['actions']['addNetwork']>[0]
+type ChainSettings = Parameters<ReturnType<typeof createActionHarness>['actions']['addChain']>[0]
 
 const storedOrigin = (name: string, chainId = 1) => ({
   name,
@@ -97,21 +97,21 @@ const storedAccount = (id: string, profileId = DEFAULT_PROFILE_ID) => ({
   created: 'test:1'
 })
 
-describe('#addNetwork', () => {
-  const polygonNetwork = {
+describe('#addChain', () => {
+  const polygonChain = {
     id: 123456,
     name: 'Polygon',
     type: 'ethereum' as const,
     layer: 'sidechain' as const,
     explorer: 'https://polygonscan.com',
     symbol: 'MATIC'
-  } satisfies NetworkSettings
+  } satisfies ChainSettings
 
-  it('creates the complete runtime network and metadata projections atomically', () => {
+  it('creates the complete runtime chain and metadata projections atomically', () => {
     const { actions, getState } = createActionHarness({})
 
-    actions.addNetwork({
-      ...polygonNetwork,
+    actions.addChain({
+      ...polygonChain,
       id: '123456',
       icon: 'https://icons.llamao.fi/icons/chains/rsz_polygon.jpg',
       primaryRpc: 'https://polygon-rpc.com',
@@ -119,10 +119,10 @@ describe('#addNetwork', () => {
     })
 
     expect({
-      network: getState().main.networks.ethereum['123456'],
-      metadata: getState().main.networksMeta.ethereum['123456']
+      chain: getState().main.chains.ethereum['123456'],
+      metadata: getState().main.chainsMeta.ethereum['123456']
     } as unknown).toStrictEqual({
-      network: {
+      chain: {
         id: 123456,
         type: 'ethereum',
         layer: 'sidechain',
@@ -139,7 +139,7 @@ describe('#addNetwork', () => {
             status: 'loading',
             connected: false,
             type: '',
-            network: '',
+            chain: '',
             custom: 'https://polygon-rpc.com'
           },
           secondary: {
@@ -148,7 +148,7 @@ describe('#addNetwork', () => {
             status: 'loading',
             connected: false,
             type: '',
-            network: '',
+            chain: '',
             custom: 'https://rpc-mainnet.matic.network'
           }
         },
@@ -179,47 +179,47 @@ describe('#addNetwork', () => {
     })
   })
 
-  it('rejects every invalid network input class without a partial write', () => {
-    const invalidNetworks = [
-      { ...polygonNetwork, id: 'test' },
-      { ...polygonNetwork, name: undefined },
-      { ...polygonNetwork, explorer: undefined },
-      { ...polygonNetwork, symbol: undefined },
-      { ...polygonNetwork, type: 2 },
-      { ...polygonNetwork, type: 'solana' },
-      { ...polygonNetwork, primaryRpc: 'file:///wallet' },
-      { ...polygonNetwork, secondaryRpc: 'https://user:secret@rpc.test' }
+  it('rejects every invalid chain input class without a partial write', () => {
+    const invalidChains = [
+      { ...polygonChain, id: 'test' },
+      { ...polygonChain, name: undefined },
+      { ...polygonChain, explorer: undefined },
+      { ...polygonChain, symbol: undefined },
+      { ...polygonChain, type: 2 },
+      { ...polygonChain, type: 'solana' },
+      { ...polygonChain, primaryRpc: 'file:///wallet' },
+      { ...polygonChain, secondaryRpc: 'https://user:secret@rpc.test' }
     ]
 
-    for (const invalidNetwork of invalidNetworks) {
+    for (const invalidChain of invalidChains) {
       const { actions, getState } = createActionHarness({})
-      Reflect.apply(actions.addNetwork, actions, [invalidNetwork])
+      Reflect.apply(actions.addChain, actions, [invalidChain])
 
       expect({
-        networks: getState().main.networks,
-        metadata: getState().main.networksMeta
+        chains: getState().main.chains,
+        metadata: getState().main.chainsMeta
       }).toStrictEqual({
-        networks: createInitialState().main.networks,
-        metadata: createInitialState().main.networksMeta
+        chains: createInitialState().main.chains,
+        metadata: createInitialState().main.chainsMeta
       })
     }
   })
 
-  it('preserves the existing network and metadata when the id already exists', () => {
+  it('preserves the existing chain and metadata when the id already exists', () => {
     const defaults = createInitialState()
-    const existingNetwork = { ...defaults.main.networks.ethereum[1], ...polygonNetwork }
+    const existingChain = { ...defaults.main.chains.ethereum[1], ...polygonChain }
     const existingMetadata = {
-      ...defaults.main.networksMeta.ethereum[1],
+      ...defaults.main.chainsMeta.ethereum[1],
       name: 'Polygon metadata'
     }
     const { actions, getState } = createActionHarness({
       main: {
-        networks: { ethereum: { '123456': existingNetwork } },
-        networksMeta: { ethereum: { '123456': existingMetadata } }
+        chains: { ethereum: { '123456': existingChain } },
+        chainsMeta: { ethereum: { '123456': existingMetadata } }
       }
     })
 
-    actions.addNetwork({
+    actions.addChain({
       id: 123456,
       type: 'ethereum',
       name: 'Matic v1',
@@ -228,9 +228,9 @@ describe('#addNetwork', () => {
     })
 
     expect({
-      network: getState().main.networks.ethereum['123456'],
-      metadata: getState().main.networksMeta.ethereum['123456']
-    } as unknown).toStrictEqual({ network: existingNetwork, metadata: existingMetadata })
+      chain: getState().main.chains.ethereum['123456'],
+      metadata: getState().main.chainsMeta.ethereum['123456']
+    } as unknown).toStrictEqual({ chain: existingChain, metadata: existingMetadata })
   })
 })
 
@@ -476,7 +476,7 @@ describe('#addOriginRequest', () => {
   })
 })
 
-describe('#removeNetwork', () => {
+describe('#removeChain', () => {
   const origin = (id: number) => ({
     name: 'frame.test',
     chain: { id, type: 'ethereum' as const },
@@ -494,13 +494,13 @@ describe('#removeNetwork', () => {
       }
     })
 
-  it('deletes the network projections and redirects every affected origin to mainnet', () => {
+  it('deletes the chain projections and redirects every affected origin to mainnet', () => {
     const { actions, getState } = createHarness()
-    actions.removeNetwork({ id: 10, type: 'ethereum' })
+    actions.removeChain({ id: 10, type: 'ethereum' })
     const main = getState().main
 
-    expect(main.networks.ethereum[10]).toBeUndefined()
-    expect(main.networksMeta.ethereum[10]).toBeUndefined()
+    expect(main.chains.ethereum[10]).toBeUndefined()
+    expect(main.chainsMeta.ethereum[10]).toBeUndefined()
     const chains: Array<{ id: number; type: 'ethereum' }> = Object.values(main.origins).map(
       ({ chain }) => chain
     )
@@ -513,21 +513,21 @@ describe('#removeNetwork', () => {
   })
 })
 
-describe('#activateNetwork', () => {
+describe('#activateChain', () => {
   it('activates the given chain and redirects its origins when deactivated', () => {
     const defaults = createInitialState()
     const { actions, getState } = createActionHarness({
       main: {
-        networks: {
-          ethereum: { 137: { ...defaults.main.networks.ethereum[1], id: 137, on: false } }
+        chains: {
+          ethereum: { 137: { ...defaults.main.chains.ethereum[1], id: 137, on: false } }
         },
         origins: { 'frame.test': storedOrigin('frame.test', 137) }
       }
     })
 
-    actions.activateNetwork('ethereum', 137, true)
-    expect(getState().main.networks.ethereum[137].on).toBe(true)
-    actions.activateNetwork('ethereum', 137, false)
+    actions.activateChain('ethereum', 137, true)
+    expect(getState().main.chains.ethereum[137].on).toBe(true)
+    actions.activateChain('ethereum', 137, false)
     expect(getState().main.origins['frame.test'].chain.id).toBe(1)
   })
 })
@@ -1096,7 +1096,7 @@ describe('#canonical action boundaries', () => {
       first: first.getState().tray.homeCommand,
       second: second.getState().tray.homeCommand
     } as unknown).toStrictEqual({
-      first: { id: 2, view: 'networks', data: {} },
+      first: { id: 2, view: 'chains', data: {} },
       second: { id: 1, view: 'tokens', data: { account: 'second' } }
     })
   })

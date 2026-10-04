@@ -43,7 +43,7 @@ async function requestAgentSession() {
   return createDesktopClient(NEWFRAME_RPC_URL).agent.connect.mutate({
     descriptor: {
       name: 'USDC Transfer E2E',
-      description: 'Sends 10 USDC to the requested recipient on the Newframe Anvil network.'
+      description: 'Sends 10 USDC to the requested recipient on the Newframe Anvil chain.'
     },
     durationSeconds: 600
   })
