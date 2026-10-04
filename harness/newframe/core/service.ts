@@ -57,9 +57,12 @@ export function installSignalHandlers(runtime: HarnessRuntime, beforeExit?: () =
 
   for (const [signal, code] of [
     ['SIGINT', 130],
-    ['SIGTERM', 143]
+    ['SIGTERM', 143],
+    ['SIGHUP', 129]
   ] as const) {
     const handler = () => {
+      // A hung stop must not keep the harness alive; exiting still kills every tracked process group.
+      setTimeout(() => process.exit(code), 20_000).unref()
       void runtime
         .stop()
         .then(() => beforeExit?.())

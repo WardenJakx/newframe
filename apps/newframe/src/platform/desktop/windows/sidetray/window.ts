@@ -1,13 +1,13 @@
 import path from 'path'
 
 import type { BrowserWindow } from 'electron'
-import electron from 'electron'
 import log from 'electron-log'
 
 import type { RendererAuthorizationRegistry } from '../../../ipc/main/authorization.ts'
 import type { Frame } from '../../../state-store/state/index.ts'
 import { constrainTraySize, sideTrayPosition } from '../trayGeometry.ts'
 import { createWindow } from '../window.ts'
+import { cursorWorkArea } from '../workArea.ts'
 
 const isDev = process.env.NODE_ENV === 'development'
 
@@ -16,7 +16,7 @@ export interface SideTray extends BrowserWindow {
 }
 
 const placeSideTray = (sideTray: SideTray) => {
-  const area = electron.screen.getDisplayNearestPoint(electron.screen.getCursorScreenPoint()).workArea
+  const area = cursorWorkArea()
 
   if (process.platform !== 'darwin') {
     sideTray.setAlwaysOnTop(true)

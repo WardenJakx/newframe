@@ -6,6 +6,7 @@ import { BrowserWindow, shell } from 'electron'
 import log from 'electron-log'
 
 import type { RendererAuthorizationRegistry } from '../../ipc/main/authorization.ts'
+import { isVisualHarness } from '../../runtime/visualHarness.ts'
 import type { CanonicalStore } from '../../state-store/actions.ts'
 import type { ChainId } from '../../state-store/state/index.ts'
 
@@ -20,9 +21,7 @@ export function createWindow(
   const browserWindow = new BrowserWindow({
     ...opts,
     // CDP can drive harness windows without stealing the developer's keyboard focus.
-    ...(process.env.NEWFRAME_VISUAL_HARNESS === 'true' && process.env.FRAME_PROFILE === 'dev'
-      ? { focusable: false }
-      : {}),
+    ...(isVisualHarness ? { focusable: false } : {}),
     frame: false,
     acceptFirstMouse: true,
     transparent: process.platform === 'darwin',
@@ -31,6 +30,8 @@ export function createWindow(
     skipTaskbar: process.platform !== 'linux',
     webPreferences: {
       ...webPreferences,
+      // Harness pages render offscreen; CDP screenshots read that buffer instead of the screen.
+      ...(isVisualHarness ? { offscreen: { deviceScaleFactor: 2 } } : {}),
       preload: path.resolve(process.env.BUNDLE_LOCATION, 'bridge.cjs'),
       backgroundThrottling: false, // Allows repaint when window is hidden
       contextIsolation: true,
@@ -43,6 +44,12 @@ export function createWindow(
       disableBlinkFeatures: 'Auxclick'
     }
   })
+
+  if (isVisualHarness) {
+    // An offscreen window still gets a native window when shown; keep it invisible and click-through.
+    browserWindow.setOpacity(0)
+    browserWindow.setIgnoreMouseEvents(true)
+  }
 
   if (name === 'tray') {
     registerRenderer(browserWindow.webContents, 'wallet-ui', 'tray')
