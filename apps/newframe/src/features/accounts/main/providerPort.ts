@@ -4,7 +4,7 @@ import type { RPCRequestCallback, RPCRequestPayload, RPCResponsePayload } from '
 import type { TransactionData } from '../../transactions/domain/index.ts'
 
 export interface AccountChainRpcPort {
-  send(payload: RPCRequestPayload, respond: RPCRequestCallback, principal?: RequestSource): unknown
+  send(payload: RPCRequestPayload, respond: RPCRequestCallback, requestSource?: RequestSource): unknown
   sendAsync(payload: RPCRequestPayload, callback: Callback<RPCResponsePayload>): unknown
   getL1GasCost(transaction: TransactionData): Promise<bigint>
   on(event: string | symbol, listener: (...args: never[]) => void): unknown
@@ -22,7 +22,7 @@ export function createDeferredAccountChainRpcPort() {
   }
 
   const port: AccountChainRpcPort = {
-    send: (payload, respond, principal) => getTarget().send(payload, respond, principal),
+    send: (payload, respond, requestSource) => getTarget().send(payload, respond, requestSource),
     sendAsync: (payload, callback) => getTarget().sendAsync(payload, callback),
     getL1GasCost: (transaction) => getTarget().getL1GasCost(transaction),
     on: (event, listener) => getTarget().on(event, listener),

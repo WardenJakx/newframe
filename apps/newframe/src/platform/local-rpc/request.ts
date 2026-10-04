@@ -12,7 +12,7 @@ export interface RpcProviderSendPort {
   send(
     payload: RPCRequestPayload,
     respond?: (response: RPCResponsePayload) => void,
-    principal?: RequestSource
+    requestSource?: RequestSource
   ): void | Promise<void>
 }
 
@@ -162,7 +162,7 @@ export function createRpcRequestHandler({
         connectionMessage,
         faviconSource
       )
-      const principal: LocalApiSource = createLocalApiSource(request.identity)
+      const requestSource: LocalApiSource = createLocalApiSource(request.identity)
 
       if (request.session.refresh === 'before-validation') {
         request.session.monitor.extend(payload._origin)
@@ -191,7 +191,7 @@ export function createRpcRequestHandler({
         await request.postValidationInterceptor?.({
           payload,
           chainId,
-          source: principal,
+          source: requestSource,
           respond: (response, reason = 'provider') => respond(response, reason)
         })
       ) {
@@ -218,7 +218,7 @@ export function createRpcRequestHandler({
           request.observeProviderResponse?.(response, payload)
           request.writeResponse(response, 'provider')
         },
-        principal
+        requestSource
       )
     } catch (error) {
       request.onError?.(error)

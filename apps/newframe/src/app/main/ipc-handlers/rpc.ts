@@ -99,7 +99,7 @@ export interface TransactionRequestContext {
 }
 
 const signTypedDataV4OnlySignerTypes: SignerType[] = [SignerType.Ledger, SignerType.Trezor, SignerType.AirGap]
-const proxyPrincipal = createMainProcessSource('provider-proxy', ['wallet:internal-state'])
+const proxyRequestSource = createMainProcessSource('provider-proxy', ['wallet:internal-state'])
 
 interface RequiredApproval {
   type: ApprovalType
@@ -281,14 +281,14 @@ export class RpcIpcHandlers extends EventEmitter {
             }
       )
     }
-    Promise.resolve(this.send(payload, respond, proxyPrincipal)).catch((error: unknown) => {
+    Promise.resolve(this.send(payload, respond, proxyRequestSource)).catch((error: unknown) => {
       log.error('Could not handle proxy request', error)
       resError('Internal error', payload, respond)
     })
   }
 
   private readonly handleProxySubscribe = (payload: RPC.Subscribe.Request) => {
-    const subId = this.createSubscription(payload, proxyPrincipal)
+    const subId = this.createSubscription(payload, proxyRequestSource)
     const { id, jsonrpc } = payload
 
     this.proxy.emit('payload', { id, jsonrpc, result: subId })
@@ -444,8 +444,8 @@ export class RpcIpcHandlers extends EventEmitter {
   }
 
   /** The account a request acts as: the extension's account for extension sources, else the app's. */
-  private accountFor(principal?: RequestSource) {
-    const extensionId = principal?.kind === 'rpc' ? principal.extensionId : undefined
+  private accountFor(requestSource?: RequestSource) {
+    const extensionId = requestSource?.kind === 'rpc' ? requestSource.extensionId : undefined
     if (!extensionId) {
       return this.accounts.current()
     }
@@ -703,11 +703,11 @@ export class RpcIpcHandlers extends EventEmitter {
 
   /** Sign and broadcast a reviewed transaction with a named EOA, without changing selection. */
   private requireActiveAgentSession(
-    principal: AiSessionClientSource,
+    requestSource: AiSessionClientSource,
     payload: RPCRequestPayload,
     res: RPCRequestCallback
   ) {
-    if (isAiSessionActive(principal)) {
+    if (isAiSessionActive(requestSource)) {
       return true
     }
     resError('Agent session is revoked or unavailable', payload, res)
@@ -717,14 +717,14 @@ export class RpcIpcHandlers extends EventEmitter {
   // Reads the session's authorized wallet, not the wallet selected in the UI.
   private getAgentAssets(
     payload: RPC.GetAssets.Request,
-    principal: AiSessionClientSource,
+    requestSource: AiSessionClientSource,
     res: RPCRequestCallback
   ) {
-    if (!this.requireActiveAgentSession(principal, payload, res)) {
+    if (!this.requireActiveAgentSession(requestSource, payload, res)) {
       return
     }
-    const account = this.accounts.getFrameAccount(principal.aiSession.accountId)
-    if (!account || account.id !== principal.aiSession.accountId) {
+    const account = this.accounts.getFrameAccount(requestSource.aiSession.accountId)
+    if (!account || account.id !== requestSource.aiSession.accountId) {
       return resError('Agent session is not authorized for this account', payload, res)
     }
     return this.getAssets(payload, account, res)
@@ -732,14 +732,16 @@ export class RpcIpcHandlers extends EventEmitter {
 
   sendAgentTransaction(
     payload: RPC.SendTransaction.Request,
-    principal: AiSessionClientSource,
+    requestSource: AiSessionClientSource,
     res: RPCRequestCallback
   ) {
-    if (!this.requireActiveAgentSession(principal, payload, res)) {
+    if (!this.requireActiveAgentSession(requestSource, payload, res)) {
       return
     }
 
-    const account = this.accounts.getFrameAccount(principal.aiSession.accountId) as AccountHandle | undefined
+    const account = this.accounts.getFrameAccount(requestSource.aiSession.accountId) as
+      | AccountHandle
+      | undefined
     const txParams = (payload.params as unknown[])[0]
     if (!account || !txParams || typeof txParams !== 'object') {
       return resError('Agent transaction is missing its authorized account or transaction', payload, res)
@@ -753,7 +755,7 @@ export class RpcIpcHandlers extends EventEmitter {
     }
 
     const from = (normalized.from ?? account.id).toLowerCase()
-    if (from !== principal.aiSession.accountId || from !== account.id) {
+    if (from !== requestSource.aiSession.accountId || from !== account.id) {
       return resError('Agent session is not authorized for the transaction account', payload, res)
     }
 
@@ -786,10 +788,10 @@ export class RpcIpcHandlers extends EventEmitter {
         classification: classifyTransaction(unclassifiedRequest)
       } as TransactionRequest
 
-      this.accounts.routeRequest(principal, request, (authorizedRequest) => {
+      this.accounts.routeRequest(requestSource, request, (authorizedRequest) => {
         this.protectedOperations.executeAgentTransaction(
           authorizedRequest as TransactionRequest,
-          principal,
+          requestSource,
           respond
         )
       })
@@ -798,14 +800,14 @@ export class RpcIpcHandlers extends EventEmitter {
 
   sendAgentPersonalSign(
     payload: RPCRequestPayload,
-    principal: AiSessionClientSource,
+    requestSource: AiSessionClientSource,
     res: RPCRequestCallback
   ) {
-    if (!this.requireActiveAgentSession(principal, payload, res)) {
+    if (!this.requireActiveAgentSession(requestSource, payload, res)) {
       return
     }
 
-    const account = this.accounts.getFrameAccount(principal.aiSession.accountId)
+    const account = this.accounts.getFrameAccount(requestSource.aiSession.accountId)
     const params = arrayValue(payload.params)
     const orderedParams: readonly unknown[] =
       isAddress(params[0]) && !isAddress(params[1]) ? [...params] : [params[1], params[0], ...params.slice(2)]
@@ -816,7 +818,7 @@ export class RpcIpcHandlers extends EventEmitter {
     }
 
     const address = requestedAddress.toLowerCase()
-    if (address !== principal.aiSession.accountId || address !== account.id) {
+    if (address !== requestSource.aiSession.accountId || address !== account.id) {
       return resError('Agent session is not authorized for the sign request account', payload, res)
     }
 
@@ -835,21 +837,21 @@ export class RpcIpcHandlers extends EventEmitter {
       data: { decodedMessage: decodeMessage(message) }
     }
 
-    this.accounts.routeRequest(principal, request, () => {
-      this.protectedOperations.signAiSessionMessage(message, normalizedPayload, principal, respond)
+    this.accounts.routeRequest(requestSource, request, () => {
+      this.protectedOperations.signAiSessionMessage(message, normalizedPayload, requestSource, respond)
     })
   }
 
   sendAgentTypedData(
     rawPayload: RPC.SignTypedData.Request,
-    principal: AiSessionClientSource,
+    requestSource: AiSessionClientSource,
     res: RPCRequestCallback
   ) {
-    if (!this.requireActiveAgentSession(principal, rawPayload, res)) {
+    if (!this.requireActiveAgentSession(requestSource, rawPayload, res)) {
       return
     }
 
-    const account = this.accounts.getFrameAccount(principal.aiSession.accountId)
+    const account = this.accounts.getFrameAccount(requestSource.aiSession.accountId)
     const rawParams = arrayValue(rawPayload.params)
     const orderedParams: readonly unknown[] =
       isAddress(rawParams[1]) && !isAddress(rawParams[0])
@@ -862,7 +864,7 @@ export class RpcIpcHandlers extends EventEmitter {
     }
 
     const address = requestedAddress.toLowerCase()
-    if (address !== principal.aiSession.accountId || address !== account.id) {
+    if (address !== requestSource.aiSession.accountId || address !== account.id) {
       return resError('Agent session is not authorized for the typed-data account', rawPayload, res)
     }
 
@@ -911,8 +913,8 @@ export class RpcIpcHandlers extends EventEmitter {
       origin: 'newframe-agent'
     }
 
-    this.accounts.routeRequest(principal, request, () => {
-      this.protectedOperations.signAiSessionTypedData(typedMessage, payload, principal, respond)
+    this.accounts.routeRequest(requestSource, request, () => {
+      this.protectedOperations.signAiSessionTypedData(typedMessage, payload, requestSource, respond)
     })
   }
 
@@ -920,7 +922,7 @@ export class RpcIpcHandlers extends EventEmitter {
     payload: RPC.SendTransaction.Request,
     res: RPCRequestCallback,
     targetChain: Chain,
-    principal: RequestSource,
+    requestSource: RequestSource,
     context?: TransactionRequestContext
   ) {
     try {
@@ -947,7 +949,7 @@ export class RpcIpcHandlers extends EventEmitter {
             if (err) {
               return resError(err, payload, res)
             }
-            void this.sendTransaction(payload, res, targetChain, principal, context)
+            void this.sendTransaction(payload, res, targetChain, requestSource, context)
           })
         }
 
@@ -1037,7 +1039,7 @@ export class RpcIpcHandlers extends EventEmitter {
           ...unclassifiedReq,
           classification: classifyTransaction(unclassifiedReq)
         }
-        if (!this.accounts.routeRequest(principal, req)) {
+        if (!this.accounts.routeRequest(requestSource, req)) {
           return
         }
         try {
@@ -1090,7 +1092,7 @@ export class RpcIpcHandlers extends EventEmitter {
             classification
           }
 
-          this.accounts.routeRequest(principal, req)
+          this.accounts.routeRequest(requestSource, req)
         }
       })
     } catch (e) {
@@ -1113,7 +1115,7 @@ export class RpcIpcHandlers extends EventEmitter {
   _personalSign(
     payload: RPCRequestPayload,
     res: RPCRequestCallback,
-    principal: RequestSource,
+    requestSource: RequestSource,
     chainId?: number
   ) {
     const params = arrayValue(payload.params)
@@ -1122,19 +1124,19 @@ export class RpcIpcHandlers extends EventEmitter {
       // personal_sign requests expect the first parameter to be the message and the second
       // parameter to be an address. however some clients send these in the opposite order
       // so try to detect that
-      return this.sign(payload, res, principal, chainId)
+      return this.sign(payload, res, requestSource, chainId)
     }
 
     // switch the order of params to be consistent with eth_sign
     return this.sign(
       { ...payload, params: [params[1], params[0], ...params.slice(2)] },
       res,
-      principal,
+      requestSource,
       chainId
     )
   }
 
-  sign(payload: RPCRequestPayload, res: RPCRequestCallback, principal: RequestSource, chainId?: number) {
+  sign(payload: RPCRequestPayload, res: RPCRequestCallback, requestSource: RequestSource, chainId?: number) {
     const [fromValue, messageValue] = arrayValue(payload.params)
     const from = typeof fromValue === 'string' ? fromValue : ''
     const message = typeof messageValue === 'string' ? messageValue : ''
@@ -1162,14 +1164,14 @@ export class RpcIpcHandlers extends EventEmitter {
       }
     } as SignatureRequest
 
-    this.accounts.routeRequest(principal, req)
+    this.accounts.routeRequest(requestSource, req)
   }
 
   signTypedData(
     rawPayload: RPC.SignTypedData.Request,
     version: SignTypedDataVersion | undefined,
     res: RPCCallback<RPC.SignTypedData.Response>,
-    principal: RequestSource,
+    requestSource: RequestSource,
     chainId?: number
   ) {
     // ensure param order is [address, data, ...] regardless of version
@@ -1298,21 +1300,21 @@ export class RpcIpcHandlers extends EventEmitter {
         }
       }
 
-      this.accounts.routeRequest(principal, permitRequest)
+      this.accounts.routeRequest(requestSource, permitRequest)
     } else {
-      this.accounts.routeRequest(principal, req)
+      this.accounts.routeRequest(requestSource, req)
     }
   }
 
-  subscribe(payload: RPC.Subscribe.Request, res: RPCSuccessCallback, principal?: RequestSource) {
+  subscribe(payload: RPC.Subscribe.Request, res: RPCSuccessCallback, requestSource?: RequestSource) {
     log.debug('provider subscribe', { payload })
 
-    const subId = this.createSubscription(payload, principal)
+    const subId = this.createSubscription(payload, requestSource)
 
     res({ id: payload.id, jsonrpc: '2.0', result: subId })
   }
 
-  private createSubscription(payload: RPC.Subscribe.Request, principal?: RequestSource) {
+  private createSubscription(payload: RPC.Subscribe.Request, requestSource?: RequestSource) {
     const subId = addHexPrefix(crypto.randomBytes(16).toString('hex'))
     const subscriptionType = payload.params[0] as ProviderSubscriptionType
 
@@ -1320,8 +1322,12 @@ export class RpcIpcHandlers extends EventEmitter {
       id: subId,
       originId: payload._origin,
       capabilities:
-        principal && (principal.kind === 'rpc' || principal.kind === 'main') ? principal.capabilities : [],
-      ...(principal?.kind === 'rpc' && principal.extensionId ? { extensionId: principal.extensionId } : {})
+        requestSource && (requestSource.kind === 'rpc' || requestSource.kind === 'main')
+          ? requestSource.capabilities
+          : [],
+      ...(requestSource?.kind === 'rpc' && requestSource.extensionId
+        ? { extensionId: requestSource.extensionId }
+        : {})
     }
     this.subscriptions[subscriptionType].push(subscription)
     if (subscriptionType === 'accountsChanged' && subscription.extensionId) {
@@ -1345,10 +1351,10 @@ export class RpcIpcHandlers extends EventEmitter {
     res({ id: payload.id, jsonrpc: '2.0', result: `Newframe/v${packageFile.version}` })
   }
 
-  private getOriginConnection(payload: RPCRequestPayload, principal?: RequestSource) {
+  private getOriginConnection(payload: RPCRequestPayload, requestSource?: RequestSource) {
     const originId = payload._origin
     const origin = this.origin(originId)
-    const currentAccount = this.accountFor(principal)
+    const currentAccount = this.accountFor(requestSource)
     const rawAddress = currentAccount?.address ?? currentAccount?.id ?? ''
     const address = rawAddress ? rawAddress.toLowerCase() : ''
     const permissionAddresses = Array.from(
@@ -1398,9 +1404,16 @@ export class RpcIpcHandlers extends EventEmitter {
       .forEach((subscription) => this.sendSubscriptionData(subscription.id, nextAccounts))
   }
 
-  private getOriginStatus(payload: RPCRequestPayload, res: RPCSuccessCallback, principal?: RequestSource) {
-    const { originId, originName, address, connected, chainId } = this.getOriginConnection(payload, principal)
-    const selectedAddress = hasSourceCapability(principal, 'wallet:internal-state') ? address : ''
+  private getOriginStatus(
+    payload: RPCRequestPayload,
+    res: RPCSuccessCallback,
+    requestSource?: RequestSource
+  ) {
+    const { originId, originName, address, connected, chainId } = this.getOriginConnection(
+      payload,
+      requestSource
+    )
+    const selectedAddress = hasSourceCapability(requestSource, 'wallet:internal-state') ? address : ''
 
     res({
       id: payload.id,
@@ -1416,9 +1429,13 @@ export class RpcIpcHandlers extends EventEmitter {
     })
   }
 
-  private disconnectOrigin(payload: RPCRequestPayload, res: RPCSuccessCallback, principal?: RequestSource) {
+  private disconnectOrigin(
+    payload: RPCRequestPayload,
+    res: RPCSuccessCallback,
+    requestSource?: RequestSource
+  ) {
     const { originId, originName, address, permissionAddress, permissionId, chainId } =
-      this.getOriginConnection(payload, principal)
+      this.getOriginConnection(payload, requestSource)
 
     if (permissionAddress && permissionId) {
       this.store.getState().revokePermission(permissionAddress, permissionId)
@@ -1485,7 +1502,7 @@ export class RpcIpcHandlers extends EventEmitter {
   private async addEthereumChain(
     payload: RPCRequestPayload,
     res: RPCRequestCallback,
-    principal: RequestSource
+    requestSource: RequestSource
   ) {
     if (!isRecord(payload.params[0])) {
       return resError('addChain request missing params', payload, res)
@@ -1575,7 +1592,7 @@ export class RpcIpcHandlers extends EventEmitter {
           nativeCurrencyName: customCurrency.name,
           ...(icon ? { icon } : {})
         }
-    this.accounts.routeRequest(principal, {
+    this.accounts.routeRequest(requestSource, {
       handlerId,
       type: 'addChain',
       chain: requestChain,
@@ -1589,7 +1606,7 @@ export class RpcIpcHandlers extends EventEmitter {
     payload: RPCRequestPayload,
     cb: RPCRequestCallback,
     targetChain: Chain,
-    principal: RequestSource
+    requestSource: RequestSource
   ) {
     const tokenParams = isRecord(payload.params) ? payload.params : undefined
     const type = tokenParams?.type
@@ -1668,7 +1685,7 @@ export class RpcIpcHandlers extends EventEmitter {
           const handlerId = this.requests.create(() => {})
           cb({ id: payload.id, jsonrpc: '2.0', result: true })
 
-          this.accounts.routeRequest(principal, {
+          this.accounts.routeRequest(requestSource, {
             handlerId,
             type: 'addToken',
             token,
@@ -1763,23 +1780,23 @@ export class RpcIpcHandlers extends EventEmitter {
   private handleRpc(
     requestPayload: RPCRequestPayload,
     res: RPCRequestCallback = () => {},
-    principal?: RequestSource,
+    requestSource?: RequestSource,
     context?: TransactionRequestContext
   ) {
     const payload = requestPayload
 
     const method = payload.method || ''
-    if (principal?.kind === 'agent') {
+    if (requestSource?.kind === 'agent') {
       if (method === 'eth_sendTransaction') {
-        return this.sendAgentTransaction(payload as RPC.SendTransaction.Request, principal, res)
+        return this.sendAgentTransaction(payload as RPC.SendTransaction.Request, requestSource, res)
       }
       if (method === 'personal_sign') {
-        return this.sendAgentPersonalSign(payload, principal, res)
+        return this.sendAgentPersonalSign(payload, requestSource, res)
       }
       if (method === 'wallet_getAssets') {
-        return this.getAgentAssets(payload as RPC.GetAssets.Request, principal, res)
+        return this.getAgentAssets(payload as RPC.GetAssets.Request, requestSource, res)
       }
-      return this.sendAgentTypedData(payload as RPC.SignTypedData.Request, principal, res)
+      return this.sendAgentTypedData(payload as RPC.SignTypedData.Request, requestSource, res)
     }
 
     if (method === 'eth_sign' || method === 'eth_signTransaction') {
@@ -1796,10 +1813,10 @@ export class RpcIpcHandlers extends EventEmitter {
     } // Subscription was ours
 
     if (method === 'frame_getOriginStatus') {
-      return this.getOriginStatus(payload, res, principal)
+      return this.getOriginStatus(payload, res, requestSource)
     }
     if (method === 'frame_disconnectOrigin') {
-      return this.disconnectOrigin(payload, res, principal)
+      return this.disconnectOrigin(payload, res, requestSource)
     }
 
     const targetChain = this.parseTargetChain(payload)
@@ -1813,7 +1830,7 @@ export class RpcIpcHandlers extends EventEmitter {
       res({
         id: payload.id,
         jsonrpc: payload.jsonrpc,
-        result: (this.accountFor(principal)?.getSelectedAddresses() ?? []).map((a) => a.toLowerCase())
+        result: (this.accountFor(requestSource)?.getSelectedAddresses() ?? []).map((a) => a.toLowerCase())
       })
     }
 
@@ -1827,21 +1844,21 @@ export class RpcIpcHandlers extends EventEmitter {
     if (method === 'eth_requestAccounts') {
       return getAccounts(payload, res)
     }
-    const requirePrincipal = () => {
-      if (principal) {
-        return principal
+    const requireRequestSource = () => {
+      if (requestSource) {
+        return requestSource
       }
       resError({ message: 'Wallet action is missing a trusted request source', code: 4100 }, payload, res)
     }
 
     if (method === 'eth_sendTransaction') {
-      const trustedPrincipal = requirePrincipal()
-      if (trustedPrincipal) {
+      const trustedRequestSource = requireRequestSource()
+      if (trustedRequestSource) {
         return this.sendTransaction(
           payload as RPC.SendTransaction.Request,
           res,
           targetChain,
-          trustedPrincipal,
+          trustedRequestSource,
           context
         )
       }
@@ -1857,12 +1874,14 @@ export class RpcIpcHandlers extends EventEmitter {
       return this.clientVersion(payload, res)
     }
     if (method === 'eth_subscribe' && (payload.params[0] as PropertyKey) in this.subscriptions) {
-      return this.subscribe(payload as RPC.Subscribe.Request, res, principal)
+      return this.subscribe(payload as RPC.Subscribe.Request, res, requestSource)
     }
 
     if (method === 'personal_sign') {
-      const trustedPrincipal = requirePrincipal()
-      return trustedPrincipal ? this._personalSign(payload, res, trustedPrincipal, targetChain.id) : undefined
+      const trustedRequestSource = requireRequestSource()
+      return trustedRequestSource
+        ? this._personalSign(payload, res, trustedRequestSource, targetChain.id)
+        : undefined
     }
 
     if (
@@ -1874,13 +1893,13 @@ export class RpcIpcHandlers extends EventEmitter {
       const version = (
         underscoreIndex > 3 ? method.substring(underscoreIndex + 1).toUpperCase() : undefined
       ) as SignTypedDataVersion
-      const trustedPrincipal = requirePrincipal()
-      if (trustedPrincipal) {
+      const trustedRequestSource = requireRequestSource()
+      if (trustedRequestSource) {
         return this.signTypedData(
           payload as RPC.SignTypedData.Request,
           version,
           res,
-          trustedPrincipal,
+          trustedRequestSource,
           targetChain.id
         )
       }
@@ -1888,8 +1907,8 @@ export class RpcIpcHandlers extends EventEmitter {
     }
 
     if (method === 'wallet_addEthereumChain') {
-      const trustedPrincipal = requirePrincipal()
-      return trustedPrincipal ? this.addEthereumChain(payload, res, trustedPrincipal) : undefined
+      const trustedRequestSource = requireRequestSource()
+      return trustedRequestSource ? this.addEthereumChain(payload, res, trustedRequestSource) : undefined
     }
     if (method === 'wallet_switchEthereumChain') {
       return this.switchEthereumChain(payload, res)
@@ -1901,14 +1920,16 @@ export class RpcIpcHandlers extends EventEmitter {
       return requestPermissions(payload, res)
     }
     if (method === 'wallet_watchAsset') {
-      const trustedPrincipal = requirePrincipal()
-      return trustedPrincipal ? this.addCustomToken(payload, res, targetChain, trustedPrincipal) : undefined
+      const trustedRequestSource = requireRequestSource()
+      return trustedRequestSource
+        ? this.addCustomToken(payload, res, targetChain, trustedRequestSource)
+        : undefined
     }
     if (method === 'wallet_getEthereumChains') {
       return this.getChains(payload, res)
     }
     if (method === 'wallet_getAssets') {
-      return this.getAssets(payload as RPC.GetAssets.Request, this.accountFor(principal), res)
+      return this.getAssets(payload as RPC.GetAssets.Request, this.accountFor(requestSource), res)
     }
 
     // Connection dependent methods need to pass targetChain

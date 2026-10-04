@@ -59,12 +59,12 @@ import type { ProviderProxyConnection } from './proxy.ts'
 import type { Subscription } from './subscriptions.ts'
 
 const address = '0x22dd63c3619818fdbc262c78baee43cb61e9cccf'
-const principal = createLocalApiSource({
+const requestSource = createLocalApiSource({
   transport: 'http',
   connectionId: 'provider-test',
   origin: 'frame.test'
 })
-const internalPrincipal = createLocalApiSource({
+const internalRequestSource = createLocalApiSource({
   transport: 'websocket',
   connectionId: 'extension-test',
   origin: 'frame.test',
@@ -108,7 +108,7 @@ interface TestAccounts {
   getFrameAccount: ReturnType<typeof createGetFrameAccountMock>
   lockRequest: ReturnType<typeof mock>
   routeRequest(
-    principal: RequestSource,
+    requestSource: RequestSource,
     request: AccountRequest,
     executeAutonomously?: (request: AccountRequest) => void
   ): boolean
@@ -366,8 +366,8 @@ beforeAll(async () => {
   accounts.getAccounts = () => [address]
   accounts.current = mock(() => ({ id: address, getAccounts: () => [address] }))
   accounts.get = createGetMock()
-  accounts.routeRequest = (receivedPrincipal, req, executeAutonomously) => {
-    expect(receivedPrincipal).toBe(principal)
+  accounts.routeRequest = (receivedRequestSource, req, executeAutonomously) => {
+    expect(receivedRequestSource).toBe(requestSource)
     store.setState((state) => {
       state.main.accounts[req.account] ??= AccountSchema.parse({
         id: req.account,
@@ -501,7 +501,7 @@ describe('#send', () => {
   const send = (
     request: Omit<Partial<RPCRequestPayload>, 'params'> & { method: string; params?: unknown },
     cb: RPCRequestCallback = mock(),
-    requestPrincipal: RequestSource = principal
+    source: RequestSource = requestSource
   ) => {
     return provider.send(
       {
@@ -512,15 +512,15 @@ describe('#send', () => {
         _origin: '8073729a-5e59-53b7-9e69-5d9bcff94087'
       } as RPCRequestPayload,
       cb,
-      requestPrincipal
+      source
     )
   }
   const sendResult = (
     request: Omit<Partial<RPCRequestPayload>, 'params'> & { method: string; params?: unknown },
-    requestPrincipal: RequestSource = principal
+    source: RequestSource = requestSource
   ) =>
     new Promise<RPCResponsePayload>((resolve) => {
-      void send(request, resolve, requestPrincipal)
+      void send(request, resolve, source)
     })
 
   ;[
@@ -535,7 +535,7 @@ describe('#send', () => {
     })
   })
 
-  it('rejects signing methods that do not carry a trusted transport principal', async () => {
+  it('rejects signing methods that do not carry a trusted transport requestSource', async () => {
     const callback = mock()
 
     await provider.send(
@@ -581,9 +581,9 @@ describe('#send', () => {
   describe('#frame_getOriginStatus', () => {
     const originId = '8073729a-5e59-53b7-9e69-5d9bcff94087'
     const cases: Array<[string, RequestSource, number, boolean, string, string]> = [
-      ['returns the permitted address', principal, 42161, true, address, ''],
-      ['exposes the selected address to internal requests', internalPrincipal, 1, false, '', address],
-      ['hides the selected address from external requests', principal, 1, false, '', '']
+      ['returns the permitted address', requestSource, 42161, true, address, ''],
+      ['exposes the selected address to internal requests', internalRequestSource, 1, false, '', address],
+      ['hides the selected address from external requests', requestSource, 1, false, '', '']
     ]
     cases.forEach(([description, source, chainId, permitted, visibleAddress, selectedAddress]) => {
       it(description, async () => {
@@ -1103,7 +1103,7 @@ describe('#send', () => {
         Object.assign(payload, { chainId })
       }
 
-      return provider.send(payload, cb, principal, context)
+      return provider.send(payload, cb, requestSource, context)
     }
     const sendTransactionResult = (chainId?: string, context?: TransactionRequestContext) =>
       new Promise<RPCResponsePayload>((resolve) => {
@@ -1737,7 +1737,7 @@ describe('#executeAgentTransaction', () => {
     'account-replaced'
   ] as const)('binds transaction execution and broadcast to the permitted account: %s', (scenario) => {
     let active = true
-    const agentPrincipal = createAiSessionClientSource({
+    const agentRequestSource = createAiSessionClientSource({
       sessionId: 'agent-session',
       accountId: address,
       expiresAt: Date.now() + 60_000,
@@ -1778,7 +1778,7 @@ describe('#executeAgentTransaction', () => {
     if (scenario === 'wrong-account') {
       request.account = '0x' + '11'.repeat(20)
     }
-    provider.protectedOperations.executeAgentTransaction(request, agentPrincipal, respond)
+    provider.protectedOperations.executeAgentTransaction(request, agentRequestSource, respond)
     if (scenario === 'wrong-account' || scenario === 'wrong-from') {
       expect(signTransaction).not.toHaveBeenCalled()
       expect(connection.send).not.toHaveBeenCalled()

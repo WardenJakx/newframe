@@ -34,7 +34,7 @@ function transactionRequest(requestId: string): TransactionRequest {
       actionId: `action-${requestId}`,
       decision: 'prompt',
       decidedAt: 1,
-      principal: {
+      requestSource: {
         kind: 'rpc',
         transport: 'http',
         connectionId: 'connection-1',

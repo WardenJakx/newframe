@@ -46,7 +46,7 @@ interface AccountAccessPort {
   current(): { address: Address } | null | undefined
   /** Makes the account the app's selection so its prompts appear for the human. */
   select(address: Address): void
-  routeRequest(principal: LocalApiSource, request: AccessRequest): void
+  routeRequest(requestSource: LocalApiSource, request: AccessRequest): void
 }
 
 interface ExtensionAccountPort {
@@ -73,7 +73,7 @@ export interface OriginsServiceDependencies {
   accounts: AccountAccessPort
   extensions: ExtensionAccountPort
   requests: OriginRequestContinuationPort
-  hasInternalStateCapability(principal: LocalApiSource): boolean
+  hasInternalStateCapability(requestSource: LocalApiSource): boolean
   development(): boolean
 }
 
@@ -169,7 +169,11 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
     return requestExtensionPermission(extension)
   }
 
-  const requestPermission = (address: Address, fullPayload: RPCRequestPayload, principal: LocalApiSource) => {
+  const requestPermission = (
+    address: Address,
+    fullPayload: RPCRequestPayload,
+    requestSource: LocalApiSource
+  ) => {
     const { _origin: originId, ...payload } = fullPayload
     const permissionCheckId = `${address}:${originId}`
     const activeCheck = activePermissionChecks.get(permissionCheckId)
@@ -199,7 +203,7 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
         activePermissionChecks.delete(permissionCheckId)
         resolveCheck(grantedAddress)
       }, request.handlerId)
-      dependencies.accounts.routeRequest(principal, request)
+      dependencies.accounts.routeRequest(requestSource, request)
     } catch (error) {
       dependencies.requests.cancel(request.handlerId)
       activePermissionChecks.delete(permissionCheckId)
@@ -208,10 +212,10 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
     return result
   }
 
-  const hasAccountAccessGrant = async (payload: RPCRequestPayload, principal: LocalApiSource) => {
+  const hasAccountAccessGrant = async (payload: RPCRequestPayload, requestSource: LocalApiSource) => {
     const originName = dependencies.store.getOrigin(payload._origin)?.name ?? 'Unknown'
     // Websites relayed by the extension act as the extension's account, not the app's selection.
-    const extensionId = principal.participant === 'website' ? principal.extensionId : undefined
+    const extensionId = requestSource.participant === 'website' ? requestSource.extensionId : undefined
     const actingAccount = () =>
       extensionId ? dependencies.extensions.account(extensionId) : dependencies.accounts.current()
     let currentAccount = actingAccount()
@@ -233,7 +237,7 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
       originName,
       accountSelected: Boolean(currentAccount),
       providerPermission: permission?.provider,
-      hasInternalStateCapability: dependencies.hasInternalStateCapability(principal)
+      hasInternalStateCapability: dependencies.hasInternalStateCapability(requestSource)
     })
 
     if (decision === 'allow') {
@@ -249,7 +253,7 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
     if (extensionId) {
       dependencies.accounts.select(currentAccount.address)
     }
-    const grantedAddress = await requestPermission(currentAccount.address, payload, principal).catch(
+    const grantedAddress = await requestPermission(currentAccount.address, payload, requestSource).catch(
       () => undefined
     )
     if (!grantedAddress) {
@@ -320,7 +324,7 @@ export function createProductionOriginsService(
           })
         }
       },
-      routeRequest: (principal, request) => accounts.routeRequest(principal, request)
+      routeRequest: (requestSource, request) => accounts.routeRequest(requestSource, request)
     },
     extensions: {
       account: (extensionId) => {
@@ -330,7 +334,8 @@ export function createProductionOriginsService(
       request: (extensionId) => extensionAccess.request(extensionId)
     },
     requests,
-    hasInternalStateCapability: (principal) => hasSourceCapability(principal, 'wallet:internal-state'),
+    hasInternalStateCapability: (requestSource) =>
+      hasSourceCapability(requestSource, 'wallet:internal-state'),
     development: () => process.env.NODE_ENV === 'development'
   })
 }

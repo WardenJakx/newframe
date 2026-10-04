@@ -391,7 +391,7 @@ it('recomputes owner readiness for signer and app-lock updates and removes inval
   expect(projectWalletState(state).accounts).not.toHaveProperty(safeAddress)
 })
 
-it('projects safe principal-owned operations and notification presentation', () => {
+it('projects safe request-source-owned operations and notification presentation', () => {
   const operationState = createInitialState()
   operationState.operations = {
     own: {
