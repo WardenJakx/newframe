@@ -476,7 +476,7 @@ export class Accounts extends EventEmitter {
 
   private transactionActivityRecord(
     account: FrameAccount,
-    handlerId: string,
+    requestId: string,
     req: TransactionRequest,
     hash: string
   ): ActivityRecord {
@@ -486,7 +486,7 @@ export class Accounts extends EventEmitter {
     return {
       id: transactionActivityId(hash),
       hash,
-      handlerId,
+      handlerId: requestId,
       account: account.address,
       address: account.address,
       ...(req.safeTxHash && req.safeExecution?.submitted?.executorId
@@ -559,7 +559,7 @@ export class Accounts extends EventEmitter {
 
   private recordSubmittedTransaction(
     account: FrameAccount,
-    handlerId: string,
+    requestId: string,
     req: TransactionRequest,
     hash: string
   ) {
@@ -567,7 +567,7 @@ export class Accounts extends EventEmitter {
     this.transactionPositionTokensByHash.set(hash, positionTokens)
     this.store
       .getState()
-      .upsertSubmittedActivity(this.transactionActivityRecord(account, handlerId, req, hash))
+      .upsertSubmittedActivity(this.transactionActivityRecord(account, requestId, req, hash))
     this.upsertTransactionNotification(account, req, hash)
   }
 
@@ -885,7 +885,7 @@ export class Accounts extends EventEmitter {
 
     return {
       type: 'transaction',
-      handlerId: activity.handlerId ?? activity.id,
+      requestId: activity.handlerId ?? activity.id,
       origin: (activity.origin as string) || frameOriginId,
       account: this.activityAccount(activity),
       payload: activity.payload
@@ -1161,7 +1161,7 @@ export class Accounts extends EventEmitter {
       data: {
         step: 'confirm',
         accountId: account.id,
-        requestId: nextRequest.handlerId
+        requestId: nextRequest.requestId
       }
     })
   }
@@ -1218,8 +1218,8 @@ export class Accounts extends EventEmitter {
     return currentAccountId ? this.handle(currentAccountId) : null
   }
 
-  private accountForRequest(handlerId: string) {
-    return Object.values(this.accounts).find((account) => Boolean(account?.requests[handlerId]))
+  private accountForRequest(requestId: string) {
+    return Object.values(this.accounts).find((account) => Boolean(account?.requests[requestId]))
   }
 
   private defaultAccountAfterRemoving(address: string) {
@@ -2069,7 +2069,7 @@ export class Accounts extends EventEmitter {
         account: req.account,
         reason: decision.reason
       })
-      this.dependencies.requests.respond(req.handlerId, {
+      this.dependencies.requests.respond(req.requestId, {
         id: req.payload.id,
         jsonrpc: req.payload.jsonrpc,
         error: { code: 4100, message: decision.reason }
@@ -2082,7 +2082,7 @@ export class Accounts extends EventEmitter {
         log.error('Autonomous wallet action has no executor', {
           actionId: decision.authorization.actionId
         })
-        this.dependencies.requests.respond(req.handlerId, {
+        this.dependencies.requests.respond(req.requestId, {
           id: req.payload.id,
           jsonrpc: req.payload.jsonrpc,
           error: { code: 4100, message: 'Autonomous signing is not enabled for this action' }
@@ -2099,11 +2099,11 @@ export class Accounts extends EventEmitter {
     log.info('routeRequest', JSON.stringify(req))
 
     const requestAccount = this.getFrameAccount(req.account)
-    if (requestAccount && !requestAccount.requests[req.handlerId]) {
+    if (requestAccount && !requestAccount.requests[req.requestId]) {
       requestAccount.addRequest(req)
       return true
     }
-    this.dependencies.requests.respond(req.handlerId, {
+    this.dependencies.requests.respond(req.requestId, {
       id: req.payload.id,
       jsonrpc: req.payload.jsonrpc,
       error: { code: 4100, message: 'Request account is unavailable' }
@@ -2117,7 +2117,7 @@ export class Accounts extends EventEmitter {
       return false
     }
 
-    this.recordSubmittedTransaction(account, request.handlerId, request, hash)
+    this.recordSubmittedTransaction(account, request.requestId, request, hash)
     const activity = this.store.getState().main.activity[transactionActivityId(hash)] as
       | ActivityRecord
       | undefined
@@ -2156,7 +2156,7 @@ export class Accounts extends EventEmitter {
           data: proposal.data
         }
         const request: TransactionRequest = {
-          handlerId: `safe:${normalizedHash}`,
+          requestId: `safe:${normalizedHash}`,
           type: 'transaction',
           origin: proposal.local?.origin ?? frameOriginId,
           account: account.id,
@@ -2183,7 +2183,7 @@ export class Accounts extends EventEmitter {
           classification:
             proposal.data !== '0x' ? TxClassification.CONTRACT_CALL : TxClassification.NATIVE_TRANSFER
         }
-        this.recordSubmittedTransaction(account, request.handlerId, request, outerTxHash)
+        this.recordSubmittedTransaction(account, request.requestId, request, outerTxHash)
         const activity = this.store.getState().main.activity[transactionActivityId(outerTxHash)] as
           | ActivityRecord
           | undefined
@@ -2196,41 +2196,41 @@ export class Accounts extends EventEmitter {
     return false
   }
 
-  removeRequests(handlerId: string) {
+  removeRequests(requestId: string) {
     Object.keys(this.storeApi.getAccounts()).forEach((id) => {
       const account = this.handle(id)
-      if (account?.requests[handlerId]) {
-        this.removeRequest(account, handlerId)
+      if (account?.requests[requestId]) {
+        this.removeRequest(account, requestId)
       }
     })
   }
 
-  removeRequest(account: FrameAccount, handlerId: string) {
-    log.info(`removeRequest(${account.id}, ${handlerId})`)
+  removeRequest(account: FrameAccount, requestId: string) {
+    log.info(`removeRequest(${account.id}, ${requestId})`)
 
-    account.clearRequest(handlerId)
+    account.clearRequest(requestId)
   }
 
   setRequestPending(req: AccountRequest) {
-    const handlerId = req.handlerId
-    const requestAccount = this.accountForRequest(handlerId)
+    const requestId = req.requestId
+    const requestAccount = this.accountForRequest(requestId)
 
-    log.info('setRequestPending', handlerId)
+    log.info('setRequestPending', requestId)
 
     if (requestAccount) {
       const signerType = requestAccount.lastSignerType
       const hwSigner = signerType !== 'seed' && signerType !== 'ring'
-      requestAccount.patchRequest(handlerId, (request) => {
+      requestAccount.patchRequest(requestId, (request) => {
         request.status = RequestStatus.Pending
         request.notice = hwSigner ? 'See Signer' : ''
       })
     }
   }
 
-  setRequestError(handlerId: string, err: Error) {
-    log.info('setRequestError', handlerId)
+  setRequestError(requestId: string, err: Error) {
+    log.info('setRequestError', requestId)
 
-    const requestAccount = this.accountForRequest(handlerId)
+    const requestAccount = this.accountForRequest(requestId)
 
     if (requestAccount) {
       const errorMessage = (err.message || '').toLowerCase()
@@ -2248,66 +2248,66 @@ export class Accounts extends EventEmitter {
         notice = err.message || 'Unknown Error' // TODO: Update to normalize input type
       }
 
-      requestAccount.patchRequest(handlerId, (request) => {
+      requestAccount.patchRequest(requestId, (request) => {
         request.status = RequestStatus.Error
         request.notice = notice
       })
 
-      const request = requestAccount.requests[handlerId]
+      const request = requestAccount.requests[requestId]
       if (request?.type === 'transaction') {
         this.dependencies.runtime.schedule(() => {
-          if (requestAccount.requests[handlerId]) {
-            requestAccount.patchRequest(handlerId, (request) => {
+          if (requestAccount.requests[requestId]) {
+            requestAccount.patchRequest(requestId, (request) => {
               request.mode = RequestMode.Monitor
             })
 
             this.dependencies.runtime.schedule(
-              () => this.has(requestAccount.address) && this.removeRequest(requestAccount, handlerId),
+              () => this.has(requestAccount.address) && this.removeRequest(requestAccount, requestId),
               8000
             )
           }
         }, 1500)
       } else {
         this.dependencies.runtime.schedule(
-          () => this.has(requestAccount.address) && this.removeRequest(requestAccount, handlerId),
+          () => this.has(requestAccount.address) && this.removeRequest(requestAccount, requestId),
           3300
         )
       }
     }
   }
 
-  setTxSigned(handlerId: string, cb: Callback<void>) {
-    log.info('setTxSigned', handlerId)
+  setTxSigned(requestId: string, cb: Callback<void>) {
+    log.info('setTxSigned', requestId)
 
-    const requestAccount = this.accountForRequest(handlerId)
+    const requestAccount = this.accountForRequest(requestId)
     if (!requestAccount) {
-      return cb(new Error('No valid request for ' + handlerId))
+      return cb(new Error('No valid request for ' + requestId))
     }
 
-    if (requestAccount.requests[handlerId]) {
+    if (requestAccount.requests[requestId]) {
       if (
-        requestAccount.requests[handlerId].status === RequestStatus.Declined ||
-        requestAccount.requests[handlerId].status === RequestStatus.Error
+        requestAccount.requests[requestId].status === RequestStatus.Declined ||
+        requestAccount.requests[requestId].status === RequestStatus.Error
       ) {
         cb(new Error('Request already declined'))
       } else {
-        requestAccount.patchRequest(handlerId, (request) => {
+        requestAccount.patchRequest(requestId, (request) => {
           request.status = RequestStatus.Sending
           request.notice = 'Sending'
         })
         cb(null)
       }
     } else {
-      cb(new Error('No valid request for ' + handlerId))
+      cb(new Error('No valid request for ' + requestId))
     }
   }
 
-  setTxSent(handlerId: string, hash: string) {
-    log.info('setTxSent', handlerId, 'Hash', hash)
+  setTxSent(requestId: string, hash: string) {
+    log.info('setTxSent', requestId, 'Hash', hash)
 
-    const requestAccount = this.accountForRequest(handlerId)
+    const requestAccount = this.accountForRequest(requestId)
     if (requestAccount) {
-      const txRequest = requestAccount.patchRequest<TransactionRequest>(handlerId, (request) => {
+      const txRequest = requestAccount.patchRequest<TransactionRequest>(requestId, (request) => {
         request.status = RequestStatus.Verifying
         request.notice = 'Verifying'
         request.mode = RequestMode.Monitor
@@ -2316,26 +2316,26 @@ export class Accounts extends EventEmitter {
       if (!txRequest) {
         return
       }
-      this.recordSubmittedTransaction(requestAccount, handlerId, txRequest, hash)
-      this.store.getState().navClearReq(handlerId, false)
+      this.recordSubmittedTransaction(requestAccount, requestId, txRequest, hash)
+      this.store.getState().navClearReq(requestId, false)
       this.openNextActionableRequest(requestAccount)
-      this.txMonitor(requestAccount, handlerId, hash).catch((error: unknown) =>
+      this.txMonitor(requestAccount, requestId, hash).catch((error: unknown) =>
         log.error('Could not start transaction monitor', error)
       )
     }
   }
 
-  setRequestSuccess(handlerId: string) {
-    log.info('setRequestSuccess', handlerId)
+  setRequestSuccess(requestId: string) {
+    log.info('setRequestSuccess', requestId)
 
-    const requestAccount = this.accountForRequest(handlerId)
+    const requestAccount = this.accountForRequest(requestId)
     if (requestAccount) {
-      const isTransaction = requestAccount.requests[handlerId]?.type === 'transaction'
+      const isTransaction = requestAccount.requests[requestId]?.type === 'transaction'
       if (!isTransaction) {
-        this.removeRequest(requestAccount, handlerId)
+        this.removeRequest(requestAccount, requestId)
         return
       }
-      requestAccount.patchRequest(handlerId, (request) => {
+      requestAccount.patchRequest(requestId, (request) => {
         request.status = RequestStatus.Success
         request.notice = 'Successful'
         request.mode = RequestMode.Monitor
@@ -2413,7 +2413,7 @@ export class Accounts extends EventEmitter {
     return hexValue
   }
 
-  private txFeeUpdate(inputValue: string, handlerId: string, userUpdate: boolean) {
+  private txFeeUpdate(inputValue: string, requestId: string, userUpdate: boolean) {
     // Check value
     if (this.invalidValue(inputValue)) {
       throw new Error('txFeeUpdate, invalid input value')
@@ -2425,9 +2425,9 @@ export class Accounts extends EventEmitter {
       throw new Error('No account selected while setting base fee')
     }
 
-    const request = this.getTransactionRequest(currentAccount, handlerId)
+    const request = this.getTransactionRequest(currentAccount, requestId)
     if (!request) {
-      throw new Error(`Could not find transaction request with handlerId ${handlerId}`)
+      throw new Error(`Could not find transaction request with requestId ${requestId}`)
     }
     if (request.locked) {
       throw new Error('Request has already been approved by the user')
@@ -2470,12 +2470,12 @@ export class Accounts extends EventEmitter {
 
   private completeTxFeeUpdate(
     currentAccount: FrameAccount,
-    handlerId: string,
+    requestId: string,
     userUpdate: boolean,
     previousFee: unknown,
     data: TransactionData
   ) {
-    currentAccount.patchRequest<TransactionRequest>(handlerId, (request) => {
+    currentAccount.patchRequest<TransactionRequest>(requestId, (request) => {
       request.data = data
       if (userUpdate) {
         request.feesUpdatedByUser = true
@@ -2486,10 +2486,10 @@ export class Accounts extends EventEmitter {
     })
   }
 
-  setBaseFee(baseFee: string, handlerId: string, userUpdate: boolean) {
+  setBaseFee(baseFee: string, requestId: string, userUpdate: boolean) {
     const { currentAccount, maxPriorityFeePerGas, gasLimit, currentBaseFee, txType } = this.txFeeUpdate(
       baseFee,
-      handlerId,
+      requestId,
       userUpdate
     )
 
@@ -2501,9 +2501,9 @@ export class Accounts extends EventEmitter {
       return
     }
 
-    const txRequest = this.getTransactionRequest(currentAccount, handlerId)
+    const txRequest = this.getTransactionRequest(currentAccount, requestId)
     if (!txRequest) {
-      throw new Error(`Could not find transaction request with handlerId ${handlerId}`)
+      throw new Error(`Could not find transaction request with requestId ${requestId}`)
     }
     const tx = { ...txRequest.data }
 
@@ -2525,13 +2525,13 @@ export class Accounts extends EventEmitter {
       priorityFee: intToHex(maxPriorityFeePerGas)
     }
 
-    this.completeTxFeeUpdate(currentAccount, handlerId, userUpdate, previousFee, tx)
+    this.completeTxFeeUpdate(currentAccount, requestId, userUpdate, previousFee, tx)
   }
 
-  setPriorityFee(priorityFee: string, handlerId: string, userUpdate: boolean) {
+  setPriorityFee(priorityFee: string, requestId: string, userUpdate: boolean) {
     const { currentAccount, maxPriorityFeePerGas, gasLimit, currentBaseFee, txType } = this.txFeeUpdate(
       priorityFee,
-      handlerId,
+      requestId,
       userUpdate
     )
 
@@ -2543,9 +2543,9 @@ export class Accounts extends EventEmitter {
       return
     }
 
-    const txRequest = this.getTransactionRequest(currentAccount, handlerId)
+    const txRequest = this.getTransactionRequest(currentAccount, requestId)
     if (!txRequest) {
-      throw new Error(`Could not find transaction request with handlerId ${handlerId}`)
+      throw new Error(`Could not find transaction request with requestId ${requestId}`)
     }
     const tx = { ...txRequest.data }
 
@@ -2571,11 +2571,11 @@ export class Accounts extends EventEmitter {
     }
 
     // Complete update
-    this.completeTxFeeUpdate(currentAccount, handlerId, userUpdate, previousFee, tx)
+    this.completeTxFeeUpdate(currentAccount, requestId, userUpdate, previousFee, tx)
   }
 
-  setGasPrice(price: string, handlerId: string, userUpdate: boolean) {
-    const { currentAccount, gasLimit, gasPrice, txType } = this.txFeeUpdate(price, handlerId, userUpdate)
+  setGasPrice(price: string, requestId: string, userUpdate: boolean) {
+    const { currentAccount, gasLimit, gasPrice, txType } = this.txFeeUpdate(price, requestId, userUpdate)
 
     // New values
     const newGasPrice = parseInt(this.limitedHexValue(price, 0, 9999 * 1e9), 16)
@@ -2585,9 +2585,9 @@ export class Accounts extends EventEmitter {
       return
     }
 
-    const txRequest = this.getTransactionRequest(currentAccount, handlerId)
+    const txRequest = this.getTransactionRequest(currentAccount, requestId)
     if (!txRequest) {
-      throw new Error(`Could not find transaction request with handlerId ${handlerId}`)
+      throw new Error(`Could not find transaction request with requestId ${requestId}`)
     }
     const tx = { ...txRequest.data }
     const maxTotalFee = this.dependencies.transactionPolicy.maxFee(tx)
@@ -2605,18 +2605,18 @@ export class Accounts extends EventEmitter {
     }
 
     // Complete update
-    this.completeTxFeeUpdate(currentAccount, handlerId, userUpdate, previousFee, tx)
+    this.completeTxFeeUpdate(currentAccount, requestId, userUpdate, previousFee, tx)
   }
 
-  lockRequest(handlerId: string) {
+  lockRequest(requestId: string) {
     // When a request is approved, lock it so that no automatic updates such as fee changes can happen
     const currentAccount = this.current()
-    if (currentAccount?.requests[handlerId]) {
-      currentAccount.patchRequest<TransactionRequest>(handlerId, (request) => {
+    if (currentAccount?.requests[requestId]) {
+      currentAccount.patchRequest<TransactionRequest>(requestId, (request) => {
         request.locked = true
       })
     } else {
-      log.error('Trying to lock request ' + handlerId + ' but there is no current account')
+      log.error('Trying to lock request ' + requestId + ' but there is no current account')
     }
   }
 

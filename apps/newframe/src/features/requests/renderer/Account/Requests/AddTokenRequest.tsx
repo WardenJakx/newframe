@@ -28,7 +28,7 @@ function AddTokenRequest(props: AddTokenRequestProps) {
   const token = props.req.token
   const image = persistedImageSource(token.image)
   return (
-    <Surface key={props.req.id ?? props.req.handlerId} padding='large' radius='card'>
+    <Surface key={props.req.id ?? props.req.requestId} padding='large' radius='card'>
       {notice ? (
         <RequestStatusNotice notice={notice} status={status} />
       ) : (

@@ -21,7 +21,7 @@ function request(decodedMessage: string): SignRequestView {
   return {
     account: address,
     data: { decodedMessage },
-    handlerId: 'request-1',
+    requestId: 'request-1',
     origin: 'origin-1',
     payload: {
       id: 1,

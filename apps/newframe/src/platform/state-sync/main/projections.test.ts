@@ -59,7 +59,7 @@ function safeTransactionState(deployment: SafeDeployment, safeTxHash: string) {
       safe: { '1': deployment },
       requests: {
         'request-1': {
-          handlerId: 'request-1',
+          requestId: 'request-1',
           type: 'transaction',
           origin: 'app.test',
           account: safeAddress,

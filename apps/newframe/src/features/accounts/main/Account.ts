@@ -244,14 +244,16 @@ class FrameAccount {
   }
 
   setAccess(req: AccessRequest, access: boolean, targetAddress: Address = this.address) {
-    const { handlerId, origin, account } = req
+    const { requestId, origin, account } = req
     if (account.toLowerCase() === this.address) {
       // Permissions do not live inside the account summary
       if (access) {
         const { name } = this.store.getState().main.origins[origin]
-        this.store.getState().setPermission(targetAddress, { handlerId, origin: name, provider: true })
+        this.store
+          .getState()
+          .setPermission(targetAddress, { handlerId: requestId, origin: name, provider: true })
       } else {
-        this.store.getState().revokePermission(this.address, handlerId)
+        this.store.getState().revokePermission(this.address, requestId)
       }
     }
 
@@ -262,36 +264,36 @@ class FrameAccount {
     return this.requests[id] as T | undefined
   }
 
-  resolveRequest({ handlerId }: AccountRequest, result?: unknown) {
-    const knownRequest = this.requests[handlerId]
+  resolveRequest({ requestId }: AccountRequest, result?: unknown) {
+    const knownRequest = this.requests[requestId]
 
     if (knownRequest) {
       this.requestLifecycle.resolve(knownRequest, result)
 
-      this.clearRequest(knownRequest.handlerId)
+      this.clearRequest(knownRequest.requestId)
     }
   }
 
-  rejectRequest({ handlerId }: AccountRequest, error: EVMError) {
-    const knownRequest = this.requests[handlerId]
+  rejectRequest({ requestId }: AccountRequest, error: EVMError) {
+    const knownRequest = this.requests[requestId]
 
     if (knownRequest) {
       this.requestLifecycle.reject(knownRequest, error)
 
-      this.clearRequest(knownRequest.handlerId)
+      this.clearRequest(knownRequest.requestId)
     }
   }
 
-  clearRequest(handlerId: string) {
-    log.info(`clearRequest(${handlerId}) for account ${this.id}`)
+  clearRequest(requestId: string) {
+    log.info(`clearRequest(${requestId}) for account ${this.id}`)
 
     const panelNav = this.store.getState().windows.panel.nav as PanelNavigationEntry[]
     const wasCurrentRequest =
-      panelNav[0]?.view === 'requestView' && panelNav[0]?.data?.requestId === handlerId
+      panelNav[0]?.view === 'requestView' && panelNav[0]?.data?.requestId === requestId
 
-    this.store.getState().removeAccountRequest(this.id, handlerId)
-    this.actionUpdateHandlers.delete(handlerId)
-    this.store.getState().navClearReq(handlerId, Object.keys(this.requests).length > 0)
+    this.store.getState().removeAccountRequest(this.id, requestId)
+    this.actionUpdateHandlers.delete(requestId)
+    this.store.getState().navClearReq(requestId, Object.keys(this.requests).length > 0)
 
     const nextRequest = Object.values(this.requests)
       .filter((request): request is AccountRequest => request !== undefined)
@@ -313,14 +315,14 @@ class FrameAccount {
         data: {
           step: 'confirm',
           accountId: this.id,
-          requestId: nextRequest.handlerId
+          requestId: nextRequest.requestId
         }
       })
     }
   }
 
   clearRequestsByOrigin(origin: string) {
-    Object.entries(this.requests).forEach(([_handlerId, req]) => {
+    Object.entries(this.requests).forEach(([_requestId, req]) => {
       if (req?.origin === origin) {
         const err = { code: 4001, message: 'User rejected the request' }
         this.rejectRequest(req, err)
@@ -375,10 +377,10 @@ class FrameAccount {
       // Get recipient identity
       try {
         const recipient = await this.reveal.identity(to)
-        const knownTxRequest = this.getRequest<TransactionRequest>(req.handlerId)
+        const knownTxRequest = this.getRequest<TransactionRequest>(req.requestId)
 
         if (knownTxRequest) {
-          const updated = this.patchRequest<TransactionRequest>(req.handlerId, (request) => {
+          const updated = this.patchRequest<TransactionRequest>(req.requestId, (request) => {
             request.recipient = recipient.ens
           })
           if (updated) {
@@ -399,10 +401,10 @@ class FrameAccount {
         // Decode calldata
         const decodedData = await this.reveal.decode(to, parseInt(chainId, 16), calldata)
 
-        const knownTxRequest = this.getRequest<TransactionRequest>(req.handlerId)
+        const knownTxRequest = this.getRequest<TransactionRequest>(req.requestId)
 
         if (knownTxRequest && decodedData) {
-          const updated = this.patchRequest<TransactionRequest>(req.handlerId, (request) => {
+          const updated = this.patchRequest<TransactionRequest>(req.requestId, (request) => {
             request.decodedData = decodedData
           })
           if (updated) {
@@ -431,10 +433,10 @@ class FrameAccount {
     try {
       const contract = new Erc20Contract(to, parseInt(chainId, 16), this.chainRpc)
       const tokenData = await contract.getTokenData()
-      const knownTxRequest = this.getRequest<TransactionRequest>(req.handlerId)
+      const knownTxRequest = this.getRequest<TransactionRequest>(req.requestId)
 
       if (knownTxRequest) {
-        const updated = this.patchRequest<TransactionRequest>(req.handlerId, (request) => {
+        const updated = this.patchRequest<TransactionRequest>(req.requestId, (request) => {
           request.tokenData = tokenData
         })
         if (updated) {
@@ -442,12 +444,12 @@ class FrameAccount {
         }
       }
     } catch (e) {
-      log.warn('unable to fetch erc20 token metadata', { handlerId: req.handlerId, to, chainId, error: e })
+      log.warn('unable to fetch erc20 token metadata', { requestId: req.requestId, to, chainId, error: e })
     }
   }
 
   private async simulateTransaction(req: TransactionRequest, force = false) {
-    const knownTxRequest = this.getRequest<TransactionRequest>(req.handlerId)
+    const knownTxRequest = this.getRequest<TransactionRequest>(req.requestId)
     if (!knownTxRequest) {
       return
     }
@@ -455,7 +457,7 @@ class FrameAccount {
       return
     }
 
-    this.patchRequest<TransactionRequest>(req.handlerId, (request) => {
+    this.patchRequest<TransactionRequest>(req.requestId, (request) => {
       request.simulation = {
         status: 'loading',
         effects: request.simulation?.effects,
@@ -463,15 +465,15 @@ class FrameAccount {
       }
     })
 
-    const requestToSimulate = this.getRequest<TransactionRequest>(req.handlerId)
+    const requestToSimulate = this.getRequest<TransactionRequest>(req.requestId)
     if (!requestToSimulate) {
       return
     }
     const simulation = await this.simulation.simulateTransactionEffects(requestToSimulate)
-    const currentTxRequest = this.getRequest<TransactionRequest>(req.handlerId)
+    const currentTxRequest = this.getRequest<TransactionRequest>(req.requestId)
 
     if (currentTxRequest) {
-      const updated = this.patchRequest<TransactionRequest>(req.handlerId, (request) => {
+      const updated = this.patchRequest<TransactionRequest>(req.requestId, (request) => {
         request.simulation = simulation
       })
       if (updated) {
@@ -492,7 +494,7 @@ class FrameAccount {
           account: this.address
         })
 
-        const knownTxRequest = this.getRequest<TransactionRequest>(req.handlerId)
+        const knownTxRequest = this.getRequest<TransactionRequest>(req.requestId)
 
         if (knownTxRequest) {
           const handlers = new Map<string, Action<unknown>>()
@@ -502,8 +504,8 @@ class FrameAccount {
             }
             return cloneSerializable(action)
           })
-          this.actionUpdateHandlers.set(req.handlerId, handlers)
-          const updated = this.patchRequest<TransactionRequest>(req.handlerId, (request) => {
+          this.actionUpdateHandlers.set(req.requestId, handlers)
+          const updated = this.patchRequest<TransactionRequest>(req.requestId, (request) => {
             request.recognizedActions = recognizedActions
           })
           if (updated) {
@@ -517,23 +519,23 @@ class FrameAccount {
   }
 
   private async decodeErc7730TypedMessage(req: SignTypedDataRequest) {
-    const knownRequest = this.requests[req.handlerId]
+    const knownRequest = this.requests[req.requestId]
     if (!knownRequest) {
       return
     }
 
     try {
       const erc7730 = await getErc7730TypedDataDisplay(req.typedMessage)
-      const updatedRequest = this.getRequest<SignTypedDataRequest>(req.handlerId)
+      const updatedRequest = this.getRequest<SignTypedDataRequest>(req.requestId)
       if (!erc7730 || !updatedRequest) {
         return
       }
 
-      this.patchRequest<SignTypedDataRequest>(req.handlerId, (request) => {
+      this.patchRequest<SignTypedDataRequest>(req.requestId, (request) => {
         request.erc7730 = erc7730
       })
     } catch (error) {
-      log.warn('unable to decode ERC-7730 typed message', { error, handlerId: req.handlerId })
+      log.warn('unable to decode ERC-7730 typed message', { error, requestId: req.requestId })
     }
   }
 
@@ -544,7 +546,7 @@ class FrameAccount {
       return
     }
 
-    const knownRequest = this.requests[req.handlerId]
+    const knownRequest = this.requests[req.requestId]
     if (!knownRequest) {
       return
     }
@@ -564,7 +566,7 @@ class FrameAccount {
         this.reveal.identity(permit.spender.address)
       ])
 
-      this.patchRequest<PermitSignatureRequest>(req.handlerId, (request) => {
+      this.patchRequest<PermitSignatureRequest>(req.requestId, (request) => {
         Object.assign(request, {
           tokenData,
           permit: {
@@ -575,7 +577,7 @@ class FrameAccount {
         })
       })
     } catch (error) {
-      log.warn('unable to decode typed message', { error, handlerId: req.handlerId })
+      log.warn('unable to decode typed message', { error, requestId: req.requestId })
     }
   }
 
@@ -589,7 +591,7 @@ class FrameAccount {
       void this.decodeCalldata(req)
       await this.recognizeActions(req)
 
-      const enrichedRequest = this.getRequest<TransactionRequest>(req.handlerId)
+      const enrichedRequest = this.getRequest<TransactionRequest>(req.requestId)
       if (enrichedRequest && !enrichedRequest.safeTxHash) {
         await this.simulateTransaction(enrichedRequest)
       }
@@ -611,7 +613,7 @@ class FrameAccount {
         }
       })
       if (actionHandlers.size) {
-        this.actionUpdateHandlers.set(r.handlerId, actionHandlers)
+        this.actionUpdateHandlers.set(r.requestId, actionHandlers)
       }
 
       const request = cloneSerializable({
@@ -649,7 +651,7 @@ class FrameAccount {
           data: {
             step: 'confirm',
             accountId: account,
-            requestId: req.handlerId
+            requestId: req.requestId
           }
         } as const
         this.runtime.navigation.forward('panel', crumb)

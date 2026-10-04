@@ -13,7 +13,7 @@ describe('SimpleTypedData', () => {
         req={{
           type: 'signTypedData',
           origin: 'origin-1',
-          handlerId: 'request-1',
+          requestId: 'request-1',
           account: '0x1',
           payload: { id: 1, jsonrpc: '2.0', method: 'eth_signTypedData_v4', params: [] },
           typedMessage: { data: { domain: { name: 'Different signed domain' } }, version: 'V4' }

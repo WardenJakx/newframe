@@ -89,14 +89,14 @@ const requestLifecycle = {
     return true
   },
   resolve(request: AccountRequest, result?: unknown) {
-    return this.respond(request.handlerId, {
+    return this.respond(request.requestId, {
       id: request.payload.id,
       jsonrpc: request.payload.jsonrpc,
       result
     })
   },
   reject(request: AccountRequest, error: EVMError) {
-    return this.respond(request.handlerId, {
+    return this.respond(request.requestId, {
       id: request.payload.id,
       jsonrpc: request.payload.jsonrpc,
       error
@@ -197,9 +197,9 @@ const requiredFrameAccount = (accounts: import('./index.ts').Accounts, address: 
   }
   return frameAccount
 }
-const canonicalRequest = (id: string | number = request.handlerId) =>
+const canonicalRequest = (id: string | number = request.requestId) =>
   currentAccount().getRequest<TransactionRequest>(String(id))
-const requiredCanonicalRequest = (id: string | number = request.handlerId) => {
+const requiredCanonicalRequest = (id: string | number = request.requestId) => {
   const current = currentAccount().getRequest<TransactionRequest>(String(id))
   if (!current) {
     throw new Error(`Expected canonical request ${id}`)
@@ -208,7 +208,7 @@ const requiredCanonicalRequest = (id: string | number = request.handlerId) => {
 }
 const patchRequest = (
   update: (request: TransactionRequest) => void,
-  id: string | number = request.handlerId
+  id: string | number = request.requestId
 ) => currentAccount().patchRequest(String(id), update)
 const flushPromises = async (count = 4) => {
   while (count-- > 0) {
@@ -253,7 +253,7 @@ const account = { id: accountAddress, address: accountAddress }
 const account2 = { address: '0xef8f1bbe054ad30c6af774ed7a7c70a74ef77ac5' }
 
 const createRequest = (): TransactionRequest => ({
-  handlerId: '1',
+  requestId: '1',
   origin: '0r161n',
   type: 'transaction' as const,
   account: accountAddress,
@@ -350,7 +350,7 @@ describe('#routeRequest', () => {
 
   it('rejects an unminted request source without queueing the request', () => {
     const respond = mock()
-    requestLifecycle.create(respond, request.handlerId)
+    requestLifecycle.create(respond, request.requestId)
     const forgedRequestSource = {
       kind: 'renderer',
       role: 'wallet-ui',
@@ -382,7 +382,7 @@ describe('#routeRequest', () => {
       isActive: () => true
     })
     const routedRequest = { ...request, account: account.address }
-    requestLifecycle.create(mock(), request.handlerId)
+    requestLifecycle.create(mock(), request.requestId)
 
     expect(Accounts.routeRequest(requestSource, routedRequest, execute)).toBe(true)
     expect(execute).toHaveBeenCalled()
@@ -392,7 +392,7 @@ describe('#routeRequest', () => {
 
   it('fails closed when an autonomous action has no executor', () => {
     const respond = mock()
-    requestLifecycle.create(respond, request.handlerId)
+    requestLifecycle.create(respond, request.requestId)
     const requestSource = createAiSessionClientSource({
       sessionId: 'ai-session',
       accountId: account.address,
@@ -522,7 +522,7 @@ it('selects the first remaining account when removing the current account', () =
 it('rejects pending requests before removing their account', () => {
   const respond = mock()
   const pendingRequest = {
-    handlerId: 'pending-signature',
+    requestId: 'pending-signature',
     type: 'sign',
     origin: '0r161n',
     account: account.address,
@@ -530,7 +530,7 @@ it('rejects pending requests before removing their account', () => {
   }
 
   const removedAccount = currentAccount()
-  requestLifecycle.create(respond, pendingRequest.handlerId)
+  requestLifecycle.create(respond, pendingRequest.requestId)
   removedAccount.addRequest(pendingRequest)
   Accounts.remove(account.address)
   Accounts.remove(account.address)
@@ -544,7 +544,7 @@ it('rejects pending requests before removing their account', () => {
       }
     ]
   ])
-  expect(requestLifecycle.pending.has(pendingRequest.handlerId)).toBe(false)
+  expect(requestLifecycle.pending.has(pendingRequest.requestId)).toBe(false)
   expect(storeState().main.accounts[account.address]).toBeUndefined()
 })
 
@@ -553,37 +553,37 @@ it('retains and can settle a pending request after its account moves and the old
   const respond = mock()
   const pendingRequest = {
     ...request,
-    handlerId: 'profile-request',
+    requestId: 'profile-request',
     account: account.address
   }
 
   storeState().createProfile(profileId, 'Request Profile')
   storeState().moveAccountToProfile(account.address, profileId)
   storeState().selectProfile(profileId)
-  requestLifecycle.create(respond, pendingRequest.handlerId)
+  requestLifecycle.create(respond, pendingRequest.requestId)
   const frameAccount = requiredFrameAccount(Accounts, account.address)
   frameAccount.addRequest(pendingRequest)
   storeState().moveAccountToProfile(account.address, DEFAULT_PROFILE_ID)
   storeState().deleteProfile(profileId)
 
   expect(storeState().main.profiles[profileId]).toBeUndefined()
-  expect(frameAccount.requests[pendingRequest.handlerId]).toBeTruthy()
+  expect(frameAccount.requests[pendingRequest.requestId]).toBeTruthy()
   frameAccount.resolveRequest(pendingRequest, 'profile result')
   expect(respond.mock.calls).toEqual([[{ id: 7, jsonrpc: '2.0', result: 'profile result' }]])
 })
 
 it('uses canonical request state for transaction failure without activity', () => {
   const frameAccount = requiredFrameAccount(Accounts, account.address)
-  const transaction = { ...request, handlerId: 'failed-transaction', account: account.address }
+  const transaction = { ...request, requestId: 'failed-transaction', account: account.address }
   frameAccount.addRequest(transaction, mock())
   Accounts.setRequestPending(transaction)
-  Accounts.setTxSigned(transaction.handlerId, (error: Error | null) => expect(error).toBe(null))
-  expect(frameAccount.requests[transaction.handlerId]).toMatchObject({
+  Accounts.setTxSigned(transaction.requestId, (error: Error | null) => expect(error).toBe(null))
+  expect(frameAccount.requests[transaction.requestId]).toMatchObject({
     status: 'sending',
     notice: 'Sending'
   })
-  Accounts.setRequestError(transaction.handlerId, new Error('broadcast failed'))
-  expect(frameAccount.requests[transaction.handlerId]).toMatchObject({
+  Accounts.setRequestError(transaction.requestId, new Error('broadcast failed'))
+  expect(frameAccount.requests[transaction.requestId]).toMatchObject({
     status: 'error',
     notice: 'broadcast failed',
     mode: 'normal'
@@ -591,9 +591,9 @@ it('uses canonical request state for transaction failure without activity', () =
   expect(storeState().main.activity).toEqual({})
   expect(notificationMock.mock.calls.length).toBe(0)
   timers.advanceTimersByTime(1_500)
-  expect(frameAccount.requests[transaction.handlerId]?.mode).toBe(RequestMode.Monitor)
+  expect(frameAccount.requests[transaction.requestId]?.mode).toBe(RequestMode.Monitor)
   timers.advanceTimersByTime(8_000)
-  expect(frameAccount.requests[transaction.handlerId]).toBeUndefined()
+  expect(frameAccount.requests[transaction.requestId]).toBeUndefined()
 })
 
 it('clears the selected account when removing the last account', () => {
@@ -731,7 +731,7 @@ describe('transaction fee editing', () => {
 
   it('shares strict request, lock, and manual-update guards across fee fields', () => {
     for (const invalid of [undefined, 'wrong', '-0x1']) {
-      expect(() => Accounts.setBaseFee(invalid as unknown as string, request.handlerId, false)).toThrow(
+      expect(() => Accounts.setBaseFee(invalid as unknown as string, request.requestId, false)).toThrow(
         /invalid input/i
       )
     }
@@ -740,12 +740,12 @@ describe('transaction fee editing', () => {
     patchRequest((current) => {
       current.locked = true
     })
-    expect(() => Accounts.setBaseFee('0x1', request.handlerId, false)).toThrow(/already been approved/i)
+    expect(() => Accounts.setBaseFee('0x1', request.requestId, false)).toThrow(/already been approved/i)
     patchRequest((current) => {
       current.locked = false
       current.feesUpdatedByUser = true
     })
-    expect(() => Accounts.setGasPrice('0x61a8', request.handlerId, false)).toThrow(/updated by user/i)
+    expect(() => Accounts.setGasPrice('0x61a8', request.requestId, false)).toThrow(/updated by user/i)
   })
 
   it('updates each distinct fee representation and records a manual change once', () => {
@@ -753,19 +753,19 @@ describe('transaction fee editing', () => {
       current.data.maxFeePerGas = gweiToHex(10)
       current.data.maxPriorityFeePerGas = gweiToHex(2)
     })
-    Accounts.setBaseFee(gweiToHex(6), request.handlerId, false)
+    Accounts.setBaseFee(gweiToHex(6), request.requestId, false)
     expect(requiredCanonicalRequest().data.maxFeePerGas).toBe(gweiToHex(8))
 
-    Accounts.setPriorityFee(gweiToHex(3), request.handlerId, false)
+    Accounts.setPriorityFee(gweiToHex(3), request.requestId, false)
     expect(requiredCanonicalRequest().data.maxPriorityFeePerGas).toBe(gweiToHex(3))
 
     patchRequest((current) => {
       current.data.type = '0x0'
     })
-    Accounts.setGasPrice(gweiToHex(45), request.handlerId, false)
+    Accounts.setGasPrice(gweiToHex(45), request.requestId, false)
     expect(requiredCanonicalRequest().data.gasPrice).toBe(gweiToHex(45))
 
-    Accounts.setGasPrice('0x61a8', request.handlerId, true)
+    Accounts.setGasPrice('0x61a8', request.requestId, true)
     expect(canonicalRequest()).toMatchObject({
       feesUpdatedByUser: true,
       data: { gasPrice: '0x61a8' }
@@ -773,18 +773,18 @@ describe('transaction fee editing', () => {
   })
 
   it('applies the field-specific absolute caps', () => {
-    Accounts.setBaseFee(gweiToHex(10_200), request.handlerId, false)
+    Accounts.setBaseFee(gweiToHex(10_200), request.requestId, false)
     expect(requiredCanonicalRequest().data.maxFeePerGas).toBe(
       intToHex(9_999e9 + parseInt(request.data.maxPriorityFeePerGas ?? '0x0'))
     )
 
-    Accounts.setPriorityFee(gweiToHex(10_200), request.handlerId, false)
+    Accounts.setPriorityFee(gweiToHex(10_200), request.requestId, false)
     expect(requiredCanonicalRequest().data.maxPriorityFeePerGas).toBe(gweiToHex(9_999))
 
     patchRequest((current) => {
       current.data.type = '0x0'
     })
-    Accounts.setGasPrice(gweiToHex(10_200), request.handlerId, false)
+    Accounts.setGasPrice(gweiToHex(10_200), request.requestId, false)
     expect(requiredCanonicalRequest().data.gasPrice).toBe(gweiToHex(9_999))
   })
 })
@@ -829,7 +829,7 @@ describe('#setTxSent', () => {
           }
         })
 
-        accounts.setTxSent(request.handlerId, hash)
+        accounts.setTxSent(request.requestId, hash)
         expect(storeState().main.activity[hash]).toMatchObject({
           account: account.address,
           accounts: [account.address, account2.address],
@@ -889,7 +889,7 @@ describe('#setTxSent', () => {
     })
 
     currentAccount().addRequest(request, mock())
-    Accounts.setTxSent(request.handlerId, hash)
+    Accounts.setTxSent(request.requestId, hash)
     expect(canonicalRequest()).toMatchObject({
       status: 'verifying',
       notice: 'Verifying',
@@ -907,7 +907,7 @@ describe('#setTxSent', () => {
     expect(storeState().main.activity[hash].status).toBe('submitted')
     expect(notificationMock.mock.calls.length).toBe(0)
     timers.advanceTimersByTime(60_000)
-    expect(currentAccount().requests[request.handlerId]).toBeUndefined()
+    expect(currentAccount().requests[request.requestId]).toBeUndefined()
     expect(storeState().main.activity[hash].status).toBe('submitted')
   })
 
@@ -945,7 +945,7 @@ describe('#setTxSent', () => {
     patchRequest((request) => {
       request.simulation = simulation
     })
-    Accounts.setTxSent(request.handlerId, hash)
+    Accounts.setTxSent(request.requestId, hash)
 
     const expectedToken = {
       address: usdc.toLowerCase(),
@@ -1017,12 +1017,12 @@ describe('#setTxSent', () => {
       simulationMock.simulateTransactionEffects.mockResolvedValueOnce(simulation)
       mockConfirmedReceipt(100)
       request.account = account.address
-      request.handlerId = `allowance-${transfer}`
+      request.requestId = `allowance-${transfer}`
       currentAccount().addRequest(request, mock())
       patchRequest((request) => {
         request.simulation = simulation
       })
-      Accounts.setTxSent(request.handlerId, hash)
+      Accounts.setTxSent(request.requestId, hash)
       timers.advanceTimersByTime(1000)
       await flushPromises()
 
@@ -1050,22 +1050,22 @@ describe('#setTxSent', () => {
     mockConfirmedReceipt(receiptBlock)
 
     currentAccount().addRequest(request, mock())
-    Accounts.setTxSent(request.handlerId, hash)
+    Accounts.setTxSent(request.requestId, hash)
     timers.advanceTimersByTime(1000)
     await flushPromises()
 
-    expect(currentAccount().requests[request.handlerId]?.status).toBe(RequestStatus.Confirmed)
+    expect(currentAccount().requests[request.requestId]?.status).toBe(RequestStatus.Confirmed)
     const confirmedRequest = currentAccount().getRequest<
       TransactionRequest & { tx: { confirmations: number } }
-    >(String(request.handlerId))
+    >(String(request.requestId))
     expect(confirmedRequest?.tx.confirmations).toBe(TRANSACTION_CONFIRMATION_TARGET)
     expect(storeState().main.activity[hash].gasSpent).toBe('0x23cfb4e356000')
 
     timers.advanceTimersByTime(2999)
-    expect(clearRequest).not.toHaveBeenCalledWith(request.handlerId)
+    expect(clearRequest).not.toHaveBeenCalledWith(request.requestId)
 
     timers.advanceTimersByTime(1)
-    expect(clearRequest).toHaveBeenCalledWith(request.handlerId)
+    expect(clearRequest).toHaveBeenCalledWith(request.requestId)
   })
 
   it('does not drop a same-nonce request on another chain', async () => {
@@ -1073,7 +1073,7 @@ describe('#setTxSent', () => {
     const receiptBlock = 100
     const otherChainRequest = {
       ...request,
-      handlerId: '2',
+      requestId: '2',
       data: {
         ...request.data,
         chainId: '0xa'
@@ -1093,18 +1093,18 @@ describe('#setTxSent', () => {
 
     currentAccount().addRequest(request, mock())
     storeState().upsertAccountRequest(account.address, otherChainRequest)
-    Accounts.setTxSent(request.handlerId, hash)
+    Accounts.setTxSent(request.requestId, hash)
     timers.advanceTimersByTime(1000)
     await flushPromises()
 
-    expect(currentAccount().requests[otherChainRequest.handlerId]?.status).toBe(RequestStatus.Verifying)
+    expect(currentAccount().requests[otherChainRequest.requestId]?.status).toBe(RequestStatus.Verifying)
   })
 
   it('opens a queued request after popping the submitted transaction request', () => {
     const hash = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
     const queuedRequest = {
       ...request,
-      handlerId: '2',
+      requestId: '2',
       data: {
         ...request.data,
         nonce: '0xb'
@@ -1125,21 +1125,21 @@ describe('#setTxSent', () => {
           data: {
             step: 'confirm',
             accountId: account.address,
-            requestId: request.handlerId
+            requestId: request.requestId
           }
         }
       ]
     })
     currentAccount().addRequest(queuedRequest, mock())
 
-    Accounts.setTxSent(request.handlerId, hash)
+    Accounts.setTxSent(request.requestId, hash)
 
     expect(storeState().windows.panel.nav[0]).toEqual({
       view: 'requestView',
       data: {
         step: 'confirm',
         accountId: account.address,
-        requestId: queuedRequest.handlerId
+        requestId: queuedRequest.requestId
       }
     })
   })
@@ -1298,7 +1298,7 @@ describe('#setTxSent', () => {
       accounts.initialize()
       const frameAccount = requiredFrameAccount(accounts, account.address)
       frameAccount.addRequest(request, mock())
-      accounts.setTxSent(request.handlerId, hash)
+      accounts.setTxSent(request.requestId, hash)
       expect(methods).toEqual(['eth_subscribe'])
 
       storeState().selectProfile(profileId)
@@ -1326,8 +1326,8 @@ describe('#setTxSent', () => {
 describe('#clearRequestsByOrigin', () => {
   beforeEach(() => {
     currentAccount().addRequest(request)
-    currentAccount().addRequest({ ...request, handlerId: '2' })
-    currentAccount().addRequest({ ...request, handlerId: '3', origin: '07h3r' })
+    currentAccount().addRequest({ ...request, requestId: '2' })
+    currentAccount().addRequest({ ...request, requestId: '3', origin: '07h3r' })
   })
 
   it('should remove any request from a given origin', () => {

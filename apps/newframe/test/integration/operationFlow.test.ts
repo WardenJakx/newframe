@@ -19,7 +19,7 @@ const owner = { clientType: 'wallet-ui', entrypoint: 'tray', windowInstanceId: '
 it('authorizes and validates final adjustments against canonical state before signing once', async () => {
   const accountId = '0x1111111111111111111111111111111111111111'
   const request: TransactionRequest = {
-    handlerId: 'approve-1',
+    requestId: 'approve-1',
     type: 'transaction',
     account: accountId,
     origin: 'app.example',
@@ -66,7 +66,7 @@ it('authorizes and validates final adjustments against canonical state before si
           status: 'ok',
           signer: 'signer',
           created: 'test:1',
-          requests: { [request.handlerId]: request }
+          requests: { [request.requestId]: request }
         }
       },
       signers: {
@@ -90,7 +90,7 @@ it('authorizes and validates final adjustments against canonical state before si
     }
   })
   const current = () =>
-    store.getState().main.accounts[accountId].requests[request.handlerId] as TransactionRequest
+    store.getState().main.accounts[accountId].requests[request.requestId] as TransactionRequest
   const patchRequest = <T extends AccountRequest>(id: string, update: (value: T) => void) => {
     store.getState().patchAccountRequest(accountId, id, update as never)
     return current() as unknown as T
@@ -102,11 +102,11 @@ it('authorizes and validates final adjustments against canonical state before si
     accounts: {
       getFrameAccount: (id: string) => (id === accountId ? account : undefined),
       setRequestPending: () =>
-        patchRequest(request.handlerId, (value) => {
+        patchRequest(request.requestId, (value) => {
           value.status = 'pending' as never
         }),
       setTxSent: () =>
-        patchRequest(request.handlerId, (value) => {
+        patchRequest(request.requestId, (value) => {
           value.status = 'verifying' as never
         })
     } as never,
@@ -118,7 +118,7 @@ it('authorizes and validates final adjustments against canonical state before si
     clock: { delay: async () => {} },
     chain: { rpcMatchesChain: async () => true }
   })
-  requests.create(mock(), request.handlerId)
+  requests.create(mock(), request.requestId)
   requests.bind(request)
   let authorized = true
   const dispatcher = createOperationDispatcher({
@@ -132,7 +132,7 @@ it('authorizes and validates final adjustments against canonical state before si
   })
   const adjustments = { gasPrice: '0x2', gasLimit: '0x6000', nonce: '0x4' }
   authorized = false
-  expect((await capabilities.review.approve({ requestId: request.handlerId, adjustments })).ok).toBeFalse()
+  expect((await capabilities.review.approve({ requestId: request.requestId, adjustments })).ok).toBeFalse()
   authorized = true
   for (const invalid of [
     { to: accountId },
@@ -144,7 +144,7 @@ it('authorizes and validates final adjustments against canonical state before si
       CommandResultSchema.parse(
         await dispatcher.dispatchCommand({} as never, {
           type: 'request.approve',
-          requestId: request.handlerId,
+          requestId: request.requestId,
           adjustments: invalid
         })
       ).ok
@@ -152,7 +152,7 @@ it('authorizes and validates final adjustments against canonical state before si
     expect(current()).toEqual(request)
     expect(approveTransactionRequest).not.toHaveBeenCalled()
   }
-  expect(await capabilities.review.approve({ requestId: request.handlerId, adjustments })).toEqual({
+  expect(await capabilities.review.approve({ requestId: request.requestId, adjustments })).toEqual({
     ok: true
   })
   expect(approveTransactionRequest).toHaveBeenCalledTimes(1)
@@ -160,15 +160,15 @@ it('authorizes and validates final adjustments against canonical state before si
   expect(approveTransactionRequest.mock.calls[0]?.[0].account).toBe(accountId)
   expect(current().feesUpdatedByUser).toBeTrue()
   expect(
-    (await capabilities.review.approve({ requestId: request.handlerId, adjustments: { nonce: '0x5' } })).ok
+    (await capabilities.review.approve({ requestId: request.requestId, adjustments: { nonce: '0x5' } })).ok
   ).toBeFalse()
   completion.resolve('0xhash')
   await completion.promise
   await Promise.resolve()
   expect(
-    (await capabilities.review.approve({ requestId: request.handlerId, adjustments: { nonce: '0x5' } })).ok
+    (await capabilities.review.approve({ requestId: request.requestId, adjustments: { nonce: '0x5' } })).ok
   ).toBeFalse()
-  expect(await capabilities.review.approve({ requestId: request.handlerId })).toEqual({ ok: true })
+  expect(await capabilities.review.approve({ requestId: request.requestId })).toEqual({ ok: true })
   expect(current().data.nonce).toBe('0x4')
   expect(approveTransactionRequest).toHaveBeenCalledTimes(1)
 })

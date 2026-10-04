@@ -444,14 +444,14 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
-    revokePermission: (address: string, handlerId: string) => {
-      if (!address || !handlerId) {
+    revokePermission: (address: string, requestId: string) => {
+      if (!address || !requestId) {
         return
       }
 
       set((draft) => {
         const accountPermissions = record(record(mutableMain(draft).permissions)[address] ?? {})
-        delete accountPermissions[handlerId]
+        delete accountPermissions[requestId]
       })
     },
 
@@ -838,7 +838,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     },
 
     upsertAccountRequest: (accountId: string, request: CanonicalAccountRequest) => {
-      if (!accountId || !request.handlerId) {
+      if (!accountId || !request.requestId) {
         return
       }
 
@@ -849,7 +849,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         }
         const canonicalRequest: CanonicalAccountRequest = { ...request }
         stripRequestCapabilities(canonicalRequest)
-        record(account.requests)[request.handlerId] = canonicalRequest
+        record(account.requests)[request.requestId] = canonicalRequest
       })
     },
 
@@ -1657,11 +1657,11 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
-    navClearReq: (handlerId: string, showRequestInbox = true) => {
+    navClearReq: (requestId: string, showRequestInbox = true) => {
       set((draft) => {
         const panel = windowState(draft, 'panel')
         panel.nav = (panel.nav as NavigationEntry[]).filter((item) => {
-          const isClearedRequest = item.data.requestId === handlerId
+          const isClearedRequest = item.data.requestId === requestId
           const isRequestInbox = item.data.id === 'requests' && item.view === 'expandedModule'
           return !isClearedRequest && (showRequestInbox || !isRequestInbox)
         })

@@ -97,14 +97,14 @@ const requestLifecycle = {
     return true
   },
   resolve(request: AccountRequest, result?: unknown) {
-    return this.respond(request.handlerId, {
+    return this.respond(request.requestId, {
       id: request.payload.id,
       jsonrpc: request.payload.jsonrpc,
       result
     })
   },
   reject(request: AccountRequest, error: EVMError) {
-    return this.respond(request.handlerId, {
+    return this.respond(request.requestId, {
       id: request.payload.id,
       jsonrpc: request.payload.jsonrpc,
       error
@@ -188,7 +188,7 @@ afterEach(() => {
 describe('#addRequest', () => {
   it('stores request data canonically, keeps capabilities in sidecars, and settles exactly once', () => {
     const externalResponse = mock()
-    const handlerId = requestLifecycle.create(externalResponse)
+    const requestId = requestLifecycle.create(externalResponse)
     const actionData = { amount: '0x1' }
     let updateCalls = 0
     const update = (request: { data: { data: string } }, data: { amount: string }) => {
@@ -197,7 +197,7 @@ describe('#addRequest', () => {
       request.data.data = `encoded:${data.amount}`
     }
     const request: TestActionRequest = {
-      handlerId,
+      requestId,
       type: 'transaction',
       account: account.id,
       origin: 'test',
@@ -227,7 +227,7 @@ describe('#addRequest', () => {
       data: {
         step: 'confirm',
         accountId: account.id,
-        requestId: request.handlerId
+        requestId: request.requestId
       }
     })
 
@@ -236,27 +236,27 @@ describe('#addRequest', () => {
     renderers.registerRenderer(renderer as never, 'wallet-ui', 'tray')
     renderer.emit('destroyed')
 
-    expect(account.requests[request.handlerId]).toMatchObject({
+    expect(account.requests[request.requestId]).toMatchObject({
       authorization: {
         decision: 'prompt',
         requestSource: { kind: 'renderer', webContentsId: 7, windowInstanceId: 'wallet-window' }
       }
     })
-    expect(requestLifecycle.pending.has(request.handlerId)).toBe(true)
+    expect(requestLifecycle.pending.has(request.requestId)).toBe(true)
     expect('responseHandlers' in account).toBe(false)
 
     const canonical = store.getState().main.accounts[account.id].requests[
-      request.handlerId
+      request.requestId
     ] as CanonicalAccountRequest & { recognizedActions: Array<{ update?: unknown }> }
     expect(canonical.recognizedActions[0]?.update).toBeUndefined()
     expect(() => structuredClone(canonical)).not.toThrow()
 
-    expect(account.approveRequest(request.handlerId, ApprovalType.GasLimitApproval, {})).toBe(true)
-    const activeRequest = account.requests[request.handlerId] as TestActionRequest
+    expect(account.approveRequest(request.requestId, ApprovalType.GasLimitApproval, {})).toBe(true)
+    const activeRequest = account.requests[request.requestId] as TestActionRequest
     expect(activeRequest.approvals[0]?.approved).toBe(true)
-    expect(account.updateRecognizedAction(request.handlerId, 'erc20:approve', { amount: '0x2' })).toBe(true)
+    expect(account.updateRecognizedAction(request.requestId, 'erc20:approve', { amount: '0x2' })).toBe(true)
     expect(updateCalls).toBe(1)
-    const updatedRequest = account.requests[request.handlerId] as TestActionRequest
+    const updatedRequest = account.requests[request.requestId] as TestActionRequest
     expect(updatedRequest.data.data).toBe('encoded:0x2')
     expect(updatedRequest.recognizedActions[0]?.data.amount).toBe('0x2')
 
@@ -264,11 +264,11 @@ describe('#addRequest', () => {
     account.resolveRequest(request, 'late')
     account.rejectRequest(request, { code: 4001, message: 'late rejection' })
     expect(externalResponse.mock.calls).toEqual([[{ id: 1, jsonrpc: '2.0', result: 'ok' }]])
-    expect(account.requests[request.handlerId]).toBeUndefined()
+    expect(account.requests[request.requestId]).toBeUndefined()
     expect(
       (account as unknown as { actionUpdateHandlers: Map<string, unknown> }).actionUpdateHandlers.size
     ).toBe(0)
-    expect(requestLifecycle.pending.has(handlerId)).toBe(false)
+    expect(requestLifecycle.pending.has(requestId)).toBe(false)
     renderers.dispose()
   })
 
@@ -276,7 +276,7 @@ describe('#addRequest', () => {
     it('recognizes an ERC-20 approval', async () => {
       const actionData = { amount: '0x1' }
       const request = {
-        handlerId: '123456',
+        requestId: '123456',
         type: 'transaction',
         data: {
           chainId: '0x539',
@@ -300,12 +300,12 @@ describe('#addRequest', () => {
       await Promise.resolve()
       await Promise.resolve()
 
-      const activeRequest = account.requests[request.handlerId] as TestActionRequest
+      const activeRequest = account.requests[request.requestId] as TestActionRequest
       expect(activeRequest.recognizedActions).toEqual([{ id: 'erc20:approve', data: { amount: '0x1' } }])
       expect(() =>
-        account.updateRecognizedAction(request.handlerId, 'erc20:approve', { amount: '0x2' })
+        account.updateRecognizedAction(request.requestId, 'erc20:approve', { amount: '0x2' })
       ).not.toThrow()
-      const updatedRequest = account.requests[request.handlerId] as TestActionRequest
+      const updatedRequest = account.requests[request.requestId] as TestActionRequest
       expect(updatedRequest.data.data).toBe('encoded:0x2')
       expect(updatedRequest.recognizedActions[0]?.data.amount).toBe('0x2')
     })
@@ -321,7 +321,7 @@ describe('#addRequest', () => {
       revealMock.decode.mockResolvedValueOnce(undefined)
 
       const request = {
-        handlerId: 'transfer-request',
+        requestId: 'transfer-request',
         type: 'transaction',
         data: {
           chainId: '0x1',
@@ -364,7 +364,7 @@ describe('#addRequest', () => {
 
     it('does not run the EOA simulation pipeline for a Safe-referenced transaction', async () => {
       const request = {
-        handlerId: 'safe-request',
+        requestId: 'safe-request',
         type: 'transaction',
         safeTxHash: `0x${'a'.repeat(64)}`,
         data: {
@@ -470,11 +470,11 @@ describe('creation-block listener lifecycle', () => {
 
 describe('#clearRequest', () => {
   const pendingRequest = (
-    handlerId: string,
+    requestId: string,
     created: number,
     state: Partial<CanonicalAccountRequest> = {}
   ): CanonicalAccountRequest => ({
-    handlerId,
+    requestId,
     type: 'transaction',
     account: account.id,
     origin: 'test',
@@ -519,7 +519,7 @@ describe('#clearRequest', () => {
 
   it('keeps the current request open when another request is queued', () => {
     const request = {
-      handlerId: 'second',
+      requestId: 'second',
       type: 'transaction',
       origin: 'newframe-contracts.local',
       account: account.id,
@@ -585,27 +585,27 @@ it.each([true, false])(
     const target = '0x0000000000000000000000000000000000000002'
     const origin = 'selected-target-test'
     const respond = mock<RPCRequestCallback>()
-    const handlerId = requestLifecycle.create(respond)
+    const requestId = requestLifecycle.create(respond)
     const request: import('../../requests/contract/requests.ts').AccessRequest = {
       type: 'access',
-      handlerId,
+      requestId,
       origin,
       account: ownerAccount.address,
       payload: { id: 19, jsonrpc: '2.0', method: 'eth_requestAccounts', params: [] }
     }
     store.getState().initOrigin(origin, { name: 'selected-target.test', chain: { id: 1, type: 'ethereum' } })
-    store.getState().revokePermission(target, handlerId)
+    store.getState().revokePermission(target, requestId)
     ownerAccount.addRequest(request)
     ownerAccount.setAccess(request, approved, target)
     if (approved) {
-      expect(store.getState().main.permissions[target]?.[handlerId]?.provider).toBe(true)
+      expect(store.getState().main.permissions[target]?.[requestId]?.provider).toBe(true)
     } else {
-      expect(store.getState().main.permissions[target]?.[handlerId]?.provider).toBeUndefined()
+      expect(store.getState().main.permissions[target]?.[requestId]?.provider).toBeUndefined()
     }
-    expect(store.getState().main.permissions[ownerAccount.address]?.[handlerId]).toBeUndefined()
-    expect(ownerAccount.getRequest(handlerId)).toBeUndefined()
+    expect(store.getState().main.permissions[ownerAccount.address]?.[requestId]).toBeUndefined()
+    expect(ownerAccount.getRequest(requestId)).toBeUndefined()
     expect(respond).toHaveBeenCalledWith({ id: 19, jsonrpc: '2.0', result: approved ? target : undefined })
-    store.getState().revokePermission(target, handlerId)
+    store.getState().revokePermission(target, requestId)
   }
 )
 

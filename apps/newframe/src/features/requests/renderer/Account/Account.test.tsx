@@ -28,7 +28,7 @@ function permitRequest() {
 
   return {
     type: 'signErc20Permit',
-    handlerId: requestId,
+    requestId: requestId,
     origin,
     account: accountId,
     payload: {
@@ -78,7 +78,7 @@ function permitMissing(field: 'owner' | 'chainId' | 'nonce') {
 function transactionWithParams(params: readonly unknown[]) {
   return {
     type: 'transaction',
-    handlerId: requestId,
+    requestId: requestId,
     origin,
     account: accountId,
     payload: {
@@ -96,7 +96,7 @@ function transactionWithParams(params: readonly unknown[]) {
 function accessRequest() {
   return {
     type: 'access',
-    handlerId: requestId,
+    requestId: requestId,
     origin,
     account: accountId,
     payload: {
@@ -111,7 +111,7 @@ function accessRequest() {
 function addChainRequest() {
   return {
     type: 'addChain',
-    handlerId: requestId,
+    requestId: requestId,
     origin,
     account: accountId,
     payload: {
@@ -248,7 +248,7 @@ it.each(['eth_requestAccounts', 'personal_sign'])(
   (method) => {
     resetWithRequest({
       type: 'access',
-      handlerId: requestId,
+      requestId: requestId,
       origin,
       account: accountId,
       payload: { id: 3, jsonrpc: '2.0', method, params: [] }
@@ -272,7 +272,7 @@ it.each(['eth_requestAccounts', 'personal_sign'])(
 it('keeps message content separate from the account selector', () => {
   resetWithRequest({
     type: 'sign',
-    handlerId: requestId,
+    requestId: requestId,
     origin,
     account: accountId,
     payload: { id: 4, jsonrpc: '2.0', method: 'personal_sign', params: ['message'] },
@@ -306,7 +306,7 @@ Nonce: abcdefgh
 Issued At: 2026-09-13T12:00:00Z`
     const state = resetWithRequest({
       type: 'sign',
-      handlerId: requestId,
+      requestId: requestId,
       origin,
       account: requestAccount,
       payload: { id: 4, jsonrpc: '2.0', method: 'personal_sign', params: [decodedMessage] },

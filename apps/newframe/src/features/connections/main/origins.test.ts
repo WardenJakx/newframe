@@ -106,8 +106,8 @@ function createOriginHarness() {
           request
         })
         const complete = (grantedAddress: Address = request.account) => {
-          const continuation = continuations.get(request.handlerId)
-          continuations.delete(request.handlerId)
+          const continuation = continuations.get(request.requestId)
+          continuations.delete(request.requestId)
           continuation?.({
             id: request.payload.id,
             jsonrpc: request.payload.jsonrpc,
@@ -453,7 +453,7 @@ describe('origin authorization service', () => {
             requestSource,
             request: {
               type: 'access',
-              handlerId: originId,
+              requestId: originId,
               origin: originId,
               account: address,
               payload: {

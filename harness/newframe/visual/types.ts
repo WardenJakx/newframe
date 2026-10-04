@@ -92,7 +92,7 @@ export type AppRequest = {
         reason: 'incompatible' | 'no-signer' | 'signer-unavailable'
       }
   chain?: AddChain
-  handlerId?: string
+  requestId?: string
   notice?: unknown
   status?: string
   tx?: { hash?: string }
@@ -102,7 +102,7 @@ export type AppRequest = {
 
 export type CurrentRequest = AppRequest & {
   accountId: string
-  handlerId: string
+  requestId: string
 }
 
 export type AppAccount = AccountInfo & {

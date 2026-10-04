@@ -969,7 +969,7 @@ describe('#activity actions', () => {
     actions.upsertSubmittedActivity({
       id: 'tx-1',
       hash: '0x123',
-      handlerId: 'handler-1',
+      requestId: 'handler-1',
       account: owner,
       chainId: 1,
       chainType: 'ethereum',
@@ -982,7 +982,7 @@ describe('#activity actions', () => {
     expect(getState().main.activity['tx-1']).toEqual({
       id: 'tx-1',
       hash: '0x123',
-      handlerId: 'handler-1',
+      requestId: 'handler-1',
       account: owner,
       chainId: 1,
       chainType: 'ethereum',
@@ -1141,7 +1141,7 @@ describe('#canonical action boundaries', () => {
       name: 'After'
     })
     harness.actions.upsertAccountRequest(accountId, {
-      handlerId: 'request-1',
+      requestId: 'request-1',
       type: 'access',
       origin: 'test',
       account: accountId,

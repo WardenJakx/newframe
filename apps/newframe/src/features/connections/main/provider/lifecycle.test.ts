@@ -173,14 +173,14 @@ it('constructs without listeners and owns an idempotent start/dispose lifecycle'
   provider.start()
 
   const externalResponse = mock()
-  const handlerId = requests.create(externalResponse)
+  const requestId = requests.create(externalResponse)
 
   expect(connection.listenerCount('connect')).toBe(1)
   expect(connection.listenerCount('data')).toBe(1)
   expect(connection.listenerCount('update')).toBe(1)
 
   connection.emit('close')
-  expect(requests.pending.has(handlerId)).toBe(true)
+  expect(requests.pending.has(requestId)).toBe(true)
   expect(externalResponse.mock.calls.length).toBe(0)
 
   provider.dispose()
@@ -189,13 +189,13 @@ it('constructs without listeners and owns an idempotent start/dispose lifecycle'
   expect(connection.listenerCount('connect')).toBe(0)
   expect(connection.listenerCount('data')).toBe(0)
   expect(connection.listenerCount('update')).toBe(0)
-  expect(requests.pending.has(handlerId)).toBe(true)
+  expect(requests.pending.has(requestId)).toBe(true)
 
   const response = { id: 1, jsonrpc: '2.0' as const, result: 'late result' }
-  requests.respond(handlerId, response)
-  requests.respond(handlerId, response)
+  requests.respond(requestId, response)
+  requests.respond(requestId, response)
   expect(externalResponse.mock.calls).toEqual([[response]])
-  expect(requests.pending.has(handlerId)).toBe(false)
+  expect(requests.pending.has(requestId)).toBe(false)
 })
 
 it('isolates listeners and state across two provider instances and disposes independently', () => {

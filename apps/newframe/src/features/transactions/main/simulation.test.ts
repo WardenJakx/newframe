@@ -52,7 +52,7 @@ function effectMatching(effect: Partial<TransactionEffect>): TransactionEffect {
 function request(): TransactionRequest {
   return {
     ...context,
-    handlerId: 'request-1',
+    requestId: 'request-1',
     type: 'transaction',
     origin: 'example.test',
     payload: { id: 1, jsonrpc: '2.0', method: 'eth_sendTransaction', params: [], _origin: 'example.test' },

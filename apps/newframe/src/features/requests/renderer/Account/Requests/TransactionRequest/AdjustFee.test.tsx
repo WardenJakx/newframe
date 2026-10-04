@@ -6,7 +6,7 @@ import AdjustFee from './AdjustFee.tsx'
 
 afterEach(cleanup)
 const req = {
-  handlerId: 'request-1',
+  requestId: 'request-1',
   data: {
     chainId: '0x1',
     type: '0x2',

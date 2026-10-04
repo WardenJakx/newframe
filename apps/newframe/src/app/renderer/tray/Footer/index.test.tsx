@@ -46,16 +46,16 @@ it('publishes its measured height through renderer-local CSS', () => {
   expect(document.documentElement.style.getPropertyValue('--tray-footer-height')).toBe('72px')
 })
 
-const requestState = (req: { handlerId: string; type: string }) => ({
+const requestState = (req: { requestId: string; type: string }) => ({
   crumb: {
     view: 'requestView',
-    data: { accountId: '0x1111111111111111111111111111111111111111', requestId: req.handlerId }
+    data: { accountId: '0x1111111111111111111111111111111111111111', requestId: req.requestId }
   },
   req
 })
 
 it('resolves access requests through the typed command using only the request ID', async () => {
-  const req = { handlerId: 'access-1', type: 'access' }
+  const req = { requestId: 'access-1', type: 'access' }
   const { user } = render(
     <Footer
       onContinue={mock()}
@@ -70,13 +70,13 @@ it('resolves access requests through the typed command using only the request ID
   await user.click(screen.getByText('Decline'))
 
   expect(requestPorts.review.resolveAccess.mock.calls).toEqual([
-    [{ requestId: req.handlerId, approved: true }],
-    [{ requestId: req.handlerId, approved: false }]
+    [{ requestId: req.requestId, approved: true }],
+    [{ requestId: req.requestId, approved: false }]
   ])
 })
 
 it('resolves switch-chain requests without sending the renderer request object', async () => {
-  const req = { handlerId: 'switch-1', type: 'switchChain' }
+  const req = { requestId: 'switch-1', type: 'switchChain' }
   const { user } = render(
     <Footer
       onContinue={mock()}
@@ -91,13 +91,13 @@ it('resolves switch-chain requests without sending the renderer request object',
   await user.click(screen.getByText('Decline'))
 
   expect(requestPorts.review.resolveSwitchChain.mock.calls).toEqual([
-    [{ requestId: req.handlerId, approved: true }],
-    [{ requestId: req.handlerId, approved: false }]
+    [{ requestId: req.requestId, approved: true }],
+    [{ requestId: req.requestId, approved: false }]
   ])
 })
 
 it('opens token review and rejects token requests through typed commands', async () => {
-  const req = { handlerId: 'token-1', type: 'addToken' }
+  const req = { requestId: 'token-1', type: 'addToken' }
   const { user } = render(
     <Footer
       onContinue={mock()}
@@ -115,13 +115,13 @@ it('opens token review and rejects token requests through typed commands', async
     review: requestPorts.review.reviewAddToken.mock.calls,
     reject: requestPorts.review.reject.mock.calls
   }).toEqual({
-    review: [[{ requestId: req.handlerId }]],
-    reject: [[{ requestId: req.handlerId }]]
+    review: [[{ requestId: req.requestId }]],
+    reject: [[{ requestId: req.requestId }]]
   })
 })
 
 it('resolves add-chain requests directly through their canonical request ID', async () => {
-  const req = { handlerId: 'chain-1', type: 'addChain' }
+  const req = { requestId: 'chain-1', type: 'addChain' }
   const { user } = render(
     <Footer
       onContinue={mock()}
@@ -136,13 +136,13 @@ it('resolves add-chain requests directly through their canonical request ID', as
   await user.click(screen.getByText('Decline'))
 
   expect(requestPorts.review.resolveAddChain.mock.calls).toEqual([
-    [{ requestId: req.handlerId, approved: true }],
-    [{ requestId: req.handlerId, approved: false }]
+    [{ requestId: req.requestId, approved: true }],
+    [{ requestId: req.requestId, approved: false }]
   ])
 })
 
 it('uses the renderer-local request step for confirm-only commands', () => {
-  const req = { handlerId: 'transaction-1', type: 'transaction' }
+  const req = { requestId: 'transaction-1', type: 'transaction' }
 
   render(
     <Footer
@@ -187,7 +187,7 @@ it.each(['transaction', 'sign', 'signTypedData', 'signErc20Permit'])(
   async (type) => {
     const capabilities = createRequestPortsFake()
     const req = {
-      handlerId: 'signing-1',
+      requestId: 'signing-1',
       type,
       account: signingAddress.toUpperCase(),
       ...(type === 'transaction' ? { approvals: [] } : {}),
@@ -236,8 +236,8 @@ it.each(['transaction', 'sign', 'signTypedData', 'signErc20Permit'])(
     expect(capabilities.external.writeText).toHaveBeenCalledWith(signingAddress)
     await user.click(sign)
     await user.click(screen.getByRole('button', { name: 'Decline' }))
-    expect(capabilities.review.approve).toHaveBeenCalledWith({ requestId: req.handlerId })
-    expect(capabilities.review.reject).toHaveBeenCalledWith({ requestId: req.handlerId })
+    expect(capabilities.review.approve).toHaveBeenCalledWith({ requestId: req.requestId })
+    expect(capabilities.review.reject).toHaveBeenCalledWith({ requestId: req.requestId })
   }
 )
 
@@ -246,7 +246,7 @@ it.each(['adjustFee', 'adjustApproval', 'adjustPermit', 'viewRaw'] as const)(
   async (step) => {
     const capabilities = createRequestPortsFake()
     const onContinue = mock()
-    const req = { handlerId: 'signing-1', type: 'signErc20Permit', account: 'request-wallet' }
+    const req = { requestId: 'signing-1', type: 'signErc20Permit', account: 'request-wallet' }
     const { user } = render(
       <Footer
         onContinue={onContinue}
@@ -262,6 +262,6 @@ it.each(['adjustFee', 'adjustApproval', 'adjustPermit', 'viewRaw'] as const)(
     expect(onContinue).toHaveBeenCalledTimes(1)
     expect(capabilities.review.approve).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'Decline' }))
-    expect(capabilities.review.reject).toHaveBeenCalledWith({ requestId: req.handlerId })
+    expect(capabilities.review.reject).toHaveBeenCalledWith({ requestId: req.requestId })
   }
 )

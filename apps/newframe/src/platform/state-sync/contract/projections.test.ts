@@ -14,7 +14,7 @@ describe('wallet renderer projection records', () => {
     expect(
       WalletRequestSchema.parse({
         type: 'transaction',
-        handlerId: 'request-1',
+        requestId: 'request-1',
         origin: 'https://example.test',
         data: { to: '0x1' },
         approvals: [{ type: 'spend', data: { amount: '1' }, approved: false }],
@@ -37,7 +37,7 @@ describe('wallet renderer projection records', () => {
       })
     ).toEqual({
       type: 'transaction',
-      handlerId: 'request-1',
+      requestId: 'request-1',
       origin: 'https://example.test',
       data: { to: '0x1' },
       approvals: [{ type: 'spend', data: { amount: '1' }, approved: false }],
@@ -53,7 +53,7 @@ describe('wallet renderer projection records', () => {
     expect(
       WalletRequestSchema.safeParse({
         type: 'transaction',
-        handlerId: 'request-1',
+        requestId: 'request-1',
         approvalGate: {
           type: 'gas-fee',
           feeUSD: '51.00',

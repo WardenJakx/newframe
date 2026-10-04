@@ -1095,7 +1095,7 @@ it('keeps RPC and Safe requests together and routes the single back button throu
   const mixed = state({ ...deployment, error: undefined })
   mixed.accounts[address].requests.access = WalletRequestSchema.parse({
     type: 'access',
-    handlerId: 'access',
+    requestId: 'access',
     account: address,
     origin: 'https://example.test',
     payload: { id: 1, jsonrpc: '2.0', method: 'eth_accounts', params: [] }

@@ -92,7 +92,7 @@ const createCurrentMock = () => mock((): TestCurrentAccount | null => null)
 const createGetMock = () => mock((_address: string): TestAccount | undefined => undefined)
 const createSignTransactionMock = () =>
   mock((_tx: TransactionData, _cb: Callback<string>, _context?: SigningApprovalContext) => {})
-const createSetTxSignedMock = () => mock((_handlerId: string, _cb: Callback<void>) => {})
+const createSetTxSignedMock = () => mock((_requestId: string, _cb: Callback<void>) => {})
 const createSetSignerMock = () => mock((_id: string, _cb: Callback<TestAccount>) => {})
 const createGetFrameAccountMock = () => mock((_id: string): TestAiSessionAccount | undefined => undefined)
 const refreshBalances = mock((_address: string) => {})
@@ -316,7 +316,7 @@ const expectQueuedRequestRejection = (sendRequest: (callback: RPCRequestCallback
     accountRequestHook = (request, respond) => {
       try {
         expect(typeof respond).toBe('function')
-        expect(requestContinuations.callbacks.has(request.handlerId)).toBe(true)
+        expect(requestContinuations.callbacks.has(request.requestId)).toBe(true)
         const rejection = {
           id: request.payload.id,
           jsonrpc: request.payload.jsonrpc,
@@ -326,7 +326,7 @@ const expectQueuedRequestRejection = (sendRequest: (callback: RPCRequestCallback
         respond?.(rejection)
         expect(callback).toHaveBeenCalledTimes(1)
         expect(callback).toHaveBeenCalledWith(rejection)
-        expect(requestContinuations.callbacks.has(request.handlerId)).toBe(false)
+        expect(requestContinuations.callbacks.has(request.requestId)).toBe(false)
         resolve()
       } catch (error) {
         reject(error)
@@ -380,17 +380,17 @@ beforeAll(async () => {
         requests: {},
         created: new Date(0).toISOString()
       })
-      state.main.accounts[req.account].requests = { [req.handlerId]: req }
+      state.main.accounts[req.account].requests = { [req.requestId]: req }
     })
     accountRequests.push(req)
     if (accountRequestHook) {
       const hook = accountRequestHook
       accountRequestHook = undefined
-      hook(req, (response) => requestContinuations.respond(req.handlerId, response))
+      hook(req, (response) => requestContinuations.respond(req.requestId, response))
     } else if (executeAutonomously) {
       executeAutonomously(req)
     } else {
-      requestContinuations.respond(req.handlerId, {
+      requestContinuations.respond(req.requestId, {
         id: req.payload.id,
         jsonrpc: req.payload.jsonrpc,
         result: undefined
@@ -683,7 +683,7 @@ describe('#send', () => {
           }
         }) as unknown as AccountRequest
       )
-      expect(typeof accountRequests[0].handlerId).toBe('string')
+      expect(typeof accountRequests[0].requestId).toBe('string')
     })
 
     it('rejects unsafe RPC and block explorer URLs', async () => {
@@ -857,7 +857,7 @@ describe('#send', () => {
       })
       expect(responded).toBe(true)
       expect(accountRequests).toHaveLength(1)
-      expect(validateUUID(accountRequests[0].handlerId)).toBe(true)
+      expect(validateUUID(accountRequests[0].requestId)).toBe(true)
       expect(accountRequests[0]).toEqual(
         expect.objectContaining({
           type: 'addToken',
@@ -1223,7 +1223,7 @@ describe('#send', () => {
       attachSafeDraft.mockImplementationOnce((draft, requestId) => {
         sequence.push('attach')
         expect(accountRequests).toHaveLength(1)
-        expect(accountRequests[0].handlerId).toBe(requestId)
+        expect(accountRequests[0].requestId).toBe(requestId)
         expect(draft).toMatchObject({ accountId: address, chainId: 1 })
         return safeTxHash
       })
@@ -1414,7 +1414,7 @@ describe('#send', () => {
         expect(accountRequests[0]).toMatchObject({
           payload: { params: [address, expectedMessage, password] }
         })
-        expect(typeof accountRequests[0].handlerId).toBe('string')
+        expect(typeof accountRequests[0].requestId).toBe('string')
       })
     })
 
@@ -1451,7 +1451,7 @@ describe('#send', () => {
 
     function verifyRequest(version: SignTypedDataVersion, expectedPayload: unknown) {
       expect(accountRequests).toHaveLength(1)
-      expect(accountRequests[0].handlerId).toBeTruthy()
+      expect(accountRequests[0].requestId).toBeTruthy()
       expect(accountRequests[0].payload.params[0]).toBe(address)
       expect(accountRequests[0].payload.params[1]).toStrictEqual(expectedPayload)
       const request = accountRequests[0] as SignTypedDataRequest
@@ -1746,7 +1746,7 @@ describe('#executeAiSessionTransaction', () => {
     const signTransaction = createSignTransactionMock()
     const account = { id: address, signTransaction }
     const request: TransactionRequest = {
-      handlerId: 'ai-session-request',
+      requestId: 'ai-session-request',
       type: 'transaction',
       origin: 'ai-session',
       account: address,
@@ -1899,7 +1899,7 @@ describe('#signAndSend', () => {
     tx = { chainId: '0x1', type: '0x0', gasFeesSource: GasFeesSource.Dapp }
 
     request = {
-      handlerId: '99',
+      requestId: '99',
       account: '0x1111111111111111111111111111111111111111',
       type: 'transaction',
       origin: 'test',
@@ -1996,7 +1996,7 @@ describe('#signAndSend', () => {
     beforeEach(() => {
       accounts.signTransaction.mockImplementation((_tx, cb) => cb(null, signedTx))
       accounts.setTxSigned.mockImplementation((reqId, cb) => {
-        expect(reqId).toBe(request.handlerId)
+        expect(reqId).toBe(request.requestId)
         cb(null)
       })
     })

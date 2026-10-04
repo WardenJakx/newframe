@@ -112,7 +112,7 @@ export const usdcIntegrationStage: VisualStage = {
 
       const secondRequest = await driver.waitForCurrentRequest(
         'transaction',
-        new Set([firstRequest.handlerId]),
+        new Set([firstRequest.requestId]),
         90_000
       )
       await runtime.screenshot(tray, '18-usdc-deposit-review.png')
@@ -120,8 +120,8 @@ export const usdcIntegrationStage: VisualStage = {
         '18a-usdc-deposit-warning.png',
         '18b-usdc-deposit-post-sign-warning.png'
       ])
-      runtime.evidence('usdcApprovalRequestId', firstRequest.handlerId)
-      runtime.evidence('usdcDepositRequestId', secondRequest.handlerId)
+      runtime.evidence('usdcApprovalRequestId', firstRequest.requestId)
+      runtime.evidence('usdcDepositRequestId', secondRequest.requestId)
       runtime.evidence('usdcFlowAmount', usdcFlowAmount().toString())
     } finally {
       await stopMining()

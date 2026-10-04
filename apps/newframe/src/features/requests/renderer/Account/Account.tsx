@@ -352,7 +352,7 @@ function AccountBody(props: AccountBodyProps) {
           )
         return (
           <SignatureRequest
-            key={request.handlerId}
+            key={request.requestId}
             req={request}
             originName={origins[request.origin]?.name || request.origin}
             favicon={persistedImageSource(origins[request.origin]?.image)}
@@ -361,13 +361,13 @@ function AccountBody(props: AccountBodyProps) {
         )
       }
       case 'signTypedData':
-        return <SignTypedDataRequest key={request.handlerId} req={request} />
+        return <SignTypedDataRequest key={request.requestId} req={request} />
       case 'signErc20Permit':
         return (
           <SignPermitRequest
             capabilities={props.capabilities}
             chainData={chainData}
-            key={request.handlerId}
+            key={request.requestId}
             originName={origins[request.origin]?.name || request.origin}
             favicon={persistedImageSource(origins[request.origin]?.image)}
             req={request}
@@ -375,18 +375,18 @@ function AccountBody(props: AccountBodyProps) {
           />
         )
       case 'transaction':
-        return <TransactionRequest capabilities={props.capabilities} key={request.handlerId} req={request} />
+        return <TransactionRequest capabilities={props.capabilities} key={request.requestId} req={request} />
       case 'aiSession':
-        return <AiSessionRequest key={request.handlerId} req={request} />
+        return <AiSessionRequest key={request.requestId} req={request} />
       case 'access':
         return (
-          <ProviderRequest key={request.handlerId} req={request} accountSelector={props.accountSelector} />
+          <ProviderRequest key={request.requestId} req={request} accountSelector={props.accountSelector} />
         )
       case 'addChain':
       case 'switchChain':
-        return <ChainRequest key={request.handlerId} req={request} />
+        return <ChainRequest key={request.requestId} req={request} />
       case 'addToken':
-        return <AddTokenRequest key={request.handlerId} req={request} />
+        return <AddTokenRequest key={request.requestId} req={request} />
       default:
         return assertNever(request)
     }

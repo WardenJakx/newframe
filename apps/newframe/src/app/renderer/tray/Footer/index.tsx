@@ -100,7 +100,7 @@ export function Footer({ capabilities, notify, shared, step, onContinue }: Foote
         primary={{ label: 'Continue', onPress: onContinue }}
         secondary={{
           label: 'Decline',
-          onPress: () => void capabilities.review.reject({ requestId: req.handlerId })
+          onPress: () => void capabilities.review.reject({ requestId: req.requestId })
         }}
       />
     )
@@ -110,7 +110,7 @@ export function Footer({ capabilities, notify, shared, step, onContinue }: Foote
     return <footer className={footerRecipe({ active: false })} ref={footerRef} />
   }
 
-  const reject = () => void capabilities.review.reject({ requestId: req.handlerId })
+  const reject = () => void capabilities.review.reject({ requestId: req.requestId })
   let actions:
     | {
         primary: { label: string; onPress: () => void }
@@ -125,12 +125,12 @@ export function Footer({ capabilities, notify, shared, step, onContinue }: Foote
           primary: {
             label: 'Approve',
             onPress: () =>
-              void capabilities.review.resolveAccess({ requestId: req.handlerId, approved: true })
+              void capabilities.review.resolveAccess({ requestId: req.requestId, approved: true })
           },
           secondary: {
             label: 'Decline',
             onPress: () =>
-              void capabilities.review.resolveAccess({ requestId: req.handlerId, approved: false })
+              void capabilities.review.resolveAccess({ requestId: req.requestId, approved: false })
           }
         }
         break
@@ -140,14 +140,14 @@ export function Footer({ capabilities, notify, shared, step, onContinue }: Foote
             label: 'Allow autonomous access',
             onPress: () =>
               void capabilities.review.resolveAiSession({
-                requestId: req.handlerId,
+                requestId: req.requestId,
                 approved: true
               })
           },
           secondary: {
             label: 'Decline',
             onPress: () =>
-              void capabilities.review.resolveAiSession({ requestId: req.handlerId, approved: false })
+              void capabilities.review.resolveAiSession({ requestId: req.requestId, approved: false })
           }
         }
         break
@@ -157,14 +157,14 @@ export function Footer({ capabilities, notify, shared, step, onContinue }: Foote
             label: 'Switch',
             onPress: () =>
               void capabilities.review.resolveSwitchChain({
-                requestId: req.handlerId,
+                requestId: req.requestId,
                 approved: true
               })
           },
           secondary: {
             label: 'Decline',
             onPress: () =>
-              void capabilities.review.resolveSwitchChain({ requestId: req.handlerId, approved: false })
+              void capabilities.review.resolveSwitchChain({ requestId: req.requestId, approved: false })
           }
         }
         break
@@ -173,12 +173,12 @@ export function Footer({ capabilities, notify, shared, step, onContinue }: Foote
           primary: {
             label: 'Add chain',
             onPress: () =>
-              void capabilities.review.resolveAddChain({ requestId: req.handlerId, approved: true })
+              void capabilities.review.resolveAddChain({ requestId: req.requestId, approved: true })
           },
           secondary: {
             label: 'Decline',
             onPress: () =>
-              void capabilities.review.resolveAddChain({ requestId: req.handlerId, approved: false })
+              void capabilities.review.resolveAddChain({ requestId: req.requestId, approved: false })
           }
         }
         break
@@ -186,7 +186,7 @@ export function Footer({ capabilities, notify, shared, step, onContinue }: Foote
         actions = {
           primary: {
             label: 'Review',
-            onPress: () => void capabilities.review.reviewAddToken({ requestId: req.handlerId })
+            onPress: () => void capabilities.review.reviewAddToken({ requestId: req.requestId })
           },
           secondary: { label: 'Decline', onPress: reject }
         }

@@ -47,20 +47,20 @@ it('characterizes AI session prompt timeout, disconnect, approval idempotency, a
       getSigner: () => ({ type: 'seed', status: 'ok' }),
       patch: mock(),
       rejectRequest(request: AccountRequest, error: EVMError) {
-        requestLifecycle.respond(request.handlerId, {
+        requestLifecycle.respond(request.requestId, {
           id: request.payload.id,
           jsonrpc: request.payload.jsonrpc,
           error
         })
-        delete requests[request.handlerId]
+        delete requests[request.requestId]
       },
       resolveRequest(request: AccountRequest, result: unknown) {
-        requestLifecycle.respond(request.handlerId, {
+        requestLifecycle.respond(request.requestId, {
           id: request.payload.id,
           jsonrpc: request.payload.jsonrpc,
           result
         })
-        delete requests[request.handlerId]
+        delete requests[request.requestId]
       }
     }
     const accounts = {
@@ -69,13 +69,13 @@ it('characterizes AI session prompt timeout, disconnect, approval idempotency, a
       getFrameAccount: (id: string) => (id === accountId ? account : undefined),
       routeRequest: (_requestSource: unknown, routed: AccountRequest) => {
         routed.authorization = {
-          actionId: `action-${routed.handlerId}`,
+          actionId: `action-${routed.requestId}`,
           decision: 'prompt',
           decidedAt: Date.now(),
           requestSource: {
             kind: 'rpc',
             transport: 'http',
-            connectionId: routed.handlerId,
+            connectionId: routed.requestId,
             origin: 'newframe-ai-session'
           },
           intent: {
@@ -85,7 +85,7 @@ it('characterizes AI session prompt timeout, disconnect, approval idempotency, a
           }
         }
         requestLifecycle.bind(routed)
-        requests[routed.handlerId] = routed
+        requests[routed.requestId] = routed
         routedRequest.resolve()
         return true
       }

@@ -27,7 +27,7 @@ import { SafeOwnerSelector } from '../ui/SafeOwnerSelector.tsx'
 import { SigningAccount } from '../ui/SigningAccount.tsx'
 import TxApproval from './TxApproval/index.tsx'
 
-type RequestReference = { handlerId: string }
+type RequestReference = { requestId: string }
 
 interface RequestCommandSharedState {
   airgapSigning?: AirGapRequestReference
@@ -40,7 +40,7 @@ interface RequestCommandSharedState {
 
 export type RequestCommandRequest = {
   account?: string
-  handlerId: string
+  requestId: string
   type: string
   status?: string
   notice?: string
@@ -98,7 +98,7 @@ export const approveRequest = (
 ) => void capability.approve({ requestId, ...(ownerId ? { ownerId } : {}) })
 
 export const declineRequest = (capability: Pick<RequestReviewCapability, 'reject'>, req: RequestReference) =>
-  void capability.reject({ requestId: req.handlerId })
+  void capability.reject({ requestId: req.requestId })
 
 export const runWhenAppUnlocked = (appLocked: boolean, next: () => void) => {
   if (!appLocked) {
@@ -111,7 +111,7 @@ export function RequestCommand(props: RequestCommandProps) {
   const [noticeDismissed, setNoticeDismissed] = useState(false)
   const request = props.req as TransactionRequest | SignatureRequest
   const [ownerSelection, setOwnerSelection] = useState<{ requestId: string; ownerId?: string }>({
-    requestId: request.handlerId
+    requestId: request.requestId
   })
   const { notify } = props
   const notifiedSession = useRef('')
@@ -123,7 +123,7 @@ export function RequestCommand(props: RequestCommandProps) {
   const safeProgress = isSignatureRequest(request) ? request.safeMessageProgress : undefined
   const safeConfirmations = safeProgress?.confirmations
   const safeConfirmed = new Set(safeConfirmations?.map((address) => address.toLowerCase()) ?? [])
-  const explicitOwnerId = ownerSelection.requestId === request.handlerId ? ownerSelection.ownerId : undefined
+  const explicitOwnerId = ownerSelection.requestId === request.requestId ? ownerSelection.ownerId : undefined
   const explicitOwner = safeCapability?.candidates.find(
     (candidate) => candidate.accountId === explicitOwnerId
   )
@@ -143,7 +143,7 @@ export function RequestCommand(props: RequestCommandProps) {
       props.shared.appLocked ||
       request.status !== 'pending' ||
       !airgap ||
-      airgap.requestId !== request.handlerId
+      airgap.requestId !== request.requestId
     ) {
       return
     }
@@ -153,7 +153,7 @@ export function RequestCommand(props: RequestCommandProps) {
     }
     notifiedSession.current = key
     notify({ type: 'airgapSigning', data: airgap })
-  }, [notify, airgap, request.handlerId, request.status, props.shared.appLocked])
+  }, [notify, airgap, request.requestId, request.status, props.shared.appLocked])
   const [state, setCommandState] = useState({
     showHashDetails: false,
     txHashCopied: false
@@ -254,7 +254,7 @@ export function RequestCommand(props: RequestCommandProps) {
             label='Cancel transaction'
             onPress={() =>
               void props.capabilities.transaction.replace({
-                requestId: req.handlerId,
+                requestId: req.requestId,
                 replacement: 'cancel',
                 idempotencyKey: crypto.randomUUID()
               })
@@ -276,7 +276,7 @@ export function RequestCommand(props: RequestCommandProps) {
             label='Speed up transaction'
             onPress={() =>
               void props.capabilities.transaction.replace({
-                requestId: req.handlerId,
+                requestId: req.requestId,
                 replacement: 'speed',
                 idempotencyKey: crypto.randomUUID()
               })
@@ -315,7 +315,7 @@ export function RequestCommand(props: RequestCommandProps) {
         setApprovalError('')
         void props.capabilities.review
           .approve({
-            requestId: req.handlerId,
+            requestId: req.requestId,
             ...(props.adjustments ? { adjustments: props.adjustments } : {})
           })
           .then(
@@ -425,7 +425,7 @@ export function RequestCommand(props: RequestCommandProps) {
                   placeholder='Choose an owner'
                   emptyLabel='No available owner signer'
                   selectedOwnerId={selectedOwnerId}
-                  onSelectOwner={(ownerId) => setOwnerSelection({ requestId: request.handlerId, ownerId })}
+                  onSelectOwner={(ownerId) => setOwnerSelection({ requestId: request.requestId, ownerId })}
                   ownerDisabled={(owner) =>
                     owner.status !== 'ready' ||
                     (!retryPublication && confirmed.has(owner.address.toLowerCase()))
@@ -465,11 +465,11 @@ export function RequestCommand(props: RequestCommandProps) {
                 if (!selectedOwner) {
                   return
                 }
-                setOwnerSelection({ requestId: request.handlerId, ownerId: selectedOwner.accountId })
+                setOwnerSelection({ requestId: request.requestId, ownerId: selectedOwner.accountId })
                 setApprovalError('')
                 runWhenAppUnlocked(props.shared.appLocked, () => {
                   void props.capabilities.review
-                    .approve({ requestId: req.handlerId, ownerId: selectedOwner.accountId })
+                    .approve({ requestId: req.requestId, ownerId: selectedOwner.accountId })
                     .then(
                       (result) => {
                         if (!result.ok) {
@@ -533,7 +533,7 @@ export function RequestCommand(props: RequestCommandProps) {
           label: capability?.status === 'ready' ? 'Sign' : 'No signer attached',
           onPress: () => {
             runWhenAppUnlocked(props.shared.appLocked, () =>
-              approveRequest(props.capabilities.review, req.handlerId)
+              approveRequest(props.capabilities.review, req.requestId)
             )
           }
         }}
@@ -569,7 +569,7 @@ export default function RequestCommandContainer(props: Omit<RequestCommandProps,
         const signers: Partial<typeof state.signers> = state.signers
         const signer = account?.signer ? signers[account.signer] : undefined
         const pending = signer?.airgapRequest
-        const matching = state.currentAccount === accountId && pending?.requestId === request.handlerId
+        const matching = state.currentAccount === accountId && pending?.requestId === request.requestId
         return {
           signerId: matching ? signer?.id : undefined,
           requestId: matching ? pending.requestId : undefined,
@@ -580,7 +580,7 @@ export default function RequestCommandContainer(props: Omit<RequestCommandProps,
           transactionSignerAttached: Boolean(account?.signer && signers[account.signer])
         }
       },
-    [accountId, chainId, request.handlerId]
+    [accountId, chainId, request.requestId]
   )
   const { signerId, requestId, sessionId, ...synchronized } = useWalletSelector(useShallow(selector))
   // A new nested object inside the store selector would invalidate every snapshot.

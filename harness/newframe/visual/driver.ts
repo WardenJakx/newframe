@@ -188,7 +188,7 @@ export class NewframeDriver {
   approveAccessRequest(request: CurrentRequest) {
     return this.executeCommand(this.tray, {
       type: 'request.access-resolve',
-      requestId: request.handlerId,
+      requestId: request.requestId,
       approved: true
     })
   }
@@ -222,7 +222,7 @@ export class NewframeDriver {
   openAddChainReview(request: CurrentRequest) {
     return this.executeCommand(this.tray, {
       type: 'request.add-chain-review',
-      requestId: request.handlerId
+      requestId: request.requestId
     })
   }
 
@@ -319,9 +319,8 @@ export class NewframeDriver {
     const accountId = crumb.data?.accountId ?? ''
     const requestId = crumb.data?.requestId ?? ''
     const request = state.main?.accounts?.[accountId]?.requests?.[requestId]
-    const handlerId = request?.handlerId ?? requestId
 
-    return request ? { ...request, accountId, handlerId } : undefined
+    return request ? { ...request, accountId, requestId: request.requestId ?? requestId } : undefined
   }
 
   async waitForCurrentRequest(type: string, excludeIds = new Set<string>(), timeoutMs = 60_000) {
@@ -331,7 +330,7 @@ export class NewframeDriver {
         if (!request || request.type !== type) {
           return false
         }
-        if (excludeIds.has(request.handlerId)) {
+        if (excludeIds.has(request.requestId)) {
           return false
         }
         return !finalRequestStatuses.has(String(request.status ?? '').toLowerCase())
@@ -347,11 +346,11 @@ export class NewframeDriver {
     return request
   }
 
-  async waitForRequestStatus(handlerId: string, timeoutMs = 15_000) {
+  async waitForRequestStatus(requestId: string, timeoutMs = 15_000) {
     await this.waitForState(
       (state) => {
         const accounts = Object.values(state.main?.accounts ?? {})
-        const request = accounts.map((account) => account.requests?.[handlerId]).find(Boolean)
+        const request = accounts.map((account) => account.requests?.[requestId]).find(Boolean)
         if (!request) {
           return true
         }
@@ -359,7 +358,7 @@ export class NewframeDriver {
         return Boolean(request.notice ?? request.tx?.hash ?? (status && status !== 'pending'))
       },
       timeoutMs,
-      `Timed out waiting for request ${handlerId} to submit`
+      `Timed out waiting for request ${requestId} to submit`
     ).catch(() => undefined)
   }
 
@@ -521,7 +520,7 @@ export class NewframeDriver {
     warningScreenshots: string[]
   ) {
     // The visible Sign button has an intentional UI delay; approve after the harness captures the review.
-    await this.executeCommand(this.tray, { type: 'request.approve', requestId: request.handlerId })
+    await this.executeCommand(this.tray, { type: 'request.approve', requestId: request.requestId })
     void this.anvil.mineBlocksOver(10, 150).catch(() => undefined)
 
     // Warning policy now advances in main and projects one exact canonical gate at a time.
@@ -530,13 +529,13 @@ export class NewframeDriver {
         break
       }
     }
-    await this.waitForRequestStatus(request.handlerId)
+    await this.waitForRequestStatus(request.requestId)
     await this.screenshot(this.tray, submittedScreenshot)
   }
 
   async signCurrentSignature(request: CurrentRequest, submittedScreenshot: string) {
-    await this.executeCommand(this.tray, { type: 'request.approve', requestId: request.handlerId })
-    await this.waitForRequestStatus(request.handlerId)
+    await this.executeCommand(this.tray, { type: 'request.approve', requestId: request.requestId })
+    await this.waitForRequestStatus(request.requestId)
     await this.screenshot(this.tray, submittedScreenshot)
   }
 

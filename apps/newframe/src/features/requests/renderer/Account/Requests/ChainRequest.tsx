@@ -24,7 +24,7 @@ function ChainRequest(props: ChainRequestProps) {
   const { originName, chainName } = props
   if (notice) {
     return (
-      <Surface key={props.req.id ?? props.req.handlerId} padding='large' radius='card'>
+      <Surface key={props.req.id ?? props.req.requestId} padding='large' radius='card'>
         <RequestStatusNotice notice={notice} status={status} />
       </Surface>
     )
@@ -39,7 +39,7 @@ function ChainRequest(props: ChainRequestProps) {
   }
 
   return (
-    <Surface key={props.req.id ?? props.req.handlerId} padding='large' radius='card'>
+    <Surface key={props.req.id ?? props.req.requestId} padding='large' radius='card'>
       <Stack align='center' gap='small'>
         <Text align='center' truncate variant='heading'>
           {originName}

@@ -60,14 +60,14 @@ function SafeTransactionRequestReview({
   )
   const { scope, preview } = useSafeProposalSimulation({
     accountId: req.account,
-    scope: JSON.stringify([req.handlerId, account.created, currentProfile]),
+    scope: JSON.stringify([req.requestId, account.created, currentProfile]),
     deployment,
     proposal,
     capability: capabilities.safe
   })
   const confirmOwner = useCallback(
-    async (ownerId: string) => capabilities.review.approve({ requestId: req.handlerId, ownerId }),
-    [capabilities.review, req.handlerId]
+    async (ownerId: string) => capabilities.review.approve({ requestId: req.requestId, ownerId }),
+    [capabilities.review, req.requestId]
   )
   const prepareExecutor = async (executorId: string) =>
     deployment && proposal
@@ -76,11 +76,11 @@ function SafeTransactionRequestReview({
   const executeWith = useCallback(
     async (executorId: string, adjustments: TransactionApprovalAdjustments | undefined) =>
       capabilities.review.approve({
-        requestId: req.handlerId,
+        requestId: req.requestId,
         executorId,
         ...(adjustments ? { adjustments } : {})
       }),
-    [capabilities.review, req.handlerId]
+    [capabilities.review, req.requestId]
   )
   const progress = req.safeTransactionProgress
   const actionConfirmations = progress?.confirmations ?? [
@@ -107,14 +107,14 @@ function SafeTransactionRequestReview({
     onDecline:
       !req.status &&
       progress?.status === 'collecting' &&
-      proposal?.local?.requestId === req.handlerId &&
+      proposal?.local?.requestId === req.requestId &&
       actionConfirmations.length === 0
-        ? () => void capabilities.review.reject({ requestId: req.handlerId })
+        ? () => void capabilities.review.reject({ requestId: req.requestId })
         : undefined
   })
 
   if (!deployment || !proposal) {
-    return <TxReview capabilities={capabilities} key={req.handlerId} req={req} />
+    return <TxReview capabilities={capabilities} key={req.requestId} req={req} />
   }
   const currency = metadata.nativeCurrency
   return (
@@ -204,7 +204,7 @@ export function TransactionRequest(props: TransactionRequestProps) {
         updateRequest={(amount: string) => {
           void props.capabilities.review.updateTokenApproval({
             requestKind: 'transaction',
-            requestId: req.handlerId,
+            requestId: req.requestId,
             actionId: 'erc20:approve',
             amount: String(amount)
           })
@@ -216,7 +216,7 @@ export function TransactionRequest(props: TransactionRequestProps) {
   if (step !== 'confirm') {
     return step
   }
-  return <TxReview capabilities={props.capabilities} key={req.handlerId} req={req} />
+  return <TxReview capabilities={props.capabilities} key={req.requestId} req={req} />
 }
 
 export default function TransactionRequestWithState(props: TransactionRequestWithStateProps) {

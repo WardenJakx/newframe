@@ -174,10 +174,10 @@ function integrationFixture({
   }
   if (ordinaryRequest) {
     const request = f.request('transaction', data)
-    f.store.getState().patchAccountRequest(f.address, request.handlerId, (pending) => {
+    f.store.getState().patchAccountRequest(f.address, request.requestId, (pending) => {
       delete pending.status
     })
-    service.create((response) => responses.push(response), request.handlerId)
+    service.create((response) => responses.push(response), request.requestId)
     service.bind(request)
   }
   const airgap = createProductionAirGapService(

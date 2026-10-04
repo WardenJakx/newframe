@@ -33,7 +33,7 @@ function WarningFixture() {
       <button
         onClick={() =>
           notify('signerCompatibilityWarning', {
-            req: { handlerId: 'request-a' },
+            req: { requestId: 'request-a' },
             compatibility: { signer: 'ledger', tx: 'london', compatible: false }
           })
         }
@@ -43,7 +43,7 @@ function WarningFixture() {
       <button
         onClick={() =>
           notify('gasFeeWarning', {
-            req: { handlerId: 'request-a' },
+            req: { requestId: 'request-a' },
             feeUSD: '51.00',
             currentSymbol: 'ETH'
           })

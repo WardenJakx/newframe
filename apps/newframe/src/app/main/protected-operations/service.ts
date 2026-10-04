@@ -135,11 +135,11 @@ export class ProtectedOperationsService {
 
   private signingApproval(request: AccountRequest, ui?: SigningUiContext): SigningApprovalContext {
     const accountId = request.account.toLowerCase()
-    const requestId = request.handlerId
+    const requestId = request.requestId
     const identity = (value: AccountRequest) =>
       JSON.stringify(
         [
-          value.handlerId,
+          value.requestId,
           value.type,
           value.account.toLowerCase(),
           value.payload,
@@ -273,7 +273,7 @@ export class ProtectedOperationsService {
           if (err) {
             cb(err)
           } else {
-            this.accounts.setTxSigned(req.handlerId, (err) => {
+            this.accounts.setTxSigned(req.requestId, (err) => {
               if (err) {
                 return cb(err)
               }
@@ -309,7 +309,7 @@ export class ProtectedOperationsService {
       this.signAndSend(requestToSign, cb, context)
     }
 
-    this.accounts.lockRequest(req.handlerId)
+    this.accounts.lockRequest(req.requestId)
 
     if (req.data.nonce) {
       return signAndSend(req)
@@ -320,12 +320,12 @@ export class ProtectedOperationsService {
         return cb(Object.assign(new Error(response.error.message), { code: response.error.code }))
       }
 
-      const updatedReq = this.accounts.updateNonce(req.handlerId, response.result as string)
+      const updatedReq = this.accounts.updateNonce(req.requestId, response.result as string)
 
       if (updatedReq) {
         signAndSend(updatedReq)
       } else {
-        log.error(`could not find request with handlerId="${req.handlerId}"`)
+        log.error(`could not find request with requestId="${req.requestId}"`)
         cb(new Error('could not find request'))
       }
     })
@@ -446,7 +446,7 @@ export class ProtectedOperationsService {
           })
         },
         {
-          requestId: request.handlerId,
+          requestId: request.requestId,
           chainId: parseInt(data.chainId, 16),
           isActive: () => this.aiSessionAccountIsActive(requestSource, account)
         }
