@@ -43,6 +43,7 @@ export interface SettingsViewProps {
   onBiometricUnlockChange: (enabled: boolean) => void
   onLock: () => void
   onReset: (scope: 'saved-data' | 'all-settings-data') => void
+  onRestart: () => void
   onShowTestnetsChange: (enabled: boolean) => void
   onUpdate: PersistSetting
   settings: SettingsViewModel
@@ -54,6 +55,8 @@ interface SettingsViewModel {
   autoDiscoverTokens: boolean
   portfolioProvider: WalletRendererState['portfolioProvider']
   autohide: boolean
+  torEnabled: boolean
+  tor: WalletRendererState['tor']
   biometricUnlock: boolean
   biometricsBusy: boolean
   biometricsError: string
@@ -94,6 +97,7 @@ export function SettingsView({
   onBiometricUnlockChange,
   onLock,
   onReset,
+  onRestart,
   onShowTestnetsChange,
   onUpdate,
   settings
@@ -101,6 +105,28 @@ export function SettingsView({
   const [resetConfirm, setResetConfirm] = useState(false)
   const zerionEnabled = settings.autoDiscoverTokens && settings.portfolioProvider === 'zerion'
   const flashEnabled = settings.autoDiscoverTokens && settings.portfolioProvider === 'flash'
+  const torActive = settings.tor.connection !== 'direct'
+  const torRestartRequired = settings.torEnabled !== torActive
+  const torDetail = settings.tor.available
+    ? 'Hide your IP from remote services. May be slower.'
+    : 'Tor is not bundled with this build'
+  let torNotice: string | undefined
+  let torNoticeTone: 'warning' | 'muted' = 'muted'
+  if (torRestartRequired) {
+    let currentRoute = 'Traffic still uses a direct connection.'
+    if (settings.tor.connection === 'connected') {
+      currentRoute = 'Traffic still uses Tor.'
+    } else if (torActive) {
+      currentRoute = 'Remote traffic stays blocked until Tor connects.'
+    }
+    torNotice = `Restart to apply. ${currentRoute}`
+    torNoticeTone = 'warning'
+  } else if (settings.tor.connection === 'connecting') {
+    torNotice = 'Connecting to Tor. Remote requests wait for a connection.'
+  } else if (settings.tor.connection === 'error') {
+    torNotice = 'Tor could not connect. Restart to retry, or turn Tor off.'
+    torNoticeTone = 'warning'
+  }
   let portfolioApiKeyDetail = 'Add a Zerion API key to enable'
   if (drafts.portfolioApiKeyRequired) {
     portfolioApiKeyDetail = 'Enter a Zerion API key before enabling'
@@ -165,6 +191,28 @@ export function SettingsView({
   return (
     <TrayOverlay closeLabel='Back' label='Settings' onClose={onBack} title='Settings'>
       <Stack gap='large'>
+        <Group label='Privacy'>
+          <Stack element='section' gap='small'>
+            <Text tone='muted' variant='overline'>
+              Privacy
+            </Text>
+            <SettingsToggleRow
+              detail={torDetail}
+              disabled={!settings.tor.available}
+              label='Proxy traffic via Tor'
+              on={settings.torEnabled}
+              onToggle={() => onUpdate({ setting: 'tor-enabled', value: !settings.torEnabled })}
+            />
+            {torNotice ? (
+              <Text tone={torNoticeTone} variant='caption'>
+                {torNotice}
+              </Text>
+            ) : null}
+            {torRestartRequired || settings.tor.connection === 'error' ? (
+              <SettingsActionRow action='Restart' label='Restart Newframe' onAction={onRestart} />
+            ) : null}
+          </Stack>
+        </Group>
         <Stack gap='small'>
           <Text tone='muted' variant='overline'>
             Shortcut

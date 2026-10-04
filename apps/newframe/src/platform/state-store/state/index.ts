@@ -105,6 +105,7 @@ type M = Main & {
 const mainState: M = {
   instanceId: generateUuid(),
   runtime: getMainRuntime(),
+  tor: { available: false, connection: 'direct' },
   mute: {
     explorerWarning: false,
     gasFeeWarning: false,

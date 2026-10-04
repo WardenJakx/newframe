@@ -812,6 +812,7 @@ const SettingsBooleanSchema = z.discriminatedUnion('setting', [
     type: z.literal('settings.update'),
     setting: z.enum([
       'autohide',
+      'tor-enabled',
       'launch',
       'reveal',
       'menubar-gas-price',
@@ -902,6 +903,7 @@ const WalletResetCommandSchema = z.strictObject({
 export type WalletResetCommand = z.infer<typeof WalletResetCommandSchema>
 
 const AppQuitCommandSchema = z.strictObject({ type: z.literal('app.quit') })
+const AppRestartCommandSchema = z.strictObject({ type: z.literal('app.restart') })
 
 const PermissionClearCommandSchema = z.strictObject({
   type: z.literal('permission.clear'),
@@ -1166,6 +1168,7 @@ export const commandContracts = defineOperationContracts({
   'account.remove': acknowledged(AccountRemoveCommandSchema),
   'account.refresh': acknowledged(AccountRefreshCommandSchema),
   'app.quit': acknowledged(AppQuitCommandSchema),
+  'app.restart': acknowledged(AppRestartCommandSchema),
   'clipboard.write': acknowledged(ClipboardWriteCommandSchema),
   'sidetray.open': acknowledged(SideTrayOpenCommandSchema),
   'sidetray.close': acknowledged(SideTrayCloseCommandSchema),

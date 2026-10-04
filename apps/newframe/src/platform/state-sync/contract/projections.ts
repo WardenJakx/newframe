@@ -532,6 +532,8 @@ const WalletRendererStateSchema = z.strictObject({
   appLock: MainSchema.shape.appLock,
   autoDiscoverTokens: MainSchema.shape.autoDiscoverTokens,
   autohide: MainSchema.shape.autohide,
+  torEnabled: MainSchema.shape.torEnabled,
+  tor: MainSchema.shape.tor,
   balances: MainSchema.shape.balances,
   biometricUnlock: MainSchema.shape.biometricUnlock,
   currentAccount: MainSchema.shape.currentAccount,

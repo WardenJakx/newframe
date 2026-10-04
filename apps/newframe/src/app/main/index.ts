@@ -18,7 +18,8 @@ import menu from '../../platform/desktop/menu.ts'
 import { lockWithSystem } from '../../platform/desktop/systemLock.ts'
 import { showUnhandledExceptionDialog } from '../../platform/desktop/windows/dialog.ts'
 import windows from '../../platform/desktop/windows/index.ts'
-import { internet } from '../../platform/internet/index.ts'
+import { installInternetDefaults, internet } from '../../platform/internet/index.ts'
+import { routeInternet } from '../../platform/internet/tor.ts'
 import { createProductionPersistencePorts } from '../../platform/persistence/index.ts'
 import { getErrorCode } from '../../platform/runtime/errors.ts'
 import { isVisualHarness } from '../../platform/runtime/visualHarness.ts'
@@ -31,6 +32,8 @@ import persist from '../../platform/state-store/persist/index.ts'
 import { createProductionApiServer } from './api/index.ts'
 import { createProductionCapabilities, createProductionMainApp } from './composition/index.ts'
 import { createProductionPlatformAdapters } from './platform/production.ts'
+
+installInternetDefaults()
 
 const signers = new Signers({ biometrics, store, vault })
 const updater = new Updater(store)
@@ -244,6 +247,7 @@ void app.whenReady().then(async () => {
     app.quit()
     return
   }
+  routeInternet(internet, store.getState().main.torEnabled, (status) => store.getState().setTorStatus(status))
   signers.start()
   accounts.start()
   const biometricUnlockEnabled = biometrics.summary().enabled
@@ -257,7 +261,7 @@ void app.whenReady().then(async () => {
   })
   configureWebAuthn()
   startDomainServices()
-  // The internet stays closed until stored state has loaded, then follows the lock.
+  // The internet stays closed until stored state has loaded and its route is ready, then follows the lock.
   store.subscribe(
     (state) => state.main.appLock.locked,
     (locked) => internet.setOpen(!locked),

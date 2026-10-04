@@ -9,6 +9,7 @@ import { OriginSchema } from '../../../features/connections/domain/state/origin.
 import { PermissionSchema } from '../../../features/connections/domain/state/permission.ts'
 import { ShortcutSchema } from '../../../features/settings/domain/state/shortcuts.ts'
 import { TokenCatalogSchema } from '../../../features/tokens/domain/state/token.ts'
+import { TorStatusSchema } from '../../../platform/internet/contract/status.ts'
 import { AirGapPublicAccountSchema } from '../../../platform/signing/domain/airgap.ts'
 
 export const DEFAULT_PROFILE_ID = 'default-profile'
@@ -47,6 +48,7 @@ const PreferencesSchema = {
   launch: z.boolean().default(false).describe('Launch Newframe on system start'),
   reveal: z.boolean().default(false).describe('Show Newframe when user glides mouse to edge of screen'),
   autohide: z.boolean().default(false).describe('Automatically hide Newframe when it loses focus'),
+  torEnabled: z.boolean().optional().describe('Proxy remote traffic via Tor after restarting'),
   showLocalNameWithENS: z.boolean(),
   autoDiscoverTokens: z
     .boolean()
@@ -178,6 +180,7 @@ export const MainSchema = z
     airgap: z.record(z.string(), AirGapPublicAccountSchema).default({}),
     instanceId: z.string(), // TODO: uuid
     runtime: RuntimeSchema,
+    tor: TorStatusSchema,
     chains: z.object({
       ethereum: z.record(z.coerce.number(), ChainSchema)
     }),

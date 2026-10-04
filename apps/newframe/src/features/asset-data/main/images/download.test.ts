@@ -146,3 +146,12 @@ it.each(['image/x-icon', 'image/vnd.microsoft.icon', 'application/octet-stream']
     })
   }
 )
+
+it('leaves name resolution to Tor rather than looking up image hosts locally', async () => {
+  const route = spyOn(internet, 'route').mockReturnValue({ via: 'tor', socksPort: 9050 })
+  mockFetch.mockResolvedValue(createResponse(png, 'image/png'))
+
+  expect(await downloadImage('https://cdn.example/tor.png')).toMatchObject({ mimeType: 'image/png' })
+  expect(mockLookup).not.toHaveBeenCalled()
+  route.mockRestore()
+})

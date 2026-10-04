@@ -1,9 +1,30 @@
 import { describe, expect, it, mock } from 'bun:test'
 
 import { createTestStore } from '../../../../test/support/createTestStore.ts'
+import { mergePersistedState, selectPersistedState } from '../../../platform/state-store/persistence.ts'
 import { createSettingsService } from './service.ts'
 
 describe('settings service', () => {
+  it('persists the Tor preference across restart while retaining the actual connection state', () => {
+    const store = createTestStore({
+      main: {
+        tor: { available: true, connection: 'connected' }
+      }
+    })
+    const flush = mock()
+    const service = createSettingsService(store, { flush })
+    service.update({ type: 'settings.update', setting: 'tor-enabled', value: false })
+    expect(store.getState().main.torEnabled).toBe(false)
+    expect(store.getState().main.tor.connection).toBe('connected')
+    expect(flush).toHaveBeenCalledTimes(1)
+    const saved = selectPersistedState(store.getState())
+    expect(saved.main.torEnabled).toBe(false)
+    expect(saved.main).not.toHaveProperty('tor')
+    const restarted = mergePersistedState(saved, createTestStore().getState())
+    expect(restarted.main.torEnabled).toBe(false)
+    expect(restarted.main.tor.connection).toBe('direct')
+  })
+
   it('persists an available fee preference without modifying requests', () => {
     const store = createTestStore()
     store.store.setState((state) => {

@@ -50,6 +50,9 @@ export const electronMock = {
     encryptString: mock(),
     isEncryptionAvailable: mock(() => false)
   },
+  session: {
+    defaultSession: { setProxy: mock() }
+  },
   screen: {
     getPrimaryDisplay: mock()
   },

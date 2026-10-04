@@ -3,6 +3,7 @@ import { EventEmitter } from 'events'
 
 import log from 'electron-log'
 
+import { createInternet, type Internet } from '../../../internet/index.ts'
 import createCanonicalStore from '../../../state-store/createCanonicalStore.ts'
 import store from '../../../state-store/index.ts'
 import { Derivation } from '../Signer/derive.ts'
@@ -47,6 +48,7 @@ const setSettings = (update: Partial<ReturnType<typeof store.getState>['main']['
 
 let signer: FakeSigner
 let adapter: LatticeSignerAdapter
+let internet: Internet
 
 beforeAll(() => (log.transports.console.level = false))
 afterAll(() => (log.transports.console.level = 'debug'))
@@ -55,7 +57,9 @@ beforeEach(() => {
   setDevices({})
   setSettings({ accountLimit: 5, derivation: Derivation.legacy, endpointMode: 'default', endpointCustom: '' })
   signer = fakeSigner()
-  adapter = new LatticeSignerAdapter(store, () => signer as never)
+  internet = createInternet(mock())
+  internet.setOpen(true)
+  adapter = new LatticeSignerAdapter(store, () => signer as never, internet)
 })
 
 afterEach(() => {
@@ -96,7 +100,7 @@ it('ignores a stale connection failure after close and reopen', async () => {
   let rejectFirst: (error: Error) => void = () => {}
   first.connect = mock(() => new Promise<boolean>((_resolve, reject) => (rejectFirst = reject)))
   const pending = [first, reopened]
-  const freshAdapter = new LatticeSignerAdapter(freshStore, () => pending.shift() as never)
+  const freshAdapter = new LatticeSignerAdapter(freshStore, () => pending.shift() as never, internet)
   freshStore.setState((state) => {
     state.main.lattice = {
       'fresh-device': {
@@ -212,4 +216,26 @@ it('keeps unpaired and failed connections fail-closed', async () => {
   expectProjection(false)
   expect(signer.disconnect).toHaveBeenCalledTimes(1)
   expect(updates).toHaveBeenCalledWith(signer)
+})
+
+it('waits for the internet to open before auto-connecting a paired device, so a locked launch keeps it paired', () => {
+  internet.setOpen(false)
+  adapter.open()
+  setDevices({ NBaJ8e: device(signer, true) })
+  expect(signer.connect).not.toHaveBeenCalled()
+
+  internet.setOpen(true)
+  internet.setOpen(false)
+  internet.setOpen(true)
+  expect(calls<[string, string]>(signer.connect)).toEqual([['https://signing.gridpl.us', 'supersecretkey']])
+  expect(store.getState().main.lattice.NBaJ8e.paired).toBe(true)
+
+  const later = fakeSigner('later')
+  adapter.close()
+  internet.setOpen(false)
+  adapter = new LatticeSignerAdapter(store, () => later as never, internet)
+  adapter.open()
+  adapter.close()
+  internet.setOpen(true)
+  expect(later.connect).not.toHaveBeenCalled()
 })

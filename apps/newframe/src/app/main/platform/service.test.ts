@@ -21,6 +21,7 @@ describe('platform service', () => {
     })
     store.getState().navHome({ view: 'home' })
     const quit = mock()
+    const relaunch = mock()
     const writeText = mock()
     const dismissUpdate = mock()
     const fetchUpdate = mock()
@@ -37,7 +38,7 @@ describe('platform service', () => {
     }
     const service = createPlatformService({
       accounts: { current: () => account },
-      app: { quit },
+      app: { quit, relaunch },
       clipboard: { writeText },
       openBlockExplorer,
       openExternal,
@@ -121,5 +122,8 @@ describe('platform service', () => {
     })
     expect(fetchUpdate.mock.calls).toEqual([])
     expect(quitAndInstall.mock.calls).toEqual([])
+    service.restartApp()
+    expect(relaunch).toHaveBeenCalledTimes(1)
+    expect(quit).toHaveBeenCalledTimes(2)
   })
 })
