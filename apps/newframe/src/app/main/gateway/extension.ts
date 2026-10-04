@@ -27,10 +27,7 @@ export function createExtensionGateway(
       return false
     }
     // Website chain queries use the ordinary RPC gateway with their website source.
-    if (
-      source.participant !== 'companion-extension' &&
-      ['eth_chainId', 'net_version'].includes(payload.method)
-    ) {
+    if (source.participant !== 'extension' && ['eth_chainId', 'net_version'].includes(payload.method)) {
       return false
     }
     const result = await dispatchGatewayOperation(
@@ -41,7 +38,7 @@ export function createExtensionGateway(
             : { success: false as const },
         authorize: (input: RPCRequestPayload, admitted: LocalApiSource) =>
           isRequestSource(admitted) &&
-          admitted.participant === 'companion-extension' &&
+          admitted.participant === 'extension' &&
           Boolean(admitted.extensionId) &&
           (!input.method.startsWith('frame_') || hasSourceCapability(admitted, 'wallet:internal-state')),
         handle(input: RPCRequestPayload, admitted: LocalApiSource) {

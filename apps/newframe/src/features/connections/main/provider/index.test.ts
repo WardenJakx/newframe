@@ -66,7 +66,7 @@ const principal = createLocalApiSource({
 })
 const internalPrincipal = createLocalApiSource({
   transport: 'websocket',
-  connectionId: 'companion-test',
+  connectionId: 'extension-test',
   origin: 'frame.test',
   capabilities: ['wallet:internal-state']
 })

@@ -100,7 +100,7 @@ describe('wallet action authority', () => {
   it('accepts internal capabilities only from a branded transport principal', () => {
     const principal = createLocalApiSource({
       transport: 'websocket',
-      connectionId: 'companion-1',
+      connectionId: 'extension-1',
       origin: 'newframe-extension',
       capabilities: ['wallet:internal-state']
     })
