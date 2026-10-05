@@ -40,7 +40,7 @@ export function createExtensionGateway(
           isRequestSource(admitted) &&
           admitted.participant === 'extension' &&
           Boolean(admitted.extensionId) &&
-          (!input.method.startsWith('frame_') || hasSourceCapability(admitted, 'wallet:internal-state')),
+          (!input.method.startsWith('newframe_') || hasSourceCapability(admitted, 'wallet:internal-state')),
         handle(input: RPCRequestPayload, admitted: LocalApiSource) {
           if (input.method === 'newframe_summon') {
             windows.toggleTray()
