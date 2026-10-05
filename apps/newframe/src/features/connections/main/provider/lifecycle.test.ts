@@ -3,7 +3,7 @@ import EventEmitter from 'events'
 
 import { RpcIpcHandlers } from '../../../../app/main/ipc-handlers/rpc.ts'
 import type { Chains } from '../../../../core/services/chains/index.ts'
-import createCanonicalStore from '../../../../platform/state-store/createCanonicalStore.ts'
+import createCanonicalStore from '../../../../core/state/store/createCanonicalStore.ts'
 import type { RPCRequestCallback, RPCResponsePayload } from '../../../../shared/domain/rpc.ts'
 import type { AccountRequestPort } from './accountRequestPort.ts'
 import { createProxyProvider } from './frameProvider.ts'

@@ -4,7 +4,7 @@ import log from 'electron-log'
 import { isHexString } from 'ethers'
 
 import { accountAccessMethods } from '../../../../app/main/gateway/rpcPolicy.ts'
-import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
+import type { CanonicalStoreReader } from '../../../../core/state/store/actions.ts'
 import { getAddress } from '../../../../shared/domain/address.ts'
 import type { Callback } from '../../../../shared/domain/async.ts'
 import type {

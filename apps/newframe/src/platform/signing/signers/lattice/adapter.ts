@@ -1,7 +1,7 @@
 import log from 'electron-log'
 
 import { internet, type InternetGate } from '../../../../core/internet/index.ts'
-import type canonicalStore from '../../../state-store/index.ts'
+import type canonicalStore from '../../../../core/state/store/index.ts'
 import { SignerAdapter } from '../adapters.ts'
 import type { Derivation } from '../Signer/derive.ts'
 import Lattice from './Lattice.ts'

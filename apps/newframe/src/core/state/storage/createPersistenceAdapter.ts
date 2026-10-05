@@ -5,7 +5,7 @@ import {
   PERSISTENCE_VERSION,
   StoredEnvelopeSchema,
   type PersistedCanonicalState
-} from '../state-store/persist/schema.ts'
+} from '../store/persist/schema.ts'
 import type { PersistenceClockPort, PersistenceLoggerPort, PersistenceStoragePort } from './ports.ts'
 
 type PendingWrite = {

@@ -4,6 +4,7 @@ import { recoverTypedSignature } from '@metamask/eth-sig-util'
 import log from 'electron-log'
 
 import type { Chain, Chains } from '../../../core/services/chains/index.ts'
+import type { CanonicalStoreReader } from '../../../core/state/store/actions.ts'
 import type { AccountRequestPort } from '../../../features/connections/main/provider/accountRequestPort.ts'
 import {
   feeTotalOverMax,
@@ -28,7 +29,6 @@ import type {
   SigningApprovalContext,
   SigningUiContext
 } from '../../../platform/signing/signers/Signer/index.ts'
-import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
 import type { Callback } from '../../../shared/domain/async.ts'
 import type { RPCRequestCallback, RPCRequestPayload } from '../../../shared/domain/rpc.ts'
 import { isAiSessionActive, type AiSessionClientSource } from '../gateway/requestSource.ts'

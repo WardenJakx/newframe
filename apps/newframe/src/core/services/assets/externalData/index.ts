@@ -1,12 +1,12 @@
 import log from 'electron-log'
 
 import { customTokens, tokensForAccount } from '../../../../features/tokens/domain/index.ts'
-import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
-import type { Token } from '../../../../platform/state-store/state/index.ts'
 import type { Address } from '../../../../shared/domain/address.ts'
 import { debounce } from '../../../../shared/domain/async.ts'
 import { arraysMatch } from '../../../../shared/domain/collections.ts'
 import type { InternetGate } from '../../../internet/index.ts'
+import type { CanonicalStoreReader } from '../../../state/store/actions.ts'
+import type { Token } from '../../../state/store/state/index.ts'
 import Balances from './balances/index.ts'
 
 export interface DataScanner {

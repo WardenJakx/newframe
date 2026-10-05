@@ -2,17 +2,17 @@ import { describe, expect, it } from 'bun:test'
 
 import { Wallet } from 'ethers'
 
-import { createTestStore } from '../../../test/support/createTestStore.ts'
-import { DEFAULT_PROFILE_ID, DEFAULT_PROFILE_NAME } from '../../app/contracts/state/main.ts'
-import { builtInChainIconUrl } from '../../features/chains/domain/chain/index.ts'
-import type { TokenImage } from '../../features/tokens/domain/state/token.ts'
+import { createTestStore } from '../../../../test/support/createTestStore.ts'
+import { DEFAULT_PROFILE_ID, DEFAULT_PROFILE_NAME } from '../../../app/contracts/state/main.ts'
+import { builtInChainIconUrl } from '../../../features/chains/domain/chain/index.ts'
+import type { TokenImage } from '../../../features/tokens/domain/state/token.ts'
 import {
   CanonicalStatePersistenceError,
   createPersistenceAdapter,
   createPersistenceService,
   type PersistenceSchedulerPort,
   type PersistenceStoragePort
-} from '../persistence/index.ts'
+} from '../storage/index.ts'
 import type { CanonicalStore } from './actions.ts'
 import createCanonicalStore from './createCanonicalStore.ts'
 import {
@@ -750,8 +750,8 @@ describe('canonical persistence failure boundaries', () => {
 })
 
 it('retains Safe metadata through persistence and projects only the current profile', async () => {
-  const { projectTrayState } = await import('../state-sync/main/projections.ts')
-  const { projectionStateSchemas } = await import('../state-sync/contract/projections.ts')
+  const { projectTrayState } = await import('../projections/projections.ts')
+  const { projectionStateSchemas } = await import('../../../platform/state-sync/contract/projections.ts')
   const store = createTestStore()
   const owner = new Wallet(`0x${'11'.repeat(32)}`)
   const address = owner.address
@@ -839,8 +839,8 @@ it('retains Safe metadata through persistence and projects only the current prof
 })
 
 it('persists AirGap public records, projects progress, and never restores an exchange', async () => {
-  const { projectWalletState } = await import('../state-sync/main/projections.ts')
-  const { signerFixture, transaction } = await import('../../../test/integration/fixtures/airgap.ts')
+  const { projectWalletState } = await import('../projections/projections.ts')
+  const { signerFixture, transaction } = await import('../../../../test/integration/fixtures/airgap.ts')
   const f = signerFixture()
   try {
     f.store.getState().addAirGap(f.signer.id, f.signer.record)

@@ -9,9 +9,9 @@ import {
 import type { AssetRateMap } from '../../../../../features/asset-data/domain/state/rate.ts'
 import { NATIVE_CURRENCY } from '../../../../../features/tokens/domain/constants.ts'
 import { customTokens, tokensForAccount } from '../../../../../features/tokens/domain/index.ts'
-import type { CanonicalStore } from '../../../../../platform/state-store/actions.ts'
-import type { Balance, Chain, ChainMetadata, Token } from '../../../../../platform/state-store/state/index.ts'
 import type { Address } from '../../../../../shared/domain/address.ts'
+import type { CanonicalStore } from '../../../../state/store/actions.ts'
+import type { Balance, Chain, ChainMetadata, Token } from '../../../../state/store/state/index.ts'
 import BalancesWorkerController from './controller.ts'
 import type { CurrencyBalance, TokenBalance } from './scan.ts'
 

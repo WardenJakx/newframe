@@ -1,5 +1,5 @@
-import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
-import type { Balance, NativeCurrency, Token } from '../../../../platform/state-store/state/index.ts'
+import type { CanonicalStoreReader } from '../../../../core/state/store/actions.ts'
+import type { Balance, NativeCurrency, Token } from '../../../../core/state/store/state/index.ts'
 import type { Address } from '../../../../shared/domain/address.ts'
 import type { RPC } from '../../../../shared/domain/rpc.ts'
 import { resolveAssetRate } from '../../../asset-data/domain/asset/index.ts'

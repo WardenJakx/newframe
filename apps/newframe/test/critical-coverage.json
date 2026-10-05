@@ -35,13 +35,13 @@
       "name": "persistence",
       "rationale": "Persisted canonical state must validate, migrate, and flush without corrupting wallet state.",
       "patterns": [
-        "src/platform/state-store/persistence.ts",
-        "src/platform/state-store/persist/schema.ts",
-        "src/platform/persistence/bindableStorage.ts",
-        "src/platform/persistence/createPersistenceAdapter.ts",
-        "src/platform/persistence/createPersistenceService.ts",
-        "src/platform/persistence/ports.ts",
-        "src/platform/persistence/production.ts"
+        "src/core/state/store/persistence.ts",
+        "src/core/state/store/persist/schema.ts",
+        "src/core/state/storage/bindableStorage.ts",
+        "src/core/state/storage/createPersistenceAdapter.ts",
+        "src/core/state/storage/createPersistenceService.ts",
+        "src/core/state/storage/ports.ts",
+        "src/core/state/storage/production.ts"
       ],
       "minimum": {
         "lines": 75,
@@ -78,7 +78,7 @@
         "src/features/accounts/main/providerPort.ts",
         "src/app/main/ipc-handlers/rpc.ts",
         "src/features/transactions/main/accountPolicyPort.ts",
-        "src/platform/state-store/actions.ts"
+        "src/core/state/store/actions.ts"
       ],
       "minimum": {
         "lines": 45,

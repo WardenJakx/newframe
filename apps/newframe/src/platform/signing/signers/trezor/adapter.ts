@@ -1,7 +1,7 @@
 import type { DeviceUniquePath, Device as TrezorDevice } from '@trezor/connect'
 import log from 'electron-log'
 
-import type canonicalStore from '../../../state-store/index.ts'
+import type canonicalStore from '../../../../core/state/store/index.ts'
 import { SignerAdapter } from '../adapters.ts'
 import TrezorBridge from './bridge.ts'
 import Trezor, { Status } from './Trezor.ts'

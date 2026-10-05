@@ -1,9 +1,9 @@
 import type { AssetRateInput } from '../../../../../features/asset-data/domain/state/rate.ts'
 import { NATIVE_CURRENCY } from '../../../../../features/tokens/domain/constants.ts'
-import type { Balance, Token } from '../../../../../platform/state-store/state/index.ts'
 import type { Address } from '../../../../../shared/domain/address.ts'
 import { formatUnits } from '../../../../../shared/domain/units.ts'
 import { internet } from '../../../../internet/index.ts'
+import type { Balance, Token } from '../../../../state/store/state/index.ts'
 import ProviderRequestPolicy, { type ProviderRequestPolicyOptions } from '../requestPolicy.ts'
 import type {
   PortfolioChainImage,

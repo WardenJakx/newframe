@@ -9,8 +9,8 @@ const nodeEnv = (process.env as Record<string, string | undefined>).NODE_ENV
 const runtimeEnvironment = nodeEnv === '' ? 'development' : (nodeEnv ?? 'development')
 log.transports.file.level = ['development', 'test'].includes(runtimeEnvironment) ? false : 'verbose'
 
-import type { Token } from '../../../../../platform/state-store/state/index.ts'
 import type { Address } from '../../../../../shared/domain/address.ts'
+import type { Token } from '../../../../state/store/state/index.ts'
 import type { BalanceLoader } from './scan.ts'
 import balancesLoader from './scan.ts'
 

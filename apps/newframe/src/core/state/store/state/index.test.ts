@@ -4,8 +4,8 @@ import {
   DEFAULT_PROFILE_ID,
   DEFAULT_PROFILE_NAME,
   getProfileAccountIds
-} from '../../../app/contracts/state/main.ts'
-import { builtInChainIconUrl } from '../../../features/chains/domain/chain/index.ts'
+} from '../../../../app/contracts/state/main.ts'
+import { builtInChainIconUrl } from '../../../../features/chains/domain/chain/index.ts'
 import createInitialState, { CanonicalStateSchema } from './index.ts'
 
 describe('canonical state defaults', () => {

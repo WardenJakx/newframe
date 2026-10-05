@@ -19,7 +19,7 @@ const riskTests = [
   /^src\/features\/accounts\/main\/accountOnboarding\//,
   /^src\/features\/connections\/main\/provider\/(?:index|lifecycle)\.test\./,
   /^src\/platform\/signing\/signatures\//,
-  /^src\/platform\/state-store\/(?:persistence|actions)\.test\./,
+  /^src\/core\/state\/store\/(?:persistence|actions)\.test\./,
   /^src\/features\/transactions\/main\//,
   /^src\/platform\/secrets\/vault\.test\./,
   /^src\/preload\//

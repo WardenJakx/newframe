@@ -7,8 +7,8 @@ import {
   isSupportedImageMimeType,
   MAX_EMBEDDED_IMAGE_BYTES
 } from '../../../../features/asset-data/domain/image/index.ts'
-import type { TokenImage } from '../../../../platform/state-store/state/index.ts'
 import { internet } from '../../../internet/index.ts'
+import type { TokenImage } from '../../../state/store/state/index.ts'
 
 const MAX_TARGET_LENGTH = 4096
 const MAX_IMAGE_BYTES = MAX_EMBEDDED_IMAGE_BYTES

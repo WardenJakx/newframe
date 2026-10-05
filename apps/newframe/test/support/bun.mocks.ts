@@ -4,8 +4,8 @@ import { subscribeWithSelector } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import { createStore } from 'zustand/vanilla'
 
-import type { CanonicalGet, CanonicalSet } from '../../src/platform/state-store/actions.panel.ts'
-import { createCanonicalActions } from '../../src/platform/state-store/actions.ts'
+import type { CanonicalGet, CanonicalSet } from '../../src/core/state/store/actions.panel.ts'
+import { createCanonicalActions } from '../../src/core/state/store/actions.ts'
 
 type CanonicalActions = ReturnType<typeof createCanonicalActions>
 

@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
 
 import { DEFAULT_PROFILE_ID } from '../../../app/contracts/state/main.ts'
-import createCanonicalStore from '../../../platform/state-store/createCanonicalStore.ts'
-import createInitialState from '../../../platform/state-store/state/index.ts'
 import { StateMessageChannel } from '../../../platform/state-sync/contract/protocol.ts'
-import { projectTrayState } from '../../../platform/state-sync/main/projections.ts'
+import { projectTrayState } from '../../state/projections/projections.ts'
+import createCanonicalStore from '../../state/store/createCanonicalStore.ts'
+import createInitialState from '../../state/store/state/index.ts'
 import type { AuthorizationContext } from './authorization.ts'
 import { createStateStream, type StateStream } from './stateStream.ts'
 

@@ -2,7 +2,7 @@ import { describe, expect, it, mock } from 'bun:test'
 
 import { Interface } from 'ethers'
 
-import createCanonicalStore from '../../../platform/state-store/createCanonicalStore.ts'
+import createCanonicalStore from '../../../core/state/store/createCanonicalStore.ts'
 import type { Callback } from '../../../shared/domain/async.ts'
 import { erc20Interface } from '../../../shared/domain/evm.ts'
 import type {

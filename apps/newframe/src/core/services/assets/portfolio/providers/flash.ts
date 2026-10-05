@@ -4,9 +4,9 @@ import type { FlashTokenBalance } from '@newframe/flash/wire'
 
 import type { AssetRateInput } from '../../../../../features/asset-data/domain/state/rate.ts'
 import { NATIVE_CURRENCY } from '../../../../../features/tokens/domain/constants.ts'
-import type { Balance, Token } from '../../../../../platform/state-store/state/index.ts'
 import type { Address } from '../../../../../shared/domain/address.ts'
 import { formatUnits, parseUnits } from '../../../../../shared/domain/units.ts'
+import type { Balance, Token } from '../../../../state/store/state/index.ts'
 import type { PortfolioChainImage, PortfolioProvider, PortfolioSnapshot } from '../types.ts'
 
 type FlashBalancesApi = Pick<ReturnType<typeof createFlashApi>, 'balances'>

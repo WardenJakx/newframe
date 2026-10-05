@@ -1,7 +1,7 @@
 import { isDeepStrictEqual } from 'util'
 
-import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
-import type { Chain, ChainMetadata, Origin } from '../../../../platform/state-store/state/index.ts'
+import type { CanonicalStoreReader } from '../../../../core/state/store/actions.ts'
+import type { Chain, ChainMetadata, Origin } from '../../../../core/state/store/state/index.ts'
 import type { Address } from '../../../../shared/domain/address.ts'
 import type { RPC } from '../../../../shared/domain/rpc.ts'
 import { persistedImageSource } from '../../../asset-data/domain/image/index.ts'

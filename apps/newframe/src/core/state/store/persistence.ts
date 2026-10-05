@@ -1,9 +1,9 @@
 import log from 'electron-log'
 
-import { DEFAULT_PROFILE_ID, DEFAULT_PROFILE_NAME } from '../../app/contracts/state/main.ts'
-import { listCuratedAssets } from '../../features/asset-data/domain/asset/index.ts'
-import { embeddedImageSource } from '../../features/asset-data/domain/image/index.ts'
-import { CanonicalStatePersistenceError } from '../persistence/index.ts'
+import { DEFAULT_PROFILE_ID, DEFAULT_PROFILE_NAME } from '../../../app/contracts/state/main.ts'
+import { listCuratedAssets } from '../../../features/asset-data/domain/asset/index.ts'
+import { embeddedImageSource } from '../../../features/asset-data/domain/image/index.ts'
+import { CanonicalStatePersistenceError } from '../storage/index.ts'
 import type { CanonicalStore } from './actions.ts'
 import {
   PERSISTENCE_VERSION,

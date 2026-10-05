@@ -9,25 +9,28 @@ import {
   type ActivityRecord,
   type OrderRecord,
   type PortfolioProviderId
-} from '../../app/contracts/state/main.ts'
-import { accountNS, isDefaultAccountName } from '../../features/accounts/domain/index.ts'
-import type { Account } from '../../features/accounts/domain/state/account.ts'
-import type { Balance } from '../../features/asset-data/domain/state/balance.ts'
-import type { GasFees } from '../../features/chains/domain/state/gas.ts'
-import type { NativeCurrency } from '../../features/chains/domain/state/nativeCurrency.ts'
+} from '../../../app/contracts/state/main.ts'
+import { accountNS, isDefaultAccountName } from '../../../features/accounts/domain/index.ts'
+import type { Account } from '../../../features/accounts/domain/state/account.ts'
+import type { Balance } from '../../../features/asset-data/domain/state/balance.ts'
+import type { GasFees } from '../../../features/chains/domain/state/gas.ts'
+import type { NativeCurrency } from '../../../features/chains/domain/state/nativeCurrency.ts'
 import {
   canExtensionSee,
   grantExtensionAccess,
   visibleExtensionAccountIds
-} from '../../features/connections/domain/extensionAccess.ts'
-import type { CanonicalAccountRequest } from '../../features/requests/contract/requests.ts'
-import { NATIVE_CURRENCY } from '../../features/tokens/domain/constants.ts'
-import { toTokenId } from '../../features/tokens/domain/index.ts'
-import type { Token, TokenImage, TokenSource } from '../../features/tokens/domain/state/token.ts'
-import type { TorStatus } from '../internet/contract/status.ts'
-import { AirGapPublicAccountSchema, type AirGapPublicAccount } from '../signing/domain/airgap.ts'
-import type { Derivation } from '../signing/signers/Signer/derive.ts'
-import type { SignerSummary } from '../signing/signers/Signer/index.ts'
+} from '../../../features/connections/domain/extensionAccess.ts'
+import type { CanonicalAccountRequest } from '../../../features/requests/contract/requests.ts'
+import { NATIVE_CURRENCY } from '../../../features/tokens/domain/constants.ts'
+import { toTokenId } from '../../../features/tokens/domain/index.ts'
+import type { Token, TokenImage, TokenSource } from '../../../features/tokens/domain/state/token.ts'
+import type { TorStatus } from '../../../platform/internet/contract/status.ts'
+import {
+  AirGapPublicAccountSchema,
+  type AirGapPublicAccount
+} from '../../../platform/signing/domain/airgap.ts'
+import type { Derivation } from '../../../platform/signing/signers/Signer/derive.ts'
+import type { SignerSummary } from '../../../platform/signing/signers/Signer/index.ts'
 import { createOperationActions } from './actions.operation.ts'
 import { createPanelActions, type CanonicalGet, type CanonicalSet } from './actions.panel.ts'
 import type {

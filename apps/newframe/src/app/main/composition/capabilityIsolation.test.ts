@@ -2,7 +2,7 @@ import { expect, it, mock, spyOn } from 'bun:test'
 
 import type { IpcMainHandlerPort } from '../../../core/entry/tray/operations.ts'
 import { internet } from '../../../core/internet/index.ts'
-import createCanonicalStore from '../../../platform/state-store/createCanonicalStore.ts'
+import createCanonicalStore from '../../../core/state/store/createCanonicalStore.ts'
 import {
   createProductionCapabilities,
   createProductionMainApp,

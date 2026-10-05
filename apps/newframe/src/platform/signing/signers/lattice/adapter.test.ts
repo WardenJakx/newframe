@@ -4,8 +4,8 @@ import { EventEmitter } from 'events'
 import log from 'electron-log'
 
 import { createInternet, type Internet } from '../../../../core/internet/index.ts'
-import createCanonicalStore from '../../../state-store/createCanonicalStore.ts'
-import store from '../../../state-store/index.ts'
+import createCanonicalStore from '../../../../core/state/store/createCanonicalStore.ts'
+import store from '../../../../core/state/store/index.ts'
 import { Derivation } from '../Signer/derive.ts'
 import LatticeSignerAdapter from './adapter.ts'
 

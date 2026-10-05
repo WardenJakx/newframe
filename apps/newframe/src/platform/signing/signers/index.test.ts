@@ -1,9 +1,9 @@
 import { beforeAll, beforeEach, expect, it, mock } from 'bun:test'
 import { EventEmitter } from 'events'
 
+import createCanonicalStore from '../../../core/state/store/createCanonicalStore.ts'
+import store from '../../../core/state/store/index.ts'
 import type { Callback } from '../../../shared/domain/async.ts'
-import createCanonicalStore from '../../state-store/createCanonicalStore.ts'
-import store from '../../state-store/index.ts'
 import type Signer from './Signer/index.ts'
 
 class HotSignerMock extends EventEmitter {

@@ -6,8 +6,8 @@ import { createStore } from 'zustand/vanilla'
 import { createSafeHandler } from '../../scripts/local-safe/handler.ts'
 import { createSafeClient } from '../../src/core/services/safe-wallets/client.ts'
 import { createSafeService } from '../../src/core/services/safe-wallets/safe.ts'
+import { projectTrayState } from '../../src/core/state/projections/projections.ts'
 import { createOperationService } from '../../src/platform/operations/service.ts'
-import { projectTrayState } from '../../src/platform/state-sync/main/projections.ts'
 import { createTestStore } from '../support/createTestStore.ts'
 
 it('projects the paginated local Safe service through public observation capabilities', async () => {

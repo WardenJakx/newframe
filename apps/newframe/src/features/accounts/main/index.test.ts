@@ -25,7 +25,7 @@ import {
   createLocalApiSource,
   type RequestSource
 } from '../../../app/main/gateway/requestSource.ts'
-import store from '../../../platform/state-store/index.ts'
+import store from '../../../core/state/store/index.ts'
 import type { Callback } from '../../../shared/domain/async.ts'
 import type {
   EVMError,

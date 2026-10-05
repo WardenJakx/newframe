@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
-import type { CanonicalStoreReader } from '../state-store/actions.ts'
+import type { CanonicalStoreReader } from '../../core/state/store/actions.ts'
 import { TrayProjectionRoleSchema } from '../state-sync/contract/projections.ts'
 import {
   OperationRecordSchema,

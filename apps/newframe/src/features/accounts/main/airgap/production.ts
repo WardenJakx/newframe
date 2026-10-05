@@ -1,3 +1,4 @@
+import type canonicalStore from '../../../../core/state/store/index.ts'
 import type { OperationService } from '../../../../platform/operations/service.ts'
 import AirGapSigner from '../../../../platform/signing/signers/airgap/AirGapSigner.ts'
 import {
@@ -5,7 +6,6 @@ import {
   airGapId,
   decodePublicAccount
 } from '../../../../platform/signing/signers/airgap/protocol.ts'
-import type canonicalStore from '../../../../platform/state-store/index.ts'
 import type { AccountsRuntime } from '../runtime.ts'
 import { createAirGapService } from './service.ts'
 

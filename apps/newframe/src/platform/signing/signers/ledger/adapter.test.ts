@@ -4,7 +4,7 @@ import EventEmitter from 'events'
 import log from 'electron-log'
 import { v5 as uuid } from 'uuid'
 
-import store from '../../../state-store/index.ts'
+import store from '../../../../core/state/store/index.ts'
 
 const ns = '3bbcee75-cecc-5b56-8031-b6641c1ed1f1'
 

@@ -1,7 +1,7 @@
 import { describe, expect, it, mock } from 'bun:test'
 
 import { createTestStore } from '../../../../test/support/createTestStore.ts'
-import { mergePersistedState, selectPersistedState } from '../../../platform/state-store/persistence.ts'
+import { mergePersistedState, selectPersistedState } from '../../../core/state/store/persistence.ts'
 import { createSettingsService } from './service.ts'
 
 describe('settings service', () => {

@@ -5,9 +5,9 @@ import type { BrowserWindowConstructorOptions } from 'electron'
 import { BrowserWindow, shell } from 'electron'
 import log from 'electron-log'
 
-import type { CanonicalStore } from '../../../platform/state-store/actions.ts'
-import type { ChainId } from '../../../platform/state-store/state/index.ts'
 import type { TrayAuthorizationRegistry } from '../../entry/tray/authorization.ts'
+import type { CanonicalStore } from '../../state/store/actions.ts'
+import type { ChainId } from '../../state/store/state/index.ts'
 import { isVisualHarness } from '../runtime/visualHarness.ts'
 
 export function createWindow(

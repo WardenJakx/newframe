@@ -7,10 +7,10 @@ import type {
   ProfileUpdateCommand,
   ProfileSelectCommand
 } from '../../../../app/contracts/operations.ts'
+import type { CanonicalStore } from '../../../../core/state/store/actions.ts'
 import type { OperationEntityRef } from '../../../../platform/operations/operation.ts'
 import type { OperationService } from '../../../../platform/operations/service.ts'
 import type { OperationOwner, OperationReference } from '../../../../platform/operations/types.ts'
-import type { CanonicalStore } from '../../../../platform/state-store/actions.ts'
 import { accountDisplayType } from '../../domain/accountDisplayType.ts'
 
 type ProfileCommand =

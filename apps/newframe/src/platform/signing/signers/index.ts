@@ -1,6 +1,6 @@
+import type canonicalStore from '../../../core/state/store/index.ts'
 import type { Callback } from '../../../shared/domain/async.ts'
 import type { BiometricUnlockPayload } from '../../secrets/biometrics.ts'
-import type canonicalStore from '../../state-store/index.ts'
 import type { SignerAdapter } from './adapters.ts'
 import AirGapAdapter from './airgap/adapter.ts'
 import HotSigner from './hot/HotSigner/index.ts'

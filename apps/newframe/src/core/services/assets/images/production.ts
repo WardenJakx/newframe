@@ -1,6 +1,6 @@
 import log from 'electron-log'
 
-import type store from '../../../../platform/state-store/index.ts'
+import type store from '../../../state/store/index.ts'
 import { getTokenDiscoveryProvider } from '../portfolio/index.ts'
 import { downloadImage } from './download.ts'
 import type { ImageServiceAdapters } from './index.ts'

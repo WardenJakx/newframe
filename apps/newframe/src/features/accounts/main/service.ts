@@ -1,5 +1,5 @@
 import type { AccountUpdateCommand } from '../../../app/contracts/operations.ts'
-import type { CanonicalStore } from '../../../platform/state-store/actions.ts'
+import type { CanonicalStore } from '../../../core/state/store/actions.ts'
 import type { Accounts } from './index.ts'
 
 type AccountState = Pick<

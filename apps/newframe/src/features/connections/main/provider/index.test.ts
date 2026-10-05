@@ -29,16 +29,16 @@ import chainConfig from '../../../../core/services/chains/config.ts'
 import type { Chains } from '../../../../core/services/chains/index.ts'
 import type { DecodedCallData } from '../../../../core/services/chains/rpc/contracts/index.ts'
 import type { SafeTransactionPort } from '../../../../core/services/safe-wallets/safeTransactionPort.ts'
+import type {
+  Chain as StoredChain,
+  Gas,
+  AccountAccessGrant
+} from '../../../../core/state/store/state/index.ts'
 import { Type as SignerType } from '../../../../platform/signing/domain/index.ts'
 import type {
   SigningApprovalContext,
   SigningUiContext
 } from '../../../../platform/signing/signers/Signer/index.ts'
-import type {
-  Chain as StoredChain,
-  Gas,
-  AccountAccessGrant
-} from '../../../../platform/state-store/state/index.ts'
 import type { Callback } from '../../../../shared/domain/async.ts'
 import { gweiToHex } from '../../../../shared/domain/hex.ts'
 import type {
@@ -169,7 +169,7 @@ const accounts: TestAccounts = {
   trackAutonomousTransaction: createTrackAutonomousTransactionMock()
 }
 let connection: TestChains
-let store: typeof import('../../../../platform/state-store/index.ts').default
+let store: typeof import('../../../../core/state/store/index.ts').default
 let accountRequestHook:
   | ((request: AccountRequest, respond?: (response: RPCResponsePayload) => void) => void)
   | undefined
@@ -366,7 +366,7 @@ beforeAll(async () => {
     default: TestChains
   }
   connection = connectionModule.default
-  store = (await import('../../../../platform/state-store/index.ts')).default
+  store = (await import('../../../../core/state/store/index.ts')).default
   accounts.getAccounts = () => [address]
   accounts.current = mock(() => ({ id: address, getAccounts: () => [address] }))
   accounts.get = createGetMock()

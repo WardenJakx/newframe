@@ -1,8 +1,8 @@
 import type { Accounts } from '../../../../features/accounts/main/index.ts'
 import type { OperationService } from '../../../../platform/operations/service.ts'
 import type { OperationOwner, OperationReference } from '../../../../platform/operations/types.ts'
-import type { CanonicalStore } from '../../../../platform/state-store/actions.ts'
 import type { FlashService } from '../../../features/trading/index.ts'
+import type { CanonicalStore } from '../../../state/store/actions.ts'
 import type { AssetRateService } from '../assetRates/service.ts'
 import type { TokenDiscoveryProviderAccess } from './index.ts'
 
