@@ -61,4 +61,21 @@ describe('messageSource', () => {
       }
     )
   })
+
+  it('recognizes the settings panel opened in a tab by its browser origin', () => {
+    expect(
+      messageSource(
+        { tab: { id: 7 }, origin: 'chrome-extension://abc', url: settingsUrl },
+        forgedTab,
+        settingsUrl
+      )
+    ).toStrictEqual({ kind: 'settings', tab: forgedTab })
+    expect(
+      messageSource(
+        { tab: { id: 7 }, origin: 'chrome-extension://abc', url: 'chrome-extension://abc/other.html' },
+        forgedTab,
+        settingsUrl
+      )
+    ).toMatchObject({ kind: 'page', tabId: 7 })
+  })
 })
