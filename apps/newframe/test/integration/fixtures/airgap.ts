@@ -135,7 +135,7 @@ export function signerFixture(record = publicAccount()) {
         actionId: owner.context.requestId,
         decision: 'prompt',
         decidedAt: 1,
-        principal: { kind: 'main', component: 'airgap-test' },
+        requestSource: { kind: 'main', component: 'airgap-test' },
         intent: { account: address, method: 'test', requestType: type }
       },
       ...requestData

@@ -66,7 +66,7 @@ interface FrameWebSocket extends WebSocket {
   origin?: string
   frameExtension?: FrameExtension
   notify?: (payload: RPC.Susbcription.Response) => void
-  companionInternal: boolean
+  extensionInternal: boolean
 }
 
 interface WebSocketProviderPort extends RpcProviderSendPort {
@@ -163,7 +163,7 @@ export function createWebSocketRpcTransport({
     socket.id = createConnectionId()
     socket.origin = req.headers.origin
     socket.frameExtension = origins.parseFrameExtension(req)
-    socket.companionInternal = Boolean(
+    socket.extensionInternal = Boolean(
       socket.frameExtension &&
       new URL(req.url ?? '/', 'http://127.0.0.1').searchParams.get('scope') === 'internal'
     )
@@ -186,7 +186,7 @@ export function createWebSocketRpcTransport({
         let requestOrigin = socket.origin
         const proxiedExtensionRequest = Boolean(socket.frameExtension && rawPayload.__frameOrigin)
         const requestExtensionConnection =
-          socket.companionInternal &&
+          socket.extensionInternal &&
           !proxiedExtensionRequest &&
           rawPayload.method === 'frame_requestExtensionConnection'
         if (socket.frameExtension) {
@@ -212,9 +212,9 @@ export function createWebSocketRpcTransport({
         }
 
         const origin = parseOrigin(requestOrigin)
-        let participant: 'website' | 'companion-extension' | 'local-api-client' = 'local-api-client'
+        let participant: 'website' | 'extension' | 'local-api-client' = 'local-api-client'
         if (socket.frameExtension) {
-          participant = 'companion-extension'
+          participant = 'extension'
         }
         if (proxiedExtensionRequest) {
           participant = 'website'
@@ -240,7 +240,7 @@ export function createWebSocketRpcTransport({
             connectionId: socket.id,
             origin,
             capabilities:
-              socket.companionInternal && !proxiedExtensionRequest ? ['wallet:internal-state'] : []
+              socket.extensionInternal && !proxiedExtensionRequest ? ['wallet:internal-state'] : []
           },
           updateOrigin: {
             connectionMessage: rawPayload.__extensionConnecting,

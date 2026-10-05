@@ -316,7 +316,5 @@ The code predates the glossary. Counts are occurrences outside tests.
 | AI session              | `agent`                                        | 310         |
 | Request                 | `handlerId` for its identity                   | 290         |
 | Account access grant    | `permission`                                   | 250         |
-| Request source          | `principal`                                    | 220         |
 | Dapp                    | `website`, and `origin` for any request source | 17 plus     |
-| Extension               | `companion`                                    | 13          |
 | Local API message names | `frame_*`, `__frame*`                          | 55          |

@@ -72,7 +72,7 @@ export type JsonRpcResponse = z.infer<typeof JsonRpcResponseSchema>
 export type EthSubscriptionNotification = z.infer<typeof EthSubscriptionNotificationSchema>
 
 // The injected provider permits omitted IDs/version fields before transport encoding.
-export const CompanionPayloadSchema = z.object({
+export const ExtensionRpcPayloadSchema = z.object({
   id: JsonRpcIdSchema.optional(),
   jsonrpc: z.literal('2.0').optional(),
   method: z.string(),
@@ -83,7 +83,7 @@ export const CompanionPayloadSchema = z.object({
   __extensionConnecting: z.boolean().optional()
 })
 export const SubscriptionParamsSchema = z.object({ subscription: z.string(), result: z.unknown() })
-export const CompanionResponseSchema = z
+export const ExtensionRpcResponseSchema = z
   .object({
     id: JsonRpcIdSchema.optional(),
     jsonrpc: z.literal('2.0').optional(),
@@ -97,6 +97,6 @@ export const CompanionResponseSchema = z
       value.id !== undefined ||
       (typeof value.method === 'string' && SubscriptionParamsSchema.safeParse(value.params).success)
   )
-export type CompanionPayload = z.infer<typeof CompanionPayloadSchema>
-export type CompanionResponse = z.infer<typeof CompanionResponseSchema>
+export type ExtensionRpcPayload = z.infer<typeof ExtensionRpcPayloadSchema>
+export type ExtensionRpcResponse = z.infer<typeof ExtensionRpcResponseSchema>
 export type SubscriptionParams = z.infer<typeof SubscriptionParamsSchema>

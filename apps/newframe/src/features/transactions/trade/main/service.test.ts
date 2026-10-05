@@ -16,7 +16,7 @@ const account = {
   address: '0x1111111111111111111111111111111111111111'
 }
 const owner = { clientType: 'sidetray' as const, windowInstanceId: 'trade-window' }
-const principal = { kind: 'renderer' } as RequestSource
+const requestSource = { kind: 'renderer' } as RequestSource
 const typedData = {
   domain: { chainId: 1 },
   message: { quoteId: 'quote-1' },
@@ -102,7 +102,7 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
   const submitTransaction = mock(
     async (
       _request: unknown,
-      _principal: RequestSource
+      _requestSource: RequestSource
     ): Promise<{ ok: true; transactionHash: string } | { ok: false; error: string; message?: string }> => ({
       ok: true as const,
       transactionHash: `0x${'a'.repeat(64)}`
@@ -118,7 +118,7 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
       signature: value.primaryType === 'Permit' ? '0xpermit' : '0xorder'
     })
   )
-  const signMessage = mock(async (_request: unknown, _principal: RequestSource) => ({
+  const signMessage = mock(async (_request: unknown, _requestSource: RequestSource) => ({
     ok: true as const,
     signature: '0xcancel'
   }))
@@ -140,9 +140,13 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
     targetAsset: { ...FLASH_WETH_ASSET, chainId: 1 }
   } satisfies FlashQuoteRequest
   const prepare = (operationId: string, quoteId: string, caller = owner) =>
-    service.prepare({ type: 'request.create', operationId, quoteId, action: 'approve' }, principal, caller)
+    service.prepare(
+      { type: 'request.create', operationId, quoteId, action: 'approve' },
+      requestSource,
+      caller
+    )
   const submit = (operationId: string, quoteId: string) =>
-    service.submit({ type: 'trade.submit', operationId, quoteId }, principal, owner)
+    service.submit({ type: 'trade.submit', operationId, quoteId }, requestSource, owner)
 
   const quoted = await service.quote(request, owner)
   expect(quoted.ok).toBe(true)
@@ -213,15 +217,15 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
   })
 
   const cancel = { type: 'flash.order-cancel' as const, operationId: 'cancel-1', orderId: 'order-cancel' }
-  expect(service.cancel(cancel, principal, owner)).toBe(true)
-  expect(service.cancel(cancel, principal, owner)).toBe(true)
-  expect(service.cancel({ ...cancel, operationId: 'cancel-2' }, principal, owner)).toBe(false)
+  expect(service.cancel(cancel, requestSource, owner)).toBe(true)
+  expect(service.cancel(cancel, requestSource, owner)).toBe(true)
+  expect(service.cancel({ ...cancel, operationId: 'cancel-2' }, requestSource, owner)).toBe(false)
   await flush()
   expect(signMessage.mock.calls).toEqual([
-    [expect.objectContaining({ chainId: canonical.orders['order-cancel'].spentAsset.chainId }), principal]
+    [expect.objectContaining({ chainId: canonical.orders['order-cancel'].spentAsset.chainId }), requestSource]
   ])
   expect(cancelOrder).toHaveBeenCalledWith({ orderId: cancel.orderId, signature: '0xcancel' })
-  expect(service.cancel(cancel, principal, owner)).toBe(true)
+  expect(service.cancel(cancel, requestSource, owner)).toBe(true)
 
   const second = await service.quote(request, owner)
   if (!second.ok) {
@@ -310,7 +314,7 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
   expect(
     service.cancel(
       { type: 'flash.order-cancel', operationId: 'cancel-stale', orderId: 'order-cancel' },
-      principal,
+      requestSource,
       owner
     )
   ).toBe(true)
@@ -357,7 +361,7 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
   expect(
     service.cancel(
       { type: 'flash.order-cancel', operationId: 'pending-dispose-cancel', orderId: 'order-cancel' },
-      principal,
+      requestSource,
       owner
     )
   ).toBe(true)
@@ -494,14 +498,14 @@ it('keeps cross-chain provider state private and validates both chains and the s
   expect(
     service.submit(
       { type: 'trade.submit', operationId: 'cross-submit', quoteId: quoted.quoteId },
-      principal,
+      requestSource,
       owner
     )
   ).toBe(true)
   await flush()
   expect(signTypedData.mock.calls[0] as unknown[]).toEqual([
     expect.objectContaining({ chainId: 8453 }),
-    principal
+    requestSource
   ])
   expect(submitOrder.mock.calls[0]?.[0]).toMatchObject({
     accountAddress: account.address,
@@ -527,7 +531,7 @@ it('keeps cross-chain provider state private and validates both chains and the s
   expect(
     service.submit(
       { type: 'trade.submit', operationId: 'chain-invalidated', quoteId: unavailable.quoteId },
-      principal,
+      requestSource,
       owner
     )
   ).toBe(true)
@@ -561,7 +565,7 @@ it('keeps cross-chain provider state private and validates both chains and the s
   expect(
     service.submit(
       { type: 'trade.submit', operationId: 'typed-mismatch', quoteId: typedMismatch.quoteId },
-      principal,
+      requestSource,
       owner
     )
   ).toBe(true)
@@ -585,7 +589,7 @@ it('keeps cross-chain provider state private and validates both chains and the s
         quoteId: actionMismatch.quoteId,
         action: 'approve'
       },
-      principal,
+      requestSource,
       owner
     )
   ).toBe(true)

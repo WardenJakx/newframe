@@ -18,7 +18,7 @@
 
 <img src="assets/screenshots/newframe/overview.png" alt="Newframe overview" />
 
-Newframe is a web3 platform that creates a secure system-wide interface to your chains and accounts. Any browser, command-line, or native application can access web3 through the Newframe desktop app, while the companion browser extension injects a Newframe-connected provider into sites that expect `window.ethereum`.
+Newframe is a web3 platform that creates a secure system-wide interface to your chains and accounts. Any browser, command-line, or native application can access web3 through the Newframe desktop app, while the browser extension injects a Newframe-connected provider into sites that expect `window.ethereum`.
 
 ## Features
 
@@ -31,7 +31,7 @@ Newframe is a web3 platform that creates a secure system-wide interface to your 
 - **Built in trading:** Create market, limit, take profit, stop loss, dca, across any chain without leaving your wallet, powered by Definitive Flash.
 - **Profiles:** Organize your wallet clusters with profiles
 - **Cross-platform desktop app:** run Newframe on macOS, Windows, and Linux.
-- **Browser companion extension:** connect Newframe to any dApp on Chrome, Brave, Firefox, and other supported browsers.
+- **Browser extension:** connect Newframe to any dApp on Chrome, Brave, Firefox, and other supported browsers.
 
 ## Download and get started
 
@@ -103,7 +103,7 @@ Oxfmt handles formatting with `bun run format`;
 ## Project surfaces
 
 - [`apps/newframe`](apps/newframe/README.md) - Electron desktop wallet and system-wide provider app.
-- [`apps/newframe-extension`](apps/newframe-extension/README.md) - browser companion extension that injects a Newframe-connected provider.
+- [`apps/newframe-extension`](apps/newframe-extension/README.md) - browser extension that injects a Newframe-connected provider.
 - [`skills/newframe`](skills/README.md) - installable Newframe CLI skill for Codex and Claude Code.
 - `packages` - shared libraries used by the app surfaces.
 

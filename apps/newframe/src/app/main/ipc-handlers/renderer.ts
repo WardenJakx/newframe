@@ -329,12 +329,12 @@ export function createOperationRegistry(services: OperationServices) {
       roles: ['sidetray'],
       entrypoints: ['sidetray'],
       handle(command, _event, context) {
-        const principal = context.source
+        const requestSource = context.source
         const owner = operationOwner(context)
         return operationCommandAcknowledgement(
           'quoteId' in command
-            ? trade.prepare(command, principal, owner)
-            : send.submit(command, principal, owner)
+            ? trade.prepare(command, requestSource, owner)
+            : send.submit(command, requestSource, owner)
         )
       },
       failure: { ok: false, error: 'operation_failed' }

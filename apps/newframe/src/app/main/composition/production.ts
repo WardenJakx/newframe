@@ -232,7 +232,8 @@ export function createProductionCapabilities(
       clearRequestsByOrigin: (accountId, originId) => accounts.clearRequestsByOrigin(accountId, originId),
       get: (accountId) => accounts.get(accountId),
       getFrameAccount: (accountId) => accounts.getFrameAccount(accountId),
-      replaceTx: (requestId, replacement, principal) => accounts.replaceTx(requestId, replacement, principal),
+      replaceTx: (requestId, replacement, requestSource) =>
+        accounts.replaceTx(requestId, replacement, requestSource),
       setRequestError: (requestId, error) => accounts.setRequestError(requestId, error),
       setRequestPending: (request) => accounts.setRequestPending(request),
       setRequestSuccess: (requestId) => accounts.setRequestSuccess(requestId),
@@ -487,7 +488,8 @@ export function createProductionCapabilities(
     names: { resolve: resolveName },
     operations: operationService,
     transactions: {
-      submit: (command, principal) => sideTrayTransactions.submitCurrentAccountTransaction(command, principal)
+      submit: (command, requestSource) =>
+        sideTrayTransactions.submitCurrentAccountTransaction(command, requestSource)
     }
   })
   const tradeService = createTradeService({
@@ -506,12 +508,14 @@ export function createProductionCapabilities(
     flash: flashService,
     operations: operationService,
     signatures: {
-      signMessage: (command, principal) => sideTrayTransactions.signCurrentAccountMessage(command, principal),
-      signTypedData: (command, principal) =>
-        sideTrayTransactions.signCurrentAccountTypedData(command, principal)
+      signMessage: (command, requestSource) =>
+        sideTrayTransactions.signCurrentAccountMessage(command, requestSource),
+      signTypedData: (command, requestSource) =>
+        sideTrayTransactions.signCurrentAccountTypedData(command, requestSource)
     },
     transactions: {
-      submit: (command, principal) => sideTrayTransactions.submitCurrentAccountTransaction(command, principal)
+      submit: (command, requestSource) =>
+        sideTrayTransactions.submitCurrentAccountTransaction(command, requestSource)
     }
   })
   return {
@@ -680,7 +684,7 @@ export function createProductionMainApp({
   let disconnectCapabilities: Array<() => void> = []
   const simulationSource = createMainProcessSource('transaction-simulation')
   const accountChainRpc: AccountChainRpcPort = {
-    send: (payload, respond, principal) => provider.send(payload, respond, principal),
+    send: (payload, respond, requestSource) => provider.send(payload, respond, requestSource),
     sendAsync: (payload, callback) => provider.sendAsync(payload, callback),
     getL1GasCost: (transaction) => provider.getL1GasCost(transaction),
     on: (event, listener) => provider.on(event, listener as Parameters<typeof provider.on>[1]),
