@@ -14,6 +14,13 @@ import {
   type ChainService,
   type ChainServicePorts
 } from '../../../core/services/chains/service.ts'
+import { createSafeClient, safeServiceChains } from '../../../core/services/safe-wallets/client.ts'
+import { createSafeService, type SafeService } from '../../../core/services/safe-wallets/safe.ts'
+import { createSafeMessageService } from '../../../core/services/safe-wallets/safeMessage.ts'
+import { createDeferredSafeMessageApprovalPort } from '../../../core/services/safe-wallets/safeMessagePort.ts'
+import { simulateSafeProposal } from '../../../core/services/safe-wallets/safeSimulation.ts'
+import type { SafeTransactionPort } from '../../../core/services/safe-wallets/safeTransactionPort.ts'
+import { createSafeSimulationRpc } from '../../../core/services/safe-wallets/simulation.ts'
 import {
   createAccountOnboardingService,
   type AccountOnboardingPorts,
@@ -35,11 +42,6 @@ import {
   type AccountChainRpcPort
 } from '../../../features/accounts/main/providerPort.ts'
 import type { AccountsRuntime } from '../../../features/accounts/main/runtime.ts'
-import { createSafeService, type SafeService } from '../../../features/accounts/main/safe.ts'
-import { createSafeMessageService } from '../../../features/accounts/main/safeMessage.ts'
-import { createDeferredSafeMessageApprovalPort } from '../../../features/accounts/main/safeMessagePort.ts'
-import { simulateSafeProposal } from '../../../features/accounts/main/safeSimulation.ts'
-import type { SafeTransactionPort } from '../../../features/accounts/main/safeTransactionPort.ts'
 import { createAccountService, type AccountService } from '../../../features/accounts/main/service.ts'
 import { createAssetRateService } from '../../../features/asset-data/main/assetRates/service.ts'
 import createExternalDataScanner from '../../../features/asset-data/main/externalData/index.ts'
@@ -104,8 +106,6 @@ import { createProductionFlashService } from '../../../features/transactions/tra
 import { createTradeService, type TradeService } from '../../../features/transactions/trade/main/service.ts'
 import { createOperationService } from '../../../platform/operations/service.ts'
 import type { PersistenceLifecycle } from '../../../platform/persistence/ports.ts'
-import { createSafeClient, safeServiceChains } from '../../../platform/safe/client.ts'
-import { createSafeSimulationRpc } from '../../../platform/safe/simulation.ts'
 import type store from '../../../platform/state-store/index.ts'
 import { projectTrayState } from '../../../platform/state-sync/main/projections.ts'
 import { createMainProcessSource } from '../gateway/requestSource.ts'

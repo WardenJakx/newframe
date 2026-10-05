@@ -1,23 +1,23 @@
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 
-import {
-  getSafeMessageHash,
-  getSafeMessageTypedData,
-  packSafeMessageSignatures,
-  verifySafeMessageConfirmation,
-  type VerifiedSafeMessageConfirmation
-} from '../../../platform/safe/integrity.ts'
+import type { SafeConfiguration } from '../../../features/accounts/domain/safe.ts'
+import type FrameAccount from '../../../features/accounts/main/Account.ts'
+import { deriveSigningCandidate } from '../../../features/accounts/main/signingCapability.ts'
+import type { SignatureRequest, SafeMessageProgress } from '../../../features/requests/contract/requests.ts'
+import { isTypedMessageSignatureRequest } from '../../../features/requests/domain/index.ts'
 import {
   getOriginalMessageDigest,
   type OriginalMessage
 } from '../../../platform/signing/signatures/digests.ts'
 import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.ts'
 import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
-import type { SignatureRequest, SafeMessageProgress } from '../../requests/contract/requests.ts'
-import { isTypedMessageSignatureRequest } from '../../requests/domain/index.ts'
-import type { SafeConfiguration } from '../domain/safe.ts'
-import type FrameAccount from './Account.ts'
-import { deriveSigningCandidate } from './signingCapability.ts'
+import {
+  getSafeMessageHash,
+  getSafeMessageTypedData,
+  packSafeMessageSignatures,
+  verifySafeMessageConfirmation,
+  type VerifiedSafeMessageConfirmation
+} from './integrity.ts'
 
 export type SafeMessageApprovalResult = { status: 'pending' } | { status: 'complete'; signature: string }
 

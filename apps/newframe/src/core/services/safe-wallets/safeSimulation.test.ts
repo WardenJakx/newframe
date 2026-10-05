@@ -2,7 +2,7 @@ import { expect, it } from 'bun:test'
 
 import { Interface, ZeroAddress, toBeHex } from 'ethers'
 
-import type { SafeConfiguration, SafeProposal } from '../domain/safe.ts'
+import type { SafeConfiguration, SafeProposal } from '../../../features/accounts/domain/safe.ts'
 import { simulateSafeProposal, type SafeSimulationPorts } from './safeSimulation.ts'
 
 const safe = '0x1111111111111111111111111111111111111111'

@@ -1,5 +1,5 @@
+import type { SignatureRequest } from '../../../features/requests/contract/requests.ts'
 import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.ts'
-import type { SignatureRequest } from '../../requests/contract/requests.ts'
 import type { SafeMessageApprovalResult } from './safeMessage.ts'
 
 export interface SafeMessageApprovalPort {
