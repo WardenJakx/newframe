@@ -9,6 +9,7 @@ import { getAddress, isAddress } from 'ethers'
 import { shallow } from 'zustand/shallow'
 
 import packageFile from '../../../../package.json' with { type: 'json' }
+import { resolveWatchAsset } from '../../../core/services/assets/tokens/watchAsset.ts'
 import type { Chains } from '../../../core/services/chains/index.ts'
 import type { Chain } from '../../../core/services/chains/index.ts'
 import { estimateL1GasCost } from '../../../core/services/chains/l1GasFees.ts'
@@ -56,7 +57,6 @@ import { ApprovalType } from '../../../features/requests/domain/approval.ts'
 import type { PromptedRequestContinuationPort } from '../../../features/requests/main/service.ts'
 import { toTokenId } from '../../../features/tokens/domain/index.ts'
 import type { Token } from '../../../features/tokens/domain/state/token.ts'
-import { resolveWatchAsset } from '../../../features/tokens/main/watchAsset.ts'
 import type { TransactionData } from '../../../features/transactions/domain/index.ts'
 import { normalizeChainId } from '../../../features/transactions/domain/index.ts'
 import {

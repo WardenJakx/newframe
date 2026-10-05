@@ -73,7 +73,7 @@ test('allows each canonical authority', () => {
   // Each rejection family has an explicit canonical owner or safe representation.
   // oxfmt-ignore
   const cases: readonly [Check, string, string][] = [
-    [checkAssetRateMutationAuthority, 'apps/newframe/src/features/asset-data/main/assetRates/service.ts', 'state.setAssetRates(batch)'],
+    [checkAssetRateMutationAuthority, 'apps/newframe/src/core/services/assets/assetRates/service.ts', 'state.setAssetRates(batch)'],
     [checkOperationContractAuthority, 'apps/newframe/src/app/contracts/operations.ts', 'export const commandContracts = {}'],
     [checkOperationContractAuthority, 'apps/newframe/src/features/accounts/contract/profile/schema.ts', 'export const ProfileCreateCommandSchema = z.object({})'],
     [checkPlatformCommandAuthority, 'apps/newframe/src/app/main/platform/service.ts', "command.type = 'renderer.context-menu'"],
@@ -297,8 +297,8 @@ test('rejects broad singleton access through every supported import form and ser
   }
   // oxfmt-ignore
   const cases = [
-    ['apps/newframe/src/features/asset-data/main/externalData/index.ts', "import type store from '../../../../platform/state-store'"],
-    ['apps/newframe/src/features/asset-data/main/images/index.ts', "import { openExternal } from '../../../../platform/desktop/windows/window'"],
+    ['apps/newframe/src/core/services/assets/externalData/index.ts', "import type store from '../../../../platform/state-store'"],
+    ['apps/newframe/src/core/services/assets/images/index.ts', "import { openExternal } from '../../../../platform/desktop/windows/window'"],
     ['apps/newframe/src/core/entry/local-api/server.ts', "require('../../../platform/desktop/windows/dialog')"],
     ['apps/newframe/src/features/transactions/main/simulation.ts', "void import('../../../platform/secrets/vault')"],
     ['apps/newframe/src/core/entry/tray/operations.ts', "import('@newframe/src/platform/desktop/windows/side-tray')"],

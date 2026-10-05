@@ -3,7 +3,7 @@
     "src/renderer/tray/bootstrap.ts!",
     "src/renderer/side-tray/bootstrap.ts!",
     "src/preload/index.ts!",
-    "src/features/asset-data/main/externalData/balances/worker.ts!",
+    "src/core/services/assets/externalData/balances/worker.ts!",
     "scripts/*.ts",
     "scripts/*.mjs",
     "build/**/*.ts",

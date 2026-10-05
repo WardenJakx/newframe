@@ -44,7 +44,7 @@ export interface OperationServices {
   accountOnboarding: import('../../../features/accounts/main/accountOnboarding/service.ts').AccountOnboardingService
   aiSession: import('../../../core/entry/ai-session/index.ts').AiSessionService
   chains: import('../../../core/services/chains/service.ts').ChainService
-  portfolio: import('../../../features/portfolio/main/service.ts').PortfolioService
+  portfolio: import('../../../core/services/assets/portfolio/service.ts').PortfolioService
   profiles: import('../../../features/accounts/main/profiles/service.ts').ProfileService
   platform: import('../platform/service.ts').PlatformService
   requestEdits: import('../../../features/requests/main/requestEdits/service.ts').RequestEditService
@@ -53,9 +53,9 @@ export interface OperationServices {
   send: import('../../../core/features/send/service.ts').SendService
   trade: import('../../../core/features/trading/service.ts').TradeService
   settings: ReturnType<typeof import('../../../features/settings/main/service.ts').createSettingsService>
-  tokens: import('../../../features/tokens/main/service.ts').TokenService
+  tokens: import('../../../core/services/assets/tokens/service.ts').TokenService
   authorizeTray(event: Electron.IpcMainInvokeEvent): AuthorizationContext | undefined
-  requestTokenImage: import('../../../features/asset-data/main/images/index.ts').ImageService['requestTokenImage']
+  requestTokenImage: import('../../../core/services/assets/images/index.ts').ImageService['requestTokenImage']
   resolveName(name: string): Promise<string>
 }
 

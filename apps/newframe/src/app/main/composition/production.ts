@@ -16,6 +16,21 @@ import type { FlashService } from '../../../core/features/trading/index.ts'
 import { createProductionFlashService } from '../../../core/features/trading/instance.ts'
 import { createTradeService, type TradeService } from '../../../core/features/trading/service.ts'
 import { internet } from '../../../core/internet/index.ts'
+import { createAssetRateService } from '../../../core/services/assets/assetRates/service.ts'
+import createExternalDataScanner from '../../../core/services/assets/externalData/index.ts'
+import {
+  createImageService,
+  type ImageService,
+  type ImageServiceAdapters
+} from '../../../core/services/assets/images/index.ts'
+import ProviderRequestPolicy from '../../../core/services/assets/portfolio/requestPolicy.ts'
+import {
+  createPortfolioService,
+  type PortfolioService,
+  type PortfolioServiceAdapters
+} from '../../../core/services/assets/portfolio/service.ts'
+import { createTokenLookupAdapter } from '../../../core/services/assets/tokens/production.ts'
+import { createTokenService, type TokenService } from '../../../core/services/assets/tokens/service.ts'
 import { Chains } from '../../../core/services/chains/index.ts'
 import {
   createChainService,
@@ -51,13 +66,6 @@ import {
 } from '../../../features/accounts/main/providerPort.ts'
 import type { AccountsRuntime } from '../../../features/accounts/main/runtime.ts'
 import { createAccountService, type AccountService } from '../../../features/accounts/main/service.ts'
-import { createAssetRateService } from '../../../features/asset-data/main/assetRates/service.ts'
-import createExternalDataScanner from '../../../features/asset-data/main/externalData/index.ts'
-import {
-  createImageService,
-  type ImageService,
-  type ImageServiceAdapters
-} from '../../../features/asset-data/main/images/index.ts'
 import { createProductionOriginsService } from '../../../features/connections/main/origins.ts'
 import {
   createProviderRequestAdapter,
@@ -73,12 +81,6 @@ import {
   createProductionNameResolutionService,
   type NameResolutionService
 } from '../../../features/name-resolution/main/nameResolution.ts'
-import ProviderRequestPolicy from '../../../features/portfolio/main/requestPolicy.ts'
-import {
-  createPortfolioService,
-  type PortfolioService,
-  type PortfolioServiceAdapters
-} from '../../../features/portfolio/main/service.ts'
 import {
   createRequestEditService,
   type RequestEditService
@@ -90,8 +92,6 @@ import {
   type SecurityServicePorts
 } from '../../../features/security/main/service.ts'
 import { createSettingsService } from '../../../features/settings/main/service.ts'
-import { createTokenLookupAdapter } from '../../../features/tokens/main/production.ts'
-import { createTokenService, type TokenService } from '../../../features/tokens/main/service.ts'
 import { createDeferredAccountTransactionPolicyPort } from '../../../features/transactions/main/accountPolicyPort.ts'
 import { maxFee, signerCompatibility } from '../../../features/transactions/main/index.ts'
 import { createRevealService, type RevealService } from '../../../features/transactions/main/reveal.ts'

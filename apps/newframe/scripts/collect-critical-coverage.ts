@@ -15,7 +15,7 @@ const riskTests = [
   /^src\/platform\/persistence\//,
   /^src\/platform\/ipc\/main\//,
   /^src\/features\/requests\/main\/service\.test\./,
-  /^src\/(?:features\/(?:accounts|tokens)\/main|core\/services\/chains)\/service\.test\./,
+  /^src\/(?:features\/accounts\/main|core\/services\/(?:chains|assets\/tokens))\/service\.test\./,
   /^src\/features\/accounts\/main\/accountOnboarding\//,
   /^src\/features\/connections\/main\/provider\/(?:index|lifecycle)\.test\./,
   /^src\/platform\/signing\/signatures\//,

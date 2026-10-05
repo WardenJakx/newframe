@@ -37,12 +37,12 @@ import {
 } from '@newframe/flash/websocket'
 
 import type { AssetRateInput } from '../../../features/asset-data/domain/state/rate.ts'
-import type { AssetRateService } from '../../../features/asset-data/main/assetRates/service.ts'
 import { NATIVE_CURRENCY } from '../../../features/tokens/domain/constants.ts'
 import { getMainRuntime } from '../../../platform/runtime/index.ts'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
 import type { Token } from '../../../platform/state-store/state/index.ts'
 import type { Internet } from '../../internet/index.ts'
+import type { AssetRateService } from '../../services/assets/assetRates/service.ts'
 
 const flashApi = (state: FlashServiceState) =>
   createFlashApi({ runtime: runtime(), fetch: state.internet.request })
