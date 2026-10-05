@@ -172,14 +172,16 @@ const appRendererCapabilityRoot = path.join(appRendererRoot, 'capabilities')
 const appUpdateRendererProduction = path.join(platformRoot, 'app-update', 'renderer', 'production.ts')
 const featureRenderer = (file: string) =>
   under(featureRendererRoot)(file) && /(?:^|[\\/])renderer(?:[\\/]|$)/.test(file)
+const desktopUiRoot = path.join(sourceRoot, 'core', 'desktop-ui')
+// The runtime folder owns no window or updater, so it follows the ordinary rules.
+const desktopUiRuntimeRoot = path.join(desktopUiRoot, 'runtime')
 const singletonBoundaryExclusions = [
   path.join(sourceRoot, 'app', 'main', 'composition'),
   path.join(sourceRoot, 'features', 'connections', 'main', 'provider', 'infrastructure'),
   path.join(sourceRoot, 'platform', 'signing'),
   path.join(sourceRoot, 'platform', 'state-store'),
-  path.join(sourceRoot, 'platform', 'app-update'),
   path.join(sourceRoot, 'platform', 'callbacks'),
-  path.join(sourceRoot, 'platform', 'desktop'),
+  desktopUiRoot,
   path.join(sourceRoot, 'platform', 'persistence')
 ]
 const applicationOwnedMainModule = (file: string) =>
@@ -192,18 +194,19 @@ const applicationOwnedMainModule = (file: string) =>
   !file.endsWith(path.join('core', 'services', 'assets', 'images', 'production.ts')) &&
   !file.endsWith(path.join('main', 'accountOnboarding', 'production.ts')) &&
   file !== path.join(sourceRoot, 'features', 'accounts', 'main', 'airgap', 'production.ts') &&
-  !singletonBoundaryExclusions.some((directory) => under(directory)(file))
+  (under(desktopUiRuntimeRoot)(file) ||
+    !singletonBoundaryExclusions.some((directory) => under(directory)(file)))
 const broadProductionServiceRoots = [
   path.join(sourceRoot, 'platform', 'secrets'),
   path.join(sourceRoot, 'platform', 'signing', 'signers'),
   path.join(sourceRoot, 'platform', 'state-store'),
-  path.join(sourceRoot, 'platform', 'app-update'),
-  path.join(sourceRoot, 'platform', 'desktop')
+  desktopUiRoot
 ]
 const narrowProductionTypeRoots = [
   path.join(sourceRoot, 'platform', 'signing', 'signers', 'Signer'),
   path.join(sourceRoot, 'platform', 'state-store', 'actions'),
-  path.join(sourceRoot, 'platform', 'state-store', 'state')
+  path.join(sourceRoot, 'platform', 'state-store', 'state'),
+  desktopUiRuntimeRoot
 ]
 
 const isModuleOrDescendant = (target: string, root: string) =>

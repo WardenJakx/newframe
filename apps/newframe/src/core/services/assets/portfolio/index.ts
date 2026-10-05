@@ -1,7 +1,7 @@
 import { createFlashApi } from '@newframe/flash/api'
 
-import { getMainRuntime } from '../../../../platform/runtime/index.ts'
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
+import { getMainRuntime } from '../../../desktop-ui/runtime/index.ts'
 import { internet } from '../../../internet/index.ts'
 import FlashPortfolioProvider from './providers/flash.ts'
 import ZerionPortfolioProvider from './providers/zerion.ts'

@@ -54,7 +54,7 @@ await mock.module('../../../core/services/chains/rpc/contracts/index.ts', () => 
   fetchContract: fetchContractMock
 }))
 await mock.module('../../../platform/signing/signers/index.ts', () => ({ default: signersMock }))
-await mock.module('../../../platform/desktop/windows/index.ts', () => ({ default: windowsMock }))
+await mock.module('../../../core/desktop-ui/windows/index.ts', () => ({ default: windowsMock }))
 await mock.module('../../name-resolution/main/nameResolution.ts', () => ({
   __esModule: true,
   default: {

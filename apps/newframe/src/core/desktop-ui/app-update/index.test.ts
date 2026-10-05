@@ -2,8 +2,8 @@ import { beforeAll, beforeEach, expect, it, mock } from 'bun:test'
 
 import type { StoreApi } from 'zustand/vanilla'
 
-import { resetStoreState, storeMock } from '../../../test/support/bun.mocks.ts'
-import type { CanonicalStore } from '../state-store/actions.ts'
+import { resetStoreState, storeMock } from '../../../../test/support/bun.mocks.ts'
+import type { CanonicalStore } from '../../../platform/state-store/actions.ts'
 
 let updater: import('./index.ts').Updater
 const store = storeMock as unknown as StoreApi<CanonicalStore>

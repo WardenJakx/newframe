@@ -287,8 +287,8 @@ test('rejects broad singleton access through every supported import form and ser
     "export type { default as Store } from '../../../platform/state-store'",
     "void import('../../../platform/signing/signers')",
     "require('../../../platform/secrets/vault')",
-    "import updater from 'apps/newframe/src/platform/app-update'",
-    "import windows from '/workspace/apps/newframe/src/platform/desktop/windows'",
+    "import updater from 'apps/newframe/src/core/desktop-ui/app-update'",
+    "import windows from '/workspace/apps/newframe/src/core/desktop-ui/windows'",
     "import biometrics from '@newframe/src/platform/secrets/biometrics'",
     "import persistence from '#newframe/src/platform/state-store/persist'"
   ]
@@ -298,14 +298,14 @@ test('rejects broad singleton access through every supported import form and ser
   // oxfmt-ignore
   const cases = [
     ['apps/newframe/src/core/services/assets/externalData/index.ts', "import type store from '../../../../platform/state-store'"],
-    ['apps/newframe/src/core/services/assets/images/index.ts', "import { openExternal } from '../../../../platform/desktop/windows/window'"],
-    ['apps/newframe/src/core/entry/local-api/server.ts', "require('../../../platform/desktop/windows/dialog')"],
+    ['apps/newframe/src/core/services/assets/images/index.ts', "import { openExternal } from '../../../desktop-ui/windows/window'"],
+    ['apps/newframe/src/core/entry/local-api/server.ts', "require('../../desktop-ui/windows/dialog')"],
     ['apps/newframe/src/features/transactions/main/simulation.ts', "void import('../../../platform/secrets/vault')"],
-    ['apps/newframe/src/core/entry/tray/operations.ts', "import('@newframe/src/platform/desktop/windows/side-tray')"],
+    ['apps/newframe/src/core/entry/tray/operations.ts', "import('@newframe/src/core/desktop-ui/windows/side-tray')"],
     ['apps/newframe/src/features/accounts/main/service.ts', "import store from '../../../platform/state-store'"],
     ['apps/newframe/src/core/features/trading/service.ts', "import type store from '../../../platform/state-store'"],
-    ['apps/newframe/src/features/name-resolution/main/nameResolution.ts', "export * from '../../../platform/desktop/windows/window'"],
-    ['apps/newframe/src/features/brand-new/main/service.ts', "import windows from '../../../platform/desktop/windows/window'"]
+    ['apps/newframe/src/features/name-resolution/main/nameResolution.ts', "export * from '../../../core/desktop-ui/windows/window'"],
+    ['apps/newframe/src/features/brand-new/main/service.ts', "import windows from '../../../core/desktop-ui/windows/window'"]
   ] as const
   for (const [file, source] of cases) {
     rejects(checkDependencyDirection, file, source, message)
@@ -321,10 +321,10 @@ test('allows intended process dependencies and boundary owners', () => {
     ['apps/newframe/src/features/security/main/service.test.ts', "import store from '../../../platform/state-store'"],
     ['apps/newframe/src/features/security/main/ports.test-support.ts', "import store from '../../../platform/state-store'"],
     ['apps/newframe/src/app/main/composition/production.ts', "import store from '../../../platform/state-store'\nimport signers from '../../../platform/signing'"],
-    ['apps/newframe/src/features/connections/main/provider/infrastructure/production.ts', "import vault from '../../../../../platform/secrets/vault'\nimport windows from '../../../../../platform/desktop/windows'"],
+    ['apps/newframe/src/features/connections/main/provider/infrastructure/production.ts', "import vault from '../../../../../platform/secrets/vault'\nimport windows from '../../../../../core/desktop-ui/windows'"],
     [mainService, "import type { CanonicalStore } from '../../../platform/state-store/actions'\nimport type Signer from '../../../platform/signing/signers/Signer'"],
-    ['apps/newframe/src/app/main/index.ts', "import store from '../../platform/state-store'\nimport { openFileDialog } from '../../platform/desktop/windows/dialog'"],
-    ['apps/newframe/src/platform/signing/signers/ledger/adapter.ts', "import type store from '../../../state-store'\nimport windows from '../../../desktop/windows'"]
+    ['apps/newframe/src/app/main/index.ts', "import store from '../../platform/state-store'\nimport { openFileDialog } from '../../core/desktop-ui/windows/dialog'"],
+    ['apps/newframe/src/platform/signing/signers/ledger/adapter.ts', "import type store from '../../../state-store'\nimport windows from '../../../../core/desktop-ui/windows'"]
   ] as const
   for (const [file, source] of cases) {
     allows(checkDependencyDirection, file, source)

@@ -3,7 +3,7 @@ import log from 'electron-log'
 
 import type { Shortcut } from '../../features/settings/domain/state/shortcuts.ts'
 import { shortcutKeyMap } from '../../shared/domain/keyboard.ts'
-import { isVisualHarness } from '../runtime/visualHarness.ts'
+import { isVisualHarness } from './runtime/visualHarness.ts'
 
 const stringifyShortcut = ({ modifierKeys, shortcutKey }: Shortcut) => ({
   shortcutString: [...modifierKeys, shortcutKey].join('+'),

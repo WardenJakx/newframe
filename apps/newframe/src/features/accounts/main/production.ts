@@ -1,9 +1,9 @@
 import { Notification } from 'electron'
 
 import type { RpcIpcHandlers } from '../../../app/main/ipc-handlers/rpc.ts'
+import { createBlockExplorerOpener } from '../../../core/desktop-ui/windows/window.ts'
 import type { Chains } from '../../../core/services/chains/index.ts'
 import { createOneResultCallbackBoundary } from '../../../platform/callbacks/oneResult.ts'
-import { createBlockExplorerOpener } from '../../../platform/desktop/windows/window.ts'
 import type { CanonicalStore } from '../../../platform/state-store/actions.ts'
 import type store from '../../../platform/state-store/index.ts'
 import { arraysEqual } from '../../../shared/domain/collections.ts'

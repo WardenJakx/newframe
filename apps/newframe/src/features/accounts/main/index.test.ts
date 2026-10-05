@@ -108,7 +108,7 @@ await mock.module('../../../platform/signing/signers/index.ts', () => ({
   default: signersMock,
   ...signersMock
 }))
-await mock.module('../../../platform/desktop/windows/index.ts', () => ({
+await mock.module('../../../core/desktop-ui/windows/index.ts', () => ({
   default: windowsMock,
   ...windowsMock
 }))

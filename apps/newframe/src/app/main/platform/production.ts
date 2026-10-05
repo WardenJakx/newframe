@@ -1,4 +1,4 @@
-import { createBlockExplorerOpener, openExternal } from '../../../platform/desktop/windows/window.ts'
+import { createBlockExplorerOpener, openExternal } from '../../../core/desktop-ui/windows/window.ts'
 import type store from '../../../platform/state-store/index.ts'
 import type { PlatformServicePorts } from './service.ts'
 
