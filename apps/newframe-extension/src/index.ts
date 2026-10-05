@@ -10,6 +10,8 @@ import FrameBackgroundProvider, {
 import { frameStateStore, type ConnectionStatus } from './frameState.ts'
 import { isRecord, messageSource, originFromUrl, tabFromMessage, type TabLike } from './messageSource.ts'
 
+declare const __NEWFRAME_LOCAL_API_PORT__: number
+
 type Provider = FrameBackgroundProvider
 
 const subTypes = [
@@ -278,7 +280,7 @@ async function sendEvent(event: string, args: unknown[] = [], selector: chrome.t
 function initProvider(requestApproval = false) {
   console.log('Initializing provider connection to Newframe')
 
-  const localApiUrl = 'ws://127.0.0.1:1248?identity=newframe-extension'
+  const localApiUrl = `ws://127.0.0.1:${__NEWFRAME_LOCAL_API_PORT__}?identity=newframe-extension`
   provider = new FrameBackgroundProvider(`${localApiUrl}&scope=internal`, {
     ...retryOptions(PRIMARY_RETRY_KEY),
     requestApproval
