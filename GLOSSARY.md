@@ -34,6 +34,10 @@ _Avoid_: Workspace, wallet cluster
 An address Newframe tracks in a profile: a watch-only address, a Safe wallet, or an EOA backed by a signer.
 _Avoid_: Wallet (as a catch-all), address
 
+**Selected account**:
+The one account the desktop app shows in its trays and acts as for every request source except the extension, which has its own extension account.
+_Avoid_: Current account, active account
+
 **Signer**:
 A source of signatures that can sign for one or more accounts, such as a hot wallet or hardware wallet.
 _Avoid_: Key, signing account
@@ -135,8 +139,12 @@ The human's permission for the extension to connect to Newframe. It is separate 
 _Avoid_: Dapp approval, extension trust
 
 **Extension account access**:
-The accounts the human lets the extension see at all: either every account in the active profile or a chosen set that persists across profiles. It is a ceiling, not a grant: a dapp still needs its own account access grant, and can only be granted an account the extension can see. The extension has no selection of its own: it acts as the selected account when that account is shared with it, and otherwise has no account until the human selects a shared one or shares more. From the extension the human can change the selected account to another one shared with it.
+The accounts the human lets the extension see at all: either every account in the active profile or a chosen set that persists across profiles. It is a ceiling, not a grant: a dapp still needs its own account access grant, and can only be granted an account the extension can see.
 _Avoid_: Extension approval, account access grant
+
+**Extension account**:
+The one account the extension acts as for dapps, chosen in the extension from the accounts shared with it. It stays put when the human selects another account in the desktop app; until the human chooses one in the extension, it is the selected account if that is shared with the extension, else the first shared account.
+_Avoid_: Extension selection, selected account (when meaning the extension's)
 
 **Account access grant**:
 The human's permission for one request source, such as a single dapp or a local API client, to access a selected account. It does not approve a signing operation, and a grant for a Safe wallet does not extend to its Safe owners.

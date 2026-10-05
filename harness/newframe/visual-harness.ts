@@ -18,8 +18,7 @@ import { XvfbService } from './services/xvfb.ts'
 import { AnvilClient } from './visual/anvil-client.ts'
 import { NewframeDriver, waitForElectronPage } from './visual/driver.ts'
 import { VisualHarnessRuntime } from './visual/runtime.ts'
-import { visualStages } from './visual/stages/index.ts'
-import type { VisualHarnessContext } from './visual/types.ts'
+import type { VisualHarnessContext, VisualSuite } from './visual/types.ts'
 
 const isLinux = process.platform === 'linux'
 
@@ -100,7 +99,7 @@ async function createContext(
   }
 }
 
-export async function runVisualHarness() {
+export async function runVisualHarness<C extends VisualHarnessContext>(suite: VisualSuite<C>) {
   const visual = new VisualHarnessRuntime()
   const services = new HarnessRuntime((message) => visual.log(message))
   const removeSignalHandlers = installSignalHandlers(services, () => visual.writeSummary())
@@ -119,9 +118,9 @@ export async function runVisualHarness() {
     visual.monitorElectron(app)
     await visual.startTrace(app)
 
-    const context = await services.watch(createContext(app, services, visual, safeSeed))
-    visual.assertNoUnexpectedTrayErrors()
-    for (const stage of visualStages) {
+    const context = suite.context(await services.watch(createContext(app, services, visual, safeSeed)))
+    visual.assertNoUnexpectedPageErrors()
+    for (const stage of suite.stages) {
       await services.watch(visual.runStage(context, stage))
     }
 
@@ -135,6 +134,7 @@ export async function runVisualHarness() {
     if (app) {
       await visual.captureElectronFailureArtifacts(app)
     }
+    await visual.captureBrowserFailureArtifacts()
     await visual.writeSummary().catch(() => undefined)
     throw err
   } finally {

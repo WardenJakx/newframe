@@ -2,6 +2,11 @@ import { randomBytes } from 'node:crypto'
 
 import { freePort } from './core/utils.ts'
 
+const suiteName = process.argv[2] ?? 'desktop'
+if (suiteName !== 'desktop' && suiteName !== 'extension') {
+  throw new Error(`Unknown visual harness suite "${suiteName}"; expected desktop or extension`)
+}
+
 // Free ports are chosen before the harness config loads, so concurrent runs and a running
 // `bun run dev` never share Anvil, the local services, or the app's RPC endpoint.
 const anvilPort = await freePort()
@@ -19,4 +24,10 @@ if (!hasSourceProfile && !readHarnessPassword()) {
 }
 
 const { runVisualHarness } = await import('./visual-harness.ts')
-await runVisualHarness()
+if (suiteName === 'extension') {
+  const { extensionSuite } = await import('./extension/stages/index.ts')
+  await runVisualHarness(extensionSuite)
+} else {
+  const { visualStages } = await import('./visual/stages/index.ts')
+  await runVisualHarness({ stages: visualStages, context: (desktop) => desktop })
+}

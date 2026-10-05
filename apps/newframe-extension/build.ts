@@ -7,7 +7,12 @@ import type { BunPlugin } from 'bun'
 import { sourceChanges } from '../../scripts/source-changes.ts'
 
 const root = import.meta.dir
-const dist = path.join(root, 'dist')
+const dist = path.resolve(process.env.NEWFRAME_EXTENSION_OUTDIR ?? path.join(root, 'dist'))
+// The visual harness builds against its own desktop app's port so it never reaches the developer's.
+const localApiPort = Number(process.env.NEWFRAME_LOCAL_API_PORT ?? 1248)
+if (!Number.isInteger(localApiPort) || localApiPort <= 0 || localApiPort > 65_535) {
+  throw new Error(`Invalid NEWFRAME_LOCAL_API_PORT: ${process.env.NEWFRAME_LOCAL_API_PORT}`)
+}
 const repoRoot = path.resolve(root, '../..')
 const brandAssets = path.join(repoRoot, 'assets/brand/newframe')
 const statusAssets = path.join(brandAssets, 'status')
@@ -119,7 +124,8 @@ async function build(): Promise<boolean> {
       plugins: [eventsAlias],
       define: {
         'process.env.NODE_ENV': dev ? '"development"' : '"production"',
-        __NEWFRAME_EIP6963_ICON__: JSON.stringify(eip6963IconDataUri)
+        __NEWFRAME_EIP6963_ICON__: JSON.stringify(eip6963IconDataUri),
+        __NEWFRAME_LOCAL_API_PORT__: String(localApiPort)
       }
     })
 
@@ -136,9 +142,16 @@ async function build(): Promise<boolean> {
 
   await Bun.write(path.join(dist, 'inject.js'), inject)
 
-  for (const file of ['manifest.json', 'settings.html']) {
-    await Bun.write(path.join(dist, file), Bun.file(path.join(root, 'src', file)))
+  await Bun.write(path.join(dist, 'settings.html'), Bun.file(path.join(root, 'src/settings.html')))
+  const manifest = await Bun.file(path.join(root, 'src/manifest.json')).text()
+  const localApiOrigin = 'ws://127.0.0.1:1248'
+  if (!manifest.includes(localApiOrigin)) {
+    throw new Error(`manifest.json no longer allows ${localApiOrigin}`)
   }
+  await Bun.write(
+    path.join(dist, 'manifest.json'),
+    manifest.replace(localApiOrigin, `ws://127.0.0.1:${localApiPort}`)
+  )
 
   const iconsDist = path.join(dist, 'icons')
   mkdirSync(iconsDist, { recursive: true })
