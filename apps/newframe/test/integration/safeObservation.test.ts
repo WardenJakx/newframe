@@ -7,7 +7,7 @@ import { createSafeHandler } from '../../scripts/local-safe/handler.ts'
 import { createSafeService } from '../../src/features/accounts/main/safe.ts'
 import { createOperationService } from '../../src/platform/operations/service.ts'
 import { createSafeClient } from '../../src/platform/safe/client.ts'
-import { projectRendererState } from '../../src/platform/state-sync/main/projections.ts'
+import { projectTrayState } from '../../src/platform/state-sync/main/projections.ts'
 import { createTestStore } from '../support/createTestStore.ts'
 
 it('projects the paginated local Safe service through public observation capabilities', async () => {
@@ -58,7 +58,7 @@ it('projects the paginated local Safe service through public observation capabil
     ) {
       await Bun.sleep(5)
     }
-    const projection = projectRendererState(store.getState(), owner)
+    const projection = projectTrayState(store.getState(), owner)
     expect(projection.operations['watch-safe'].status).toBe('succeeded')
     const account = projection.accounts[address]
     if (!('safe' in account) || !account.safe) {
@@ -81,7 +81,7 @@ it('projects the paginated local Safe service through public observation capabil
     expect(handler.requests.some((request) => request.includes('offset=2'))).toBeTrue()
     handler.failNext(503, undefined, 2)
     await service.refresh({ type: 'account.refresh', accountId: address, chainId: 31337, force: true })
-    const refreshed = projectRendererState(store.getState(), owner).accounts[address]
+    const refreshed = projectTrayState(store.getState(), owner).accounts[address]
     if (!('safe' in refreshed) || !refreshed.safe) {
       throw new Error('Wallet projection lost Safe')
     }
@@ -172,7 +172,7 @@ it('ignores a real HTTP refresh response released after Safe removal', async () 
     await delivered.promise
     await refreshing
     expect(store.getState().main.accounts[address]).toBeUndefined()
-    expect(projectRendererState(store.getState(), owner).accounts[address]).toBeUndefined()
+    expect(projectTrayState(store.getState(), owner).accounts[address]).toBeUndefined()
   } finally {
     release.resolve()
     service.dispose()

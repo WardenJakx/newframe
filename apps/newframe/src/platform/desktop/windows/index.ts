@@ -8,12 +8,12 @@ import { shallow } from 'zustand/vanilla/shallow'
 
 import type { Shortcut } from '../../../features/settings/domain/state/shortcuts.ts'
 import { hexToInt, roundGwei } from '../../../shared/domain/hex.ts'
-import type { RendererAuthorizationRegistry } from '../../ipc/main/authorization.ts'
+import type { TrayAuthorizationRegistry } from '../../ipc/main/authorization.ts'
 import { isVisualHarness } from '../../runtime/visualHarness.ts'
 import type canonicalStore from '../../state-store/index.ts'
 import { registerShortcut } from '../keyboardShortcuts.ts'
 import { installCameraPermissions } from './cameraPermissions.ts'
-import { closeRendererWindow } from './close.ts'
+import { closeTrayWindow } from './close.ts'
 import SideTrayManager from './side-tray/index.ts'
 import type { SystemTrayEventHandlers } from './systemTray.ts'
 import { SystemTray } from './systemTray.ts'
@@ -25,7 +25,7 @@ type Windows = { [key: string]: BrowserWindow }
 type CanonicalStoreApi = typeof canonicalStore
 
 /** @public Used by the dynamic-import lifecycle tests. */
-export function onTrayRendererReady(webContents: Pick<WebContents, 'off' | 'once'>, ready: () => void) {
+export function onTrayReady(webContents: Pick<WebContents, 'off' | 'once'>, ready: () => void) {
   let handled = false
   const handler = () => {
     if (handled) {
@@ -60,7 +60,7 @@ const isMacOS = process.platform === 'darwin'
 let tray: Tray
 let mouseTimeout: NodeJS.Timeout
 let glide = false
-let rendererAuthorization: RendererAuthorizationRegistry | undefined
+let trayAuthorization: TrayAuthorizationRegistry | undefined
 let activeStore: CanonicalStoreApi | undefined
 
 const getStore = () => {
@@ -129,39 +129,36 @@ const detectMouse = () => {
   }, 50)
 }
 
-function initWindow(id: string, opts: Electron.BrowserWindowConstructorOptions, rendererReady?: () => void) {
+function initWindow(id: string, opts: Electron.BrowserWindowConstructorOptions, trayReady?: () => void) {
   // in development, serve files from local filesystem instead of the created bundle
   const url = isDev
     ? `http://localhost:1234/${id}/index.dev.html`
     : new URL(path.join(process.env.BUNDLE_LOCATION, `${id}.html`), 'file:')
 
-  if (!rendererAuthorization) {
-    throw new Error('Renderer authorization must be configured before creating application windows')
+  if (!trayAuthorization) {
+    throw new Error('Tray authorization must be configured before creating application windows')
   }
-  const authorization = rendererAuthorization
+  const authorization = trayAuthorization
   const window = createWindow(
     id,
-    (webContents, clientType, entrypoint) =>
-      authorization.registerRenderer(webContents, clientType, entrypoint),
+    (webContents, clientType, entrypoint) => authorization.registerTray(webContents, clientType, entrypoint),
     opts
   )
   windows[id] = window
-  const removeRendererReady = rendererReady
-    ? onTrayRendererReady(window.webContents, rendererReady)
-    : () => {}
+  const removeTrayReady = trayReady ? onTrayReady(window.webContents, trayReady) : () => {}
 
   window.once('closed', () => {
-    removeRendererReady()
+    removeTrayReady()
     if (windows[id] === window) {
       delete windows[id]
     }
   })
 
   window.loadURL(url.toString()).catch((error: unknown) => log.error('Could not load window', id, error))
-  return { removeRendererReady, window }
+  return { removeTrayReady, window }
 }
 
-function initTrayWindow(rendererReady: () => void) {
+function initTrayWindow(trayReady: () => void) {
   const trayOpts: Electron.BrowserWindowConstructorOptions = {
     width: TRAY_WIDTH,
     icon: path.join(import.meta.dirname, './AppIcon.png')
@@ -169,15 +166,12 @@ function initTrayWindow(rendererReady: () => void) {
   if (isMacOS) {
     trayOpts.type = 'panel'
   }
-  const { removeRendererReady, window: trayWindow } = initWindow('tray', trayOpts, rendererReady)
+  const { removeTrayReady, window: trayWindow } = initWindow('tray', trayOpts, trayReady)
 
-  if (!rendererAuthorization) {
-    throw new Error('Renderer authorization unavailable')
+  if (!trayAuthorization) {
+    throw new Error('Tray authorization unavailable')
   }
-  const removeCameraPermissions = installCameraPermissions(
-    trayWindow.webContents.session,
-    rendererAuthorization
-  )
+  const removeCameraPermissions = installCameraPermissions(trayWindow.webContents.session, trayAuthorization)
   trayWindow.once('closed', removeCameraPermissions)
   trayWindow.webContents.once('destroyed', removeCameraPermissions)
   trayWindow.setResizable(false)
@@ -238,7 +232,7 @@ function initTrayWindow(rendererReady: () => void) {
   }
 
   return () => {
-    removeRendererReady()
+    removeTrayReady()
     removeCameraPermissions()
   }
 }
@@ -247,7 +241,7 @@ class Tray {
   private recentDisplayEvent = false
   private recentDisplayEventTimeout?: NodeJS.Timeout
   private gasObserver: () => void
-  private removeRendererReady: () => void
+  private removeTrayReady: () => void
   private ready = false
   private readyHandler: () => void
 
@@ -288,7 +282,7 @@ class Tray {
       systemTray.setContextMenu('hide', { displaySummonShortcut: getDisplaySummonShortcut() })
       getStore().getState().trayOpen(true)
     }
-    this.removeRendererReady = initTrayWindow(this.readyHandler)
+    this.removeTrayReady = initTrayWindow(this.readyHandler)
   }
 
   isReady() {
@@ -385,7 +379,7 @@ class Tray {
 
   destroy() {
     this.gasObserver()
-    this.removeRendererReady()
+    this.removeTrayReady()
   }
 }
 
@@ -427,12 +421,12 @@ const initialize = () => {
   }
 
   if (!sideTrayManagerStarted) {
-    if (!rendererAuthorization) {
-      throw new Error('Renderer authorization must be configured before starting application windows')
+    if (!trayAuthorization) {
+      throw new Error('Tray authorization must be configured before starting application windows')
     }
-    const authorization = rendererAuthorization
+    const authorization = trayAuthorization
     sideTrayManager.start((webContents, clientType, entrypoint) =>
-      authorization.registerRenderer(webContents, clientType, entrypoint)
+      authorization.registerTray(webContents, clientType, entrypoint)
     )
     sideTrayManagerStarted = true
   }
@@ -493,11 +487,11 @@ export default {
   refocusSideTray(contentId: string) {
     sideTrayManager.refocus(contentId)
   },
-  close: closeRendererWindow,
-  init(authorization: RendererAuthorizationRegistry, canonicalStore: CanonicalStoreApi) {
+  close: closeTrayWindow,
+  init(authorization: TrayAuthorizationRegistry, canonicalStore: CanonicalStoreApi) {
     activeStore = canonicalStore
     sideTrayManager = new SideTrayManager(canonicalStore)
-    rendererAuthorization = authorization
+    trayAuthorization = authorization
     initialize()
   }
 }

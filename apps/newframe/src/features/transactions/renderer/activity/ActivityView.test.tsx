@@ -1,8 +1,8 @@
 import { describe, expect, it, mock } from 'bun:test'
 
 import { render, screen } from '../../../../../test/support/componentSetup.tsx'
-import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient.ts'
-import { createRendererUtilityCapabilities as createUtilityPorts } from '../../../../shared/renderer/capabilities.test-support.ts'
+import { registerTestRuntimeFixture } from '../../../../../test/support/trayClient.ts'
+import { createTrayUtilityCapabilities as createUtilityPorts } from '../../../../shared/renderer/capabilities.test-support.ts'
 import { ActivityView } from './ActivityView.tsx'
 
 const fixture = registerTestRuntimeFixture()

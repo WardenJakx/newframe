@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections.ts'
+import type { MainTrayProjection } from '../../../platform/state-sync/contract/projections.ts'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
 import { createBalanceSummarySelector } from '../../asset-data/domain/balance/index.ts'
 import type { AccountProjection, SignerProjection } from './accountsModel.ts'
@@ -82,7 +82,7 @@ describe('accounts model', () => {
       },
       chains: {
         ethereum: { 1: { id: 1, name: 'Mainnet', on: true, isTestnet: false, explorer: '' } }
-      } as unknown as WalletRendererState['chains'],
+      } as unknown as MainTrayProjection['chains'],
       chainsMeta: {
         ethereum: {
           1: {
@@ -90,7 +90,7 @@ describe('accounts model', () => {
             nativeCurrency: { symbol: 'ETH', icon: '', name: 'Ether', decimals: 18 }
           }
         }
-      } as unknown as WalletRendererState['chainsMeta'],
+      } as unknown as MainTrayProjection['chainsMeta'],
       tokens: {
         byId: {
           [`1:${token}`]: {

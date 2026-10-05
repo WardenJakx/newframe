@@ -5,14 +5,14 @@ import type { BrowserWindowConstructorOptions } from 'electron'
 import { BrowserWindow, shell } from 'electron'
 import log from 'electron-log'
 
-import type { RendererAuthorizationRegistry } from '../../ipc/main/authorization.ts'
+import type { TrayAuthorizationRegistry } from '../../ipc/main/authorization.ts'
 import { isVisualHarness } from '../../runtime/visualHarness.ts'
 import type { CanonicalStore } from '../../state-store/actions.ts'
 import type { ChainId } from '../../state-store/state/index.ts'
 
 export function createWindow(
   name: string,
-  registerRenderer: RendererAuthorizationRegistry['registerRenderer'],
+  registerTray: TrayAuthorizationRegistry['registerTray'],
   opts?: BrowserWindowConstructorOptions,
   webPreferences: BrowserWindowConstructorOptions['webPreferences'] = {}
 ) {
@@ -52,9 +52,9 @@ export function createWindow(
   }
 
   if (name === 'tray') {
-    registerRenderer(browserWindow.webContents, 'main-tray', 'tray')
+    registerTray(browserWindow.webContents, 'main-tray', 'tray')
   } else if (name === 'side-tray') {
-    registerRenderer(browserWindow.webContents, 'side-tray', 'side-tray')
+    registerTray(browserWindow.webContents, 'side-tray', 'side-tray')
   }
 
   browserWindow.webContents.once('did-finish-load', () => {

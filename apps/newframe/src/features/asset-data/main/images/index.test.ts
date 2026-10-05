@@ -35,7 +35,7 @@ beforeEach(() => {
   subscribe.mockImplementation(() => mock())
 })
 
-it('hydrates chains in the background and tokens only when requested by the renderer', async () => {
+it('hydrates chains in the background and tokens only when requested by the tray', async () => {
   const token = {
     address: '0x1111111111111111111111111111111111111111',
     chainId: 1,

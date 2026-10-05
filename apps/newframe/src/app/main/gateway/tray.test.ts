@@ -4,12 +4,12 @@ import { EventEmitter } from 'node:events'
 import { createOperationDispatcher } from '../../../platform/ipc/main/operations.ts'
 import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.ts'
 import { commandContracts, queryContracts } from '../../contracts/operations.ts'
-import { createOperationRegistry, type OperationServices } from '../ipc-handlers/renderer.ts'
+import { createOperationRegistry, type OperationServices } from '../ipc-handlers/tray.ts'
 
 const fakes = (...names: string[]) =>
   Object.fromEntries(names.map((name) => [name, mock()])) as Record<string, ReturnType<typeof mock>>
 
-const authorizeRenderer = mock()
+const authorizeTray = mock()
 const resolveName = mock()
 const requestTokenImage = mock()
 const accountMutations = fakes(
@@ -54,7 +54,7 @@ const platform = fakes(
   'closeSideTray',
   'consumeHomeCommand',
   'handleTrayMouseout',
-  'inspectRenderer',
+  'inspectTray',
   'navigatePanelBack',
   'openExternal',
   'openRequestPanel',
@@ -137,7 +137,7 @@ function createTestServices() {
     settings,
     tokens,
     trade,
-    authorizeRenderer,
+    authorizeTray,
     requestTokenImage,
     resolveName
   } as unknown as OperationServices
@@ -146,7 +146,7 @@ function createTestServices() {
 let dispatcher: ReturnType<typeof createOperationDispatcher>
 
 beforeEach(() => {
-  authorizeRenderer.mockReset()
+  authorizeTray.mockReset()
   resolveName.mockReset()
   requestTokenImage.mockReset()
   for (const service of servicesWithMocks) {
@@ -163,13 +163,13 @@ describe('typed operation dispatcher', () => {
   })
 
   it('rejects unknown, unregistered, wrong-role, wrong-entrypoint, and non-strict inputs', async () => {
-    authorizeRenderer.mockReturnValue(undefined)
+    authorizeTray.mockReturnValue(undefined)
     expect(dispatcher.dispatchQuery(event, { type: 'name.resolve', name: 'alice.eth' })).resolves.toEqual({
       ok: false,
       error: 'unauthorized'
     })
 
-    authorizeRenderer.mockReturnValue(sideTrayContext)
+    authorizeTray.mockReturnValue(sideTrayContext)
     for (const input of [
       { type: 'account.select', accountId: 'account-1' },
       { type: 'security.unlock', operationId: 'unlock', method: 'native' },
@@ -181,7 +181,7 @@ describe('typed operation dispatcher', () => {
       })
     }
 
-    authorizeRenderer.mockReturnValue(trayContext)
+    authorizeTray.mockReturnValue(trayContext)
     for (const input of [
       { type: 'side-tray.close' },
       { type: 'account.select', accountId: '', injected: true },
@@ -197,7 +197,7 @@ describe('typed operation dispatcher', () => {
   })
 
   it('conforms uniform tray acknowledgements and preserves representative service arguments', async () => {
-    authorizeRenderer.mockReturnValue(trayContext)
+    authorizeTray.mockReturnValue(trayContext)
     const address = '0x1111111111111111111111111111111111111111'
     const commands = [
       { type: 'account.select', accountId: 'account-1' },
@@ -255,7 +255,7 @@ describe('typed operation dispatcher', () => {
   })
 
   it('keeps profiles explicit, canonicalizes their input, and validates projected query output', async () => {
-    authorizeRenderer.mockReturnValue(trayContext)
+    authorizeTray.mockReturnValue(trayContext)
     expect(
       dispatcher.dispatchCommand(event, {
         type: 'profile.create',
@@ -287,7 +287,7 @@ describe('typed operation dispatcher', () => {
   })
 
   it('keeps Send and Trade main-owned and bound to side-tray identity', async () => {
-    authorizeRenderer.mockReturnValue(sideTrayContext)
+    authorizeTray.mockReturnValue(sideTrayContext)
     const sendCommand = {
       type: 'request.create' as const,
       operationId: 'send-operation',
@@ -298,7 +298,7 @@ describe('typed operation dispatcher', () => {
     expect(dispatcher.dispatchCommand(event, sendCommand)).resolves.toEqual({ ok: true })
     expect(send.submit).toHaveBeenCalledWith(
       sendCommand,
-      expect.objectContaining({ kind: 'renderer', windowInstanceId: 'side-tray-test' }),
+      expect.objectContaining({ kind: 'tray', windowInstanceId: 'side-tray-test' }),
       { clientType: 'side-tray', windowInstanceId: 'side-tray-test' }
     )
 
@@ -317,7 +317,7 @@ describe('typed operation dispatcher', () => {
       windowInstanceId: 'side-tray-test'
     })
 
-    authorizeRenderer.mockReturnValue(trayContext)
+    authorizeTray.mockReturnValue(trayContext)
     expect(
       dispatcher.dispatchCommand(event, {
         type: 'flash.order-cancel',
@@ -327,13 +327,13 @@ describe('typed operation dispatcher', () => {
     ).resolves.toEqual({ ok: true })
     expect(trade.cancel).toHaveBeenCalledWith(
       expect.objectContaining({ orderId: 'order-1' }),
-      expect.objectContaining({ kind: 'renderer' }),
+      expect.objectContaining({ kind: 'tray' }),
       owner
     )
   })
 
   it('keeps Security and onboarding commands explicit with owner-scoped validated inputs', async () => {
-    authorizeRenderer.mockReturnValue(trayContext)
+    authorizeTray.mockReturnValue(trayContext)
     for (const command of [
       { type: 'security.configure', operationId: 'configure', mode: 'disabled' },
       { type: 'security.unlock', operationId: 'unlock', method: 'native' },
@@ -364,7 +364,7 @@ describe('typed operation dispatcher', () => {
   })
 
   it('keeps secret-bearing queries tray-only with typed success and failure results', async () => {
-    authorizeRenderer.mockReturnValue(trayContext)
+    authorizeTray.mockReturnValue(trayContext)
     accountOnboarding.locateKeystore.mockResolvedValue({ version: 3 })
     const accountId = '0x1111111111111111111111111111111111111111'
     const privateKey = `0x${'12'.repeat(32)}`
@@ -403,7 +403,7 @@ describe('typed operation dispatcher', () => {
 
   it('authorizes each public query independently and validates service results', async () => {
     const address = '0x1111111111111111111111111111111111111111'
-    authorizeRenderer.mockReturnValue(sideTrayContext)
+    authorizeTray.mockReturnValue(sideTrayContext)
     resolveName.mockResolvedValue(address)
     expect(dispatcher.dispatchQuery(event, { type: 'name.resolve', name: 'alice.eth' })).resolves.toEqual({
       ok: true,
@@ -414,7 +414,7 @@ describe('typed operation dispatcher', () => {
       error: 'unauthorized'
     })
 
-    authorizeRenderer.mockReturnValue(trayContext)
+    authorizeTray.mockReturnValue(trayContext)
     tokens.lookup.mockResolvedValue({ decimals: 18, name: 'Token', symbol: 'TKN', totalSupply: '100' })
     accountMutations.addressChainUsage.mockResolvedValue([{ address, chainIds: [1, 10], complete: true }])
     expect(dispatcher.dispatchQuery(event, { type: 'token.lookup', address, chainId: 1 })).resolves.toEqual({
@@ -433,17 +433,17 @@ describe('typed operation dispatcher', () => {
   })
 
   it('binds close/context-menu effects to the invoking event', async () => {
-    authorizeRenderer.mockReturnValue(sideTrayContext)
+    authorizeTray.mockReturnValue(sideTrayContext)
     expect(dispatcher.dispatchCommand(event, { type: 'side-tray.close' })).resolves.toEqual({ ok: true })
-    expect(
-      dispatcher.dispatchCommand(event, { type: 'renderer.context-menu', x: 12, y: 34 })
-    ).resolves.toEqual({ ok: true })
+    expect(dispatcher.dispatchCommand(event, { type: 'tray.context-menu', x: 12, y: 34 })).resolves.toEqual({
+      ok: true
+    })
     expect(platform.closeSideTray).toHaveBeenCalledWith(event)
-    expect(platform.inspectRenderer).toHaveBeenCalledWith(event, 12, 34)
+    expect(platform.inspectTray).toHaveBeenCalledWith(event, 12, 34)
   })
 
   it('deduplicates replacements, rejects key reuse, and leaves request approvals service-idempotent', async () => {
-    authorizeRenderer.mockReturnValue(trayContext)
+    authorizeTray.mockReturnValue(trayContext)
     requests.replaceTransaction.mockReturnValue(true)
     const command = {
       type: 'transaction.replace' as const,
@@ -489,9 +489,9 @@ it('authorizes Safe commands and delegates owned imports with generic acknowledg
     address: '0x1111111111111111111111111111111111111111',
     chainId: 1
   }
-  authorizeRenderer.mockReturnValue(sideTrayContext)
+  authorizeTray.mockReturnValue(sideTrayContext)
   expect(await dispatcher.dispatchCommand({} as never, command)).toMatchObject({ ok: false })
-  authorizeRenderer.mockReturnValue(trayContext)
+  authorizeTray.mockReturnValue(trayContext)
   safes.import.mockReturnValue(true)
   expect(await dispatcher.dispatchCommand({} as never, command)).toEqual({ ok: true })
   safes.discoverChains.mockReturnValue([{ chainId: 1, name: 'Ethereum', supported: true }])
@@ -515,10 +515,10 @@ it('keeps Safe simulation tray-only and forwards only the canonical proposal ide
     chainId: 1,
     safeTxHash: `0x${'a'.repeat(64)}`
   }
-  authorizeRenderer.mockReturnValue(sideTrayContext)
+  authorizeTray.mockReturnValue(sideTrayContext)
   expect(await dispatcher.dispatchQuery(event, query)).toEqual({ ok: false, error: 'unauthorized' })
   expect(safes.simulate).not.toHaveBeenCalled()
-  authorizeRenderer.mockReturnValue(trayContext)
+  authorizeTray.mockReturnValue(trayContext)
   expect(await dispatcher.dispatchQuery(event, { ...query, to: query.accountId })).toEqual({
     ok: false,
     error: 'invalid_query'
@@ -564,7 +564,7 @@ it('binds AirGap and approval contexts to the authorized sender lifecycle', asyn
     }
   })
   const liveEvent = { sender } as unknown as Electron.IpcMainInvokeEvent
-  authorizeRenderer.mockReturnValue(trayContext)
+  authorizeTray.mockReturnValue(trayContext)
   const start = {
     type: 'signer.import',
     source: 'airgap',
@@ -592,7 +592,7 @@ it('binds AirGap and approval contexts to the authorized sender lifecycle', asyn
   received[0].subscribeOwnerDisposed(() => disposed.push('already-dead'))()
   expect(disposed).toEqual(['owner', 'already-dead'])
   expect(sender.listenerCount('destroyed')).toBe(0)
-  authorizeRenderer.mockReturnValue(sideTrayContext)
+  authorizeTray.mockReturnValue(sideTrayContext)
   expect(await dispatcher.dispatchCommand(liveEvent, start)).toMatchObject({
     ok: false,
     error: 'unauthorized'
@@ -610,10 +610,10 @@ it('authorizes strict Safe confirmation identities and binds approval/status to 
   }
   const { operationId: _operationId, ...identity } = command
   const query = { ...identity, type: 'safe.confirmation-status' }
-  authorizeRenderer.mockReturnValue(sideTrayContext)
+  authorizeTray.mockReturnValue(sideTrayContext)
   expect(await dispatcher.dispatchCommand(event, command)).toEqual({ ok: false, error: 'unauthorized' })
   expect(await dispatcher.dispatchQuery(event, query)).toEqual({ ok: false, error: 'unauthorized' })
-  authorizeRenderer.mockReturnValue(trayContext)
+  authorizeTray.mockReturnValue(trayContext)
   expect(await dispatcher.dispatchCommand(event, { ...command, signature: '0xprivate' })).toEqual({
     ok: false,
     error: 'invalid_command'
@@ -671,7 +671,7 @@ it('prepares and starts Safe execution through strict tray-only operations', asy
     maxFeePerGas: '0x2',
     maxPriorityFeePerGas: '0x1'
   }
-  authorizeRenderer.mockReturnValue(trayContext)
+  authorizeTray.mockReturnValue(trayContext)
   safes.prepareExecution.mockResolvedValue({ transaction, warnings: ['Simulation unavailable'] })
   expect(await dispatcher.dispatchQuery(event, { type: 'safe.execution-prepare', ...identity })).toEqual({
     ok: true,

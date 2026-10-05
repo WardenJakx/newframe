@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
 import type { OperationRecord } from '../../../../platform/operations/operation.ts'
-import type { SideTrayRendererState } from '../../../../platform/state-sync/contract/projections.ts'
+import type { SideTrayProjection } from '../../../../platform/state-sync/contract/projections.ts'
 import type { BalanceSummary } from '../../../asset-data/domain/balance/index.ts'
 import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
 import { filterSendRecipients, projectSendSubmission, selectSendAsset } from './sendModel.ts'
@@ -59,7 +59,7 @@ describe('sendModel', () => {
     const activity = {
       id: transactionId,
       status: 'succeeded'
-    } satisfies SideTrayRendererState['activity'][string]
+    } satisfies SideTrayProjection['activity'][string]
 
     expect(
       projectSendSubmission({ activity: {}, operationId, operations: { [operationId]: operation } })

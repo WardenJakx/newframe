@@ -2,7 +2,7 @@ import { beforeEach, expect, it, mock } from 'bun:test'
 
 import { BrowserWindow } from 'electron'
 
-import { closeRendererWindow } from './close.ts'
+import { closeTrayWindow } from './close.ts'
 
 const fromWebContents = mock()
 
@@ -22,7 +22,7 @@ it('captures a live window before acknowledgement and ignores duplicate or destr
   const sender = { isDestroyed: mock(() => false) }
   fromWebContents.mockReturnValue(window)
 
-  closeRendererWindow({ sender } as never, (callback) => {
+  closeTrayWindow({ sender } as never, (callback) => {
     scheduled = callback
   })
 
@@ -36,6 +36,6 @@ it('captures a live window before acknowledgement and ignores duplicate or destr
   expect(close).toHaveBeenCalledTimes(1)
 
   fromWebContents.mockClear()
-  closeRendererWindow({ sender: { isDestroyed: () => true } } as never)
+  closeTrayWindow({ sender: { isDestroyed: () => true } } as never)
   expect(fromWebContents).not.toHaveBeenCalled()
 })

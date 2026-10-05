@@ -8,7 +8,7 @@ import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 import { useEffect, useMemo, useState } from 'react'
 
-import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections.ts'
+import type { MainTrayProjection } from '../../../../platform/state-sync/contract/projections.ts'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector.tsx'
 import { AppIcon } from '../../../../shared/renderer/ui/appIcon.tsx'
 import {
@@ -20,7 +20,7 @@ import {
 import type { AccountsCapability } from '../accountsCapability.ts'
 import { useHardwareSessionController } from '../useHardwareSession.ts'
 
-type WalletSigner = WalletRendererState['signers'][string]
+type WalletSigner = MainTrayProjection['signers'][string]
 
 function signerIcon(type: string) {
   return ['ledger', 'trezor', 'lattice', 'airgap'].includes(type) ? (
@@ -201,8 +201,8 @@ export default function SignerRecovery({
   signerIds: string[]
 }) {
   const signers = useWalletSelector(
-    (state: WalletRendererState) =>
-      state.signers as Record<string, WalletRendererState['signers'][string] | undefined>
+    (state: MainTrayProjection) =>
+      state.signers as Record<string, MainTrayProjection['signers'][string] | undefined>
   )
   const candidates = useMemo(
     () => signerIds.map((id) => signers[id]).filter((signer): signer is WalletSigner => Boolean(signer)),

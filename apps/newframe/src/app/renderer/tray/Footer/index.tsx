@@ -3,7 +3,7 @@ import { useShallow } from 'zustand/react/shallow'
 
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
 import { useAccountIdentity } from '../../../../features/requests/renderer/Account/Requests/state.ts'
-import type { RequestRendererCapabilities } from '../../../../features/requests/renderer/requestCapabilities.ts'
+import type { RequestTrayCapabilities } from '../../../../features/requests/renderer/requestCapabilities.ts'
 import RequestCommand, {
   type RequestCommandNotifier,
   type RequestCommandRequest
@@ -11,7 +11,7 @@ import RequestCommand, {
 import { useRequestView, type RequestViewStep } from '../../../../features/requests/renderer/requestView.tsx'
 import { RequestActions } from '../../../../features/requests/renderer/ui/RequestActions.tsx'
 import { RequestSigningFooter } from '../../../../features/requests/renderer/ui/RequestSigningFooter.tsx'
-import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections.ts'
+import type { MainTrayProjection } from '../../../../platform/state-sync/contract/projections.ts'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector.tsx'
 import { accountDisplayType } from '../../../../shared/renderer/ui/signerPresentation.ts'
 
@@ -21,7 +21,7 @@ interface FooterSharedState {
 }
 
 interface FooterProps {
-  capabilities: Pick<RequestRendererCapabilities, 'external' | 'review' | 'transaction'>
+  capabilities: Pick<RequestTrayCapabilities, 'external' | 'review' | 'transaction'>
   notify: RequestCommandNotifier
   shared: FooterSharedState
   step: RequestViewStep
@@ -48,7 +48,7 @@ const FOOTER_HEIGHT_PROPERTY = '--tray-footer-height'
 
 const EMPTY_CRUMB = {}
 
-const selectFooterState = (state: WalletRendererState): FooterSharedState => {
+const selectFooterState = (state: MainTrayProjection): FooterSharedState => {
   const crumb = state.windows.panel.nav[0] || EMPTY_CRUMB
   const data =
     crumb.view === 'requestView' ? (crumb.data as { accountId?: string; requestId?: string }) : undefined
@@ -224,7 +224,7 @@ export default function FooterContainer({
   capabilities,
   notify
 }: {
-  capabilities: Pick<RequestRendererCapabilities, 'external' | 'review' | 'transaction'>
+  capabilities: Pick<RequestTrayCapabilities, 'external' | 'review' | 'transaction'>
   notify: RequestCommandNotifier
 }) {
   const shared = useWalletSelector(useShallow(selectFooterState))

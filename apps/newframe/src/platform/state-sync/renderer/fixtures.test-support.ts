@@ -1,4 +1,4 @@
-import type { SideTrayRendererState, WalletRendererState } from '../contract/projections.ts'
+import type { SideTrayProjection, MainTrayProjection } from '../contract/projections.ts'
 
 const baseProjectionState = {
   accounts: {},
@@ -14,9 +14,9 @@ const baseProjectionState = {
   runtime: { environment: 'test', isDev: false, profile: null }
 }
 
-const baseSideTrayState: SideTrayRendererState = baseProjectionState
+const baseSideTrayState: SideTrayProjection = baseProjectionState
 
-const baseWalletState: WalletRendererState = {
+const baseWalletState: MainTrayProjection = {
   ...baseProjectionState,
   appLock: { locked: false, vaultExists: false },
   autoDiscoverTokens: false,
@@ -25,7 +25,7 @@ const baseWalletState: WalletRendererState = {
   biometricUnlock: false,
   currentProfile: 'default-profile',
   extensionAccess: {},
-  instanceId: 'renderer-fixture',
+  instanceId: 'tray-fixture',
   knownExtensions: {},
   latticeSettings: {
     accountLimit: 5,
@@ -75,14 +75,14 @@ const baseWalletState: WalletRendererState = {
   platform: 'test'
 }
 
-export function walletState(overrides: Partial<WalletRendererState>): WalletRendererState {
+export function walletState(overrides: Partial<MainTrayProjection>): MainTrayProjection {
   return { ...baseWalletState, ...overrides }
 }
 
-export function walletChanges(changes: Partial<WalletRendererState>): Partial<WalletRendererState> {
+export function walletChanges(changes: Partial<MainTrayProjection>): Partial<MainTrayProjection> {
   return changes
 }
 
-export function sideTrayState(overrides: Partial<SideTrayRendererState> = {}): SideTrayRendererState {
+export function sideTrayState(overrides: Partial<SideTrayProjection> = {}): SideTrayProjection {
   return { ...baseSideTrayState, ...overrides }
 }

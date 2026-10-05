@@ -24,7 +24,7 @@ import {
   TypedDataV4Schema,
   type FlashOrderCancelCommand,
   type FlashQuoteDisplay,
-  type FlashQuoteRequest as RendererFlashQuoteRequest,
+  type FlashQuoteRequest as TrayFlashQuoteRequest,
   type FlashQuoteResult,
   type OperationCancelCommand,
   type TradeRequestCommand,
@@ -99,7 +99,7 @@ type PrivateQuoteRecord = {
   quote: FlashQuote
   quoteId: string
   providerQuoteId?: string
-  request: RendererFlashQuoteRequest
+  request: TrayFlashQuoteRequest
   spentChainId: number
   touchedAt: number
 }
@@ -604,7 +604,7 @@ export function createTradeService(ports: TradeServicePorts) {
   }
 
   return {
-    async quote(request: RendererFlashQuoteRequest, owner: OperationOwner): Promise<FlashQuoteResult> {
+    async quote(request: TrayFlashQuoteRequest, owner: OperationOwner): Promise<FlashQuoteResult> {
       if (disposed) {
         return { ok: false, error: 'quote_failed', message: 'Trade service is unavailable.' }
       }
@@ -732,7 +732,7 @@ export function createTradeService(ports: TradeServicePorts) {
       } catch {
         return false
       }
-      // Cache acceptance before starting asynchronous work so a renderer can safely replay an
+      // Cache acceptance before starting asynchronous work so a tray can safely replay an
       // identical command when its first acknowledgement is lost. Conflicting operation-ID reuse
       // still fails through the fingerprint check above.
       idempotency.set(key, { fingerprint, reference, touchedAt: ports.clock.now() })

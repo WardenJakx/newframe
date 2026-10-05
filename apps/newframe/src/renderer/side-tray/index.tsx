@@ -8,15 +8,15 @@ import '../../../generated/styled-system/styles.css'
 import { createSendCapability } from '../../features/transactions/send/renderer/sendService.ts'
 import { createTradeCapability } from '../../features/transactions/trade/renderer/tradeService.ts'
 import link from '../../platform/ipc/renderer/link.ts'
-import type { SideTrayRendererState } from '../../platform/state-sync/contract/projections.ts'
-import { connectRendererState } from '../../platform/state-sync/renderer/connectState.ts'
-import { RendererStateProvider } from '../../platform/state-sync/renderer/useAppSelector.tsx'
+import type { SideTrayProjection } from '../../platform/state-sync/contract/projections.ts'
+import { connectTrayState } from '../../platform/state-sync/renderer/connectState.ts'
+import { TrayStateProvider } from '../../platform/state-sync/renderer/useAppSelector.tsx'
 
 document.addEventListener('dragover', (e) => e.preventDefault())
 document.addEventListener('drop', (e) => e.preventDefault())
 
 async function start() {
-  const { state, disconnect } = await connectRendererState<SideTrayRendererState>(link)
+  const { state, disconnect } = await connectTrayState<SideTrayProjection>(link)
   const stores = { sideTray: state }
   const send = createSendCapability(link)
   const trade = createTradeCapability(link)
@@ -24,9 +24,9 @@ async function start() {
   const root = createRoot(document.getElementById('side-tray') as HTMLElement)
   root.render(
     <UIRoot>
-      <RendererStateProvider state={stores}>
+      <TrayStateProvider state={stores}>
         <App send={send} trade={trade} />
-      </RendererStateProvider>
+      </TrayStateProvider>
     </UIRoot>
   )
 }
@@ -35,7 +35,7 @@ void start().catch((error: unknown) => console.error('Could not connect side tra
 
 document.addEventListener('contextmenu', (event) => {
   void link.executeCommand({
-    type: 'renderer.context-menu',
+    type: 'tray.context-menu',
     x: event.clientX,
     y: event.clientY
   })

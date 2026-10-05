@@ -1,17 +1,17 @@
 import type { Session } from 'electron'
 
-import type { RendererAuthorizationRegistry } from '../../ipc/main/authorization.ts'
+import type { TrayAuthorizationRegistry } from '../../ipc/main/authorization.ts'
 
 type PermissionSession = Pick<Session, 'setPermissionCheckHandler' | 'setPermissionRequestHandler'>
 const installations = new WeakMap<PermissionSession, symbol>()
 
 export function installCameraPermissions(
   session: PermissionSession,
-  registry: Pick<RendererAuthorizationRegistry, 'authorizeMedia'>
+  registry: Pick<TrayAuthorizationRegistry, 'authorizeMedia'>
 ) {
   const owner = Symbol('tray camera permissions')
   installations.set(session, owner)
-  const trusted = (input: Parameters<RendererAuthorizationRegistry['authorizeMedia']>[0]) => {
+  const trusted = (input: Parameters<TrayAuthorizationRegistry['authorizeMedia']>[0]) => {
     const identity = registry.authorizeMedia(input)
     return identity?.clientType === 'main-tray' && identity.entrypoint === 'tray'
   }

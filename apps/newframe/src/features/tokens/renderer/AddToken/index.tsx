@@ -11,7 +11,7 @@ import { Text } from '@newframe/ui/text'
 import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
-import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections.ts'
+import type { MainTrayProjection } from '../../../../platform/state-sync/contract/projections.ts'
 import { selectOperationById } from '../../../../platform/state-sync/renderer/selectors/operation.ts'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector.tsx'
 import { AddressIdentity } from '../../../../shared/renderer/ui/AddressIdentity.tsx'
@@ -96,7 +96,7 @@ const TokenError = ({ text, onBack, onContinue }: TokenErrorProps) => {
   )
 }
 
-const selectChainState = (state: WalletRendererState) => ({
+const selectChainState = (state: MainTrayProjection) => ({
   chains: state.chains.ethereum,
   chainMetadata: state.chainsMeta.ethereum
 })

@@ -14,7 +14,7 @@ function request(type: RequestType = 'transaction'): AccountRequest {
   return {
     type,
     requestId: 'request-1',
-    origin: 'renderer-controlled-origin-is-not-authority',
+    origin: 'tray-controlled-origin-is-not-authority',
     account: '0x1111111111111111111111111111111111111111',
     payload: {
       id: 1,
@@ -27,21 +27,21 @@ function request(type: RequestType = 'transaction'): AccountRequest {
 
 describe('wallet action authority', () => {
   it('requires a request source minted by trusted transport code', () => {
-    const forgedRenderer = {
-      kind: 'renderer',
+    const forgedTray = {
+      kind: 'tray',
       role: 'side-tray',
       entrypoint: 'side-tray',
       webContentsId: 1,
       windowInstanceId: 'forged'
     }
 
-    expect(authorizeGatewayOperation(forgedRenderer, request())).toEqual({
+    expect(authorizeGatewayOperation(forgedTray, request())).toEqual({
       outcome: 'reject',
       reason: 'Untrusted request source'
     })
   })
 
-  it('records renderer identity from the trusted request source rather than request fields', () => {
+  it('records tray identity from the trusted request source rather than request fields', () => {
     const requestSource = createNewframeInternalSource({
       clientType: 'side-tray',
       entrypoint: 'side-tray',
@@ -56,7 +56,7 @@ describe('wallet action authority', () => {
       authorization: {
         decision: 'prompt',
         requestSource: {
-          kind: 'renderer',
+          kind: 'tray',
           role: 'side-tray',
           entrypoint: 'side-tray',
           webContentsId: 42,
@@ -71,7 +71,7 @@ describe('wallet action authority', () => {
     })
     expect(decision.outcome).toBe('prompt')
     if (decision.outcome !== 'prompt') {
-      throw new Error('Expected renderer request to require authorization')
+      throw new Error('Expected tray request to require authorization')
     }
     expect('origin' in decision.authorization.requestSource).toBe(false)
   })
@@ -117,7 +117,7 @@ describe('wallet action authority', () => {
     expect(Object.isFrozen(requestSource.capabilities)).toBe(true)
   })
 
-  it('rejects action types that are outside a renderer role', () => {
+  it('rejects action types that are outside a tray role', () => {
     const requestSource = createNewframeInternalSource({
       clientType: 'side-tray',
       entrypoint: 'side-tray',

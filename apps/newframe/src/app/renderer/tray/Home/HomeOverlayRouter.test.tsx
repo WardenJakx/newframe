@@ -8,9 +8,9 @@ import {
   waitFor,
   within
 } from '../../../../../test/support/componentSetup.tsx'
-import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient.ts'
+import { registerTestRuntimeFixture } from '../../../../../test/support/trayClient.ts'
 import type { DisplayedBalance } from '../../../../features/asset-data/domain/balance/index.ts'
-import { createRequestRendererCapabilitiesFake as createRequestPortsFake } from '../../../../features/requests/renderer/requestCapabilities.test-support.ts'
+import { createRequestTrayCapabilitiesFake as createRequestPortsFake } from '../../../../features/requests/renderer/requestCapabilities.test-support.ts'
 import { NATIVE_CURRENCY } from '../../../../features/tokens/domain/constants.ts'
 import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support.ts'
 import { accountsCapability } from '../../capabilities/accounts.ts'

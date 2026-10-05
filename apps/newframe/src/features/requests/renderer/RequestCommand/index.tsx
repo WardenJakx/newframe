@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
 import type { AirGapRequestReference } from '../../../../platform/signing/domain/airgap.ts'
-import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections.ts'
+import type { MainTrayProjection } from '../../../../platform/state-sync/contract/projections.ts'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector.tsx'
 import StatusGlyph from '../../../../shared/renderer/ui/StatusGlyph.tsx'
 import type { TransactionApprovalAdjustments } from '../../../transactions/domain/approval.ts'
@@ -20,7 +20,7 @@ import type {
 } from '../../contract/requests.ts'
 import { isCancelableRequest, isSignatureRequest } from '../../domain/index.ts'
 import { useAccountIdentity } from '../Account/Requests/state.ts'
-import type { RequestRendererCapabilities, RequestReviewCapability } from '../requestCapabilities.ts'
+import type { RequestTrayCapabilities, RequestReviewCapability } from '../requestCapabilities.ts'
 import { useRequestView, type RequestViewStep } from '../requestView.tsx'
 import { RequestActions } from '../ui/RequestActions.tsx'
 import { SafeOwnerSelector } from '../ui/SafeOwnerSelector.tsx'
@@ -54,7 +54,7 @@ export interface RequestCommandProps {
   adjustments?: TransactionApprovalAdjustments
   feeNoticeDismissed?: boolean
   dismissFeeNotice?: () => void
-  capabilities: Pick<RequestRendererCapabilities, 'external' | 'review' | 'transaction'>
+  capabilities: Pick<RequestTrayCapabilities, 'external' | 'review' | 'transaction'>
   notify: RequestCommandNotifier
   req: RequestCommandRequest
   shared: RequestCommandSharedState
@@ -563,7 +563,7 @@ export default function RequestCommandContainer(props: Omit<RequestCommandProps,
   const selector = useMemo(
     () =>
       (
-        state: WalletRendererState
+        state: MainTrayProjection
       ): Omit<RequestCommandSharedState, 'step' | 'airgapSigning'> & Partial<AirGapRequestReference> => {
         const account = (state.accounts as Partial<typeof state.accounts>)[accountId]
         const signers: Partial<typeof state.signers> = state.signers

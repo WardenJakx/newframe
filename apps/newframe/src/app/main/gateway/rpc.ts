@@ -27,7 +27,7 @@ export interface RpcGatewayPorts {
   ): void | Promise<void>
 }
 
-/** Shared by local API clients, AI-session clients, renderer compositions and main-process callers. */
+/** Shared by local API clients, AI-session clients, tray compositions and main-process callers. */
 export function createRpcGateway(ports: RpcGatewayPorts) {
   return async (input: RPCRequestPayload, respond: RPCRequestCallback, source?: RequestSource) => {
     let settled = false

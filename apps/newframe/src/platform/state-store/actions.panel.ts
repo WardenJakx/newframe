@@ -1,4 +1,4 @@
-// Panel view actions. These are private canonical-store mutations, not renderer commands.
+// Panel view actions. These are private canonical-store mutations, not tray commands.
 
 import type { Draft } from 'immer'
 

@@ -1,7 +1,7 @@
 import type { OperationEntityRef, OperationRecord, OperationStatus } from '../../../operations/operation.ts'
-import type { WalletRendererState } from '../../contract/projections.ts'
+import type { MainTrayProjection } from '../../contract/projections.ts'
 
-type OperationState = Pick<WalletRendererState, 'operations'>
+type OperationState = Pick<MainTrayProjection, 'operations'>
 
 export function selectOperationById(state: OperationState, id: string): OperationRecord | undefined {
   const operations: Record<string, OperationRecord | undefined> = state.operations

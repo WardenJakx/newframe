@@ -7,7 +7,7 @@ import type { SafeDeployment, SafeProposal, SafeProposalSimulation } from '../..
 import type { TransactionApprovalAdjustments } from '../../transactions/domain/approval.ts'
 import type { TransactionFeeField } from '../../transactions/domain/fees.ts'
 import type { SafeTransactionProgress, SigningCandidate } from '../contract/requests.ts'
-import type { RequestRendererCapabilities } from './requestCapabilities.ts'
+import type { RequestTrayCapabilities } from './requestCapabilities.ts'
 import { updateTransactionFee } from './requestView.tsx'
 import type { SafePreview, SafeProposalActionModel } from './SafeProposalDetailsView.tsx'
 
@@ -22,7 +22,7 @@ export function useSafeProposalSimulation({
   scope: string
   deployment: SafeDeployment | undefined
   proposal: SafeProposal | undefined
-  capability: RequestRendererCapabilities['safe']
+  capability: RequestTrayCapabilities['safe']
 }) {
   const chainId = deployment?.chainId
   const safeTxHash = proposal?.safeTxHash
@@ -98,7 +98,7 @@ export function useSafeConfirmation({
 }: {
   identity: Identity | undefined
   scope: string
-  capability: RequestRendererCapabilities['safe']
+  capability: RequestTrayCapabilities['safe']
   onAirGapSigning?: (reference: AirGapRequestReference) => void
 }): SafeConfirmationModel {
   const [state, setState] = useState<{

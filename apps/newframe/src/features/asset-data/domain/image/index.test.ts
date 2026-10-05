@@ -3,7 +3,7 @@ import { describe, expect, it } from 'bun:test'
 import { embeddedImageSource, imageSource, isEmbeddedImage } from './index.ts'
 
 describe('image sources', () => {
-  it('allows only embedded images in renderers', () => {
+  it('allows only embedded images in trays', () => {
     expect(imageSource('data:image/png;base64,aWNvbg==')).toBe('data:image/png;base64,aWNvbg==')
     expect(imageSource('https://cdn.example/icon.png')).toBe('')
     expect(isEmbeddedImage(imageSource('data:image/png;base64,aWNvbg=='))).toBe(true)

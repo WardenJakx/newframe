@@ -5,7 +5,7 @@ import { within } from '@testing-library/react'
 import { renderToStaticMarkup } from 'react-dom/server'
 
 import { act, render, screen } from '../../../../../../test/support/componentSetup.tsx'
-import { registerTestRuntimeFixture } from '../../../../../../test/support/rendererClient.ts'
+import { registerTestRuntimeFixture } from '../../../../../../test/support/trayClient.ts'
 import { walletState } from '../../../../../platform/state-sync/renderer/fixtures.test-support.ts'
 import { shortAddress } from '../../../../../shared/renderer/ui/AddressIdentity.tsx'
 import { HomeUiProvider, useHomeUiStore } from '../state/HomeUiProvider.tsx'

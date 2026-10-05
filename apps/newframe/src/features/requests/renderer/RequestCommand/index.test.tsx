@@ -1,12 +1,12 @@
 import { beforeEach, expect, it, mock } from 'bun:test'
 
 import { act, fireEvent, render, screen } from '../../../../../test/support/componentSetup.tsx'
-import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient.ts'
+import { registerTestRuntimeFixture } from '../../../../../test/support/trayClient.ts'
 import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support.ts'
 import type { SigningCandidate } from '../../contract/requests.ts'
 import {
-  createRequestRendererCapabilitiesFake as createRequestPortsFake,
-  type RequestRendererCapabilitiesFake
+  createRequestTrayCapabilitiesFake as createRequestPortsFake,
+  type RequestTrayCapabilitiesFake
 } from '../requestCapabilities.test-support.ts'
 import { RequestViewProvider } from '../requestView.tsx'
 import RequestCommandContainer, {
@@ -19,7 +19,7 @@ import RequestCommandContainer, {
 } from './index.tsx'
 import TxApproval from './TxApproval/index.tsx'
 
-let capabilities: RequestRendererCapabilitiesFake
+let capabilities: RequestTrayCapabilitiesFake
 const fixture = registerTestRuntimeFixture()
 
 beforeEach(() => {
@@ -313,7 +313,7 @@ it('shows a retryable Safe publication failure', async () => {
   })
 })
 
-it('uses renderer-generated idempotency keys for transaction replacement', () => {
+it('uses tray-generated idempotency keys for transaction replacement', () => {
   const req = {
     type: 'transaction',
     requestId: 'request-1',

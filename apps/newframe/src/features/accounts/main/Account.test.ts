@@ -7,7 +7,7 @@ import {
   createNewframeInternalSource,
   authorizeGatewayOperation
 } from '../../../app/main/gateway/requestSource.ts'
-import { createRendererAuthorizationRegistry } from '../../../platform/ipc/main/authorization.ts'
+import { createTrayAuthorizationRegistry } from '../../../platform/ipc/main/authorization.ts'
 import type {
   SigningApprovalContext,
   SignerRequestContext
@@ -206,15 +206,15 @@ describe('#addRequest', () => {
       approvals: [{ type: ApprovalType.GasLimitApproval, approved: false, data: {} }],
       recognizedActions: [{ id: 'erc20:approve', data: actionData, update }]
     }
-    const rendererRequestSource = createNewframeInternalSource({
+    const trayRequestSource = createNewframeInternalSource({
       clientType: 'main-tray',
       entrypoint: 'tray',
       webContentsId: 7,
       windowInstanceId: 'wallet-window'
     })
-    const decision = authorizeGatewayOperation(rendererRequestSource, request)
+    const decision = authorizeGatewayOperation(trayRequestSource, request)
     if (decision.outcome !== 'prompt') {
-      throw new Error('renderer request was not prompt-authorized')
+      throw new Error('tray request was not prompt-authorized')
     }
     Object.assign(request, { authorization: decision.authorization })
 
@@ -231,15 +231,15 @@ describe('#addRequest', () => {
       }
     })
 
-    const renderer = Object.assign(new EventEmitter(), { id: 7 })
-    const renderers = createRendererAuthorizationRegistry(() => 'wallet-window')
-    renderers.registerRenderer(renderer as never, 'main-tray', 'tray')
-    renderer.emit('destroyed')
+    const tray = Object.assign(new EventEmitter(), { id: 7 })
+    const trays = createTrayAuthorizationRegistry(() => 'wallet-window')
+    trays.registerTray(tray as never, 'main-tray', 'tray')
+    tray.emit('destroyed')
 
     expect(account.requests[request.requestId]).toMatchObject({
       authorization: {
         decision: 'prompt',
-        requestSource: { kind: 'renderer', webContentsId: 7, windowInstanceId: 'wallet-window' }
+        requestSource: { kind: 'tray', webContentsId: 7, windowInstanceId: 'wallet-window' }
       }
     })
     expect(requestLifecycle.pending.has(request.requestId)).toBe(true)
@@ -269,7 +269,7 @@ describe('#addRequest', () => {
       (account as unknown as { actionUpdateHandlers: Map<string, unknown> }).actionUpdateHandlers.size
     ).toBe(0)
     expect(requestLifecycle.pending.has(requestId)).toBe(false)
-    renderers.dispose()
+    trays.dispose()
   })
 
   describe('recognizing requests', () => {

@@ -8,10 +8,10 @@ import type {
 } from '../../src/app/contracts/operations.ts'
 import type { NewframeHost } from '../../src/platform/ipc/contract/ipc.ts'
 import type { StateConnectionResult, StateMessage } from '../../src/platform/state-sync/contract/protocol.ts'
-import type { RendererStateFixtureOptions } from './rendererState.tsx'
-import { createRendererStateFixture, installRendererStateFixture } from './rendererState.tsx'
+import type { TrayStateFixtureOptions } from './trayState.tsx'
+import { createTrayStateFixture, installTrayStateFixture } from './trayState.tsx'
 
-export function createRendererClient() {
+export function createTrayClient() {
   return {
     connectState: mock(async (_handler: (message: StateMessage) => void): Promise<StateConnectionResult> => ({
       ok: true
@@ -27,7 +27,7 @@ export function createRendererClient() {
   } satisfies NewframeHost
 }
 
-type TestRendererClient = ReturnType<typeof createRendererClient>
+type TestTrayClient = ReturnType<typeof createTrayClient>
 
 interface HostInstallationBase {
   createdWindow: boolean
@@ -36,7 +36,7 @@ interface HostInstallationBase {
 
 interface HostInstallation {
   base: HostInstallationBase
-  client: TestRendererClient
+  client: TestTrayClient
   disposed: boolean
   previous: HostInstallation | undefined
   window: Window
@@ -44,24 +44,24 @@ interface HostInstallation {
 
 const activeHostInstallations = new WeakMap<Window, HostInstallation>()
 
-export function createTestRuntimeFixture(options?: RendererStateFixtureOptions) {
+export function createTestRuntimeFixture(options?: TrayStateFixtureOptions) {
   return {
-    client: createRendererClient(),
-    state: createRendererStateFixture(options)
+    client: createTrayClient(),
+    state: createTrayStateFixture(options)
   }
 }
 
 export type TestRuntimeFixture = ReturnType<typeof createTestRuntimeFixture>
 
-export function registerTestRuntimeFixture(options?: RendererStateFixtureOptions): TestRuntimeFixture {
+export function registerTestRuntimeFixture(options?: TrayStateFixtureOptions): TestRuntimeFixture {
   let runtime: TestRuntimeFixture | undefined
   let disposeHost: (() => void) | undefined
   let disposeState: (() => void) | undefined
 
   beforeEach(() => {
     runtime = createTestRuntimeFixture(options)
-    disposeHost = installRendererHost(runtime.client)
-    disposeState = installRendererStateFixture(runtime.state)
+    disposeHost = installTrayHost(runtime.client)
+    disposeState = installTrayStateFixture(runtime.state)
   })
 
   afterEach(() => {
@@ -74,7 +74,7 @@ export function registerTestRuntimeFixture(options?: RendererStateFixtureOptions
 
   const current = () => {
     if (!runtime) {
-      throw new Error('Renderer runtime fixture is only available during a test.')
+      throw new Error('Tray runtime fixture is only available during a test.')
     }
     return runtime
   }
@@ -89,7 +89,7 @@ export function registerTestRuntimeFixture(options?: RendererStateFixtureOptions
   }
 }
 
-export function installRendererHost(client: TestRendererClient) {
+export function installTrayHost(client: TestTrayClient) {
   const createdWindow = typeof window === 'undefined'
 
   if (createdWindow) {

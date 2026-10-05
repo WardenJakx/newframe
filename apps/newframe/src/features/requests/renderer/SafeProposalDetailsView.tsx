@@ -13,7 +13,7 @@ import { TxClassification, type SafeExecutionMetadata, type SigningCandidate } f
 import type { useAssetRate, useAddressIdentities, useTokens } from './Account/Requests/state.ts'
 import AdjustFee from './Account/Requests/TransactionRequest/AdjustFee.tsx'
 import { TxReviewView, type TxReviewData } from './Account/Requests/TransactionRequest/TxReview.tsx'
-import type { RequestRendererCapabilities } from './requestCapabilities.ts'
+import type { RequestTrayCapabilities } from './requestCapabilities.ts'
 import { RequestActions } from './ui/RequestActions.tsx'
 import { RequestSigningFooter } from './ui/RequestSigningFooter.tsx'
 import { SafeOwnerSelector } from './ui/SafeOwnerSelector.tsx'
@@ -92,7 +92,7 @@ export function SafeProposalDetailsView({
   nativeCurrencyRate?: ReturnType<typeof useAssetRate>
   identities?: ReturnType<typeof useAddressIdentities>
   tokens?: ReturnType<typeof useTokens>
-  capabilities: Pick<RequestRendererCapabilities, 'external'>
+  capabilities: Pick<RequestTrayCapabilities, 'external'>
   actions?: SafeProposalActionModel
 }) {
   const [confirmationsOpen, setConfirmationsOpen] = useState(false)

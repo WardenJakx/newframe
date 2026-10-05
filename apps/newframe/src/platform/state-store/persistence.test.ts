@@ -750,7 +750,7 @@ describe('canonical persistence failure boundaries', () => {
 })
 
 it('retains Safe metadata through persistence and projects only the current profile', async () => {
-  const { projectRendererState } = await import('../state-sync/main/projections.ts')
+  const { projectTrayState } = await import('../state-sync/main/projections.ts')
   const { projectionStateSchemas } = await import('../state-sync/contract/projections.ts')
   const store = createTestStore()
   const owner = new Wallet(`0x${'11'.repeat(32)}`)
@@ -832,10 +832,10 @@ it('retains Safe metadata through persistence and projects only the current prof
   const merged = mergePersistedState(persisted, canonicalState())
   expect(merged.main.accounts[address].safe).toEqual(safe)
   const audience = { clientType: 'main-tray' as const, windowInstanceId: 'test' }
-  const projected = projectionStateSchemas['main-tray'].parse(projectRendererState(merged, audience))
+  const projected = projectionStateSchemas['main-tray'].parse(projectTrayState(merged, audience))
   expect(projected.accounts[address].safe).toEqual(safe)
   merged.main.currentProfile = 'other'
-  expect(projectRendererState(merged, audience)).toMatchObject({ accounts: {} })
+  expect(projectTrayState(merged, audience)).toMatchObject({ accounts: {} })
 })
 
 it('persists AirGap public records, projects progress, and never restores an exchange', async () => {

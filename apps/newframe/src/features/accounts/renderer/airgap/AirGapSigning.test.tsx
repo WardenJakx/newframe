@@ -3,7 +3,7 @@ import { expect, it } from 'bun:test'
 import { useState, type ComponentProps } from 'react'
 
 import { act, render, screen, waitFor } from '../../../../../test/support/componentSetup.tsx'
-import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient.ts'
+import { registerTestRuntimeFixture } from '../../../../../test/support/trayClient.ts'
 import { createQrCameraFake } from '../../../../platform/desktop/renderer/camera.test-support.ts'
 import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support.ts'
 import { createAccountsCapabilityFake } from '../accountsCapability.test-support.ts'

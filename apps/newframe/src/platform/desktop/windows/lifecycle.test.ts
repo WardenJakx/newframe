@@ -3,12 +3,12 @@ import { EventEmitter } from 'events'
 
 import { electronMock } from '../../../../test/support/electron.mock.ts'
 
-type OnTrayRendererReady = (webContents: Pick<EventEmitter, 'off' | 'once'>, ready: () => void) => () => void
+type OnTrayReady = (webContents: Pick<EventEmitter, 'off' | 'once'>, ready: () => void) => () => void
 type RevealExtensionApproval = (notification: unknown, reveal: () => void) => void
 
-let onTrayRendererReady: OnTrayRendererReady
+let onTrayReady: OnTrayReady
 let revealExtensionApproval: RevealExtensionApproval
-let registeredRendererReadyIpc = false
+let registeredTrayReadyIpc = false
 
 beforeAll(async () => {
   Object.assign(electronMock.app, {
@@ -17,25 +17,23 @@ beforeAll(async () => {
 
   const implementationPath = './index.ts?lifecycle-test'
   const implementation = (await import(implementationPath)) as {
-    onTrayRendererReady: OnTrayRendererReady
+    onTrayReady: OnTrayReady
     revealExtensionApproval: RevealExtensionApproval
   }
-  onTrayRendererReady = implementation.onTrayRendererReady
+  onTrayReady = implementation.onTrayReady
   revealExtensionApproval = implementation.revealExtensionApproval
-  registeredRendererReadyIpc = electronMock.ipcMain.on.mock.calls.some(
-    ([channel]) => channel === 'tray:ready'
-  )
+  registeredTrayReadyIpc = electronMock.ipcMain.on.mock.calls.some(([channel]) => channel === 'tray:ready')
 })
 
-it('does not register renderer-controlled tray readiness IPC', () => {
-  expect(registeredRendererReadyIpc).toBe(false)
+it('does not register tray-controlled tray readiness IPC', () => {
+  expect(registeredTrayReadyIpc).toBe(false)
 })
 
 it('runs tray readiness once from the Electron load lifecycle', () => {
   const webContents = new EventEmitter()
   let readyCount = 0
 
-  onTrayRendererReady(webContents, () => {
+  onTrayReady(webContents, () => {
     readyCount += 1
   })
   webContents.emit('did-finish-load')
@@ -48,7 +46,7 @@ it('removes tray readiness when its window is destroyed before load', () => {
   const webContents = new EventEmitter()
   let readyCount = 0
 
-  const remove = onTrayRendererReady(webContents, () => {
+  const remove = onTrayReady(webContents, () => {
     readyCount += 1
   })
   remove()

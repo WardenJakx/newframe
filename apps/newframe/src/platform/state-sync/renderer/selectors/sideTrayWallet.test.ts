@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test'
 
 import { NATIVE_CURRENCY } from '../../../../features/tokens/domain/constants.ts'
 import type { Token } from '../../../../features/tokens/domain/state/token.ts'
-import type { SideTrayRendererState } from '../../contract/projections.ts'
+import type { SideTrayProjection } from '../../contract/projections.ts'
 import { createSideTrayWalletSelector } from './sideTrayWallet.ts'
 
 const emptyCatalog = () => ({ byId: {}, accountTokenIds: {} })
@@ -75,7 +75,7 @@ describe('createSideTrayWalletSelector', () => {
       assetRates: {},
       runtime: {},
       tokens: emptyCatalog()
-    } satisfies SideTrayRendererState
+    } satisfies SideTrayProjection
 
     const result = selectSideTrayWallet(state)
 
@@ -101,7 +101,7 @@ describe('createSideTrayWalletSelector', () => {
       assetRates: {},
       runtime: {},
       tokens: emptyCatalog()
-    } satisfies SideTrayRendererState
+    } satisfies SideTrayProjection
 
     const result = selectSideTrayWallet(state)
 
@@ -152,7 +152,7 @@ describe('createSideTrayWalletSelector', () => {
       assetRates: {},
       runtime: {},
       tokens: globalCatalog(customToken)
-    } satisfies SideTrayRendererState
+    } satisfies SideTrayProjection
 
     const result = selectSideTrayWallet(state)
 
@@ -203,7 +203,7 @@ describe('createSideTrayWalletSelector', () => {
       assetRates: {},
       runtime: {},
       tokens: globalCatalog(bundledToken, 'bundled')
-    } satisfies SideTrayRendererState
+    } satisfies SideTrayProjection
 
     expect(selectSideTrayWallet(state).balanceSummaries[0]).toMatchObject({
       address: bundledToken.address,

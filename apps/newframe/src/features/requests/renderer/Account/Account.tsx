@@ -4,12 +4,12 @@ import type { ReactNode } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
-import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections.ts'
+import type { MainTrayProjection } from '../../../../platform/state-sync/contract/projections.ts'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector.tsx'
 import { SidePanelHeader } from '../../../../shared/renderer/ui/SidePanel/SidePanelHeader.tsx'
 import { persistedImageSource } from '../../../asset-data/domain/image/index.ts'
 import { accountViewTitles } from '../../domain/index.ts'
-import type { RequestRendererCapabilities } from '../requestCapabilities.ts'
+import type { RequestTrayCapabilities } from '../requestCapabilities.ts'
 import { useRequestView } from '../requestView.tsx'
 import AddTokenRequest from './Requests/AddTokenRequest.tsx'
 import AiSessionRequest from './Requests/AiSessionRequest.tsx'
@@ -26,7 +26,7 @@ import SignPermitRequest from './Requests/SignPermitRequest.tsx'
 import SignTypedDataRequest from './Requests/SignTypedDataRequest.tsx'
 import TransactionRequest from './Requests/TransactionRequest/index.tsx'
 
-type ProjectedRequest = WalletRendererState['accounts'][string]['requests'][string]
+type ProjectedRequest = MainTrayProjection['accounts'][string]['requests'][string]
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -303,7 +303,7 @@ function AccountView({ accountViewIcon, accountViewTitle, back, children }: Acco
 }
 
 interface AccountBodyProps {
-  capabilities: RequestRendererCapabilities
+  capabilities: RequestTrayCapabilities
   accountViewIcon?: ReactNode
   accountSelector?: ReactNode
   addresses?: unknown[]
@@ -316,7 +316,7 @@ interface AccountBodyProps {
 function AccountBody(props: AccountBodyProps) {
   const requestView = useRequestView()
   const { accounts, crumb, chains, chainsMeta, origins } = useWalletSelector(
-    useShallow((state: WalletRendererState) => ({
+    useShallow((state: MainTrayProjection) => ({
       accounts: state.accounts,
       crumb: state.windows.panel.nav[0],
       chains: state.chains.ethereum,
@@ -432,7 +432,7 @@ interface AccountProps extends Omit<AccountBodyProps, 'minimized'> {
 }
 
 export default function Account(props: AccountProps) {
-  const minimized = useWalletSelector((state: WalletRendererState) => state.selected.minimized)
+  const minimized = useWalletSelector((state: MainTrayProjection) => state.selected.minimized)
 
   return <AccountBody {...props} minimized={minimized} />
 }

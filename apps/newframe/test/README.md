@@ -5,9 +5,9 @@
 - Shared Bun preloads, boundary fakes, and rendering helpers belong in `test/support`.
 - Preloads provide runtime environments only: `dom.preload.ts` installs the browser test
   environment and `electron.preload.ts` replaces Electron when main-process tests run under Bun.
-  Application collaborators such as the store, persistence, windows, navigation, and renderer host
+  Application collaborators such as the store, persistence, windows, navigation, and tray host
   are opt-in fixtures owned by the tests that use them.
-- `scripts/run-renderer-tests.ts` runs plain TypeScript renderer tests without a preload and limits
+- `scripts/run-renderer-tests.ts` runs plain TypeScript tray tests without a preload and limits
   the DOM preload to TSX component and hook tests.
 
 The scripts under `harness/newframe/scenarios` are operator-driven exercises against a separately
@@ -24,20 +24,20 @@ failure, and retry branches remain explicit behavioral tests instead of a fabric
 Production code must not import test files, test fixtures, or support modules. Compile and bundle
 commands verify that test-only artifacts are not included in their output.
 
-Renderer tests own their runtime. Each component, view, controller, or hook test creates or registers
-the store and typed renderer client it uses; tests must not reset a process-global renderer store or
+Tray tests own their runtime. Each component, view, controller, or hook test creates or registers
+the store and typed tray client it uses; tests must not reset a process-global tray store or
 replace a shared client singleton. Prefer prop-driven view tests with typed models, named events, and
 focused capability fakes. Controller tests provide a fresh scoped store/client and assert semantic
 capability calls plus projected-state behavior. Integration tests may connect those pieces, but still
 own and dispose their store and client per test fixture.
 
-The same one-way dependency rule applies in tests: app renderer composition may import features,
-but feature renderer tests and fixtures may not import app renderer modules. Capability fakes stay
+The same one-way dependency rule applies in tests: app tray composition may import features,
+but feature tray tests and fixtures may not import app tray modules. Capability fakes stay
 with their owning feature (or in explicitly test-only shared support), and captured calls retain the
 catalog-derived input types instead of using `any`.
 
 Safe observation: `bun run test:integration` exercises the local HTTP handler,
-public observation service, renderer projection, and queue retention on failure.
+public observation service, tray projection, and queue retention on failure.
 From the repo root, `bun run visual:harness:newframe` additionally deploys official
 Safe 1.5.0 artifacts on Anvil and checks import, refresh, read-only proposal details,
 and account removal through the compiled app. Use the existing harness password

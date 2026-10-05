@@ -58,7 +58,7 @@ interface SafeQueueCapability {
   ): Promise<QueryResultMap['safe.confirmation-status']>
 }
 
-export type RequestRendererCapabilities = {
+export type RequestTrayCapabilities = {
   safe: SafeQueueCapability
   panel: RequestPanelCapability
   review: RequestReviewCapability
@@ -101,7 +101,7 @@ const createRequestExternalCapability = (host: RequestHost): RequestExternalCapa
   hydrateTokenImage: (tokenId) => host.executeCommand({ type: 'token.image-hydrate', tokenId })
 })
 
-export function createRequestRendererCapabilities(host: RequestHost): RequestRendererCapabilities {
+export function createRequestTrayCapabilities(host: RequestHost): RequestTrayCapabilities {
   return {
     safe: {
       refresh: (input) => host.executeCommand({ type: 'account.refresh', ...input }),

@@ -4,29 +4,29 @@ import { fileURLToPath } from 'url'
 
 import type { IpcMainInvokeEvent, WebContents } from 'electron'
 
-export type RendererRole = 'main-tray' | 'side-tray'
-export type RendererEntrypoint = 'tray' | 'side-tray'
+export type TrayRole = 'main-tray' | 'side-tray'
+export type TrayEntrypoint = 'tray' | 'side-tray'
 
-type RendererRegistration = {
+type TrayRegistration = {
   webContents: WebContents
-  clientType: RendererRole
-  entrypoint: RendererEntrypoint
+  clientType: TrayRole
+  entrypoint: TrayEntrypoint
   windowInstanceId: string
 }
 
-export type AuthorizationContext = Pick<RendererRegistration, 'clientType' | 'entrypoint'> & {
+export type AuthorizationContext = Pick<TrayRegistration, 'clientType' | 'entrypoint'> & {
   webContentsId: number
   windowInstanceId: string
 }
 
-export interface RendererAuthorizationRegistry {
-  authorizeRenderer(event: IpcMainInvokeEvent): AuthorizationContext | undefined
+export interface TrayAuthorizationRegistry {
+  authorizeTray(event: IpcMainInvokeEvent): AuthorizationContext | undefined
   authorizeMedia(input: {
     webContents: WebContents | null
     requestingUrl: string | undefined
     isMainFrame: boolean
   }): AuthorizationContext | undefined
-  registerRenderer(webContents: WebContents, clientType: RendererRole, entrypoint: RendererEntrypoint): void
+  registerTray(webContents: WebContents, clientType: TrayRole, entrypoint: TrayEntrypoint): void
   dispose(): void
 }
 
@@ -39,7 +39,7 @@ const samePath = (left: string, right: string) => {
   return normalize(left) === normalize(right)
 }
 
-function isAllowedRendererUrl(entrypoint: RendererEntrypoint, value: string) {
+function isAllowedTrayUrl(entrypoint: TrayEntrypoint, value: string) {
   try {
     const target = new URL(value)
     if (target.username || target.password || target.search) {
@@ -60,29 +60,29 @@ function isAllowedRendererUrl(entrypoint: RendererEntrypoint, value: string) {
   }
 }
 
-export function createRendererAuthorizationRegistry(
+export function createTrayAuthorizationRegistry(
   createWindowInstanceId: () => string = randomUUID
-): RendererAuthorizationRegistry {
-  const renderers = new Map<number, RendererRegistration>()
+): TrayAuthorizationRegistry {
+  const trays = new Map<number, TrayRegistration>()
 
   return {
-    registerRenderer(webContents, clientType, entrypoint) {
+    registerTray(webContents, clientType, entrypoint) {
       const registration = {
         webContents,
         clientType,
         entrypoint,
         windowInstanceId: createWindowInstanceId()
       }
-      renderers.set(webContents.id, registration)
+      trays.set(webContents.id, registration)
 
       webContents.once('destroyed', () => {
-        if (renderers.get(webContents.id) === registration) {
-          renderers.delete(webContents.id)
+        if (trays.get(webContents.id) === registration) {
+          trays.delete(webContents.id)
         }
       })
     },
-    authorizeRenderer(event) {
-      const registration = renderers.get(event.sender.id)
+    authorizeTray(event) {
+      const registration = trays.get(event.sender.id)
       if (!registration || registration.webContents !== event.sender || event.sender.isDestroyed()) {
         return
       }
@@ -91,7 +91,7 @@ export function createRendererAuthorizationRegistry(
       if (frame?.parent !== null || event.sender.mainFrame !== frame) {
         return
       }
-      if (!isAllowedRendererUrl(registration.entrypoint, frame.url)) {
+      if (!isAllowedTrayUrl(registration.entrypoint, frame.url)) {
         return
       }
 
@@ -106,7 +106,7 @@ export function createRendererAuthorizationRegistry(
       if (!webContents || !isMainFrame || !requestingUrl || webContents.isDestroyed()) {
         return
       }
-      const registration = renderers.get(webContents.id)
+      const registration = trays.get(webContents.id)
       if (!registration || registration.webContents !== webContents) {
         return
       }
@@ -114,7 +114,7 @@ export function createRendererAuthorizationRegistry(
       if (frame.parent !== null || frame.url !== requestingUrl) {
         return
       }
-      if (!isAllowedRendererUrl(registration.entrypoint, requestingUrl)) {
+      if (!isAllowedTrayUrl(registration.entrypoint, requestingUrl)) {
         return
       }
       return {
@@ -125,7 +125,7 @@ export function createRendererAuthorizationRegistry(
       }
     },
     dispose() {
-      renderers.clear()
+      trays.clear()
     }
   }
 }

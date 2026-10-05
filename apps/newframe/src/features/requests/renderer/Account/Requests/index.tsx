@@ -14,7 +14,7 @@ import type {
   SignatureRequest,
   TransactionRequest
 } from '../../../contract/requests.ts'
-import type { RequestRendererCapabilities } from '../../requestCapabilities.ts'
+import type { RequestTrayCapabilities } from '../../requestCapabilities.ts'
 import RequestItem from '../../ui/RequestItem.tsx'
 import { RequestList } from '../../ui/RequestList.tsx'
 import {
@@ -37,7 +37,7 @@ type RenderableRequest =
 
 type RequestsWithStateProps = {
   account?: string
-  capabilities: Pick<RequestRendererCapabilities, 'panel' | 'review'>
+  capabilities: Pick<RequestTrayCapabilities, 'panel' | 'review'>
   expanded?: boolean
   moduleId?: string
 }

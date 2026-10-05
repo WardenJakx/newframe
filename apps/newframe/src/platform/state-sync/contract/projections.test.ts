@@ -9,7 +9,7 @@ import {
   WalletStatusNotificationSchema
 } from './projections.ts'
 
-describe('wallet renderer projection records', () => {
+describe('wallet tray projection records', () => {
   it('keeps supported request presentation data and strips unowned fields', () => {
     expect(
       WalletRequestSchema.parse({

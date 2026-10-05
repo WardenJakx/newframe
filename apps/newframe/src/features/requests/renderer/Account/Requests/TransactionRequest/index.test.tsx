@@ -3,20 +3,20 @@ import { beforeEach, describe, expect, it } from 'bun:test'
 import { act, waitFor, within } from '@testing-library/react'
 
 import { fireEvent, screen, render } from '../../../../../../../test/support/componentSetup.tsx'
-import { registerTestRuntimeFixture } from '../../../../../../../test/support/rendererClient.ts'
+import { registerTestRuntimeFixture } from '../../../../../../../test/support/trayClient.ts'
 import { erc20Interface } from '../../../../../../shared/domain/evm.ts'
 import { TransactionApprovalAdjustmentsSchema } from '../../../../../transactions/domain/approval.ts'
 import { RequestStatus, TxClassification } from '../../../../contract/requests.ts'
 import {
-  createRequestRendererCapabilitiesFake as createRequestPortsFake,
-  type RequestRendererCapabilitiesFake
+  createRequestTrayCapabilitiesFake as createRequestPortsFake,
+  type RequestTrayCapabilitiesFake
 } from '../../../requestCapabilities.test-support.ts'
 import { RequestViewProvider } from '../../../requestView.tsx'
 import type { TransactionRequestView } from '../requestViewTypes.ts'
 import TxRequest, { TransactionRequest } from './index.tsx'
 
 const fixture = registerTestRuntimeFixture()
-let capabilities: RequestRendererCapabilitiesFake
+let capabilities: RequestTrayCapabilitiesFake
 type TransactionRequestFixture = Omit<
   Partial<TransactionRequestView>,
   'account' | 'data' | 'requestId' | 'origin' | 'payload' | 'tx' | 'type'

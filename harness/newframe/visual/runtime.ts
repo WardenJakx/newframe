@@ -11,7 +11,7 @@ import { tail, withTimeout } from '../core/utils.ts'
 import type {
   HarnessEvidence,
   HarnessSummary,
-  RendererError,
+  TrayError,
   VisualHarnessContext,
   VisualStage
 } from './types.ts'
@@ -23,7 +23,7 @@ type ConsoleErrorAllowance = {
 
 // Keep this list empty unless a browser/runtime diagnostic is both understood and unactionable.
 // Every future entry must match narrowly and explain why fixing the underlying error is inappropriate.
-const rendererConsoleErrorAllowlist: ConsoleErrorAllowance[] = []
+const trayConsoleErrorAllowlist: ConsoleErrorAllowance[] = []
 
 type ElectronDiagnostics = {
   appReady: boolean
@@ -52,7 +52,7 @@ export class VisualHarnessRuntime {
     evidence: [],
     failedStage: null,
     ok: false,
-    rendererErrors: [],
+    trayErrors: [],
     screenshots: [],
     stages: [],
     startedAt: new Date(this.startedAt).toISOString()
@@ -116,7 +116,7 @@ export class VisualHarnessRuntime {
 
     try {
       await visualStage.run(context)
-      this.assertNoUnexpectedRendererErrors()
+      this.assertNoUnexpectedTrayErrors()
       Object.assign(stage, { durationMs: Date.now() - startedAt, status: 'passed' as const })
     } catch (error) {
       Object.assign(stage, { durationMs: Date.now() - startedAt, status: 'failed' as const })
@@ -152,24 +152,24 @@ export class VisualHarnessRuntime {
         const source = location.url
           ? `${location.url}:${location.lineNumber + 1}:${location.columnNumber + 1}`
           : undefined
-        this.recordRendererError('console', message.text(), page.url(), source)
+        this.recordTrayError('console', message.text(), page.url(), source)
       })
-      page.on('crash', () => this.recordRendererError('crash', 'Renderer crashed', page.url()))
-      page.on('pageerror', (err) => this.recordRendererError('pageerror', err.message, page.url()))
+      page.on('crash', () => this.recordTrayError('crash', 'Tray crashed', page.url()))
+      page.on('pageerror', (err) => this.recordTrayError('pageerror', err.message, page.url()))
     }
 
     app.windows().forEach(monitorPage)
     app.on('window', monitorPage)
   }
 
-  assertNoUnexpectedRendererErrors() {
-    const unexpected = this.summary.rendererErrors.filter((error) => !error.allowed)
+  assertNoUnexpectedTrayErrors() {
+    const unexpected = this.summary.trayErrors.filter((error) => !error.allowed)
     if (unexpected.length === 0) {
       return
     }
 
     this.fail(
-      `Unexpected renderer errors: ${unexpected
+      `Unexpected tray errors: ${unexpected
         .map((error) => `${error.kind} on ${error.pageUrl || '<blank>'}: ${error.message}`)
         .join(' | ')}`
     )
@@ -203,17 +203,17 @@ export class VisualHarnessRuntime {
 
     for (const [index, page] of app.windows().entries()) {
       await withTimeout(
-        this.screenshot(page, `debug-failure-renderer-${index}.png`),
-        `failure screenshot for renderer ${index}`,
+        this.screenshot(page, `debug-failure-tray-${index}.png`),
+        `failure screenshot for tray ${index}`,
         5_000
       ).catch((err: unknown) => {
-        this.log(`could not capture renderer ${index}: ${err instanceof Error ? err.message : String(err)}`)
+        this.log(`could not capture tray ${index}: ${err instanceof Error ? err.message : String(err)}`)
       })
     }
   }
 
   private async logElectronDiagnostics(app: ElectronApplication, label: string) {
-    const rendererPages = app.windows().map((page) => page.url() || '<blank>')
+    const trayPages = app.windows().map((page) => page.url() || '<blank>')
     const diagnostics = await withTimeout(
       app.evaluate(({ app, BrowserWindow }) => {
         return {
@@ -235,17 +235,12 @@ export class VisualHarnessRuntime {
       2_000
     ).catch((err: unknown) => ({ diagnosticError: err instanceof Error ? err.message : String(err) }))
 
-    this.log(`${label}: ${JSON.stringify({ diagnostics, rendererPages })}`)
+    this.log(`${label}: ${JSON.stringify({ diagnostics, trayPages })}`)
   }
 
-  private recordRendererError(
-    kind: RendererError['kind'],
-    message: string,
-    pageUrl: string,
-    source?: string
-  ) {
-    const allowance = rendererConsoleErrorAllowlist.find(({ pattern }) => pattern.test(message))
-    const diagnostic: RendererError = {
+  private recordTrayError(kind: TrayError['kind'], message: string, pageUrl: string, source?: string) {
+    const allowance = trayConsoleErrorAllowlist.find(({ pattern }) => pattern.test(message))
+    const diagnostic: TrayError = {
       allowed: Boolean(allowance),
       ...(allowance ? { allowance: allowance.reason } : {}),
       kind,
@@ -253,8 +248,8 @@ export class VisualHarnessRuntime {
       pageUrl: pageUrl || '<blank>',
       ...(source ? { source } : {})
     }
-    this.summary.rendererErrors.push(diagnostic)
-    this.log(`${allowance ? 'allowed' : 'unexpected'} renderer ${kind}: ${message} (${pageUrl || '<blank>'})`)
+    this.summary.trayErrors.push(diagnostic)
+    this.log(`${allowance ? 'allowed' : 'unexpected'} tray ${kind}: ${message} (${pageUrl || '<blank>'})`)
     void this.writeSummary().catch(() => undefined)
   }
 }

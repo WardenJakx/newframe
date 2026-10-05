@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 
 import { cleanup, render, screen } from '../../../../../test/support/componentSetup.tsx'
-import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient.ts'
+import { registerTestRuntimeFixture } from '../../../../../test/support/trayClient.ts'
 import { WalletRequestSchema } from '../../../../platform/state-sync/contract/projections.ts'
 import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support.ts'
-import { createRequestRendererCapabilitiesFake } from '../requestCapabilities.test-support.ts'
+import { createRequestTrayCapabilitiesFake } from '../requestCapabilities.test-support.ts'
 import { RequestViewProvider } from '../requestView.tsx'
 import Account from './Account.tsx'
 
@@ -166,7 +166,7 @@ function resetWithRequest(input: unknown) {
 function renderAccount() {
   render(
     <RequestViewProvider>
-      <Account capabilities={createRequestRendererCapabilitiesFake()} id={accountId} />
+      <Account capabilities={createRequestTrayCapabilitiesFake()} id={accountId} />
     </RequestViewProvider>
   )
 }
@@ -256,7 +256,7 @@ it.each(['eth_requestAccounts', 'personal_sign'])(
     render(
       <RequestViewProvider>
         <Account
-          capabilities={createRequestRendererCapabilitiesFake()}
+          capabilities={createRequestTrayCapabilitiesFake()}
           id={accountId}
           accountSelector={<button type='button'>Choose wallet</button>}
         />
@@ -281,7 +281,7 @@ it('keeps message content separate from the account selector', () => {
   render(
     <RequestViewProvider>
       <Account
-        capabilities={createRequestRendererCapabilitiesFake()}
+        capabilities={createRequestTrayCapabilitiesFake()}
         id={accountId}
         accountSelector={<button type='button'>Choose wallet</button>}
       />

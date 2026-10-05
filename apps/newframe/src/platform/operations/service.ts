@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
 import type { CanonicalStoreReader } from '../state-store/actions.ts'
-import { RendererProjectionSchema } from '../state-sync/contract/projections.ts'
+import { TrayProjectionRoleSchema } from '../state-sync/contract/projections.ts'
 import {
   OperationRecordSchema,
   type OperationEntityRef,
@@ -59,7 +59,7 @@ function sanitizeError(value: unknown): OperationSafeError {
 }
 
 function validateOwner(owner: OperationOwner): OperationOwner {
-  const parsed = RendererProjectionSchema.safeParse(owner.clientType)
+  const parsed = TrayProjectionRoleSchema.safeParse(owner.clientType)
   if (!parsed.success || typeof owner.windowInstanceId !== 'string' || !owner.windowInstanceId.trim()) {
     throw new Error('Invalid operation owner.')
   }

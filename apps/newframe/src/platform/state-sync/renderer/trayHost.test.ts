@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 
-import { createRendererClient, installRendererHost } from '../../../../test/support/rendererClient.ts'
+import { createTrayClient, installTrayHost } from '../../../../test/support/trayClient.ts'
 
-describe('renderer host installation', () => {
+describe('tray host installation', () => {
   let originalWindow: PropertyDescriptor | undefined
 
   beforeEach(() => {
@@ -18,8 +18,8 @@ describe('renderer host installation', () => {
   })
 
   it('removes an owned window after LIFO disposal', () => {
-    const [first, second] = [createRendererClient(), createRendererClient()]
-    const [disposeFirst, disposeSecond] = [installRendererHost(first), installRendererHost(second)]
+    const [first, second] = [createTrayClient(), createTrayClient()]
+    const [disposeFirst, disposeSecond] = [installTrayHost(first), installTrayHost(second)]
 
     expect(window.__NEWFRAME_HOST__).toBe(second)
     disposeSecond()
@@ -29,8 +29,8 @@ describe('renderer host installation', () => {
   })
 
   it('keeps the newer owner and removes an owned window after out-of-order disposal', () => {
-    const [first, second] = [createRendererClient(), createRendererClient()]
-    const [disposeFirst, disposeSecond] = [installRendererHost(first), installRendererHost(second)]
+    const [first, second] = [createTrayClient(), createTrayClient()]
+    const [disposeFirst, disposeSecond] = [installTrayHost(first), installTrayHost(second)]
 
     disposeFirst()
     expect(window.__NEWFRAME_HOST__).toBe(second)
@@ -39,13 +39,13 @@ describe('renderer host installation', () => {
   })
 
   it('restores an existing prior host after LIFO disposal', () => {
-    const [prior] = [createRendererClient()]
+    const [prior] = [createTrayClient()]
     Object.defineProperty(globalThis, 'window', {
       configurable: true,
       value: { __NEWFRAME_HOST__: prior }
     })
-    const [first, second] = [createRendererClient(), createRendererClient()]
-    const [disposeFirst, disposeSecond] = [installRendererHost(first), installRendererHost(second)]
+    const [first, second] = [createTrayClient(), createTrayClient()]
+    const [disposeFirst, disposeSecond] = [installTrayHost(first), installTrayHost(second)]
 
     disposeSecond()
     expect(window.__NEWFRAME_HOST__).toBe(first)
@@ -54,13 +54,13 @@ describe('renderer host installation', () => {
   })
 
   it('skips a disposed install when restoring an existing prior host', () => {
-    const [prior] = [createRendererClient()]
+    const [prior] = [createTrayClient()]
     Object.defineProperty(globalThis, 'window', {
       configurable: true,
       value: { __NEWFRAME_HOST__: prior }
     })
-    const [first, second] = [createRendererClient(), createRendererClient()]
-    const [disposeFirst, disposeSecond] = [installRendererHost(first), installRendererHost(second)]
+    const [first, second] = [createTrayClient(), createTrayClient()]
+    const [disposeFirst, disposeSecond] = [installTrayHost(first), installTrayHost(second)]
 
     disposeFirst()
     expect(window.__NEWFRAME_HOST__).toBe(second)

@@ -1,7 +1,7 @@
 import { expect, it, mock } from 'bun:test'
 
 import { cleanup, render, screen, waitFor } from '../../../../../test/support/componentSetup.tsx'
-import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient.ts'
+import { registerTestRuntimeFixture } from '../../../../../test/support/trayClient.ts'
 import {
   createAccountsCapabilityFake,
   type AccountsCapabilityFake

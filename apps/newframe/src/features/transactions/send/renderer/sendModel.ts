@@ -2,7 +2,7 @@ import {
   resolveSendAssetFromRouteAssetId,
   toCanonicalAssetId
 } from '../../../../app/contracts/side-tray/index.ts'
-import type { SideTrayRendererState } from '../../../../platform/state-sync/contract/projections.ts'
+import type { SideTrayProjection } from '../../../../platform/state-sync/contract/projections.ts'
 import type { BalanceSummary } from '../../../asset-data/domain/balance/index.ts'
 import { cleanAddress } from './sendTransaction.ts'
 import type { SendAccountViewModel, SendSubmissionViewModel } from './sendViewModel.ts'
@@ -14,8 +14,8 @@ export function resolveSendRouteAsset(
   return resolveSendAssetFromRouteAssetId(assetId, balances)
 }
 
-type SparseOperation = Omit<SideTrayRendererState['operations'][string], 'entityRefs'> & {
-  entityRefs?: SideTrayRendererState['operations'][string]['entityRefs']
+type SparseOperation = Omit<SideTrayProjection['operations'][string], 'entityRefs'> & {
+  entityRefs?: SideTrayProjection['operations'][string]['entityRefs']
 }
 
 export function selectSendAsset(
@@ -45,9 +45,9 @@ export function projectSendSubmission({
   operationId,
   operations
 }: {
-  activity: SideTrayRendererState['activity']
+  activity: SideTrayProjection['activity']
   operationId?: string
-  operations: SideTrayRendererState['operations']
+  operations: SideTrayProjection['operations']
 }): SendSubmissionViewModel {
   if (!operationId) {
     return { error: '', status: '', submitting: false }

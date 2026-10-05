@@ -6,7 +6,7 @@ import { formatUnits, isUnlimited, toBigInt } from '../../../../../shared/domain
 import { AddressIdentity } from '../../../../../shared/renderer/ui/AddressIdentity.tsx'
 import type { SourceValue } from '../../format/displayValue.ts'
 import useCopiedMessage from '../../hooks/useCopiedMessage.ts'
-import type { RequestRendererCapabilities } from '../../requestCapabilities.ts'
+import type { RequestTrayCapabilities } from '../../requestCapabilities.ts'
 import { useRequestView, type RequestViewState } from '../../requestView.tsx'
 import type { RequestViewStep } from '../../requestView.tsx'
 import { Cluster, ClusterRow, ClusterValue } from '../../ui/Cluster.tsx'
@@ -25,7 +25,7 @@ type PermitChainData = {
 }
 
 type PermitOverviewProps = {
-  capabilities: Pick<RequestRendererCapabilities, 'external' | 'panel'>
+  capabilities: Pick<RequestTrayCapabilities, 'external' | 'panel'>
   identities?: AddressIdentities
   req: PermitRequestView
   chainData: PermitChainData
@@ -34,13 +34,13 @@ type PermitOverviewProps = {
 }
 
 type EditPermitProps = {
-  capabilities: Pick<RequestRendererCapabilities, 'external' | 'review'>
+  capabilities: Pick<RequestTrayCapabilities, 'external' | 'review'>
   identities?: AddressIdentities
   req: PermitRequestView
 }
 
 type PermitRequestProps = {
-  capabilities: Pick<RequestRendererCapabilities, 'external' | 'panel' | 'review'>
+  capabilities: Pick<RequestTrayCapabilities, 'external' | 'panel' | 'review'>
   req: PermitRequestView
   originName: string
   favicon?: string

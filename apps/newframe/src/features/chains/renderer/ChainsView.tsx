@@ -9,11 +9,11 @@ import { Text } from '@newframe/ui/text'
 import React from 'react'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections.ts'
+import type { MainTrayProjection } from '../../../platform/state-sync/contract/projections.ts'
 import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay.tsx'
 import { formatUsdRate } from '../../asset-data/domain/balance/index.ts'
 
-type ChainConnection = WalletRendererState['chains']['ethereum'][number]['connection']
+type ChainConnection = MainTrayProjection['chains']['ethereum'][number]['connection']
 
 const chainRecipe = cva({
   base: { overflow: 'hidden', borderRadius: 'card', borderWidth: 'thin', borderStyle: 'solid' },

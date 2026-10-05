@@ -1,17 +1,15 @@
 import { createStore, type StoreApi } from 'zustand/vanilla'
 
-import type { RendererState, StateConnectionResult, StateMessage } from '../contract/protocol.ts'
+import type { TrayState, StateConnectionResult, StateMessage } from '../contract/protocol.ts'
 
-export interface RendererStateConnectionClient {
+export interface TrayStateConnectionClient {
   connectState(handler: (message: StateMessage) => void): Promise<StateConnectionResult>
   disconnectState(): Promise<StateConnectionResult>
 }
 
 // Main validates every message against this window's projection schema before
 // sending, so TState is asserted here instead of being parsed a second time.
-export async function connectRendererState<TState extends RendererState>(
-  client: RendererStateConnectionClient
-) {
+export async function connectTrayState<TState extends TrayState>(client: TrayStateConnectionClient) {
   let store: StoreApi<TState> | undefined
   let resolveStore!: (store: StoreApi<TState>) => void
   const initialStore = new Promise<StoreApi<TState>>((resolve) => {

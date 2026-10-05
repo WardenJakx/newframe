@@ -3,7 +3,7 @@ import { Text } from '@newframe/ui/text'
 import type { AirGapRequestReference } from '../../../platform/signing/domain/airgap.ts'
 import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay.tsx'
 import Requests from './Account/Requests/index.tsx'
-import type { RequestRendererCapabilities } from './requestCapabilities.ts'
+import type { RequestTrayCapabilities } from './requestCapabilities.ts'
 import { SafeProposalDetailsView } from './SafeProposalDetailsView.tsx'
 import { useSafeQueue } from './SafeQueue.tsx'
 import { SafeQueueView } from './SafeQueueView.tsx'
@@ -18,7 +18,7 @@ export function RequestsOverlayView({
 }: {
   accountId: string
   showRpcRequests?: boolean
-  capabilities: Pick<RequestRendererCapabilities, 'panel' | 'review' | 'safe' | 'external'>
+  capabilities: Pick<RequestTrayCapabilities, 'panel' | 'review' | 'safe' | 'external'>
   onBack: () => void
   onRecoverSigner?: (signerId: string) => void
   onAirGapSigning?: (reference: AirGapRequestReference) => void

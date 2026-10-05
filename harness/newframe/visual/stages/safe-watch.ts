@@ -521,7 +521,7 @@ export const safeWatchStage: VisualStage = {
       await accounts.getByRole('button', { name: 'Close accounts', exact: true }).click()
       runtime.evidence('safeRemoved', true)
     } catch (error) {
-      // Preserve the failed review before account cleanup removes it from the renderer.
+      // Preserve the failed review before account cleanup removes it from the tray.
       await runtime.screenshot(tray, 'debug-safe-review.png').catch(() => undefined)
       throw error
     } finally {

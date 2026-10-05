@@ -1,12 +1,12 @@
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections.ts'
+import type { MainTrayProjection } from '../../../platform/state-sync/contract/projections.ts'
 import { shortAddress } from '../../../shared/renderer/ui/AddressIdentity.tsx'
 import { accountDisplayType, signerTypeLabel } from '../../../shared/renderer/ui/signerPresentation.ts'
 import type { createBalanceSummarySelector } from '../../asset-data/domain/balance/index.ts'
 import { formatUsdRate } from '../../asset-data/domain/balance/index.ts'
 
-export type AccountProjection = WalletRendererState['accounts'][string]
-export type SignerProjection = WalletRendererState['signers'][string]
-export type ProfileProjection = WalletRendererState['profiles'][number]
+export type AccountProjection = MainTrayProjection['accounts'][string]
+export type SignerProjection = MainTrayProjection['signers'][string]
+export type ProfileProjection = MainTrayProjection['profiles'][number]
 
 type BalanceSummarySelector = ReturnType<typeof createBalanceSummarySelector>
 
@@ -100,13 +100,13 @@ function isLastAccountForSeedPhrase(
 
 export function accountBalanceLabel(input: {
   account: AccountProjection
-  assetRates: WalletRendererState['assetRates']
-  balances: WalletRendererState['balances']
-  chains: WalletRendererState['chains']['ethereum']
-  chainsMeta: WalletRendererState['chainsMeta']['ethereum']
+  assetRates: MainTrayProjection['assetRates']
+  balances: MainTrayProjection['balances']
+  chains: MainTrayProjection['chains']['ethereum']
+  chainsMeta: MainTrayProjection['chainsMeta']['ethereum']
   selectBalanceSummaries: BalanceSummarySelector
   showTestnets: boolean
-  tokens: WalletRendererState['tokens']
+  tokens: MainTrayProjection['tokens']
 }) {
   const rawBalances = input.balances[input.account.address]
   if (!Array.isArray(rawBalances) || rawBalances.length === 0) {
@@ -131,18 +131,18 @@ export function accountBalanceLabel(input: {
 export function buildAccountListModel(input: {
   accountOrder: readonly string[]
   accounts: Record<string, AccountProjection | undefined>
-  assetRates: WalletRendererState['assetRates']
-  balances: WalletRendererState['balances']
+  assetRates: MainTrayProjection['assetRates']
+  balances: MainTrayProjection['balances']
   currentAccountId: string
-  chains: WalletRendererState['chains']['ethereum']
-  chainsMeta: WalletRendererState['chainsMeta']['ethereum']
+  chains: MainTrayProjection['chains']['ethereum']
+  chainsMeta: MainTrayProjection['chainsMeta']['ethereum']
   profiles: ProfileProjection[]
   query: string
   selectBalanceSummaries: BalanceSummarySelector
   showLocalNameWithENS: boolean
   showTestnets: boolean
   signers: Record<string, SignerProjection | undefined>
-  tokens: WalletRendererState['tokens']
+  tokens: MainTrayProjection['tokens']
 }): AccountListModel {
   const items = orderedAccountIds(input.accounts, input.accountOrder).flatMap((id): AccountListItem[] => {
     const account = input.accounts[id]

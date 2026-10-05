@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
 
 import { render, screen, waitFor } from '../../../../../../test/support/componentSetup.tsx'
-import { registerTestRuntimeFixture } from '../../../../../../test/support/rendererClient.ts'
+import { registerTestRuntimeFixture } from '../../../../../../test/support/trayClient.ts'
 import { walletState } from '../../../../../platform/state-sync/renderer/fixtures.test-support.ts'
 import { createHomeCapability } from '../homeCapability.ts'
 import { HomeUiProvider, useHomeUiStore } from '../state/HomeUiProvider.tsx'
