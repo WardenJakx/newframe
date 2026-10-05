@@ -8,7 +8,9 @@ import type { SafeProposal } from '@newframe/schema/safe'
 import { HDNodeWallet, ZeroAddress } from 'ethers'
 
 import { createSafeHandler } from '../../scripts/local-safe/handler.ts'
+import { createChainsStatePort, createLegacyChainMutations } from '../../src/app/main/composition/chains.ts'
 import { RpcIpcHandlers } from '../../src/app/main/ipc-handlers/rpc.ts'
+import { createChainsService } from '../../src/core/services/chains/service.ts'
 import { TransactionHistoryService } from '../../src/core/services/transactions/history.ts'
 import { getProfileAccountIds } from '../../src/features/accounts/domain/profiles.ts'
 import { createProductionAirGapService } from '../../src/features/accounts/main/airgap/production.ts'
@@ -16,7 +18,6 @@ import { Accounts } from '../../src/features/accounts/main/index.ts'
 import type { AccountsRuntime } from '../../src/features/accounts/main/runtime.ts'
 import { createSafeTransactionService } from '../../src/features/accounts/main/safeTransaction.ts'
 import { resolveAssetRate } from '../../src/features/asset-data/domain/asset/index.ts'
-import { Chains } from '../../src/features/chains/main/index.ts'
 import { createRequestApprovalAdapter } from '../../src/features/connections/main/provider/infrastructure/production.ts'
 import { createProviderProxyConnection } from '../../src/features/connections/main/provider/proxy.ts'
 import { createProviderStatePort } from '../../src/features/connections/main/provider/statePort.ts'
@@ -104,8 +105,19 @@ function integrationFixture({
   })
   const proxy = createProviderProxyConnection()
   const reveal = createRevealService(proxy, names)
-  const chains = new Chains(f.store, createInternet(fetch))
-  chains.send = rpc.send.bind(rpc)
+  const chainInternet = createInternet(fetch)
+  const { service: chains, gatewayRpc: chainRpc } = createChainsService({
+    state: createChainsStatePort(f.store),
+    legacyMutations: createLegacyChainMutations(f.store),
+    internet: {
+      isOpen: chainInternet.isOpen,
+      subscribe: (listener) => chainInternet.subscribe(listener),
+      request: chainInternet.request,
+      openWebSocket: (url, options) => chainInternet.openWebSocket(url, options)
+    },
+    rpcMatchesChain: async () => true
+  })
+  chainRpc.send = rpc.send.bind(rpc)
   const runtime: AccountsRuntime = {
     now: () => 1,
     signers: { get: (id) => (id === f.signer.id ? f.signer : undefined) },
@@ -232,6 +244,7 @@ function integrationFixture({
   const provider = new RpcIpcHandlers({
     accounts,
     chains,
+    chainRpc,
     proxy,
     state: createProviderStatePort(f.store, accounts),
     store: f.store,

@@ -5,10 +5,11 @@ import url from 'url'
 import { app, clipboard, ipcMain, net, protocol } from 'electron'
 import log from 'electron-log'
 
+import { createRpcChainMatcher } from '../../core/services/chains/rpcMatchesChain.ts'
 import { createProductionAccountOnboardingAdapters } from '../../features/accounts/main/accountOnboarding/production.ts'
 import { createProductionAccountsRuntime } from '../../features/accounts/main/production.ts'
 import { createProductionImageServiceAdapters } from '../../features/asset-data/main/images/production.ts'
-import { lookupChainlistIcon, rpcMatchesChain } from '../../features/chains/main/production.ts'
+import { lookupChainlistIcon } from '../../features/chains/main/production.ts'
 import { createProductionPortfolioAdapters } from '../../features/portfolio/main/production.ts'
 import { createProductionSecurityAdapters } from '../../features/security/main/production.ts'
 import { createBundledTokenService } from '../../features/tokens/main/tokens.ts'
@@ -117,7 +118,7 @@ const {
     store,
     trezorBridge: TrezorBridge
   }),
-  chain: { lookupChainIcon: lookupChainlistIcon, rpcMatchesChain }
+  chain: { lookupChainIcon: lookupChainlistIcon, rpcMatchesChain: createRpcChainMatcher(internet.request) }
 })
 const mainApp = createProductionMainApp({
   accountCapabilities,

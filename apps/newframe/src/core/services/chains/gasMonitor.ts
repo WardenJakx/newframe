@@ -1,6 +1,6 @@
 import { intToHex } from '@ethereumjs/util'
 
-import type { Block } from '../../chains/main/gas.ts'
+import type { Block } from './gas.ts'
 
 interface FeeHistoryResponse {
   baseFeePerGas: string[]

@@ -6,6 +6,7 @@ import type { RPCRequestPayload } from '@newframe/schema/rpc'
 import log from 'electron-log'
 
 import { gweiToHex } from '../../../../test/support/util.ts'
+import { createChainsStatePort } from '../../../app/main/composition/chains.ts'
 import { createInternet } from '../../../platform/internet/index.ts'
 import store from '../../../platform/state-store/index.ts'
 
@@ -183,14 +184,12 @@ const state = {
   }
 }
 
-await mock.module('../../connections/main/provider/connection.ts', () => ({
+await mock.module('./transport.ts', () => ({
   createJsonRpcProvider: (target: keyof typeof mockConnections) => mockConnections[target].connection,
   listenForProviderClose: mock(),
   sendRpcPayload: (provider: MockConnection, payload: RPCRequestPayload) =>
     provider.send(payload.method, payload.params)
 }))
-await mock.module('../../../platform/state-store/state/index.ts', () => () => state)
-await mock.module('../../accounts/main/index.ts', () => ({ updatePendingFees: mock() }))
 
 const mockConnections = {
   'https://ethereum-sepolia-rpc.publicnode.com': {
@@ -210,7 +209,7 @@ const mockConnections = {
   }
 }
 
-let chains: import('./index.ts').Chains
+let chains: import('./ports.ts').ChainRuntime
 
 const resetChainState = () => {
   store.setState((current) => {
@@ -234,9 +233,14 @@ beforeAll(async () => {
   resetChainState()
 
   // need to import this after mocks are set up
-  const { Chains } = await import('./index.ts')
+  const { createChainsRuntime } = await import('./runtime.ts')
   internet.setOpen(true)
-  chains = new Chains(store, internet)
+  chains = createChainsRuntime(createChainsStatePort(store), {
+    isOpen: internet.isOpen,
+    subscribe: (listener) => internet.subscribe(listener),
+    request: internet.request,
+    openWebSocket: (url, options) => internet.openWebSocket(url, options)
+  })
   chains.start()
 })
 
@@ -304,20 +308,20 @@ Object.values(mockConnections).forEach((chain) => {
 it('closes chain connections while the internet is closed and restores them when it opens', async () => {
   const sepolia = mockConnections['https://ethereum-sepolia-rpc.publicnode.com']
   await connectChain(sepolia)
-  expect(chains.connections.ethereum[sepolia.id]).toBeDefined()
+  expect(chains.hasConnection({ type: 'ethereum', id: Number(sepolia.id) })).toBeTrue()
 
   internet.setOpen(false)
 
-  expect(chains.connections.ethereum[sepolia.id]).toBeUndefined()
+  expect(chains.hasConnection({ type: 'ethereum', id: Number(sepolia.id) })).toBeFalse()
   expect(store.getState().main.chains.ethereum[Number(sepolia.id)].connection.primary.connected).toBe(false)
 
   store.getState().toggleConnection('ethereum', 137, 'primary', true)
-  expect(chains.connections.ethereum['137']).toBeUndefined()
+  expect(chains.hasConnection({ type: 'ethereum', id: 137 })).toBeFalse()
 
   internet.setOpen(true)
   await waitForConnection()
 
-  expect(chains.connections.ethereum[sepolia.id]).toBeDefined()
-  expect(chains.connections.ethereum['137']).toBeDefined()
+  expect(chains.hasConnection({ type: 'ethereum', id: Number(sepolia.id) })).toBeTrue()
+  expect(chains.hasConnection({ type: 'ethereum', id: 137 })).toBeTrue()
   store.getState().toggleConnection('ethereum', 137, 'primary', false)
 })

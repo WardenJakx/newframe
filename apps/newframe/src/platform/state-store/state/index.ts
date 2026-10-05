@@ -24,7 +24,7 @@ export type { Permission } from '@newframe/schema/permissions'
 export type { Balance } from '@newframe/schema/balances'
 export type { Token, TokenImage, TokenRecord } from '@newframe/schema/tokens'
 export type { NativeCurrency } from '@newframe/schema/native-currency'
-export type { Gas, GasFees } from '@newframe/schema/gas'
+export type { Gas } from '@newframe/schema/gas'
 
 export type { ActivityRecord } from '@newframe/schema/wallet-state'
 

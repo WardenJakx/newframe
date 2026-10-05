@@ -3,31 +3,26 @@ import EventEmitter from 'events'
 import type { Common } from '@ethereumjs/common'
 import { Hardfork } from '@ethereumjs/common'
 import { addHexPrefix } from '@ethereumjs/util'
+import type { ChainId as Chain } from '@newframe/schema/chains'
+import type { GasFees } from '@newframe/schema/gas'
 import type { EVMError, JSONRPCRequestPayload, RPCRequestCallback } from '@newframe/schema/rpc'
+import type { TransactionData } from '@newframe/schema/transactions'
 // status = Chain Mismatch, Not Connected, Connected, Standby, Syncing
 import log from 'electron-log'
 import { shallow } from 'zustand/vanilla/shallow'
 
-import type { InternetGate } from '../../../platform/internet/index.ts'
-import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
-import type { GasFees } from '../../../platform/state-store/state/index.ts'
+import { CHAIN_PRESETS } from '../../../features/chains/domain/chain/presets.ts'
+import chainConfig from './config.ts'
+import { createGasCalculator } from './gas.ts'
+import GasMonitor from './gasMonitor.ts'
+import { estimateL1GasCost } from './l1GasFees.ts'
+import type { ChainInternet, ChainsStatePort, ChainRuntime, ChainRules } from './ports.ts'
 import {
   createJsonRpcProvider,
   listenForProviderClose,
   sendRpcPayload,
   type EthersRpcProvider
-} from '../../connections/main/provider/connection.ts'
-import GasMonitor from '../../transactions/main/gasMonitor.ts'
-import { CHAIN_PRESETS } from '../domain/chain/presets.ts'
-import chainConfig from './config.ts'
-import { createGasCalculator } from './gas.ts'
-
-type CanonicalStoreApi = CanonicalStoreReader
-
-export interface Chain {
-  id: number
-  type: 'ethereum'
-}
+} from './transport.ts'
 
 type Priority = 'primary' | 'secondary'
 type ConnectionStatus =
@@ -135,9 +130,9 @@ class ChainConnection extends EventEmitter {
   private reconcilePending = false
 
   private currentChain() {
-    const chains = this.store.getState().main.chains[this.type] as Record<
+    const chains = this.state.read().chains[this.type] as Record<
       number,
-      ReturnType<typeof this.store.getState>['main']['chains']['ethereum'][number] | undefined
+      ReturnType<typeof this.state.read>['chains']['ethereum'][number] | undefined
     >
     return chains[Number(this.chainId)]
   }
@@ -149,7 +144,8 @@ class ChainConnection extends EventEmitter {
   constructor(
     type: Chain['type'],
     chainId: string,
-    private readonly store: CanonicalStoreApi
+    private readonly state: ChainsStatePort,
+    private readonly internet: ChainInternet
   ) {
     super()
     this.type = type
@@ -180,8 +176,8 @@ class ChainConnection extends EventEmitter {
 
   open() {
     this.unsubscribeChain?.()
-    this.unsubscribeChain = this.store.subscribe(
-      (state) => selectConnectionSettings(state.main.chains[this.type][Number(this.chainId)]),
+    this.unsubscribeChain = this.state.subscribe(
+      (state) => selectConnectionSettings(state.chains[this.type][Number(this.chainId)]),
       () => this.reconcile(),
       { equalityFn: shallow, fireImmediately: true }
     )
@@ -212,7 +208,7 @@ class ChainConnection extends EventEmitter {
 
     this.update(priority)
 
-    const provider = createJsonRpcProvider(target, {
+    const provider = createJsonRpcProvider(target, this.internet, {
       name: priority,
       origin: 'frame'
     })
@@ -297,12 +293,12 @@ class ChainConnection extends EventEmitter {
       const { status, connected, type, chain } = this.primary
       const details = { status, connected, type, chain }
       log.info(`Updating primary connection for chain ${this.chainId}`, details)
-      this.store.getState().setPrimary(this.type, Number(this.chainId), details)
+      this.state.setPrimary(this.type, Number(this.chainId), details)
     } else {
       const { status, connected, type, chain } = this.secondary
       const details = { status, connected, type, chain }
       log.info(`Updating secondary connection for chain ${this.chainId}`, details)
-      this.store.getState().setSecondary(this.type, Number(this.chainId), details)
+      this.state.setSecondary(this.type, Number(this.chainId), details)
     }
   }
 
@@ -391,8 +387,7 @@ class ChainConnection extends EventEmitter {
       ...(CHAIN_PRESETS.ethereum as Record<string, Record<string, string>>)[this.chainId]
     }
 
-    const { primary, secondary } =
-      this.store.getState().main.chains[this.type][Number(this.chainId)].connection
+    const { primary, secondary } = this.state.read().chains[this.type][Number(this.chainId)].connection
     const secondaryTarget =
       secondary.current === 'custom' ? secondary.custom : currentPresets[secondary.current]
 
@@ -522,33 +517,33 @@ class ChainConnection extends EventEmitter {
     if (feeMarket?.maxBaseFeePerGas && feeMarket.maxPriorityFeePerGas) {
       const gasPrice = parseInt(feeMarket.maxBaseFeePerGas) + parseInt(feeMarket.maxPriorityFeePerGas)
 
-      this.store.getState().setGasPrices(this.type, chainId, {
+      this.state.setGasPrices(this.type, chainId, {
         fast: addHexPrefix(gasPrice.toString(16))
       })
-      this.store.getState().setGasDefault(this.type, chainId, 'fast')
+      this.state.setGasDefault(this.type, chainId, 'fast')
     } else {
       const gas = await gasMonitor.getGasPrices()
-      const customLevel = this.store.getState().main.chainsMeta[this.type][chainId].gas.price.levels.custom
+      const customLevel = this.state.read().chainsMeta[this.type][chainId].gas.price.levels.custom
 
-      this.store.getState().setGasPrices(this.type, chainId, {
+      this.state.setGasPrices(this.type, chainId, {
         ...gas,
         custom: customLevel ?? gas.fast
       })
     }
 
-    this.store.getState().setGasFees(this.type, chainId, feeMarket)
+    this.state.setGasFees(this.type, chainId, feeMarket)
   }
 }
 
-export class Chains extends EventEmitter {
-  connections: Record<Chain['type'], Record<string, ChainConnection | undefined>>
+class ChainsRuntime extends EventEmitter {
+  private connections: Record<Chain['type'], Record<string, ChainConnection | undefined>>
   private startRuntime: () => void = () => {}
   private disposeRuntime: () => void = () => {}
   private started = false
 
   constructor(
-    private readonly store: CanonicalStoreApi,
-    internet: InternetGate
+    private readonly state: ChainsStatePort,
+    internet: ChainInternet
   ) {
     super()
     this.connections = { ethereum: {} }
@@ -563,23 +558,23 @@ export class Chains extends EventEmitter {
     const markConnectionInactive = (chainId: string, type: Chain['type'] = 'ethereum') => {
       const numericChainId = Number(chainId)
       const chain = (
-        this.store.getState().main.chains[type] as Record<
+        this.state.read().chains[type] as Record<
           number,
-          ReturnType<typeof this.store.getState>['main']['chains']['ethereum'][number] | undefined
+          ReturnType<typeof this.state.read>['chains']['ethereum'][number] | undefined
         >
       )[numericChainId]
       if (!chain) {
         return
       }
 
-      this.store.getState().setPrimary(type, numericChainId, {
+      this.state.setPrimary(type, numericChainId, {
         status: chain.connection.primary.on ? 'disconnected' : 'off',
         connected: false,
         type: '',
         chain: ''
       })
 
-      this.store.getState().setSecondary(type, numericChainId, {
+      this.state.setSecondary(type, numericChainId, {
         status: chain.connection.secondary.on ? 'disconnected' : 'off',
         connected: false,
         type: '',
@@ -620,7 +615,7 @@ export class Chains extends EventEmitter {
         return
       }
 
-      const chains = this.store.getState().main.chains
+      const chains = this.state.read().chains
 
       ;(Object.keys(this.connections) as Chain['type'][]).forEach((type) => {
         const connections = this.connections[type]
@@ -636,7 +631,7 @@ export class Chains extends EventEmitter {
         Object.keys(chains[type]).forEach((chainId) => {
           const chainConfig = chains[type][Number(chainId)]
           if (chainConfig.on && !connections[chainId]) {
-            const connection = new ChainConnection(type, chainId, this.store)
+            const connection = new ChainConnection(type, chainId, this.state, internet)
             connections[chainId] = connection
 
             connection.on('connect', (...args: unknown[]) => {
@@ -683,9 +678,9 @@ export class Chains extends EventEmitter {
     this.startRuntime = () => {
       updateConnections()
       unsubscribeInternet = internet.subscribe(handleInternetChange)
-      unsubscribeChains = this.store.subscribe(
+      unsubscribeChains = this.state.subscribe(
         (state) =>
-          Object.values(state.main.chains.ethereum)
+          Object.values(state.chains.ethereum)
             .map((chain) => `${chain.id}:${chain.on}`)
             .sort()
             .join(','),
@@ -745,6 +740,33 @@ export class Chains extends EventEmitter {
     }
   }
 
+  hasConnection(chain: Chain) {
+    return Boolean(this.connections[chain.type]?.[chain.id])
+  }
+
+  isConnected(chain: Chain) {
+    const connection = this.connections[chain.type]?.[chain.id]
+    return Boolean(connection && (connection.primary.connected || connection.secondary.connected))
+  }
+
+  transactionRules(chain: Chain): ChainRules | undefined {
+    const connection = this.connections[chain.type]?.[chain.id]
+    return connection ? { isActivatedEIP: (eip) => connection.chainConfig.isActivatedEIP(eip) } : undefined
+  }
+
+  async estimateL1GasCost(txData: TransactionData) {
+    const { chainId, type, ...tx } = txData
+    const txRequest = { ...tx, type: parseInt(type, 16), chainId: parseInt(chainId, 16) }
+    const connection = this.connections.ethereum[txRequest.chainId]
+    const connectedProvider = connection?.primary.connected
+      ? connection.primary.provider
+      : connection?.secondary.provider
+    if (!connectedProvider) {
+      return 0n
+    }
+    return estimateL1GasCost(connectedProvider, txRequest)
+  }
+
   async refreshGasFees(targetChain: Chain) {
     const { type, id } = targetChain
     const connection = this.connections[type]?.[id]
@@ -754,5 +776,28 @@ export class Chains extends EventEmitter {
     }
 
     await connection.refreshGasFees()
+  }
+}
+
+export function createChainsRuntime(state: ChainsStatePort, internet: ChainInternet): ChainRuntime {
+  const runtime = new ChainsRuntime(state, internet)
+  return {
+    hasConnection: (chain) => runtime.hasConnection(chain),
+    isConnected: (chain) => runtime.isConnected(chain),
+    transactionRules: (chain) => runtime.transactionRules(chain),
+    estimateL1GasCost: (transaction) => runtime.estimateL1GasCost(transaction),
+    refreshGasFees: (chain) => runtime.refreshGasFees(chain),
+    send: (payload, respond, chain) => runtime.send(payload, respond, chain),
+    on: (event, listener) => {
+      runtime.on(event, listener)
+    },
+    off: (event, listener) => {
+      runtime.off(event, listener)
+    },
+    once: (event, listener) => {
+      runtime.once(event, listener)
+    },
+    start: () => runtime.start(),
+    dispose: () => runtime.dispose()
   }
 }

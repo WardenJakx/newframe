@@ -9,8 +9,8 @@ import {
 import type { JsonRpcApiProvider, JsonRpcPayload } from 'ethers'
 import { FetchRequest, JsonRpcProvider, WebSocketProvider } from 'ethers'
 
-import { ethersGetUrl } from '../../../../platform/internet/ethers.ts'
-import { internet } from '../../../../platform/internet/index.ts'
+import { ethersGetUrl } from '../../../platform/internet/ethers.ts'
+import type { ChainTransportInternet } from './ports.ts'
 
 export type RpcParams = readonly unknown[] | Record<string, unknown>
 
@@ -122,7 +122,11 @@ export class FrameWebSocketProvider extends WebSocketProvider {
   }
 }
 
-export function createJsonRpcProvider(target: string, options: ProviderOptions = {}): EthersRpcProvider {
+export function createJsonRpcProvider(
+  target: string,
+  internet: ChainTransportInternet,
+  options: ProviderOptions = {}
+): EthersRpcProvider {
   const providerOptions = options.interval
     ? { batchMaxCount: 1, pollingInterval: options.interval }
     : { batchMaxCount: 1 }

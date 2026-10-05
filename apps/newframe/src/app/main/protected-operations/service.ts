@@ -1,6 +1,7 @@
 import crypto from 'crypto'
 
 import { recoverTypedSignature } from '@metamask/eth-sig-util'
+import type { ChainId as Chain } from '@newframe/schema/chains'
 import type {
   AccountRequest,
   TransactionRequest,
@@ -12,7 +13,7 @@ import { type TransactionApprovalAdjustments } from '@newframe/schema/transactio
 import type { TransactionData } from '@newframe/schema/transactions'
 import log from 'electron-log'
 
-import type { Chain, Chains } from '../../../features/chains/main/index.ts'
+import type { GatewayChainRpc } from '../../../core/services/chains/ports.ts'
 import type { AccountRequestPort } from '../../../features/connections/main/provider/accountRequestPort.ts'
 import {
   feeTotalOverMax,
@@ -38,7 +39,7 @@ const arrayValue = (value: unknown): unknown[] => (Array.isArray(value) ? value 
 export class ProtectedOperationsService {
   constructor(
     private readonly accounts: AccountRequestPort,
-    private readonly connection: Pick<Chains, 'send'>,
+    private readonly connection: GatewayChainRpc,
     private readonly store: CanonicalStoreReader,
     private readonly getNonce: (data: TransactionData, respond: RPCRequestCallback) => void,
     private readonly exportSecret?: (address: string) => Promise<{ type: string; value: string }>

@@ -11,7 +11,7 @@ import multicall, {
 import type { Token } from '../../../../../platform/state-store/state/index.ts'
 import erc20TokenAbi from '../../../../../shared/domain/erc20-abi.ts'
 import { formatUnits } from '../../../../../shared/domain/units.ts'
-import type { Eip1193Provider } from '../../../../connections/main/provider/connection.ts'
+import type { Eip1193Provider } from '../../../../connections/main/provider/frameProvider.ts'
 import type { TokensByChain } from './reducers.ts'
 import { groupByChain } from './reducers.ts'
 

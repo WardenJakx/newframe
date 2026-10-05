@@ -2,12 +2,12 @@ import type { Account } from '@newframe/schema/accounts'
 import { Notification } from 'electron'
 
 import type { RpcIpcHandlers } from '../../../app/main/ipc-handlers/rpc.ts'
+import type { ChainsService } from '../../../core/services/chains/ports.ts'
 import { createOneResultCallbackBoundary } from '../../../platform/callbacks/oneResult.ts'
 import { createBlockExplorerOpener } from '../../../platform/desktop/windows/window.ts'
 import type { CanonicalStore } from '../../../platform/state-store/actions.ts'
 import type store from '../../../platform/state-store/index.ts'
 import { arraysEqual } from '../../../shared/domain/collections.ts'
-import type { Chains } from '../../chains/main/index.ts'
 import type { Accounts } from './index.ts'
 import type { AccountsRuntime } from './runtime.ts'
 import type { AccountServicePorts } from './service.ts'
@@ -39,11 +39,11 @@ export function createProductionAccountsRuntime(
 function addressHasTransactions(
   address: string,
   chainId: number,
-  chains: Chains,
+  chains: Pick<ChainsService, 'read'>,
   callbacks: ReturnType<typeof createOneResultCallbackBoundary>
 ) {
   return callbacks.run<boolean | null>((done) => {
-    chains.send(
+    chains.read(
       {
         id: `address-usage:${chainId}:${address}`,
         jsonrpc: '2.0',
@@ -66,7 +66,7 @@ function addressHasTransactions(
 }
 
 export function createAddressChainUsageAdapter(
-  chains: Chains,
+  chains: Pick<ChainsService, 'read'>,
   canonicalStore: { getState(): Pick<CanonicalStore, 'main'> }
 ): AccountServicePorts['addressChainUsage'] & { dispose(): void } {
   const callbacks = createOneResultCallbackBoundary()

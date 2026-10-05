@@ -5,7 +5,7 @@ import type { RPC } from '@newframe/schema/rpc'
 import { Interface, ZeroAddress, dnsEncode, ensNormalize, getAddress, isAddress, namehash } from 'ethers'
 import type { Result } from 'ethers'
 
-import { createProxyProvider } from '../../connections/main/provider/connection.ts'
+import { createProxyProvider } from '../../connections/main/provider/frameProvider.ts'
 import type { ProviderProxyConnection } from '../../connections/main/provider/proxy.ts'
 
 const MAINNET_CHAIN_ID = '0x1'

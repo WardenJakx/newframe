@@ -5,7 +5,7 @@ import { createSafeSimulationRpc } from './simulation.ts'
 it('routes reads to the selected chain and rejects write methods', async () => {
   const sent: unknown[] = []
   const rpc = createSafeSimulationRpc({
-    send(payload, callback, target) {
+    read(payload, callback, target) {
       sent.push({ payload, target })
       callback({ id: payload.id, jsonrpc: '2.0', result: '0x12' })
     }
@@ -22,7 +22,7 @@ it('routes reads to the selected chain and rejects write methods', async () => {
 
 it('settles reads when the RPC times out or the caller aborts', async () => {
   for (const reason of ['timeout', 'abort']) {
-    const rpc = createSafeSimulationRpc({ send: () => undefined }, { timeoutMs: 5 })
+    const rpc = createSafeSimulationRpc({ read: () => undefined }, { timeoutMs: 5 })
     const controller = new AbortController()
     const pending = rpc.request(1, 'eth_chainId', [], controller.signal)
     if (reason === 'abort') {
@@ -36,7 +36,7 @@ it('settles reads when the RPC times out or the caller aborts', async () => {
 it('pins metadata calls and rejects write methods through the metadata compatibility port', async () => {
   const methods: unknown[] = []
   const rpc = createSafeSimulationRpc({
-    send(payload, done, target) {
+    read(payload, done, target) {
       methods.push({ payload, target })
       done({ id: payload.id, jsonrpc: '2.0', result: '0x' })
     }

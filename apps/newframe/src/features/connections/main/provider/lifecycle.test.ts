@@ -4,8 +4,8 @@ import EventEmitter from 'events'
 import type { RPCRequestCallback, RPCResponsePayload } from '@newframe/schema/rpc'
 
 import { RpcIpcHandlers } from '../../../../app/main/ipc-handlers/rpc.ts'
+import type { ChainsService, ChainRef } from '../../../../core/services/chains/ports.ts'
 import createCanonicalStore from '../../../../platform/state-store/createCanonicalStore.ts'
-import type { Chains } from '../../../chains/main/index.ts'
 import type { AccountRequestPort } from './accountRequestPort.ts'
 import { createProxyProvider } from './frameProvider.ts'
 import { createProviderProxyConnection } from './proxy.ts'
@@ -40,10 +40,10 @@ function createRequestContinuations() {
 
 function createProviderFixture(chainId?: number, start = false, proxy = new EventEmitter()) {
   const connection = Object.assign(new EventEmitter(), {
-    connections: { ethereum: chainId ? { [chainId]: {} } : {} },
+    hasConnection: (chain: ChainRef) => chain.id === chainId,
     refreshGasFees: async () => {},
     send: () => {}
-  }) as unknown as Chains
+  })
   const store = createCanonicalStore(memoryStorage).store
   if (chainId) {
     store.setState((state) => {
@@ -53,7 +53,8 @@ function createProviderFixture(chainId?: number, start = false, proxy = new Even
   const requests = createRequestContinuations()
   const provider = new RpcIpcHandlers({
     accounts: {} as AccountRequestPort,
-    chains: connection,
+    chains: connection as unknown as ChainsService,
+    chainRpc: { send: connection.send },
     proxy: proxy as never,
     state: createProviderStatePort(store, { refreshBalances: () => {} }),
     store,

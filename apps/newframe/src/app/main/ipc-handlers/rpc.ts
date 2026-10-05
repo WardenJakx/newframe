@@ -3,6 +3,7 @@ import EventEmitter from 'events'
 
 import { addHexPrefix, intToHex } from '@ethereumjs/util'
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
+import type { ChainId as Chain } from '@newframe/schema/chains'
 import { JsonRpcResponseSchema } from '@newframe/schema/json-rpc'
 import type {
   TransactionRequest,
@@ -36,11 +37,9 @@ import { getAddress, isAddress } from 'ethers'
 import { shallow } from 'zustand/shallow'
 
 import packageFile from '../../../../package.json' with { type: 'json' }
+import type { ChainsService, GatewayChainRpc, ChainEvents } from '../../../core/services/chains/ports.ts'
 import { hasAddress } from '../../../features/accounts/domain/index.ts'
 import type { SafeTransactionPort } from '../../../features/accounts/main/safeTransactionPort.ts'
-import type { Chains } from '../../../features/chains/main/index.ts'
-import type { Chain } from '../../../features/chains/main/index.ts'
-import { estimateL1GasCost } from '../../../features/chains/main/l1GasFees.ts'
 import { activeExtensionAccountId } from '../../../features/connections/domain/extensionAccess.ts'
 import type { OriginsService } from '../../../features/connections/main/origins.ts'
 import type { AccountRequestPort } from '../../../features/connections/main/provider/accountRequestPort.ts'
@@ -145,7 +144,8 @@ export interface RpcIpcHandlerDependencies {
   exportSecret?: (address: string) => Promise<{ type: string; value: string }>
   origins?: Pick<OriginsService, 'hasAccountAccessGrant'>
   accounts: AccountRequestPort
-  chains: Chains
+  chains: ChainsService
+  chainRpc: GatewayChainRpc
   lookupChainIcon?: (chainId: number) => Promise<string>
   proxy: ProviderProxyConnection
   state: ProviderStatePort
@@ -180,7 +180,8 @@ export class RpcIpcHandlers extends EventEmitter {
   private readonly rpcOrigins: RpcIpcHandlerDependencies['origins']
   private readonly dispatchRpc: ReturnType<typeof createRpcGateway>
   private readonly accounts: AccountRequestPort
-  readonly connection: Chains
+  readonly connection: ChainsService
+  private readonly chainRpc: GatewayChainRpc
   private readonly lookupChainIcon?: (chainId: number) => Promise<string>
   private readonly proxy: ProviderProxyConnection
   private readonly state: ProviderStatePort
@@ -195,6 +196,7 @@ export class RpcIpcHandlers extends EventEmitter {
     origins,
     accounts,
     chains,
+    chainRpc,
     lookupChainIcon,
     proxy,
     state,
@@ -207,7 +209,7 @@ export class RpcIpcHandlers extends EventEmitter {
     super()
     this.protectedOperations = new ProtectedOperationsService(
       accounts,
-      chains,
+      chainRpc,
       store,
       (data, respond) => this.getNonce(data, respond),
       exportSecret
@@ -221,6 +223,7 @@ export class RpcIpcHandlers extends EventEmitter {
     })
     this.accounts = accounts
     this.connection = chains
+    this.chainRpc = chainRpc
     this.lookupChainIcon = lookupChainIcon
     this.proxy = proxy
     this.state = state
@@ -243,7 +246,7 @@ export class RpcIpcHandlers extends EventEmitter {
     this.connected = false
   }
 
-  private readonly handleConnectionData = (chain: Chain, ...args: unknown[]) => {
+  private readonly handleConnectionData = (chain: ChainEvents['data'][0], ...args: unknown[]) => {
     if (((args[0] ?? {}) as { method?: string }).method === 'eth_subscription') {
       this.emit('data:subscription', ...args)
     }
@@ -251,7 +254,7 @@ export class RpcIpcHandlers extends EventEmitter {
     this.emit(`data:${chain.type}:${chain.id}`, ...args)
   }
 
-  private readonly handleConnectionError = (_chain: Chain, error: unknown) => {
+  private readonly handleConnectionError = (_chain: ChainEvents['error'][0], error: unknown) => {
     log.error(error)
   }
 
@@ -511,29 +514,8 @@ export class RpcIpcHandlers extends EventEmitter {
     res({ id: payload.id, jsonrpc: payload.jsonrpc, ...response })
   }
 
-  async getL1GasCost(txData: TransactionData) {
-    const { chainId, type, ...tx } = txData
-
-    const txRequest = {
-      ...tx,
-      type: parseInt(type, 16),
-      chainId: parseInt(chainId, 16)
-    }
-
-    const connections = this.connection.connections['ethereum'] as Record<
-      number,
-      (typeof this.connection.connections)['ethereum'][number] | undefined
-    >
-    const connection = connections[txRequest.chainId]
-    const connectedProvider = connection?.primary.connected
-      ? connection.primary.provider
-      : connection?.secondary.provider
-
-    if (!connectedProvider) {
-      return 0n
-    }
-
-    return estimateL1GasCost(connectedProvider, txRequest)
+  getL1GasCost(txData: TransactionData) {
+    return this.connection.estimateL1GasCost(txData)
   }
 
   private async getGasEstimate(rawTx: TransactionData) {
@@ -553,7 +535,7 @@ export class RpcIpcHandlers extends EventEmitter {
     }
 
     return new Promise<string>((resolve, reject) => {
-      this.connection.send(
+      this.chainRpc.send(
         payload,
         (response) => {
           if (response.error) {
@@ -580,7 +562,7 @@ export class RpcIpcHandlers extends EventEmitter {
       id: parseInt(rawTx.chainId, 16)
     }
 
-    this.connection.send(
+    this.chainRpc.send(
       { id: 1, jsonrpc: '2.0', method: 'eth_getTransactionCount', params: [rawTx.from, 'pending'] },
       res,
       targetChain
@@ -588,10 +570,11 @@ export class RpcIpcHandlers extends EventEmitter {
   }
 
   async fillTransaction(newTx: RPC.SendTransaction.TxParams, cb: Callback<TransactionMetadata>) {
-    const connection = this.connection.connections['ethereum'][parseInt(newTx.chainId, 16)]
-    const chainConnected = connection && (connection.primary.connected || connection.secondary.connected)
+    const targetChain: Chain = { type: 'ethereum', id: parseInt(newTx.chainId, 16) }
+    const chainRules = this.connection.transactionRules(targetChain)
+    const chainConnected = this.connection.isConnected(targetChain)
 
-    if (!chainConnected) {
+    if (!chainConnected || !chainRules) {
       return cb(new Error(`Chain ${newTx.chainId} not connected`))
     }
 
@@ -600,7 +583,6 @@ export class RpcIpcHandlers extends EventEmitter {
       const rawTx = getRawTx(newTx)
       await this.connection.refreshGasFees({ type: 'ethereum', id: parseInt(rawTx.chainId, 16) })
       const gas = gasFees(rawTx, this.store)
-      const { chainConfig } = connection
 
       const estimateGasLimit = async () => {
         try {
@@ -625,7 +607,7 @@ export class RpcIpcHandlers extends EventEmitter {
       const tx = { ...rawTx, gasLimit, recipientType }
 
       try {
-        const populatedTransaction = populateTransaction(tx, chainConfig, gas)
+        const populatedTransaction = populateTransaction(tx, chainRules, gas)
         const checkedTransaction = checkExistingNonceGas(populatedTransaction, this.store)
 
         log.verbose('Successfully populated transaction', checkedTransaction)
@@ -1107,7 +1089,7 @@ export class RpcIpcHandlers extends EventEmitter {
       cb(response)
     }
 
-    this.connection.send(payload, res, targetChain)
+    this.chainRpc.send(payload, res, targetChain)
   }
 
   _personalSign(
@@ -1688,8 +1670,8 @@ export class RpcIpcHandlers extends EventEmitter {
   private parseTargetChain(payload: RPCRequestPayload): Chain | undefined {
     if ('chainId' in payload) {
       const chainId = parseInt(payload.chainId ?? '', 16)
-      const chainConnection = this.connection.connections['ethereum'][chainId]
-      return chainConnection ? { type: 'ethereum', id: chainId } : undefined
+      const chain: Chain = { type: 'ethereum', id: chainId }
+      return this.connection.hasConnection(chain) ? chain : undefined
     }
 
     return this.getPayloadOrigin(payload)?.chain
@@ -1926,7 +1908,7 @@ export class RpcIpcHandlers extends EventEmitter {
       return resError({ code: -32601, message: 'Method not found' }, payload, res)
     }
     // Only explicitly registered chain methods can reach the upstream connection.
-    this.connection.send(rpcPayload, res, targetChain)
+    this.chainRpc.send(rpcPayload, res, targetChain)
   }
 
   override emit(type: string | symbol, ...args: unknown[]) {

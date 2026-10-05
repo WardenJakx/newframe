@@ -1,6 +1,7 @@
+import type { ChainId as Chain } from '@newframe/schema/chains'
+
 import type Signer from '../../../platform/signing/signers/Signer/index.ts'
 import type { NavigationEntry } from '../../../platform/state-store/state/index.ts'
-import type { Chain } from '../../chains/main/index.ts'
 
 export interface AccountsRuntime {
   navigation: {

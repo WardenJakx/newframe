@@ -42,6 +42,8 @@ import {
   type RequestSource
 } from '../../../../app/main/gateway/requestSource.ts'
 import type { RpcIpcHandlers, TransactionRequestContext } from '../../../../app/main/ipc-handlers/rpc.ts'
+import chainConfig from '../../../../core/services/chains/config.ts'
+import type { ChainsService, ChainRef } from '../../../../core/services/chains/ports.ts'
 import type { DecodedCallData } from '../../../../platform/chain-rpc/contracts/index.ts'
 import { Type as SignerType } from '../../../../platform/signing/domain/index.ts'
 import type {
@@ -52,8 +54,6 @@ import type { Chain as StoredChain, Gas, Permission } from '../../../../platform
 import type { Callback } from '../../../../shared/domain/async.ts'
 import { gweiToHex } from '../../../../shared/domain/hex.ts'
 import type { SafeTransactionPort } from '../../../accounts/main/safeTransactionPort.ts'
-import chainConfig from '../../../chains/main/config.ts'
-import type { Chains } from '../../../chains/main/index.ts'
 import type { AccountRequestPort } from './accountRequestPort.ts'
 import type { ProviderProxyConnection } from './proxy.ts'
 import type { Subscription } from './subscriptions.ts'
@@ -121,18 +121,25 @@ interface TestAccounts {
 const createChainSendMock = () =>
   mock(
     (
-      _payload: RPCRequestPayload,
+      _payload: JSONRPCRequestPayload,
       _res: RPCRequestCallback,
       _targetChain?: { type: 'ethereum'; id: number }
     ) => {}
   )
 
 interface TestChains {
+  hasConnection(chain: ChainRef): boolean
+  isConnected(chain: ChainRef): boolean
+  transactionRules(chain: ChainRef): { isActivatedEIP(eip: number): boolean } | undefined
+  estimateL1GasCost(tx: TransactionData): Promise<bigint>
   send: ReturnType<typeof createChainSendMock>
   refreshGasFees: ReturnType<typeof mock>
   connections: Record<
     'ethereum',
-    Record<number, { chainConfig: ReturnType<typeof chainConfig>; primary: { connected: boolean } }>
+    Record<
+      number,
+      { chainConfig: ReturnType<typeof chainConfig>; primary: { connected: boolean } } | undefined
+    >
   >
 }
 
@@ -335,8 +342,21 @@ const expectQueuedRequestRejection = (sendRequest: (callback: RPCRequestCallback
     void sendRequest(callback)
   })
 
-await mock.module('../../../chains/main/index.ts', () => {
-  const chains = { send: mock(), syncDataEmit: mock(), on: mock(), off: mock(), refreshGasFees: mock() }
+await mock.module('../../../../core/services/chains/runtime.ts', () => {
+  const chains: TestChains & { on: ReturnType<typeof mock>; off: ReturnType<typeof mock> } = {
+    send: createChainSendMock(),
+    on: mock(),
+    off: mock(),
+    refreshGasFees: mock(),
+    connections: { ethereum: {} },
+    hasConnection: (chain) => Boolean(chains.connections.ethereum[chain.id]),
+    isConnected: (chain) => Boolean(chains.connections.ethereum[chain.id]?.primary.connected),
+    transactionRules: (chain) => {
+      const common = chains.connections.ethereum[chain.id]?.chainConfig
+      return common ? { isActivatedEIP: (eip) => common.isActivatedEIP(eip) } : undefined
+    },
+    estimateL1GasCost: async () => 0n
+  }
   return { default: chains, ...chains }
 })
 await mock.module('../../../transactions/main/reveal.ts', () => {
@@ -358,7 +378,7 @@ await mock.module('./subscriptions.ts', () => ({
 beforeAll(async () => {
   log.transports.console.level = false
 
-  const connectionModule = (await import('../../../chains/main/index.ts')) as unknown as {
+  const connectionModule = (await import('../../../../core/services/chains/runtime.ts')) as unknown as {
     default: TestChains
   }
   connection = connectionModule.default
@@ -404,7 +424,8 @@ beforeAll(async () => {
   provider = new RpcIpcHandlers({
     origins: { hasAccountAccessGrant: async () => true },
     accounts: accounts as unknown as AccountRequestPort,
-    chains: connection as unknown as Chains,
+    chains: connection as unknown as ChainsService,
+    chainRpc: { send: (payload, respond, chain) => connection.send(payload, respond, chain) },
     lookupChainIcon,
     proxy: new EventEmitter() as ProviderProxyConnection,
     state: createProviderStatePort(store, { refreshBalances }),
@@ -486,7 +507,7 @@ afterEach(() => {
 })
 
 function mockConnectionError(message: string) {
-  connection.send.mockImplementation((payload: RPCRequestPayload, callback: RPCRequestCallback) =>
+  connection.send.mockImplementation((payload: JSONRPCRequestPayload, callback: RPCRequestCallback) =>
     callback({ id: payload.id, jsonrpc: payload.jsonrpc, error: { message, code: -1 } })
   )
 }
@@ -1949,7 +1970,7 @@ describe('#signAndSend', () => {
 
   describe('#fillTransaction', () => {
     beforeEach(() => {
-      connection.send.mockImplementationOnce((payload: RPCRequestPayload, cb: RPCRequestCallback) => {
+      connection.send.mockImplementationOnce((payload: JSONRPCRequestPayload, cb: RPCRequestCallback) => {
         expect(payload.method).toBe('eth_estimateGas')
         cb({ id: payload.id, jsonrpc: payload.jsonrpc, result: addHexPrefix((150000).toString(16)) })
       })
@@ -2032,7 +2053,7 @@ describe('#signAndSend', () => {
 
     describe('success', () => {
       beforeEach(() => {
-        connection.send.mockImplementation((payload: RPCRequestPayload, cb: RPCRequestCallback) => {
+        connection.send.mockImplementation((payload: JSONRPCRequestPayload, cb: RPCRequestCallback) => {
           expect(payload).toEqual(
             expect.objectContaining({
               id: request.payload.id,

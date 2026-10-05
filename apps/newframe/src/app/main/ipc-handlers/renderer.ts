@@ -43,7 +43,7 @@ export interface OperationServices {
   safes: import('../../../features/accounts/main/safe.ts').SafeService
   accountOnboarding: import('../../../features/accounts/main/accountOnboarding/service.ts').AccountOnboardingService
   agent: import('../../../features/agent-access/main/index.ts').AgentService
-  chains: import('../../../features/chains/main/service.ts').ChainService
+  chains: import('../../../core/services/chains/ports.ts').ChainsService
   portfolio: import('../../../features/portfolio/main/service.ts').PortfolioService
   profiles: import('../../../features/accounts/main/profiles/service.ts').ProfileService
   platform: import('../platform/service.ts').PlatformService

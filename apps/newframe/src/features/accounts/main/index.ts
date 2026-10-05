@@ -3,6 +3,7 @@ import EventEmitter from 'events'
 import { addHexPrefix, intToHex } from '@ethereumjs/util'
 import type { Account } from '@newframe/schema/accounts'
 import type { Address } from '@newframe/schema/address'
+import type { ChainId as Chain } from '@newframe/schema/chains'
 import type {
   AccountRequest,
   AccessRequest,
@@ -36,7 +37,6 @@ import { internalOriginId } from '../../../shared/domain/internal-origin.ts'
 import { cloneSerializable } from '../../../shared/domain/serialization.ts'
 import type { DataScanner } from '../../asset-data/main/externalData/index.ts'
 import { chainUsesOptimismFees } from '../../chains/domain/chain/fees.ts'
-import type { Chain } from '../../chains/main/index.ts'
 import type { NameResolutionService } from '../../name-resolution/main/nameResolution.ts'
 import type { ApprovalType } from '../../requests/domain/approval.ts'
 import type { PromptedRequestLifecyclePort } from '../../requests/main/service.ts'

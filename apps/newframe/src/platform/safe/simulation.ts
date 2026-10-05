@@ -1,4 +1,4 @@
-import type { Chains } from '../../features/chains/main/index.ts'
+import type { ChainsService } from '../../core/services/chains/ports.ts'
 import { createOneResultCallbackBoundary } from '../callbacks/oneResult.ts'
 import type { Erc20ProviderPort } from '../chain-rpc/contracts/erc20.ts'
 
@@ -34,7 +34,7 @@ const readMethods = new Set<SafeReadMethod>([
 ])
 
 export function createSafeSimulationRpc(
-  chains: Pick<Chains, 'send'>,
+  chains: Pick<ChainsService, 'read'>,
   { timeoutMs = 15_000 }: { timeoutMs?: number } = {}
 ): SafeSimulationRpc & { dispose(): void } {
   const callbacks = createOneResultCallbackBoundary()
@@ -52,7 +52,7 @@ export function createSafeSimulationRpc(
         }
         signal?.addEventListener('abort', abort, { once: true })
         timer = setTimeout(() => done(new Error('Safe simulation RPC timed out')), timeoutMs)
-        chains.send(
+        chains.read(
           { id: crypto.randomUUID(), jsonrpc: '2.0', method, params },
           (response) => {
             if (response.error) {

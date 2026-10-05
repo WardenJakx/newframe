@@ -21,9 +21,12 @@ describe('address chain usage infrastructure adapter', () => {
     const send = mock((_request: unknown, callback: (response: ChainResponse) => void) => {
       respond = callback
     })
-    const adapter = createAddressChainUsageAdapter({ send } as never, {
-      getState: () => state as never
-    })
+    const adapter = createAddressChainUsageAdapter(
+      { read: send },
+      {
+        getState: () => state as never
+      }
+    )
 
     const pending = adapter([address])
     respond({ result: '0x1' })
@@ -35,9 +38,12 @@ describe('address chain usage infrastructure adapter', () => {
   })
 
   it('rejects an in-flight RPC when the adapter is disposed', async () => {
-    const adapter = createAddressChainUsageAdapter({ send: mock(() => undefined) } as never, {
-      getState: () => state as never
-    })
+    const adapter = createAddressChainUsageAdapter(
+      { read: mock(() => undefined) },
+      {
+        getState: () => state as never
+      }
+    )
     const pending = adapter([address])
 
     adapter.dispose()

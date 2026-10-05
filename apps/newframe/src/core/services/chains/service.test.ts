@@ -1,8 +1,10 @@
 import { describe, expect, it, mock } from 'bun:test'
 
 import { createTestStore } from '../../../../test/support/createTestStore.ts'
-import { createBuiltInChains } from '../domain/chain/catalog.ts'
-import { createChainService } from './service.ts'
+import { createChainsStatePort, createLegacyChainMutations } from '../../../app/main/composition/chains.ts'
+import { createBuiltInChains } from '../../../features/chains/domain/chain/catalog.ts'
+import { createInternet } from '../../../platform/internet/index.ts'
+import { createChainsService } from './service.ts'
 
 describe('chain mutation service', () => {
   it('verifies activation and RPC preconditions before canonical mutation', async () => {
@@ -27,7 +29,18 @@ describe('chain mutation service', () => {
       }
     })
     const rpcMatchesChain = mock(async (_url: unknown, _chainId: number) => true)
-    const service = createChainService({ rpcMatchesChain, store: store.store })
+    const internet = createInternet(fetch)
+    const { service } = createChainsService({
+      rpcMatchesChain,
+      state: createChainsStatePort(store.store),
+      legacyMutations: createLegacyChainMutations(store.store),
+      internet: {
+        isOpen: internet.isOpen,
+        subscribe: (listener) => internet.subscribe(listener),
+        request: internet.request,
+        openWebSocket: (url, options) => internet.openWebSocket(url, options)
+      }
+    })
 
     expect(service.setActivation(99, true)).toBeFalse()
     expect(service.remove(99)).toBeFalse()

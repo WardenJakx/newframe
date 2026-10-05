@@ -1,7 +1,7 @@
 import log from 'electron-log'
 
 import { localApiPort } from '../../../../../platform/local-rpc/endpoint.ts'
-import createProvider from '../../../../connections/main/provider/connection.ts'
+import createProvider from '../../../../connections/main/provider/frameProvider.ts'
 
 log.transports.console.format = '[scanWorker] {h}:{i}:{s}.{ms} {text}'
 log.transports.console.level = process.env.LOG_WORKER ? 'debug' : 'info'

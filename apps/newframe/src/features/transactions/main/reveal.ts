@@ -15,7 +15,7 @@ import {
 } from '../../../platform/chain-rpc/contracts/index.ts'
 import type { Callback } from '../../../shared/domain/async.ts'
 import type { TransactionRequest } from '../../accounts/main/index.ts'
-import { createProxyProvider } from '../../connections/main/provider/connection.ts'
+import { createProxyProvider } from '../../connections/main/provider/frameProvider.ts'
 import type { ProviderProxyConnection } from '../../connections/main/provider/proxy.ts'
 import type { NameResolutionService } from '../../name-resolution/main/nameResolution.ts'
 import { MAX_HEX } from '../domain/constants.ts'

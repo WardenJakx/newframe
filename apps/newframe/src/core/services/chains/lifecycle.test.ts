@@ -1,13 +1,19 @@
 import { expect, it, spyOn } from 'bun:test'
 
+import { createChainsStatePort } from '../../../app/main/composition/chains.ts'
 import { createInternet } from '../../../platform/internet/index.ts'
 import store from '../../../platform/state-store/index.ts'
-import { Chains } from './index.ts'
+import { createChainsRuntime } from './runtime.ts'
 
 it('owns store and internet listeners through an idempotent lifecycle', () => {
   const subscribe = spyOn(store, 'subscribe')
   const internet = createInternet(fetch)
-  const chains = new Chains(store, internet)
+  const chains = createChainsRuntime(createChainsStatePort(store), {
+    isOpen: internet.isOpen,
+    subscribe: (listener) => internet.subscribe(listener),
+    request: internet.request,
+    openWebSocket: (url, options) => internet.openWebSocket(url, options)
+  })
 
   chains.start()
   const subscriptions = subscribe.mock.calls.length
@@ -19,6 +25,6 @@ it('owns store and internet listeners through an idempotent lifecycle', () => {
   chains.dispose()
   internet.setOpen(true)
 
-  expect(chains.connections.ethereum).toEqual({})
+  expect(chains.hasConnection({ type: 'ethereum', id: 1 })).toBeFalse()
   subscribe.mockRestore()
 })

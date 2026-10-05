@@ -6,6 +6,7 @@ const appRoot = path.resolve(import.meta.dirname, '..')
 const outputRoot = path.join(appRoot, 'coverage', 'critical-parts')
 const testFile = /\.(?:test|spec)\.[cm]?[jt]sx?$/
 const riskTests = [
+  /^src\/core\/services\/chains\//,
   /^\.\.\/\.\.\/packages\/schema\/src\//,
   /^src\/shared\/domain\/sideTray\.test\./,
   /^src\/app\/main\/(?:gateway|protected-operations)\//,
@@ -60,7 +61,11 @@ for (const [index, file] of tests.entries()) {
   let preload: string | undefined
   if (file.endsWith('.tsx')) {
     preload = './test/support/dom.preload.ts'
-  } else if (file.includes('/main/') || file.startsWith('src/platform/')) {
+  } else if (
+    file.includes('/main/') ||
+    file.startsWith('src/core/services/chains/') ||
+    file.startsWith('src/platform/')
+  ) {
     preload = './test/support/electron.preload.ts'
   }
   const command = [

@@ -1,5 +1,7 @@
 import log from 'electron-log'
 
+import type { ChainsService, ChainsPorts, GatewayChainRpc } from '../../../core/services/chains/ports.ts'
+import { createChainsService } from '../../../core/services/chains/service.ts'
 import { TransactionHistoryService } from '../../../core/services/transactions/history.ts'
 import { getProfileAccountIds } from '../../../features/accounts/domain/profiles.ts'
 import {
@@ -38,12 +40,6 @@ import {
   type ImageService,
   type ImageServiceAdapters
 } from '../../../features/asset-data/main/images/index.ts'
-import { Chains } from '../../../features/chains/main/index.ts'
-import {
-  createChainService,
-  type ChainService,
-  type ChainServicePorts
-} from '../../../features/chains/main/service.ts'
 import { createProductionOriginsService } from '../../../features/connections/main/origins.ts'
 import {
   createProviderRequestAdapter,
@@ -121,6 +117,7 @@ import {
   type PlatformService,
   type PlatformServicePorts
 } from '../platform/service.ts'
+import { createChainsStatePort, createLegacyChainMutations } from './chains.ts'
 import { createMainApp, type MainApp } from './createMainApp.ts'
 
 export interface ProductionMainAppDependencies {
@@ -130,7 +127,7 @@ export interface ProductionMainAppDependencies {
   provider: RpcIpcHandlers
   accounts: Accounts
   flashService: FlashService
-  chains: Chains
+  chains: ChainsService
   proxy: ProviderProxyConnection
   nameResolution: NameResolutionService
   accountCapabilities: ProductionAccountCapabilities
@@ -143,7 +140,7 @@ export interface ProductionMainAppDependencies {
   platformService: PlatformService
   settingsService: ReturnType<typeof createSettingsService>
   accountService: AccountService
-  chainService: ChainService
+  chainService: ChainsService
   tokenService: TokenService
   safeService: SafeService
   requestEditService: RequestEditService
@@ -172,7 +169,7 @@ export interface ProductionCapabilityAdapters {
     protectedOperations: { exportSecret(address: string): Promise<{ type: string; value: string }> }
     dispose(): void
   }
-  chain: Pick<ChainServicePorts, 'rpcMatchesChain'> & {
+  chain: Pick<ChainsPorts, 'rpcMatchesChain'> & {
     lookupChainIcon(chainId: number): Promise<string>
   }
 }
@@ -180,7 +177,8 @@ export interface ProductionCapabilityAdapters {
 function createProductionProvider(
   store: typeof import('../../../platform/state-store/index.ts').default,
   accounts: Accounts,
-  chains: Chains,
+  chains: ChainsService,
+  chainRpc: GatewayChainRpc,
   lookupChainIcon: (chainId: number) => Promise<string>,
   proxy: ProviderProxyConnection,
   reveal: RevealService,
@@ -193,6 +191,7 @@ function createProductionProvider(
     origins: createProductionOriginsService(store, accounts, requests),
     accounts,
     chains,
+    chainRpc,
     lookupChainIcon,
     proxy,
     state: createProviderStatePort(store, accounts),
@@ -243,7 +242,7 @@ export function createProductionCapabilities(
       resolveAccess: (requestId, approved) => agentService.resolveAgentAccessRequest(requestId, approved)
     },
     clock: { delay: (ms) => new Promise((resolve) => setTimeout(resolve, ms)) },
-    chain: adapters.chain,
+    chain: { rpcMatchesChain: (url, chainId) => chains.rpcMatchesChain(url, chainId) },
     provider: {
       approveSign: (request, context) => requestApprovals.approveSign(request, context),
       approveSignTypedData: (request, context) => requestApprovals.approveSignTypedData(request, context),
@@ -337,11 +336,22 @@ export function createProductionCapabilities(
     registerTokens: (tokens, options) => tokenService.register(tokens, options),
     requests: requestService
   })
-  const chains = new Chains(store, internet)
+  const { service: chains, gatewayRpc: chainRpc } = createChainsService({
+    state: createChainsStatePort(store),
+    legacyMutations: createLegacyChainMutations(store),
+    internet: {
+      isOpen: internet.isOpen,
+      subscribe: (listener) => internet.subscribe(listener),
+      request: internet.request,
+      openWebSocket: (url, options) => internet.openWebSocket(url, options)
+    },
+    rpcMatchesChain: (url, chainId) => adapters.chain.rpcMatchesChain(url, chainId)
+  })
   const provider = createProductionProvider(
     store,
     accounts,
     chains,
+    chainRpc,
     (chainId) => adapters.chain.lookupChainIcon(chainId),
     proxy,
     reveal,
@@ -401,7 +411,7 @@ export function createProductionCapabilities(
     signers: adapters.accountOnboarding.signers,
     store
   })
-  const chainService = createChainService({ ...adapters.chain, store })
+  const chainService = chains
   const safeRequests = new ProviderRequestPolicy(internet.request, { maxRetries: 0, minIntervalMs: 500 })
   const safeRpc = createSafeSimulationRpc(chains)
   const safeClient = createSafeClient({
@@ -574,7 +584,7 @@ function createProductionOperationServices(
   platformService: PlatformService,
   settingsService: ReturnType<typeof createSettingsService>,
   accountService: AccountService,
-  chainService: ChainService,
+  chainService: ChainsService,
   tokenService: TokenService,
   safeService: SafeService,
   requestEditService: RequestEditService,

@@ -354,7 +354,7 @@ beforeAll(async () => {
   )
   const handler = createSafeHandler({ ...seed, proposals: Object.values(proposals) })
   rpc = createSafeSimulationRpc({
-    send(payload, callback) {
+    read(payload, callback) {
       requests.push(payload.method)
       if (payload.method === 'debug_traceCall' && traceMode === 'unavailable') {
         callback({ id: payload.id, jsonrpc: '2.0', error: { code: -32601, message: 'Tracing disabled' } })

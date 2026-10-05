@@ -1,4 +1,3 @@
-import type { Common } from '@ethereumjs/common'
 import type { TypedTransaction, TypedTxData } from '@ethereumjs/tx'
 import { createTx } from '@ethereumjs/tx'
 import { addHexPrefix, intToHex } from '@ethereumjs/util'
@@ -7,10 +6,11 @@ import { TxClassification } from '@newframe/schema/request-records'
 import type { TransactionData } from '@newframe/schema/transactions'
 import { GasFeesSource } from '@newframe/schema/transactions'
 
+import chainConfig from '../../../core/services/chains/config.ts'
+import type { ChainRules } from '../../../core/services/chains/ports.ts'
 import type { AppVersion, SignerSummary } from '../../../platform/signing/signers/Signer/index.ts'
 import type { Gas } from '../../../platform/state-store/state/index.ts'
 import { isNonZeroHex } from '../../../shared/domain/hex.ts'
-import chainConfig from '../../chains/main/config.ts'
 import { maxTotalTransactionFee } from '../domain/fees.ts'
 import { typeSupportsBaseFee } from '../domain/index.ts'
 
@@ -92,7 +92,7 @@ function calculateMaxFeePerGas(maxBaseFee: string, maxPriorityFee: string) {
   return addHexPrefix(maxFeePerGas)
 }
 
-function populate(rawTx: TransactionData, chainConfig: Common, gas: Gas): TransactionData {
+function populate(rawTx: TransactionData, chainConfig: ChainRules, gas: Gas): TransactionData {
   const txData: TransactionData = { ...rawTx }
 
   // non-EIP-1559 case

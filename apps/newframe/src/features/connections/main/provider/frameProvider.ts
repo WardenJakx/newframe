@@ -18,7 +18,8 @@ import {
   type RpcPayload,
   type RpcResult,
   type SubscriptionPayload
-} from './rpc.ts'
+} from '../../../../core/services/chains/transport.ts'
+import { internet } from '../../../../platform/internet/index.ts'
 
 export interface Eip1193Provider {
   request<T = unknown>(payload: ProviderRequest): Promise<T>
@@ -337,7 +338,7 @@ class FrameProvider extends EventedRequestProvider {
     }
 
     const attempt = ++this.connectAttempt
-    const provider = createJsonRpcProvider(this.targets[index], this.options)
+    const provider = createJsonRpcProvider(this.targets[index], internet, this.options)
 
     this.currentProvider = provider
     this.attachProviderEvents(provider)
