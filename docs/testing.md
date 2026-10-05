@@ -1,6 +1,6 @@
 # Testing
 
-How Newframe is tested in the endgame described by [architecture.md](architecture.md). Names follow [CONTEXT.md](../CONTEXT.md).
+How Newframe is tested in the endgame described by [architecture.md](architecture.md). Names follow [GLOSSARY.md](../GLOSSARY.md).
 
 ## Approach
 

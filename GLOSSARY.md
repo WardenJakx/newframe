@@ -2,7 +2,9 @@
 
 Shared language for Newframe's product, the participants that request operations from it, the authority those participants carry, and the parts of the system that own each responsibility.
 
-## Product terms
+## Language
+
+### Product terms
 
 **Newframe**:
 The product as a whole: the desktop app, the extension, and the Newframe CLI.
@@ -68,7 +70,7 @@ _Avoid_: Selected network, active chain, dapp chain, origin chain
 The desktop app's local HTTP and WebSocket interface for programs on the same computer. It is distinct from the desktop app's connections to chains.
 _Avoid_: Local RPC, native RPC, provider
 
-## Participants
+### Participants
 
 **Human**:
 The person who controls the wallet and can approve a specific operation or delegate bounded authority.
@@ -94,7 +96,7 @@ _Avoid_: AI session
 A system outside the computer that Newframe fetches data from or submits to: a chain node, the Safe transaction service, a trading service, a portfolio or price source. It never requests operations. How far its responses are trusted is decided per remote service.
 _Avoid_: Provider, backend, API (alone)
 
-## Trust
+### Trust
 
 **Trust zone**:
 A region of the system whose code and data are trusted to the same degree. From least to most trusted: outside, relay, trays, core.
@@ -118,7 +120,7 @@ _Avoid_: Layer, check, guard
 The single part of the system allowed to change a piece of state or make a kind of decision. Every other part reads it or asks the owner.
 _Avoid_: Manager, controller
 
-## Authority
+### Authority
 
 **Request source**:
 The participant on whose behalf Newframe receives a request. A local API client can relay a request for another source, as the extension does for a dapp; an AI session supplies authority, not a requester.
@@ -172,7 +174,7 @@ _Avoid_: Permissions, trusted origins
 The state in which Newframe does nothing on anyone's behalf: the gateway admits no request except unlocking, the vault releases nothing, and nothing is sent to or read from a remote service. Newframe locks when the human locks it and when the computer's screen locks or it sleeps. Only the human can lift it.
 _Avoid_: App lock, logged out
 
-## Requests and operations
+### Requests and operations
 
 **Gateway operation**:
 A kind of thing Newframe can be asked to do, with a defined intent, scope, and authorization policy, independent of the transport or interface used to ask. Reads, grants, signing, and internal controls can each be gateway operations.
@@ -194,7 +196,7 @@ _Avoid_: Call, message, payload
 A request held until the human decides on it.
 _Avoid_: Pending operation, account request, prompt
 
-## Parts of the system
+### Parts of the system
 
 **Primitive**:
 A shared part of the desktop app that every feature relies on and none can bypass: the entry points, gateway, vault, wallet services, state, internet, and desktop UI.
@@ -236,7 +238,7 @@ _Avoid_: State sync, store mirror
 The primitive that owns the desktop app's native interface around the trays: the windows that hold them, the menu bar icon, menus, shortcuts, and launch. What is shown inside a tray belongs to the trays, not to the desktop UI. It makes no wallet decisions.
 _Avoid_: Desktop shell, shell, platform, desktop app (which is the whole application)
 
-## Testing
+### Testing
 
 **Virtual service**:
 A local stand-in for something outside the core, such as a remote service or a dapp, that speaks its real protocol so the core runs unmodified against it. It is the only thing a test replaces.
