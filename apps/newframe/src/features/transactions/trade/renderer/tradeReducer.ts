@@ -22,7 +22,7 @@ import type { FlashQuoteDisplay } from '../../../../app/contracts/operations.ts'
 import {
   parseCanonicalAssetId,
   resolveFlashAssetFromRouteAssetId
-} from '../../../../app/contracts/sidetray/index.ts'
+} from '../../../../app/contracts/side-tray/index.ts'
 import {
   TRADE_DEFAULT_DURATION_DAYS,
   TRADE_DEFAULT_DURATION_HOURS,

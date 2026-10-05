@@ -242,8 +242,8 @@ export class NewframeDriver {
     const assetId = parsed.searchParams.get('assetId') ?? undefined
     const chainIdValue = parsed.searchParams.get('chainId')
     const chainId = chainIdValue ? Number(chainIdValue) : undefined
-    await this.executeCommand(this.tray, { type: 'sidetray.open', feature, assetId, chainId })
-    const sideTray = await this.waitForElectronPage('bundle/sidetray.html')
+    await this.executeCommand(this.tray, { type: 'side-tray.open', feature, assetId, chainId })
+    const sideTray = await this.waitForElectronPage('bundle/side-tray.html')
     await this.waitForSideTrayRoute(sideTray, feature)
     return sideTray
   }
@@ -580,7 +580,7 @@ export class NewframeDriver {
     const tradeButton = this.tray.getByRole('button', { name: 'Trade', exact: true })
     await tradeButton.waitFor({ state: 'visible', timeout: 5_000 })
     await tradeButton.click()
-    const tradePage = await this.waitForElectronPage('bundle/sidetray.html')
+    const tradePage = await this.waitForElectronPage('bundle/side-tray.html')
     await this.waitForSideTrayRoute(tradePage, 'trade')
     await tradePage.getByRole('tab', { name: 'Market' }).waitFor({ state: 'visible', timeout: 15_000 })
     return tradePage

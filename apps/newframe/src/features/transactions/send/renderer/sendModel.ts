@@ -1,7 +1,7 @@
 import {
   resolveSendAssetFromRouteAssetId,
   toCanonicalAssetId
-} from '../../../../app/contracts/sidetray/index.ts'
+} from '../../../../app/contracts/side-tray/index.ts'
 import type { SideTrayRendererState } from '../../../../platform/state-sync/contract/projections.ts'
 import type { BalanceSummary } from '../../../asset-data/domain/balance/index.ts'
 import { cleanAddress } from './sendTransaction.ts'

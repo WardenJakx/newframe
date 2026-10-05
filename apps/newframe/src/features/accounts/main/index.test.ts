@@ -353,7 +353,7 @@ describe('#routeRequest', () => {
     requestLifecycle.create(respond, request.requestId)
     const forgedRequestSource = {
       kind: 'renderer',
-      role: 'wallet-ui',
+      role: 'main-tray',
       entrypoint: 'tray',
       webContentsId: 1,
       windowInstanceId: 'forged'

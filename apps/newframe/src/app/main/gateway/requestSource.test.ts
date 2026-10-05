@@ -29,8 +29,8 @@ describe('wallet action authority', () => {
   it('requires a request source minted by trusted transport code', () => {
     const forgedRenderer = {
       kind: 'renderer',
-      role: 'sidetray',
-      entrypoint: 'sidetray',
+      role: 'side-tray',
+      entrypoint: 'side-tray',
       webContentsId: 1,
       windowInstanceId: 'forged'
     }
@@ -43,8 +43,8 @@ describe('wallet action authority', () => {
 
   it('records renderer identity from the trusted request source rather than request fields', () => {
     const requestSource = createNewframeInternalSource({
-      clientType: 'sidetray',
-      entrypoint: 'sidetray',
+      clientType: 'side-tray',
+      entrypoint: 'side-tray',
       webContentsId: 42,
       windowInstanceId: 'window-42'
     })
@@ -57,8 +57,8 @@ describe('wallet action authority', () => {
         decision: 'prompt',
         requestSource: {
           kind: 'renderer',
-          role: 'sidetray',
-          entrypoint: 'sidetray',
+          role: 'side-tray',
+          entrypoint: 'side-tray',
           webContentsId: 42,
           windowInstanceId: 'window-42'
         },
@@ -119,8 +119,8 @@ describe('wallet action authority', () => {
 
   it('rejects action types that are outside a renderer role', () => {
     const requestSource = createNewframeInternalSource({
-      clientType: 'sidetray',
-      entrypoint: 'sidetray',
+      clientType: 'side-tray',
+      entrypoint: 'side-tray',
       webContentsId: 1,
       windowInstanceId: 'side-tray'
     })

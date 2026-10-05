@@ -459,7 +459,7 @@ export function createSafeTransactionService({
   }
 
   const approve = (command: SafeApprovalCommand, context: SigningUiContext) => {
-    if (disposed || context.owner.clientType !== 'wallet-ui' || !context.isOwnerActive()) {
+    if (disposed || context.owner.clientType !== 'main-tray' || !context.isOwnerActive()) {
       return false
     }
     const identity = normalizeIdentity(command)

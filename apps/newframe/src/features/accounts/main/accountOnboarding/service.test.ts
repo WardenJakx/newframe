@@ -6,7 +6,7 @@ import { createOperationService } from '../../../../platform/operations/service.
 import { createProductionAccountOnboardingAdapters } from './production.ts'
 import { createAccountOnboardingService, type AccountOnboardingPorts } from './service.ts'
 
-const owner = { clientType: 'wallet-ui' as const, windowInstanceId: 'onboarding-test' }
+const owner = { clientType: 'main-tray' as const, windowInstanceId: 'onboarding-test' }
 const otherOwner = { ...owner, windowInstanceId: 'other-window' }
 const addressA = '0x1111111111111111111111111111111111111111'
 const addressB = '0x2222222222222222222222222222222222222222'

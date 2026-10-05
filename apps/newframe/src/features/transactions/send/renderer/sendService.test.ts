@@ -27,7 +27,7 @@ it('maps semantic send actions to their exact catalog payloads', async () => {
         amount: '1000000000000000000',
         recipient: 'example.eth'
       },
-      { type: 'sidetray.close' },
+      { type: 'side-tray.close' },
       { type: 'clipboard.write', text: 'copy me' },
       { type: 'token.image-hydrate', tokenId: '1:0x1111111111111111111111111111111111111111' }
     ].map((command) => [command])

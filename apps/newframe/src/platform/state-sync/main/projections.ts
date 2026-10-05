@@ -869,7 +869,7 @@ export function projectSideTrayState(
 }
 
 export function projectRendererState(state: CanonicalState, audience: RendererProjectionAudience) {
-  return audience.clientType === 'sidetray'
+  return audience.clientType === 'side-tray'
     ? projectSideTrayState(state, audience)
     : projectWalletState(state, audience)
 }

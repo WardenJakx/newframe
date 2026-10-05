@@ -208,7 +208,7 @@ const OperationCancelCommandSchema = z.strictObject({
 })
 export type OperationCancelCommand = z.infer<typeof OperationCancelCommandSchema>
 
-const SideTrayCloseCommandSchema = z.strictObject({ type: z.literal('sidetray.close') })
+const SideTrayCloseCommandSchema = z.strictObject({ type: z.literal('side-tray.close') })
 
 const RendererContextMenuCommandSchema = z.strictObject({
   type: z.literal('renderer.context-menu'),
@@ -514,7 +514,7 @@ const ChainActivationSetCommandSchema = z.strictObject({
 })
 
 const SideTrayOpenCommandSchema = z.strictObject({
-  type: z.literal('sidetray.open'),
+  type: z.literal('side-tray.open'),
   feature: z.enum(['send', 'trade']),
   assetId: z.string().max(256).optional(),
   chainId: ChainIdSchema.optional()
@@ -1170,8 +1170,8 @@ export const commandContracts = defineOperationContracts({
   'app.quit': acknowledged(AppQuitCommandSchema),
   'app.restart': acknowledged(AppRestartCommandSchema),
   'clipboard.write': acknowledged(ClipboardWriteCommandSchema),
-  'sidetray.open': acknowledged(SideTrayOpenCommandSchema),
-  'sidetray.close': acknowledged(SideTrayCloseCommandSchema),
+  'side-tray.open': acknowledged(SideTrayOpenCommandSchema),
+  'side-tray.close': acknowledged(SideTrayCloseCommandSchema),
   'renderer.context-menu': acknowledged(RendererContextMenuCommandSchema),
   'explorer.open': acknowledged(ExplorerOpenCommandSchema),
   'external.open': acknowledged(ExternalOpenCommandSchema),

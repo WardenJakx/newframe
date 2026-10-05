@@ -38,7 +38,7 @@ export function uiContext(requestId = randomUUID()) {
     accountId: vectors.export.address.toLowerCase(),
     chainId: 1,
     signal: controller.signal,
-    owner: { clientType: 'wallet-ui', windowInstanceId: randomUUID() },
+    owner: { clientType: 'main-tray', windowInstanceId: randomUUID() },
     isOwnerActive: () => active,
     subscribeOwnerDisposed(dispose) {
       if (!active) {

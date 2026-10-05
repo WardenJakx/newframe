@@ -146,7 +146,7 @@ function fixture(options: { threshold?: number; ownerCount?: number; version?: S
     clock: { delay: async () => undefined }
   })
   const context = {
-    owner: { clientType: 'wallet-ui', windowInstanceId: 'test' },
+    owner: { clientType: 'main-tray', windowInstanceId: 'test' },
     isOwnerActive: () => true,
     subscribeOwnerDisposed: () => () => undefined
   } as const

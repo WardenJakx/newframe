@@ -8,7 +8,7 @@ import {
   buildSideTrayRoute,
   normalizeSideTrayFrameRequest,
   SIDE_TRAY_FRAME_ID
-} from '../../contracts/sidetray/index.ts'
+} from '../../contracts/side-tray/index.ts'
 
 type PlatformState = Pick<
   CanonicalStore,

@@ -5,7 +5,7 @@ import { createOperationService } from '../../../platform/operations/service.ts'
 import { createTokenService } from './service.ts'
 
 const address = '0x1111111111111111111111111111111111111111'
-const owner = { clientType: 'wallet-ui' as const, windowInstanceId: 'tray-test' }
+const owner = { clientType: 'main-tray' as const, windowInstanceId: 'tray-test' }
 
 describe('token mutation service', () => {
   it('registers discovered assets without a prompt and refreshes their contract metadata', async () => {

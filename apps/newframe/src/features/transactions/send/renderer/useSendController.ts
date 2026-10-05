@@ -1,6 +1,6 @@
 import React from 'react'
 
-import { toCanonicalAssetId } from '../../../../app/contracts/sidetray/index.ts'
+import { toCanonicalAssetId } from '../../../../app/contracts/side-tray/index.ts'
 import { createSideTrayWalletSelector } from '../../../../platform/state-sync/renderer/selectors/sideTrayWallet.ts'
 import { useSideTraySelector } from '../../../../platform/state-sync/renderer/useAppSelector.tsx'
 import { formatUnits, toBigInt } from '../../../../shared/domain/units.ts'

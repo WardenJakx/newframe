@@ -155,7 +155,7 @@ it('projects same-profile owner accounts per deployment from retained snapshots 
   expect(wallet.accounts[ownerAddress] as unknown).toBe(state.main.accounts[ownerAddress])
   expect(state.main.accounts[safeAddress]).not.toHaveProperty('safeOwners')
   expect(
-    projectionStateSchemas['wallet-ui'].parse(JSON.parse(JSON.stringify(wallet))).accounts[safeAddress]
+    projectionStateSchemas['main-tray'].parse(JSON.parse(JSON.stringify(wallet))).accounts[safeAddress]
       .safeOwners
   ).toEqual(owners)
 })
@@ -395,27 +395,27 @@ it('projects safe request-source-owned operations and notification presentation'
   const operationState = createInitialState()
   operationState.operations = {
     own: {
-      owner: { clientType: 'wallet-ui', windowInstanceId: 'wallet-one' },
+      owner: { clientType: 'main-tray', windowInstanceId: 'wallet-one' },
       operation: operation('own')
     },
     otherWindow: {
-      owner: { clientType: 'wallet-ui', windowInstanceId: 'wallet-two' },
+      owner: { clientType: 'main-tray', windowInstanceId: 'wallet-two' },
       operation: operation('otherWindow')
     },
     otherRole: {
-      owner: { clientType: 'sidetray', windowInstanceId: 'wallet-one' },
+      owner: { clientType: 'side-tray', windowInstanceId: 'wallet-one' },
       operation: operation('otherRole')
     }
   }
 
-  const audience = { clientType: 'wallet-ui', windowInstanceId: 'wallet-one' } as const
+  const audience = { clientType: 'main-tray', windowInstanceId: 'wallet-one' } as const
   const first = projectWalletState(operationState, audience)
   expect(first.operations).toEqual({ own: operation('own') })
   expect(first.operations.own).not.toHaveProperty('owner')
   expect(projectWalletState(operationState, audience).operations).toBe(first.operations)
   expect(
     projectSideTrayState(operationState, {
-      clientType: 'sidetray',
+      clientType: 'side-tray',
       windowInstanceId: 'wallet-one'
     }).operations
   ).toEqual({ otherRole: operation('otherRole') })
@@ -514,7 +514,7 @@ it('projects safe request-source-owned operations and notification presentation'
   expect(JSON.stringify(projectedOrder)).not.toMatch(/signature|typedData|calldata|095ea7b3|full-private/i)
   expect(projectWalletState(state).orders).toBe(projectedOrderState.orders)
   expect(
-    projectSideTrayState(state, { clientType: 'sidetray', windowInstanceId: 'no-account' }).orders
+    projectSideTrayState(state, { clientType: 'side-tray', windowInstanceId: 'no-account' }).orders
   ).toEqual({})
 })
 

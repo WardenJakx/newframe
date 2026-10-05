@@ -9,7 +9,7 @@ import { createProfileService } from './service.ts'
 
 const first = '0x1111111111111111111111111111111111111111'
 const second = '0x2222222222222222222222222222222222222222'
-const owner: OperationOwner = { clientType: 'wallet-ui', windowInstanceId: 'wallet-one' }
+const owner: OperationOwner = { clientType: 'main-tray', windowInstanceId: 'wallet-one' }
 const account = (id: string, profileId: string, name: string) => ({
   id,
   profileId,
@@ -147,7 +147,7 @@ describe('profile service', () => {
       expect(
         service.update(
           { type: 'profile.update', operationId: 'stable', profileId: 'work', name: 'Attacker' },
-          { clientType: 'wallet-ui', windowInstanceId: 'wallet-two' }
+          { clientType: 'main-tray', windowInstanceId: 'wallet-two' }
         )
       ).toBeFalse()
 

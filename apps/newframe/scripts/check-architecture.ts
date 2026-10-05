@@ -582,7 +582,7 @@ export function checkPlatformCommandAuthority(file: string, source: string) {
     }
   }
   const legacyContextMenu = source.match(
-    /['"](?:tray|sidetray)\.context-menu['"]|\b(?:Tray|SideTray)ContextMenu/
+    /['"](?:tray|side-tray)\.context-menu['"]|\b(?:Tray|SideTray)ContextMenu/
   )
   if (legacyContextMenu?.index !== undefined) {
     violations.push(

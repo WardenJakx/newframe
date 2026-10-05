@@ -145,7 +145,7 @@ function fixture(threshold = 2, attachedOwners = 2) {
   service.attach(draft, 'request-1')
   let active = true
   const context: SigningUiContext = {
-    owner: { clientType: 'wallet-ui', windowInstanceId: 'window' },
+    owner: { clientType: 'main-tray', windowInstanceId: 'window' },
     isOwnerActive: () => active,
     subscribeOwnerDisposed: () => () => undefined
   }

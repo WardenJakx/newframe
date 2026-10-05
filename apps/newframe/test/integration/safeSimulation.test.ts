@@ -410,7 +410,7 @@ beforeAll(async () => {
   })
   service.import(
     { type: 'account.create', source: 'safe', operationId: 'watch-simulation', address: seed.safe, chainId },
-    { clientType: 'wallet-ui', windowInstanceId: 'safe-simulation' }
+    { clientType: 'main-tray', windowInstanceId: 'safe-simulation' }
   )
   for (
     let attempt = 0;

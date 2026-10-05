@@ -33,8 +33,8 @@ const routeHash = (route?: string) => {
 
 const frameUrl = (frame: Frame) => {
   const baseUrl = isDev
-    ? 'http://localhost:1234/sidetray/index.dev.html'
-    : `file://${process.env.BUNDLE_LOCATION}/sidetray.html`
+    ? 'http://localhost:1234/side-tray/index.dev.html'
+    : `file://${process.env.BUNDLE_LOCATION}/side-tray.html`
 
   return `${baseUrl}${routeHash(frame.route)}`
 }
@@ -67,7 +67,7 @@ export default {
       windowOptions.type = 'panel'
     }
 
-    const sideTray: SideTray = createWindow('sidetray', registerRenderer, {
+    const sideTray: SideTray = createWindow('side-tray', registerRenderer, {
       ...windowOptions
     })
 

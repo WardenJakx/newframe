@@ -11,8 +11,8 @@ import {
 } from './production.ts'
 
 const requestSource = createNewframeInternalSource({
-  clientType: 'sidetray',
-  entrypoint: 'sidetray',
+  clientType: 'side-tray',
+  entrypoint: 'side-tray',
   webContentsId: 1,
   windowInstanceId: 'provider-adapter-test'
 })
@@ -43,7 +43,7 @@ it('forwards named-account prepare and execute without introducing account selec
     await adapter.prepare(executor, { chainId: '0x1', to: prepared.transaction.to, data: '0x', value: '0x0' })
   ).toBe(prepared)
   const context = {
-    owner: { clientType: 'wallet-ui' as const, windowInstanceId: 'window' },
+    owner: { clientType: 'main-tray' as const, windowInstanceId: 'window' },
     isOwnerActive: () => true,
     subscribeOwnerDisposed: () => () => undefined
   }

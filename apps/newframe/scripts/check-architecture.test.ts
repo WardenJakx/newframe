@@ -301,7 +301,7 @@ test('rejects broad singleton access through every supported import form and ser
     ['apps/newframe/src/features/asset-data/main/images/index.ts', "import { openExternal } from '../../../../platform/desktop/windows/window'"],
     ['apps/newframe/src/platform/local-rpc/server.ts', "require('../desktop/windows/dialog')"],
     ['apps/newframe/src/features/transactions/main/simulation.ts', "void import('../../../platform/secrets/vault')"],
-    ['apps/newframe/src/platform/ipc/main/operations.ts', "import('@newframe/src/platform/desktop/windows/sidetray')"],
+    ['apps/newframe/src/platform/ipc/main/operations.ts', "import('@newframe/src/platform/desktop/windows/side-tray')"],
     ['apps/newframe/src/features/accounts/main/service.ts', "import store from '../../../platform/state-store'"],
     ['apps/newframe/src/features/transactions/trade/main/service.ts', "import type store from '../../../../platform/state-store'"],
     ['apps/newframe/src/features/name-resolution/main/nameResolution.ts', "export * from '../../../platform/desktop/windows/window'"],

@@ -57,7 +57,7 @@ export const CanonicalStateSchema = z
       z.string(),
       z.strictObject({
         owner: z.strictObject({
-          clientType: z.enum(['wallet-ui', 'sidetray']),
+          clientType: z.enum(['main-tray', 'side-tray']),
           windowInstanceId: z.string().min(1)
         }),
         operation: OperationRecordSchema

@@ -1,7 +1,7 @@
 import { UIRoot } from '@newframe/ui/root'
 import { createRoot } from 'react-dom/client'
 
-import App from '../../app/renderer/sidetray/App.tsx'
+import App from '../../app/renderer/side-tray/App.tsx'
 
 import '../../../generated/styled-system/styles.css'
 
@@ -21,7 +21,7 @@ async function start() {
   const send = createSendCapability(link)
   const trade = createTradeCapability(link)
   window.addEventListener('beforeunload', () => void disconnect(), { once: true })
-  const root = createRoot(document.getElementById('sidetray') as HTMLElement)
+  const root = createRoot(document.getElementById('side-tray') as HTMLElement)
   root.render(
     <UIRoot>
       <RendererStateProvider state={stores}>

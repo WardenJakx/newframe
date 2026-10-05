@@ -145,10 +145,10 @@
   ],
   "bridge": "./bundle/bridge.cjs",
   "tray": "./bundle/tray.html",
-  "sidetray": "./bundle/sidetray.html",
+  "side-tray": "./bundle/side-tray.html",
   "targets": {
     "main": false,
-    "sidetray": {
+    "side-tray": {
       "context": "browser"
     },
     "tray": {

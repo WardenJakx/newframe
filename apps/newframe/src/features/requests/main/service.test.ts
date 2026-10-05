@@ -253,7 +253,7 @@ describe('prompted request lifecycle', () => {
     delete request.data.nonce
     delete request.data.gasLimit
     test.add(request, mock())
-    const context = { owner: { clientType: 'wallet-ui', windowInstanceId: 'window' } } as never
+    const context = { owner: { clientType: 'main-tray', windowInstanceId: 'window' } } as never
 
     expect(test.service.approve(request.requestId, context, undefined, otherAccountId)).toBeTrue()
     expect(test.approveSafeTransaction).toHaveBeenCalledTimes(1)
@@ -283,7 +283,7 @@ describe('prompted request lifecycle', () => {
     delete request.data.gasLimit
     const respond = mock()
     test.add(request, respond)
-    const context = { owner: { clientType: 'wallet-ui', windowInstanceId: 'window' } } as never
+    const context = { owner: { clientType: 'main-tray', windowInstanceId: 'window' } } as never
     const adjustments = { gasLimit: '0x1234' }
 
     expect(
@@ -317,7 +317,7 @@ describe('prompted request lifecycle', () => {
     delete request.data.gasLimit
     const respond = mock()
     test.add(request, respond)
-    const context = { owner: { clientType: 'wallet-ui', windowInstanceId: 'window' } } as never
+    const context = { owner: { clientType: 'main-tray', windowInstanceId: 'window' } } as never
     test.executeSafeTransaction
       .mockRejectedValueOnce(new Error('broadcast failed'))
       .mockResolvedValueOnce(`0x${'b'.repeat(64)}`)

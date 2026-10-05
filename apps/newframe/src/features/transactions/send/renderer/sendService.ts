@@ -15,7 +15,7 @@ type SendHost = Pick<NewframeHost, 'executeCommand'>
 export function createSendCapability(host: SendHost): SendCapability {
   return {
     submit: (input) => host.executeCommand({ type: 'request.create', ...input }),
-    close: () => host.executeCommand({ type: 'sidetray.close' }),
+    close: () => host.executeCommand({ type: 'side-tray.close' }),
     writeText: (text) => host.executeCommand({ type: 'clipboard.write', text }),
     hydrateTokenImage: (tokenId) => host.executeCommand({ type: 'token.image-hydrate', tokenId })
   }
