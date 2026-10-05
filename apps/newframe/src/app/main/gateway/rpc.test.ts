@@ -71,7 +71,7 @@ it('rejects copied sources and stale or out-of-scope AI-session authority before
   expect(replies.map((reply) => reply.error?.code)).toEqual([4001, 4001, 4001])
 })
 
-it('does not let relayed dapps inherit extension controls or internal account access', async () => {
+it('keeps extension controls to the extension connection with internal scope', async () => {
   let toggles = 0
   const gateway = createExtensionGateway(
     {
@@ -101,8 +101,15 @@ it('does not let relayed dapps inherit extension controls or internal account ac
     connectionId: 'shared-socket',
     capabilities: ['wallet:internal-state']
   })
+  const unscopedExtension = createLocalApiSource({
+    participant: 'extension',
+    extensionId: 'extension-id',
+    origin: 'newframe-extension',
+    transport: 'websocket',
+    connectionId: 'dapp-socket'
+  })
   const replies: RPCResponsePayload[] = []
-  for (const source of [dapp, extension]) {
+  for (const source of [dapp, unscopedExtension, extension]) {
     await gateway({
       payload: request('newframe_summon'),
       chainId: '0x1',
@@ -113,7 +120,8 @@ it('does not let relayed dapps inherit extension controls or internal account ac
   expect(dapp.capabilities).toEqual([])
   expect(toggles).toBe(1)
   expect(replies[0]).toMatchObject({ error: { code: 4001 } })
-  expect(replies[1]).toMatchObject({ result: null })
+  expect(replies[1]).toMatchObject({ error: { code: 4001 } })
+  expect(replies[2]).toMatchObject({ result: null })
 })
 
 it('settles once when a handler replies then throws, and rejects malformed input without running it', async () => {
