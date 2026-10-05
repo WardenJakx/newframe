@@ -73,7 +73,7 @@ export type AppOrigin = {
   [key: string]: unknown
 }
 
-export type AppPermission = {
+export type AppAccountAccessGrant = {
   handlerId?: string
   origin?: string
   [key: string]: unknown
@@ -150,7 +150,7 @@ export type AppState = {
     chains?: { ethereum?: Record<string, AppChain> }
     orders?: Record<string, FlashOrder>
     origins?: Record<string, AppOrigin>
-    permissions?: Record<string, Record<string, AppPermission>>
+    permissions?: Record<string, Record<string, AppAccountAccessGrant>>
     showTestnets?: boolean
     signers?: Record<string, unknown>
   }

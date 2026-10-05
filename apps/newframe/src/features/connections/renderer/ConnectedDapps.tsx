@@ -11,26 +11,35 @@ export function ConnectedDapps({
   capability,
   onBack
 }: {
-  capability: Pick<ConnectionsCapability, 'clearPermission' | 'forgetExtension' | 'openExtensionAccess'>
+  capability: Pick<
+    ConnectionsCapability,
+    'clearAccountAccessGrant' | 'forgetExtension' | 'openExtensionAccess'
+  >
   onBack: () => void
 }) {
-  const { accountId, accountOrder, extensionAccess, knownExtensions, permissions } = useWalletSelector(
+  const {
+    accountId,
+    accountOrder,
+    extensionAccess,
+    knownExtensions,
+    permissions: grants
+  } = useWalletSelector(
     useShallow((state) => {
       const accountId = state.currentAccount || ''
-      const permissionsByAccount: Partial<typeof state.permissions> = state.permissions
+      const grantsByAccount: Partial<typeof state.permissions> = state.permissions
       return {
         accountId,
         accountOrder: state.accountOrder,
         extensionAccess: state.extensionAccess,
         knownExtensions: state.knownExtensions,
-        permissions: accountId ? (permissionsByAccount[accountId] ?? EMPTY_RECORD) : EMPTY_RECORD
+        permissions: accountId ? (grantsByAccount[accountId] ?? EMPTY_RECORD) : EMPTY_RECORD
       }
     })
   )
-  const dapps = Object.keys(permissions)
-    .filter((id) => permissions[id]?.provider)
-    .sort((a, b) => (permissions[a].origin < permissions[b].origin ? -1 : 1))
-    .map((id) => ({ id, origin: permissions[id].origin }))
+  const dapps = Object.keys(grants)
+    .filter((id) => grants[id]?.provider)
+    .sort((a, b) => (grants[a].origin < grants[b].origin ? -1 : 1))
+    .map((id) => ({ id, origin: grants[id].origin }))
   const extensions = Object.keys(knownExtensions)
     .filter((id) => knownExtensions[id])
     .sort()
@@ -48,8 +57,8 @@ export function ConnectedDapps({
       dapps={dapps}
       extensions={extensions}
       onBack={onBack}
-      onClear={(originId) => void capability.clearPermission({ accountId, originId })}
-      onClearAll={() => void capability.clearPermission({ accountId })}
+      onClear={(originId) => void capability.clearAccountAccessGrant({ accountId, originId })}
+      onClearAll={() => void capability.clearAccountAccessGrant({ accountId })}
       onManageExtension={(extensionId) => void capability.openExtensionAccess({ extensionId })}
       onRemoveExtension={(extensionId) => void capability.forgetExtension({ extensionId })}
     />

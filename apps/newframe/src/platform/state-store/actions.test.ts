@@ -375,28 +375,28 @@ describe('#clearOrigins', () => {
   })
 })
 
-describe('#revokePermission', () => {
+describe('#revokeAccountAccessGrant', () => {
   it('removes the permission entry instead of disabling it', () => {
-    const keepPermission = { origin: 'keep.test', provider: true, handlerId: originIds.third }
+    const keepGrant = { origin: 'keep.test', provider: true, handlerId: originIds.third }
     const { actions, getState } = createActionHarness({
       main: {
         permissions: {
           '0xabc': {
             [originIds.second]: { origin: 'frame.test', provider: true, handlerId: originIds.second },
-            [originIds.third]: keepPermission
+            [originIds.third]: keepGrant
           }
         }
       }
     })
-    actions.revokePermission('0xabc', originIds.second)
+    actions.revokeAccountAccessGrant('0xabc', originIds.second)
 
-    expect(getState().main.permissions).toEqual({ '0xabc': { [originIds.third]: keepPermission } })
+    expect(getState().main.permissions).toEqual({ '0xabc': { [originIds.third]: keepGrant } })
   })
 })
 
 describe('#removeOrigin', () => {
   it('should remove the specified origin and attached permissions', () => {
-    const keepPermission = { origin: 'keep.test', provider: true, handlerId: originIds.third }
+    const keepGrant = { origin: 'keep.test', provider: true, handlerId: originIds.third }
     const origin = (id: number) => ({
       name: 'frame.test',
       chain: { id, type: 'ethereum' as const },
@@ -412,7 +412,7 @@ describe('#removeOrigin', () => {
         permissions: {
           '0xabc': {
             [originIds.second]: { origin: 'frame.test', provider: true, handlerId: originIds.second },
-            [originIds.third]: keepPermission
+            [originIds.third]: keepGrant
           }
         }
       }
@@ -423,7 +423,7 @@ describe('#removeOrigin', () => {
       [originIds.first]: origin(1),
       [originIds.third]: origin(137)
     })
-    expect(getState().main.permissions).toEqual({ '0xabc': { [originIds.third]: keepPermission } })
+    expect(getState().main.permissions).toEqual({ '0xabc': { [originIds.third]: keepGrant } })
   })
 })
 

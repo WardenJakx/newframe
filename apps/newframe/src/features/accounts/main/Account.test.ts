@@ -594,7 +594,7 @@ it.each([true, false])(
       payload: { id: 19, jsonrpc: '2.0', method: 'eth_requestAccounts', params: [] }
     }
     store.getState().initOrigin(origin, { name: 'selected-target.test', chain: { id: 1, type: 'ethereum' } })
-    store.getState().revokePermission(target, requestId)
+    store.getState().revokeAccountAccessGrant(target, requestId)
     ownerAccount.addRequest(request)
     ownerAccount.setAccess(request, approved, target)
     if (approved) {
@@ -605,7 +605,7 @@ it.each([true, false])(
     expect(store.getState().main.permissions[ownerAccount.address]?.[requestId]).toBeUndefined()
     expect(ownerAccount.getRequest(requestId)).toBeUndefined()
     expect(respond).toHaveBeenCalledWith({ id: 19, jsonrpc: '2.0', result: approved ? target : undefined })
-    store.getState().revokePermission(target, requestId)
+    store.getState().revokeAccountAccessGrant(target, requestId)
   }
 )
 

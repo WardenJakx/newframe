@@ -4,9 +4,9 @@ import { AccountMetadataSchema, AccountSchema } from '../../../features/accounts
 import { BalanceSchema } from '../../../features/asset-data/domain/state/balance.ts'
 import { AssetRateMapSchema } from '../../../features/asset-data/domain/state/rate.ts'
 import { ChainMetadataSchema, ChainSchema } from '../../../features/chains/domain/state/chain.ts'
+import { AccountAccessGrantSchema } from '../../../features/connections/domain/state/accountAccessGrant.ts'
 import { ExtensionAccessSchema } from '../../../features/connections/domain/state/extensionAccess.ts'
 import { OriginSchema } from '../../../features/connections/domain/state/origin.ts'
-import { PermissionSchema } from '../../../features/connections/domain/state/permission.ts'
 import { ShortcutSchema } from '../../../features/settings/domain/state/shortcuts.ts'
 import { TokenCatalogSchema } from '../../../features/tokens/domain/state/token.ts'
 import { TorStatusSchema } from '../../../platform/internet/contract/status.ts'
@@ -192,7 +192,7 @@ export const MainSchema = z
     extensionAccess: z.record(z.string().describe('Extension Id'), ExtensionAccessSchema).default({}),
     permissions: z.record(
       z.string().describe('Address'),
-      z.record(z.string().describe('Origin Id'), PermissionSchema)
+      z.record(z.string().describe('Origin Id'), AccountAccessGrantSchema)
     ),
     accounts: z.record(z.string(), AccountSchema),
     profiles: z.record(z.string(), ProfileSchema),

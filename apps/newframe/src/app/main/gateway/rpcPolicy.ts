@@ -27,16 +27,16 @@ const filter = z
 
 interface RpcMethodPolicy {
   params: z.ZodType
-  permission: 'public' | 'source' | 'account' | 'internal'
+  authority: 'public' | 'source' | 'account' | 'internal'
   route: 'handler' | 'chain' | 'envelope' | 'unsupported' | 'extension' | 'transport'
   aiSession?: boolean
 }
-const chain = (params: z.ZodType): RpcMethodPolicy => ({ params, permission: 'public', route: 'chain' })
+const chain = (params: z.ZodType): RpcMethodPolicy => ({ params, authority: 'public', route: 'chain' })
 const handler = (
   params: z.ZodType,
-  permission: RpcMethodPolicy['permission'],
+  authority: RpcMethodPolicy['authority'],
   aiSession = false
-): RpcMethodPolicy => ({ params, permission, route: 'handler', aiSession })
+): RpcMethodPolicy => ({ params, authority, route: 'handler', aiSession })
 
 /** The complete local RPC allowlist. Unknown methods are never forwarded to a chain node. */
 const rpcMethods: Record<string, RpcMethodPolicy> = {
@@ -50,8 +50,8 @@ const rpcMethods: Record<string, RpcMethodPolicy> = {
   eth_signTypedData_v1: handler(signParams, 'account'),
   eth_signTypedData_v3: handler(signParams, 'account', true),
   eth_signTypedData_v4: handler(signParams, 'account', true),
-  eth_sign: { params: walletParams, permission: 'source', route: 'unsupported' },
-  eth_signTransaction: { params: walletParams, permission: 'source', route: 'unsupported' },
+  eth_sign: { params: walletParams, authority: 'source', route: 'unsupported' },
+  eth_signTransaction: { params: walletParams, authority: 'source', route: 'unsupported' },
   wallet_addEthereumChain: handler(walletParams, 'account'),
   wallet_switchEthereumChain: handler(walletParams, 'source'),
   wallet_getEthereumChains: handler(noParams, 'account'),
@@ -61,14 +61,14 @@ const rpcMethods: Record<string, RpcMethodPolicy> = {
   wallet_watchAsset: handler(object, 'account'),
   frame_getOriginStatus: handler(noParams, 'source'),
   frame_disconnectOrigin: handler(noParams, 'source'),
-  frame_summon: { params: noParams, permission: 'source', route: 'extension' },
-  frame_requestExtensionConnection: { params: noParams, permission: 'source', route: 'extension' },
-  frame_getExtensionAccounts: { params: noParams, permission: 'source', route: 'extension' },
-  frame_selectExtensionAccount: { params: z.tuple([address]), permission: 'source', route: 'extension' },
-  frame_requestExtensionAccounts: { params: noParams, permission: 'source', route: 'extension' },
+  frame_summon: { params: noParams, authority: 'source', route: 'extension' },
+  frame_requestExtensionConnection: { params: noParams, authority: 'source', route: 'extension' },
+  frame_getExtensionAccounts: { params: noParams, authority: 'source', route: 'extension' },
+  frame_selectExtensionAccount: { params: z.tuple([address]), authority: 'source', route: 'extension' },
+  frame_requestExtensionAccounts: { params: noParams, authority: 'source', route: 'extension' },
   eth_pollSubscriptions: {
     params: z.tuple([z.string(), z.literal('immediate').optional()]),
-    permission: 'source',
+    authority: 'source',
     route: 'transport'
   },
   eth_chainId: handler(noParams, 'public'),
@@ -95,8 +95,8 @@ const rpcMethods: Record<string, RpcMethodPolicy> = {
     ])
   ),
   eth_unsubscribe: chain(z.tuple([z.string()])),
-  wallet_request: { params: object, permission: 'public', route: 'envelope' },
-  caip_request: { params: object, permission: 'public', route: 'envelope' },
+  wallet_request: { params: object, authority: 'public', route: 'envelope' },
+  caip_request: { params: object, authority: 'public', route: 'envelope' },
 
   web3_sha3: chain(z.tuple([hex])),
   net_listening: chain(noParams),
@@ -138,7 +138,7 @@ const rpcMethods: Record<string, RpcMethodPolicy> = {
   // Newframe's own simulations use a main-process source. External debug/admin RPC is not exposed.
   debug_traceCall: {
     params: z.tuple([object, block, object.optional()]),
-    permission: 'internal',
+    authority: 'internal',
     route: 'chain'
   }
 }
@@ -148,5 +148,5 @@ export function rpcMethodPolicy(method: string): RpcMethodPolicy | undefined {
 }
 
 export const accountAccessMethods = Object.keys(rpcMethods).filter(
-  (method) => rpcMethods[method].permission === 'account'
+  (method) => rpcMethods[method].authority === 'account'
 )

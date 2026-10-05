@@ -20,7 +20,7 @@ import type { OwnedOperation } from '../actions.operation.ts'
 
 export type { ChainId, Chain, ChainMetadata } from '../../../features/chains/domain/state/chain.ts'
 export type { Origin } from '../../../features/connections/domain/state/origin.ts'
-export type { Permission } from '../../../features/connections/domain/state/permission.ts'
+export type { AccountAccessGrant } from '../../../features/connections/domain/state/accountAccessGrant.ts'
 export type { Balance } from '../../../features/asset-data/domain/state/balance.ts'
 export type { Token, TokenImage, TokenRecord } from '../../../features/tokens/domain/state/token.ts'
 export type { NativeCurrency } from '../../../features/chains/domain/state/nativeCurrency.ts'

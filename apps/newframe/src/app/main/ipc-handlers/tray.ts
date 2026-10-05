@@ -431,8 +431,9 @@ export function createOperationRegistry(services: OperationServices) {
     ),
     'app.quit': defineAcknowledgedCommand('app.quit', () => platform.quitApp()),
     'app.restart': defineAcknowledgedCommand('app.restart', () => platform.restartApp()),
-    'permission.clear': defineAcknowledgedCommand('permission.clear', ({ accountId, originId }) =>
-      accountMutations.clearPermission(accountId, originId)
+    'account-access-grant.clear': defineAcknowledgedCommand(
+      'account-access-grant.clear',
+      ({ accountId, originId }) => accountMutations.clearAccountAccessGrant(accountId, originId)
     ),
     'chain.request-resolve': defineAcknowledgedCommand(
       'chain.request-resolve',

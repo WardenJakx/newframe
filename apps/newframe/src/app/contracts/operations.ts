@@ -905,8 +905,8 @@ export type WalletResetCommand = z.infer<typeof WalletResetCommandSchema>
 const AppQuitCommandSchema = z.strictObject({ type: z.literal('app.quit') })
 const AppRestartCommandSchema = z.strictObject({ type: z.literal('app.restart') })
 
-const PermissionClearCommandSchema = z.strictObject({
-  type: z.literal('permission.clear'),
+const AccountAccessGrantClearCommandSchema = z.strictObject({
+  type: z.literal('account-access-grant.clear'),
   accountId: AddressSchema,
   originId: OperationIdSchema.optional()
 })
@@ -1189,7 +1189,7 @@ export const commandContracts = defineOperationContracts({
   'origin.remove': acknowledged(OriginRemoveCommandSchema),
   'panel.back': acknowledged(PanelBackCommandSchema),
   'panel.request-open': acknowledged(PanelRequestOpenCommandSchema),
-  'permission.clear': acknowledged(PermissionClearCommandSchema),
+  'account-access-grant.clear': acknowledged(AccountAccessGrantClearCommandSchema),
   'portfolio.refresh': acknowledged(PortfolioRefreshCommandSchema),
   'profile.create': acknowledged(ProfileCreateCommandSchema),
   'profile.delete': acknowledged(ProfileDeleteCommandSchema),

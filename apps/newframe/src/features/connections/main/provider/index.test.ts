@@ -31,7 +31,11 @@ import type {
   SigningApprovalContext,
   SigningUiContext
 } from '../../../../platform/signing/signers/Signer/index.ts'
-import type { Chain as StoredChain, Gas, Permission } from '../../../../platform/state-store/state/index.ts'
+import type {
+  Chain as StoredChain,
+  Gas,
+  AccountAccessGrant
+} from '../../../../platform/state-store/state/index.ts'
 import type { Callback } from '../../../../shared/domain/async.ts'
 import { gweiToHex } from '../../../../shared/domain/hex.ts'
 import type {
@@ -248,13 +252,13 @@ const setOrigins = (origins: Record<string, OriginInput>) => {
     )
   })
 }
-type PermissionInput = Omit<Permission, 'handlerId'> & { handlerId?: string }
-const setPermissions = (account: string, permissions: Record<string, PermissionInput>) => {
+type AccountAccessGrantInput = Omit<AccountAccessGrant, 'handlerId'> & { handlerId?: string }
+const setAccountAccessGrants = (account: string, grants: Record<string, AccountAccessGrantInput>) => {
   store.setState((state) => {
     state.main.permissions[account] = Object.fromEntries(
-      Object.entries(permissions).map(([id, permission]) => [
+      Object.entries(grants).map(([id, grant]) => [
         id,
-        { handlerId: permission.handlerId ?? `test-${id}`, ...permission }
+        { handlerId: grant.handlerId ?? `test-${id}`, ...grant }
       ])
     )
   })
@@ -352,7 +356,7 @@ await mock.module('./subscriptions.ts', () => ({
     ASSETS: 'assetsChanged',
     CHAINS: 'chainsChanged'
   },
-  hasSubscriptionPermission: mock()
+  hasSubscriptionGrant: mock()
 }))
 
 beforeAll(async () => {
@@ -588,7 +592,10 @@ describe('#send', () => {
     cases.forEach(([description, source, chainId, permitted, visibleAddress, selectedAddress]) => {
       it(description, async () => {
         setOrigin(originId, { name: 'frame.test', chain: { id: chainId, type: 'ethereum' } })
-        setPermissions(address, permitted ? { [originId]: { origin: 'frame.test', provider: true } } : {})
+        setAccountAccessGrants(
+          address,
+          permitted ? { [originId]: { origin: 'frame.test', provider: true } } : {}
+        )
         expect((await sendResult({ method: 'frame_getOriginStatus' }, source)).result).toEqual({
           originId,
           origin: 'frame.test',
@@ -617,7 +624,7 @@ describe('#send', () => {
         chain: { id: 1, type: 'ethereum' },
         session: { requests: 3, startedAt: 1, lastUpdatedAt: 2 }
       })
-      setPermissions(address, {
+      setAccountAccessGrants(address, {
         [originId]: {
           origin: 'frame.test',
           provider: true
@@ -796,15 +803,13 @@ describe('#send', () => {
 
   describe('#wallet_requestPermissions', () => {
     it('returns the requested permissions', async () => {
-      const permissions = rpcResult<Array<{ parentCapability: string; date: number }>>(
+      const grants = rpcResult<Array<{ parentCapability: string; date: number }>>(
         await sendResult({
           method: 'wallet_requestPermissions',
           params: [{ eth_accounts: {} }, { eth_signTransaction: {} }]
         })
       )
-      expect(
-        permissions.map(({ parentCapability, date }) => [parentCapability, Number.isInteger(date)])
-      ).toEqual([
+      expect(grants.map(({ parentCapability, date }) => [parentCapability, Number.isInteger(date)])).toEqual([
         ['eth_accounts', true],
         ['eth_signTransaction', true]
       ])

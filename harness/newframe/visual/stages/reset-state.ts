@@ -32,12 +32,12 @@ export const resetStateStage: VisualStage = {
       }
     })
 
-    Object.values(state.main?.permissions ?? {}).forEach((permissions) => {
-      Object.entries(permissions).forEach(([permissionId, permission]) => {
-        if (permission.origin === harnessOrigin) {
-          originIds.add(permissionId)
-          if (permission.handlerId) {
-            originIds.add(permission.handlerId)
+    Object.values(state.main?.permissions ?? {}).forEach((grants) => {
+      Object.entries(grants).forEach(([grantId, grant]) => {
+        if (grant.origin === harnessOrigin) {
+          originIds.add(grantId)
+          if (grant.handlerId) {
+            originIds.add(grant.handlerId)
           }
         }
       })

@@ -36,7 +36,7 @@ import type {
   ChainMetadata,
   NavigationEntry,
   Origin,
-  Permission
+  AccountAccessGrant
 } from './state/index.ts'
 
 type MutableRecord = Record<string, unknown>
@@ -430,32 +430,32 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
-    setPermission: (address: string, permission: Permission) => {
+    setAccountAccessGrant: (address: string, grant: AccountAccessGrant) => {
       set((draft) => {
-        const permissions = record(mutableMain(draft).permissions)
-        const accountPermissions = record(permissions[address] ?? {})
-        permissions[address] = accountPermissions
+        const grants = record(mutableMain(draft).permissions)
+        const accountGrants = record(grants[address] ?? {})
+        grants[address] = accountGrants
 
-        if (permission.provider) {
-          accountPermissions[permission.handlerId] = permission
+        if (grant.provider) {
+          accountGrants[grant.handlerId] = grant
         } else {
-          delete accountPermissions[permission.handlerId]
+          delete accountGrants[grant.handlerId]
         }
       })
     },
 
-    revokePermission: (address: string, requestId: string) => {
+    revokeAccountAccessGrant: (address: string, requestId: string) => {
       if (!address || !requestId) {
         return
       }
 
       set((draft) => {
-        const accountPermissions = record(record(mutableMain(draft).permissions)[address] ?? {})
-        delete accountPermissions[requestId]
+        const accountGrants = record(record(mutableMain(draft).permissions)[address] ?? {})
+        delete accountGrants[requestId]
       })
     },
 
-    clearPermissions: (address: string) => {
+    clearAccountAccessGrants: (address: string) => {
       set((draft) => {
         record(mutableMain(draft).permissions)[address] = {}
       })
@@ -1353,10 +1353,10 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         delete record(main.origins)[originId]
 
         Object.values(record(main.permissions)).forEach((value) => {
-          const accountPermissions = record(value)
-          Object.entries(accountPermissions).forEach(([permissionId, permission]) => {
-            if (permissionId === originId || record(permission).handlerId === originId) {
-              delete accountPermissions[permissionId]
+          const accountGrants = record(value)
+          Object.entries(accountGrants).forEach(([grantId, grant]) => {
+            if (grantId === originId || record(grant).handlerId === originId) {
+              delete accountGrants[grantId]
             }
           })
         })

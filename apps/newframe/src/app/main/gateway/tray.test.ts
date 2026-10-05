@@ -14,7 +14,7 @@ const resolveName = mock()
 const requestTokenImage = mock()
 const accountMutations = fakes(
   'addressChainUsage',
-  'clearPermission',
+  'clearAccountAccessGrant',
   'remove',
   'removeOrigin',
   'update',
@@ -214,7 +214,7 @@ describe('typed operation dispatcher', () => {
       { type: 'account.ai-sessions-revoke', accountId: address },
       { type: 'settings.update', setting: 'show-testnets', value: true },
       { type: 'app.quit' },
-      { type: 'permission.clear', accountId: address },
+      { type: 'account-access-grant.clear', accountId: address },
       { type: 'chain.request-resolve', approved: true, requestId: 'request-1' },
       { type: 'notification.update', notificationId: 'notice-1', action: 'dismiss' },
       { type: 'request.reject', requestId: 'request-1' },
@@ -242,7 +242,7 @@ describe('typed operation dispatcher', () => {
       expect(dispatcher.dispatchCommand(event, command)).resolves.toEqual({ ok: true })
     }
     expect(platform.openTransactionExplorer).toHaveBeenCalledWith(1, undefined)
-    expect(accountMutations.clearPermission).toHaveBeenCalledWith(address, undefined)
+    expect(accountMutations.clearAccountAccessGrant).toHaveBeenCalledWith(address, undefined)
 
     accountMutations.select.mockReturnValueOnce(false)
     expect(

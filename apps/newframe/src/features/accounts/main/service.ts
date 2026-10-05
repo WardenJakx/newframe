@@ -4,7 +4,7 @@ import type { Accounts } from './index.ts'
 
 type AccountState = Pick<
   CanonicalStore,
-  'clearPermissions' | 'removeOrigin' | 'reorderAccounts' | 'revokePermission'
+  'clearAccountAccessGrants' | 'removeOrigin' | 'reorderAccounts' | 'revokeAccountAccessGrant'
 > & {
   main: Omit<CanonicalStore['main'], 'accounts' | 'origins' | 'permissions'> & {
     accounts: Record<string, CanonicalStore['main']['accounts'][string] | undefined>
@@ -89,17 +89,17 @@ export function createAccountService(ports: AccountServicePorts) {
       return true
     },
 
-    clearPermission(accountId: string, originId?: string) {
+    clearAccountAccessGrant(accountId: string, originId?: string) {
       const state = ports.store.getState()
-      const permissions = state.main.permissions[accountId]
-      if (!state.main.accounts[accountId] || !permissions || (originId && !permissions[originId])) {
+      const grants = state.main.permissions[accountId]
+      if (!state.main.accounts[accountId] || !grants || (originId && !grants[originId])) {
         return false
       }
 
       if (originId) {
-        state.revokePermission(accountId, originId)
+        state.revokeAccountAccessGrant(accountId, originId)
       } else {
-        state.clearPermissions(accountId)
+        state.clearAccountAccessGrants(accountId)
       }
       return true
     },

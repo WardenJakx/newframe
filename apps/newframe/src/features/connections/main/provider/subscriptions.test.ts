@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'bun:test'
 import { v5 as uuid } from 'uuid'
 
 import store from '../../../../platform/state-store/index.ts'
-import { hasSubscriptionPermission, SubscriptionType } from './subscriptions.ts'
+import { hasSubscriptionGrant, SubscriptionType } from './subscriptions.ts'
 
 const address = '0x1111111111111111111111111111111111111111'
 
@@ -21,9 +21,9 @@ describe('subscription permissions', () => {
       capabilities: ['wallet:internal-state'] as const
     }
 
-    expect(hasSubscriptionPermission(SubscriptionType.ACCOUNTS, '', subscription, store)).toBe(true)
-    expect(hasSubscriptionPermission(SubscriptionType.CHAINS, '', subscription, store)).toBe(true)
-    expect(hasSubscriptionPermission(SubscriptionType.ASSETS, '', subscription, store)).toBe(false)
+    expect(hasSubscriptionGrant(SubscriptionType.ACCOUNTS, '', subscription, store)).toBe(true)
+    expect(hasSubscriptionGrant(SubscriptionType.CHAINS, '', subscription, store)).toBe(true)
+    expect(hasSubscriptionGrant(SubscriptionType.ASSETS, '', subscription, store)).toBe(false)
   })
 
   it('does not infer trust from a reserved-looking origin ID', () => {
@@ -33,7 +33,7 @@ describe('subscription permissions', () => {
       capabilities: []
     }
 
-    expect(hasSubscriptionPermission(SubscriptionType.ACCOUNTS, address, subscription, store)).toBe(false)
+    expect(hasSubscriptionGrant(SubscriptionType.ACCOUNTS, address, subscription, store)).toBe(false)
   })
 
   it('continues to allow dapp subscriptions backed by account permission', () => {
@@ -45,10 +45,10 @@ describe('subscription permissions', () => {
     }
     store.setState((state) => {
       state.main.permissions[address] = {
-        permission: { origin, provider: true, handlerId: 'test-handler' }
+        grant: { origin, provider: true, handlerId: 'test-handler' }
       }
     })
 
-    expect(hasSubscriptionPermission(SubscriptionType.ASSETS, address, subscription, store)).toBe(true)
+    expect(hasSubscriptionGrant(SubscriptionType.ASSETS, address, subscription, store)).toBe(true)
   })
 })
