@@ -13,7 +13,7 @@ import {
 
 import log from 'electron-log'
 
-import { internet } from '../../internet/index.ts'
+import { internet } from '../../../core/internet/index.ts'
 
 await mock.module('./sources/sourcify.ts', () => ({ fetchSourcifyContract: mock() }))
 await mock.module('./sources/etherscan.ts', () => ({ fetchEtherscanContract: mock() }))

@@ -7,7 +7,7 @@ import { addHexPrefix } from '@ethereumjs/util'
 import log from 'electron-log'
 import { shallow } from 'zustand/vanilla/shallow'
 
-import type { InternetGate } from '../../../platform/internet/index.ts'
+import type { InternetGate } from '../../../core/internet/index.ts'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
 import type { GasFees } from '../../../platform/state-store/state/index.ts'
 import type { EVMError, JSONRPCRequestPayload, RPCRequestCallback } from '../../../shared/domain/rpc.ts'

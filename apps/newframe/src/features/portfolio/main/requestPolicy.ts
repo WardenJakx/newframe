@@ -1,4 +1,4 @@
-import type { HttpFetch } from '../../../platform/internet/index.ts'
+import type { HttpFetch } from '../../../core/internet/index.ts'
 
 type Fetch = HttpFetch
 

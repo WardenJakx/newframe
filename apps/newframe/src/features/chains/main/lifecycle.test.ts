@@ -1,6 +1,6 @@
 import { expect, it, spyOn } from 'bun:test'
 
-import { createInternet } from '../../../platform/internet/index.ts'
+import { createInternet } from '../../../core/internet/index.ts'
 import store from '../../../platform/state-store/index.ts'
 import { Chains } from './index.ts'
 

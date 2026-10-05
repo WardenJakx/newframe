@@ -1,6 +1,6 @@
 import { expect, it, mock, spyOn } from 'bun:test'
 
-import { internet } from '../../../platform/internet/index.ts'
+import { internet } from '../../../core/internet/index.ts'
 import type { IpcMainHandlerPort } from '../../../platform/ipc/main/operations.ts'
 import createCanonicalStore from '../../../platform/state-store/createCanonicalStore.ts'
 import {

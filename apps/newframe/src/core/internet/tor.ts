@@ -8,7 +8,7 @@ import { app, session } from 'electron'
 import log from 'electron-log'
 import { z } from 'zod'
 
-import type { TorStatus } from './contract/status.ts'
+import type { TorStatus } from '../../platform/internet/contract/status.ts'
 import type { Internet } from './index.ts'
 
 type TorProcess = ChildProcessByStdio<null, Readable, Readable>

@@ -9,8 +9,8 @@ import {
 import type { JsonRpcApiProvider, JsonRpcPayload } from 'ethers'
 import { FetchRequest, JsonRpcProvider, WebSocketProvider } from 'ethers'
 
-import { ethersGetUrl } from '../../../../platform/internet/ethers.ts'
-import { internet } from '../../../../platform/internet/index.ts'
+import { ethersGetUrl } from '../../../../core/internet/ethers.ts'
+import { internet } from '../../../../core/internet/index.ts'
 
 export type RpcParams = readonly unknown[] | Record<string, unknown>
 

@@ -1,4 +1,4 @@
-import { internet } from '../../../../platform/internet/index.ts'
+import { internet } from '../../../../core/internet/index.ts'
 import type { Balance, Token } from '../../../../platform/state-store/state/index.ts'
 import type { Address } from '../../../../shared/domain/address.ts'
 import { formatUnits } from '../../../../shared/domain/units.ts'

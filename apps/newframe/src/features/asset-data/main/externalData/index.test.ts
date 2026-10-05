@@ -1,7 +1,7 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, jest as timers, mock } from 'bun:test'
 
 import { DEFAULT_PROFILE_ID } from '../../../../app/contracts/state/main.ts'
-import { createInternet } from '../../../../platform/internet/index.ts'
+import { createInternet } from '../../../../core/internet/index.ts'
 import createCanonicalStore from '../../../../platform/state-store/createCanonicalStore.ts'
 import store from '../../../../platform/state-store/index.ts'
 import type { Account } from '../../../accounts/domain/state/account.ts'

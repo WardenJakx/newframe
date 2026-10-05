@@ -1,6 +1,6 @@
 import { beforeEach, expect, it, mock, spyOn } from 'bun:test'
 
-import { internet } from '../../../../platform/internet/index.ts'
+import { internet } from '../../../../core/internet/index.ts'
 import { downloadImage } from './download.ts'
 
 type TestResponse = ReturnType<typeof createResponse> | ReturnType<typeof createRedirect>

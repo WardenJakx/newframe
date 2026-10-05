@@ -5,7 +5,7 @@ import { addHexPrefix, intToHex } from '@ethereumjs/util'
 import log from 'electron-log'
 
 import { gweiToHex } from '../../../../test/support/util.ts'
-import { createInternet } from '../../../platform/internet/index.ts'
+import { createInternet } from '../../../core/internet/index.ts'
 import store from '../../../platform/state-store/index.ts'
 import type { RPCRequestPayload } from '../../../shared/domain/rpc.ts'
 

@@ -466,7 +466,7 @@
     {
       "files": ["apps/newframe/src/**/*.ts"],
       "excludeFiles": [
-        "apps/newframe/src/platform/internet/**",
+        "apps/newframe/src/core/internet/**",
         "apps/newframe/src/**/*.test.ts",
         "apps/newframe/src/renderer/**",
         "apps/newframe/src/**/renderer/**"
@@ -476,11 +476,11 @@
           "error",
           {
             "name": "fetch",
-            "message": "Use internet.request from platform/internet so the lock and routing apply."
+            "message": "Use internet.request from core/internet so the lock and routing apply."
           },
           {
             "name": "WebSocket",
-            "message": "Use internet.openWebSocket from platform/internet so the lock and routing apply."
+            "message": "Use internet.openWebSocket from core/internet so the lock and routing apply."
           }
         ],
         "no-restricted-properties": [
@@ -488,7 +488,7 @@
           {
             "object": "globalThis",
             "property": "fetch",
-            "message": "Use internet.request from platform/internet so the lock and routing apply."
+            "message": "Use internet.request from core/internet so the lock and routing apply."
           }
         ],
         "no-restricted-imports": [
@@ -499,12 +499,12 @@
                 "name": "ws",
                 "importNames": ["default", "WebSocket"],
                 "allowTypeImports": true,
-                "message": "Use internet.openWebSocket from platform/internet so the lock and routing apply."
+                "message": "Use internet.openWebSocket from core/internet so the lock and routing apply."
               },
               {
                 "name": "electron",
                 "importNames": ["net"],
-                "message": "Use internet.request from platform/internet so the lock and routing apply."
+                "message": "Use internet.request from core/internet so the lock and routing apply."
               }
             ]
           }
