@@ -1295,7 +1295,7 @@ export class Accounts extends EventEmitter {
     return false
   }
 
-  async replaceTx(id: string, type: ReplacementType, principal: RequestSource) {
+  async replaceTx(id: string, type: ReplacementType, requestSource: RequestSource) {
     const currentAccount = this.current()
 
     return new Promise<void>((resolve, reject) => {
@@ -1350,7 +1350,7 @@ export class Accounts extends EventEmitter {
           }
           resolve()
         },
-        principal
+        requestSource
       )
     })
   }
@@ -1363,12 +1363,12 @@ export class Accounts extends EventEmitter {
       _origin = frameOriginId
     }: { method: string; params: unknown[]; chainId: string; _origin?: string },
     cb: RPCRequestCallback,
-    principal?: RequestSource
+    requestSource?: RequestSource
   ) {
     this.dependencies.chainRpc.send(
       { id: 1, jsonrpc: '2.0', method, params, chainId, _origin },
       cb,
-      principal
+      requestSource
     )
   }
 
@@ -2055,12 +2055,12 @@ export class Accounts extends EventEmitter {
   }
 
   routeRequest(
-    principal: RequestSource,
+    requestSource: RequestSource,
     req: AccountRequest,
     executeAutonomously?: (request: AccountRequest) => void
   ) {
     this.dependencies.requests.bind(req)
-    const decision = authorizeGatewayOperation(principal, req)
+    const decision = authorizeGatewayOperation(requestSource, req)
 
     if (decision.outcome === 'reject') {
       log.warn('Rejected wallet action', {

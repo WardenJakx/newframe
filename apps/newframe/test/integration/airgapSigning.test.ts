@@ -61,7 +61,7 @@ function integrationFixture({
       get: (id) => accounts.get(id),
       getFrameAccount: (id) => accounts.getFrameAccount(id),
       clearRequestsByOrigin: (accountId, originId) => accounts.clearRequestsByOrigin(accountId, originId),
-      replaceTx: (id, replacement, principal) => accounts.replaceTx(id, replacement, principal),
+      replaceTx: (id, replacement, requestSource) => accounts.replaceTx(id, replacement, requestSource),
       setRequestError: (id, error) => accounts.setRequestError(id, error),
       setRequestPending: (request) => accounts.setRequestPending(request),
       setRequestSuccess: (id) => accounts.setRequestSuccess(id),

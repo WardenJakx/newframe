@@ -30,7 +30,7 @@ export type TrustedCapability = 'wallet:internal-state'
 
 export type LocalApiSource = RequestSourceBrand & {
   readonly kind: 'rpc'
-  readonly participant: 'local-api-client' | 'website' | 'companion-extension'
+  readonly participant: 'local-api-client' | 'website' | 'extension'
   readonly websiteOrigin?: string
   /** Set for the extension's own requests and website requests it relays. */
   readonly extensionId?: string
@@ -71,7 +71,7 @@ type GatewayOperationIntent = {
   readonly requestType: RequestType
   readonly account: string
   readonly method: string
-  readonly principal: RequestAuthorization['principal']
+  readonly requestSource: RequestAuthorization['requestSource']
 }
 
 export type GatewayOperationDecision =
@@ -98,36 +98,36 @@ export function isRequestSource(value: unknown): value is RequestSource {
   return typeof value === 'object' && value !== null && admittedSources.has(value)
 }
 
-function summarizeRequestSource(principal: RequestSource): RequestAuthorization['principal'] {
-  if (principal.kind === 'renderer') {
+function summarizeRequestSource(requestSource: RequestSource): RequestAuthorization['requestSource'] {
+  if (requestSource.kind === 'renderer') {
     return {
       kind: 'renderer',
-      role: principal.role,
-      entrypoint: principal.entrypoint,
-      webContentsId: principal.webContentsId,
-      windowInstanceId: principal.windowInstanceId
+      role: requestSource.role,
+      entrypoint: requestSource.entrypoint,
+      webContentsId: requestSource.webContentsId,
+      windowInstanceId: requestSource.windowInstanceId
     }
   }
 
-  if (principal.kind === 'rpc') {
+  if (requestSource.kind === 'rpc') {
     return {
       kind: 'rpc',
-      transport: principal.transport,
-      connectionId: principal.connectionId,
-      origin: principal.origin
+      transport: requestSource.transport,
+      connectionId: requestSource.connectionId,
+      origin: requestSource.origin
     }
   }
 
-  if (principal.kind === 'agent') {
+  if (requestSource.kind === 'agent') {
     return {
       kind: 'agent',
-      sessionId: principal.aiSession.sessionId,
-      accountId: principal.aiSession.accountId,
-      expiresAt: principal.aiSession.expiresAt
+      sessionId: requestSource.aiSession.sessionId,
+      accountId: requestSource.aiSession.accountId,
+      expiresAt: requestSource.aiSession.expiresAt
     }
   }
 
-  return { kind: 'main', component: principal.component }
+  return { kind: 'main', component: requestSource.component }
 }
 
 export function createNewframeInternalSource(context: AuthorizationContext): NewframeInternalSource {
@@ -173,27 +173,28 @@ export function createAiSessionClientSource(input: AiSessionAuthority): AiSessio
   })
 }
 
-export function isAiSessionActive(principal: unknown): principal is AiSessionClientSource {
+export function isAiSessionActive(requestSource: unknown): requestSource is AiSessionClientSource {
   if (
-    !isRequestSource(principal) ||
-    principal.kind !== 'agent' ||
-    principal.aiSession.expiresAt <= Date.now()
+    !isRequestSource(requestSource) ||
+    requestSource.kind !== 'agent' ||
+    requestSource.aiSession.expiresAt <= Date.now()
   ) {
     return false
   }
 
   try {
-    return principal.aiSession.isActive()
+    return requestSource.aiSession.isActive()
   } catch {
     return false
   }
 }
 
-export function hasSourceCapability(principal: unknown, capability: TrustedCapability) {
+export function hasSourceCapability(requestSource: unknown, capability: TrustedCapability) {
   return (
-    isRequestSource(principal) &&
-    (principal.kind === 'main' || (principal.kind === 'rpc' && principal.participant !== 'website')) &&
-    principal.capabilities.includes(capability)
+    isRequestSource(requestSource) &&
+    (requestSource.kind === 'main' ||
+      (requestSource.kind === 'rpc' && requestSource.participant !== 'website')) &&
+    requestSource.capabilities.includes(capability)
   )
 }
 
@@ -211,7 +212,7 @@ export function createMainProcessSource(
 }
 
 function buildOperationIntent(
-  principal: RequestSource,
+  requestSource: RequestSource,
   request: AccountRequest
 ): GatewayOperationIntent | undefined {
   if (!requestTypes.has(request.type) || !request.account || !request.handlerId || !request.payload.method) {
@@ -223,18 +224,18 @@ function buildOperationIntent(
     requestType: request.type,
     account: request.account.toLowerCase(),
     method: request.payload.method,
-    principal: summarizeRequestSource(principal)
+    requestSource: summarizeRequestSource(requestSource)
   })
 }
 
-function sourceMayRequest(principal: RequestSource, requestType: RequestType) {
-  if (principal.kind === 'agent') {
+function sourceMayRequest(requestSource: RequestSource, requestType: RequestType) {
+  if (requestSource.kind === 'agent') {
     return signingRequestTypes.has(requestType)
   }
-  if (principal.kind !== 'renderer') {
+  if (requestSource.kind !== 'renderer') {
     return true
   }
-  if (principal.role === 'sidetray') {
+  if (requestSource.role === 'sidetray') {
     return sideTrayRequestTypes.has(requestType)
   }
 
@@ -250,29 +251,29 @@ function sourceMayRequest(principal: RequestSource, requestType: RequestType) {
  * signing requests scoped to its approved account.
  */
 export function authorizeGatewayOperation(
-  principal: unknown,
+  requestSource: unknown,
   request: AccountRequest
 ): GatewayOperationDecision {
-  if (!isRequestSource(principal)) {
+  if (!isRequestSource(requestSource)) {
     return { outcome: 'reject', reason: 'Untrusted request source' }
   }
 
-  const action = buildOperationIntent(principal, request)
+  const action = buildOperationIntent(requestSource, request)
   if (!action) {
     return { outcome: 'reject', reason: 'Malformed wallet action' }
   }
-  if (!sourceMayRequest(principal, request.type)) {
+  if (!sourceMayRequest(requestSource, request.type)) {
     return { outcome: 'reject', reason: 'Request source is not allowed to perform this action' }
   }
 
-  if (principal.kind === 'agent') {
-    if (principal.aiSession.expiresAt <= Date.now()) {
+  if (requestSource.kind === 'agent') {
+    if (requestSource.aiSession.expiresAt <= Date.now()) {
       return { outcome: 'reject', reason: 'Agent session expired' }
     }
-    if (!isAiSessionActive(principal)) {
+    if (!isAiSessionActive(requestSource)) {
       return { outcome: 'reject', reason: 'Agent session is revoked or unavailable' }
     }
-    if (action.account !== principal.aiSession.accountId) {
+    if (action.account !== requestSource.aiSession.accountId) {
       return { outcome: 'reject', reason: 'Agent session is not authorized for this account' }
     }
 
@@ -282,7 +283,7 @@ export function authorizeGatewayOperation(
         actionId: action.id,
         decision: 'autonomous' as const,
         decidedAt: Date.now(),
-        principal: action.principal,
+        requestSource: action.requestSource,
         intent: {
           requestType: action.requestType,
           account: action.account,
@@ -298,7 +299,7 @@ export function authorizeGatewayOperation(
       actionId: action.id,
       decision: 'prompt' as const,
       decidedAt: Date.now(),
-      principal: action.principal,
+      requestSource: action.requestSource,
       intent: {
         requestType: action.requestType,
         account: action.account,

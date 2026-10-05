@@ -67,11 +67,11 @@ export interface TradeServicePorts {
   signatures: {
     signMessage(
       command: { chainId: number; message: string },
-      principal: RequestSource
+      requestSource: RequestSource
     ): Promise<{ ok: true; signature: string } | { ok: false; error: string; message?: string }>
     signTypedData(
       command: { chainId: number; typedData: TypedDataV4 },
-      principal: RequestSource
+      requestSource: RequestSource
     ): Promise<{ ok: true; signature: string } | { ok: false; error: string; message?: string }>
   }
   transactions: {
@@ -81,7 +81,7 @@ export interface TradeServicePorts {
         idempotencyKey: string
         transaction: { to: string; data?: string; value?: string }
       },
-      principal: RequestSource
+      requestSource: RequestSource
     ): Promise<{ ok: true; transactionHash: string } | { ok: false; error: string; message?: string }>
   }
 }
@@ -329,7 +329,7 @@ export function createTradeService(ports: TradeServicePorts) {
 
   const executePrepare = async (
     command: TradeRequestCommand,
-    principal: RequestSource,
+    requestSource: RequestSource,
     owner: OperationOwner,
     execution: TradeExecution,
     key: string,
@@ -362,7 +362,7 @@ export function createTradeService(ports: TradeServicePorts) {
           idempotencyKey: `${command.operationId}:${command.action}`,
           transaction: request.transaction
         },
-        principal
+        requestSource
       )
       if (!result.ok) {
         throw new TradeFailure('provider_error', result.message ?? 'Transaction failed.')
@@ -394,7 +394,7 @@ export function createTradeService(ports: TradeServicePorts) {
 
   const executeSubmit = async (
     command: TradeSubmitCommand,
-    principal: RequestSource,
+    requestSource: RequestSource,
     owner: OperationOwner,
     execution: TradeExecution,
     key: string,
@@ -419,7 +419,7 @@ export function createTradeService(ports: TradeServicePorts) {
           entityRefs: operationRefs(record, execution.entityRefs)
         })
         validatedQuote(owner, command.quoteId, record)
-        const result = await ports.signatures.signTypedData({ chainId, typedData }, principal)
+        const result = await ports.signatures.signTypedData({ chainId, typedData }, requestSource)
         if (!result.ok) {
           throw new TradeFailure('provider_error', result.message ?? 'Permit signature was not returned.')
         }
@@ -440,7 +440,7 @@ export function createTradeService(ports: TradeServicePorts) {
       validatedQuote(owner, command.quoteId, record)
       const signatureResult = await ports.signatures.signTypedData(
         { chainId: orderChainId, typedData: orderTypedData },
-        principal
+        requestSource
       )
       if (!signatureResult.ok) {
         throw new TradeFailure(
@@ -493,7 +493,7 @@ export function createTradeService(ports: TradeServicePorts) {
 
   const acceptTradeAction = (
     command: TradeRequestCommand | TradeSubmitCommand,
-    principal: RequestSource,
+    requestSource: RequestSource,
     owner: OperationOwner
   ) => {
     if (disposed) {
@@ -521,9 +521,9 @@ export function createTradeService(ports: TradeServicePorts) {
     execution.inFlight = { action, fingerprint }
     queueMicrotask(() => {
       if (command.type === 'request.create') {
-        void executePrepare(command, principal, owner, execution, key, fingerprint)
+        void executePrepare(command, requestSource, owner, execution, key, fingerprint)
       } else {
-        void executeSubmit(command, principal, owner, execution, key, fingerprint)
+        void executeSubmit(command, requestSource, owner, execution, key, fingerprint)
       }
     })
     return true
@@ -551,7 +551,7 @@ export function createTradeService(ports: TradeServicePorts) {
 
   const executeCancel = async (
     command: FlashOrderCancelCommand,
-    principal: RequestSource,
+    requestSource: RequestSource,
     reference: OperationReference,
     key: string,
     ownerOrderKey: string,
@@ -572,7 +572,7 @@ export function createTradeService(ports: TradeServicePorts) {
           chainId: initial.chainId,
           message: flashCancelMessage(command.orderId)
         },
-        principal
+        requestSource
       )
       if (!signature.ok) {
         throw new TradeFailure('provider_error', signature.message ?? 'Cancel signature was not returned.')
@@ -699,15 +699,15 @@ export function createTradeService(ports: TradeServicePorts) {
       }
     },
 
-    prepare(command: TradeRequestCommand, principal: RequestSource, owner: OperationOwner) {
-      return acceptTradeAction(command, principal, owner)
+    prepare(command: TradeRequestCommand, requestSource: RequestSource, owner: OperationOwner) {
+      return acceptTradeAction(command, requestSource, owner)
     },
 
-    submit(command: TradeSubmitCommand, principal: RequestSource, owner: OperationOwner) {
-      return acceptTradeAction(command, principal, owner)
+    submit(command: TradeSubmitCommand, requestSource: RequestSource, owner: OperationOwner) {
+      return acceptTradeAction(command, requestSource, owner)
     },
 
-    cancel(command: FlashOrderCancelCommand, principal: RequestSource, owner: OperationOwner) {
+    cancel(command: FlashOrderCancelCommand, requestSource: RequestSource, owner: OperationOwner) {
       if (disposed) {
         return false
       }
@@ -737,7 +737,9 @@ export function createTradeService(ports: TradeServicePorts) {
       // still fails through the fingerprint check above.
       idempotency.set(key, { fingerprint, reference, touchedAt: ports.clock.now() })
       cancelByOwnerOrder.set(ownerOrderKey, reference)
-      queueMicrotask(() => void executeCancel(command, principal, reference, key, ownerOrderKey, fingerprint))
+      queueMicrotask(
+        () => void executeCancel(command, requestSource, reference, key, ownerOrderKey, fingerprint)
+      )
       return true
     },
 

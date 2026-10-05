@@ -95,7 +95,7 @@ const sourceCases: SourceCase[] = [
   ['restore state dependency', domain, "import restore from 'react-restore'", 'Restore is not an application state dependency', domain, "import { produce } from 'immer'"],
   ['generic action channel', domain, "const channel = 'tray:action'", 'generic action and RPC channels are forbidden', domain, "const channel = 'newframe:command'"],
   ['generic RPC channel', domain, "const channel = 'main:rpc'", 'generic action and RPC channels are forbidden', domain, "const channel = 'newframe:query'"],
-  ['unbranded internal trust', 'apps/newframe/src/features/example/main/service.ts', 'const trusted = __frameInternal', 'internal trust must be derived from a branded transport principal', 'apps/newframe/src/features/example/main/service.ts', 'const trusted = principal.internal'],
+  ['unbranded internal trust', 'apps/newframe/src/features/example/main/service.ts', 'const trusted = __frameInternal', 'internal trust must be derived from a branded request source', 'apps/newframe/src/features/example/main/service.ts', 'const trusted = requestSource.internal'],
   ['raw renderer link', renderer, "link.invoke('channel')", 'renderer code must use typed commands, queries, and state connections', renderer, "link.executeCommand({ type: 'account.select' })"],
   ['non-Zustand renderer mirror', renderer, 'useSyncExternalStore(subscribe, snapshot)', 'renderer mirrors must use Zustand store mechanics', renderer, 'useWalletSelector(selectAccount)'],
   ['class component', renderer, 'class View extends React.Component {}', 'React components must be functions', renderer, 'function View() { return null }'],

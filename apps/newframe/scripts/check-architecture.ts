@@ -121,7 +121,7 @@ const rules: Rule[] = [
   {
     files: anyFile,
     pattern: /__frameInternal/,
-    message: 'internal trust must be derived from a branded transport principal'
+    message: 'internal trust must be derived from a branded request source'
   },
   {
     files: productionRenderer,

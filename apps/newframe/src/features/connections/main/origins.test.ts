@@ -10,14 +10,14 @@ import type { Permission } from '../../../platform/state-store/state/index.ts'
 import { createOriginsService, type FrameExtension, type OriginsServiceDependencies } from './origins.ts'
 
 const address = '0xDAFEA492D9c6733ae3d56b7Ed1ADB60692c98Bc5'
-const principal = createLocalApiSource({
+const requestSource = createLocalApiSource({
   transport: 'http',
   connectionId: 'origin-test',
   origin: 'test.frame.eth'
 })
-const internalPrincipal = createLocalApiSource({
+const internalRequestSource = createLocalApiSource({
   transport: 'websocket',
-  connectionId: 'companion-test',
+  connectionId: 'extension-test',
   origin: 'newframe-extension',
   capabilities: ['wallet:internal-state']
 })
@@ -47,7 +47,7 @@ function createOriginHarness() {
   const extensionListeners = new Map<string, Set<(allowed: boolean) => void>>()
   const notifications: FrameExtension[] = []
   const routedRequests: Array<{
-    principal: typeof principal
+    requestSource: typeof requestSource
     request: AccessRequest
   }> = []
   const continuations = new Map<string, RPCRequestCallback>()
@@ -100,9 +100,9 @@ function createOriginHarness() {
         selections.push(selected)
         currentAccount = { address: selected }
       },
-      routeRequest: (receivedPrincipal, request) => {
+      routeRequest: (receivedRequestSource, request) => {
         routedRequests.push({
-          principal: receivedPrincipal,
+          requestSource: receivedRequestSource,
           request
         })
         const complete = (grantedAddress: Address = request.account) => {
@@ -131,7 +131,7 @@ function createOriginHarness() {
         return requestId
       }
     },
-    hasInternalStateCapability: (receivedPrincipal) => receivedPrincipal === internalPrincipal,
+    hasInternalStateCapability: (receivedRequestSource) => receivedRequestSource === internalRequestSource,
     development: () => development
   }
 
@@ -354,7 +354,7 @@ describe('extension trust service', () => {
 describe('origin authorization service', () => {
   const originId = uuidv5('test.frame.eth', uuidv5.DNS)
 
-  it('grants the internal chain query only from a capable principal', async () => {
+  it('grants the internal chain query only from a capable requestSource', async () => {
     const harness = createOriginHarness()
     harness.setAccount()
     harness.setOrigin(originId, { name: 'newframe-extension' })
@@ -363,10 +363,10 @@ describe('origin authorization service', () => {
       _origin: originId
     })
 
-    expect(harness.service.hasAccountAccessGrant(payload, principal)).resolves.toBe(false)
-    expect(harness.service.hasAccountAccessGrant(payload, internalPrincipal)).resolves.toBe(true)
+    expect(harness.service.hasAccountAccessGrant(payload, requestSource)).resolves.toBe(false)
+    expect(harness.service.hasAccountAccessGrant(payload, internalRequestSource)).resolves.toBe(true)
     expect(
-      harness.service.hasAccountAccessGrant(requestPayload({ _origin: originId }), internalPrincipal)
+      harness.service.hasAccountAccessGrant(requestPayload({ _origin: originId }), internalRequestSource)
     ).resolves.toBe(false)
     expect(harness.routedRequests).toHaveLength(0)
   })
@@ -379,8 +379,11 @@ describe('origin authorization service', () => {
     missingAccountHarness.setAccount()
 
     const results = await Promise.all([
-      invalidHarness.service.hasAccountAccessGrant(requestPayload({ _origin: originId }), principal),
-      missingAccountHarness.service.hasAccountAccessGrant(requestPayload({ _origin: originId }), principal)
+      invalidHarness.service.hasAccountAccessGrant(requestPayload({ _origin: originId }), requestSource),
+      missingAccountHarness.service.hasAccountAccessGrant(
+        requestPayload({ _origin: originId }),
+        requestSource
+      )
     ])
 
     expect(results).toStrictEqual([false, false])
@@ -397,7 +400,7 @@ describe('origin authorization service', () => {
       harness.setOrigin(originId, { name: 'test.frame.eth' })
       harness.setPermission('test.frame.eth', provider)
       results.push(
-        await harness.service.hasAccountAccessGrant(requestPayload({ _origin: originId }), principal)
+        await harness.service.hasAccountAccessGrant(requestPayload({ _origin: originId }), requestSource)
       )
       expect(harness.routedRequests).toHaveLength(0)
     }
@@ -413,8 +416,8 @@ describe('origin authorization service', () => {
     otherAccountHarness.setPermission('test.frame.eth', true, '0x0000000000000000000000000000000000000002')
 
     const results = await Promise.all([
-      ungrantedHarness.service.hasAccountAccessGrant(requestPayload({ _origin: originId }), principal),
-      otherAccountHarness.service.hasAccountAccessGrant(requestPayload({ _origin: originId }), principal)
+      ungrantedHarness.service.hasAccountAccessGrant(requestPayload({ _origin: originId }), requestSource),
+      otherAccountHarness.service.hasAccountAccessGrant(requestPayload({ _origin: originId }), requestSource)
     ])
 
     expect(results).toStrictEqual([false, false])
@@ -434,20 +437,20 @@ describe('origin authorization service', () => {
 
       const result = await harness.service.hasAccountAccessGrant(
         requestPayload({ method: 'eth_requestAccounts', _origin: originId }),
-        principal
+        requestSource
       )
 
       expect({
         result,
-        routed: harness.routedRequests.map(({ principal: routedPrincipal, request }) => ({
-          principal: routedPrincipal,
+        routed: harness.routedRequests.map(({ requestSource: routedRequestSource, request }) => ({
+          requestSource: routedRequestSource,
           request
         }))
       }).toStrictEqual({
         result: provider,
         routed: [
           {
-            principal,
+            requestSource,
             request: {
               type: 'access',
               handlerId: originId,
@@ -474,11 +477,11 @@ describe('origin authorization service', () => {
 
     const first = harness.service.hasAccountAccessGrant(
       requestPayload({ method: 'personal_sign', _origin: originId }),
-      principal
+      requestSource
     )
     const second = harness.service.hasAccountAccessGrant(
       requestPayload({ method: 'eth_requestAccounts', _origin: originId }),
-      principal
+      requestSource
     )
 
     expect(harness.routedRequests).toHaveLength(1)
@@ -505,7 +508,7 @@ for (const firstMethod of ['eth_requestAccounts', 'personal_sign']) {
       'eth_accounts'
     ]
     const pending = methods.map((method) =>
-      harness.service.hasAccountAccessGrant(requestPayload({ method, _origin: originId }), principal)
+      harness.service.hasAccountAccessGrant(requestPayload({ method, _origin: originId }), requestSource)
     )
     expect(harness.routedRequests).toHaveLength(1)
     // Only a connect-owned prompt permits choosing the global account.
@@ -535,7 +538,7 @@ it('denies a discovery waiter if selected account changes again or the returned 
     })
     const result = harness.service.hasAccountAccessGrant(
       requestPayload({ method: 'eth_requestAccounts', _origin: originId }),
-      principal
+      requestSource
     )
     if (permissionPresent) {
       harness.setPermission('test.frame.eth', true)
@@ -554,7 +557,7 @@ it.each([false, true])(
     harness.setOrigin(originId, { name: 'test.frame.eth' })
     const result = harness.service.hasAccountAccessGrant(
       requestPayload({ method: 'eth_requestAccounts', _origin: originId }),
-      principal
+      requestSource
     )
     harness.setPermission('test.frame.eth', true)
     harness.respond(
@@ -610,7 +613,7 @@ describe('extension account authorization', () => {
     harness.setPermission('test.frame.eth', true, extensionAddress)
     harness.setPermission('test.frame.eth', true, address)
 
-    for (const source of [relayed, principal]) {
+    for (const source of [relayed, requestSource]) {
       for (const payload of signingRequests) {
         expect(await harness.service.hasAccountAccessGrant(payload, source)).toBe(false)
       }

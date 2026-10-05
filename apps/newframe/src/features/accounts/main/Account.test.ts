@@ -202,13 +202,13 @@ describe('#addRequest', () => {
       approvals: [{ type: ApprovalType.GasLimitApproval, approved: false, data: {} }],
       recognizedActions: [{ id: 'erc20:approve', data: actionData, update }]
     }
-    const rendererPrincipal = createNewframeInternalSource({
+    const rendererRequestSource = createNewframeInternalSource({
       clientType: 'wallet-ui',
       entrypoint: 'tray',
       webContentsId: 7,
       windowInstanceId: 'wallet-window'
     })
-    const decision = authorizeGatewayOperation(rendererPrincipal, request)
+    const decision = authorizeGatewayOperation(rendererRequestSource, request)
     if (decision.outcome !== 'prompt') {
       throw new Error('renderer request was not prompt-authorized')
     }
@@ -235,7 +235,7 @@ describe('#addRequest', () => {
     expect(account.requests[request.handlerId]).toMatchObject({
       authorization: {
         decision: 'prompt',
-        principal: { kind: 'renderer', webContentsId: 7, windowInstanceId: 'wallet-window' }
+        requestSource: { kind: 'renderer', webContentsId: 7, windowInstanceId: 'wallet-window' }
       }
     })
     expect(requestLifecycle.pending.has(request.handlerId)).toBe(true)

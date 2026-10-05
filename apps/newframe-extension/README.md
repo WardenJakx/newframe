@@ -1,6 +1,6 @@
 # Newframe Browser Extension
 
-Newframe Browser Extension is the companion browser surface for the Newframe desktop app. It injects a Newframe-connected [EIP-1193](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1193.md) provider into web apps as `window.ethereum`, so sites can connect through Newframe even when they do not offer a native Newframe connection option.
+Newframe Browser Extension is the browser surface for the Newframe desktop app. It injects a Newframe-connected [EIP-1193](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1193.md) provider into web apps as `window.ethereum`, so sites can connect through Newframe even when they do not offer a native Newframe connection option.
 
 For the full project overview, features, and surface map, start with the [root README](../../README.md). For desktop app setup, see [apps/newframe](../newframe/README.md).
 

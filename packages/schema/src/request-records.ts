@@ -108,7 +108,7 @@ interface Request {
   handlerId: string
 }
 
-type RequestPrincipal =
+type RequestSourceSummary =
   | {
       kind: 'renderer'
       role: 'wallet-ui' | 'sidetray'
@@ -134,7 +134,7 @@ export type RequestAuthorization = {
   actionId: string
   decision: 'prompt' | 'autonomous'
   decidedAt: number
-  principal: RequestPrincipal
+  requestSource: RequestSourceSummary
   intent: {
     requestType: RequestType
     account: string

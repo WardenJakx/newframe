@@ -26,7 +26,7 @@ export function hasSubscriptionPermission(
     [SubscriptionType.ACCOUNTS, SubscriptionType.CHAINS].includes(subType as SubscriptionType) &&
     subscription.capabilities.includes('wallet:internal-state')
   ) {
-    // The authenticated companion transport is allowed to observe wallet/chain state for UI updates.
+    // The authenticated extension transport is allowed to observe wallet/chain state for UI updates.
     return true
   }
 

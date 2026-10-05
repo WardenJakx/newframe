@@ -19,7 +19,7 @@ export interface SideTrayTransactionPorts {
   provider: {
     request(
       payload: RPCRequestPayload,
-      principal: RequestSource,
+      requestSource: RequestSource,
       context?: { tokenData?: TokenData }
     ): Promise<RPCResponsePayload>
   }
@@ -80,7 +80,7 @@ export function createSideTrayTransactionService(ports: SideTrayTransactionPorts
         tokenData?: TokenData
         transaction: { to: string; data?: string; value?: string }
       },
-      principal: RequestSource
+      requestSource: RequestSource
     ) {
       const from = currentAccountAddress()
       if (!from) {
@@ -107,8 +107,8 @@ export function createSideTrayTransactionService(ports: SideTrayTransactionPorts
         _origin: internalOriginId
       } as RPC.SendTransaction.Request
       const response = command.tokenData
-        ? await ports.provider.request(payload, principal, { tokenData: command.tokenData })
-        : await ports.provider.request(payload, principal)
+        ? await ports.provider.request(payload, requestSource, { tokenData: command.tokenData })
+        : await ports.provider.request(payload, requestSource)
 
       if (response.error) {
         return { ok: false, error: 'provider_error', message: errorMessage(response.error) } as const
@@ -121,7 +121,7 @@ export function createSideTrayTransactionService(ports: SideTrayTransactionPorts
 
     async signCurrentAccountTypedData(
       command: { chainId: number; typedData: TypedDataV4 },
-      principal: RequestSource
+      requestSource: RequestSource
     ) {
       const from = currentAccountAddress()
       if (!from) {
@@ -145,7 +145,7 @@ export function createSideTrayTransactionService(ports: SideTrayTransactionPorts
           params: [from, command.typedData],
           _origin: internalOriginId
         },
-        principal
+        requestSource
       )
       if (response.error) {
         return { ok: false, error: 'provider_error', message: errorMessage(response.error) } as const
@@ -156,7 +156,10 @@ export function createSideTrayTransactionService(ports: SideTrayTransactionPorts
       return { ok: true, signature: response.result } as const
     },
 
-    async signCurrentAccountMessage(command: { chainId: number; message: string }, principal: RequestSource) {
+    async signCurrentAccountMessage(
+      command: { chainId: number; message: string },
+      requestSource: RequestSource
+    ) {
       const from = currentAccountAddress()
       if (!from) {
         return { ok: false, error: 'no_current_account' } as const
@@ -174,7 +177,7 @@ export function createSideTrayTransactionService(ports: SideTrayTransactionPorts
           params: [command.message, from],
           _origin: internalOriginId
         },
-        principal
+        requestSource
       )
       if (response.error) {
         return { ok: false, error: 'provider_error', message: errorMessage(response.error) } as const

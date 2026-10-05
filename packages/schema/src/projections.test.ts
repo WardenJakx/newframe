@@ -27,7 +27,7 @@ describe('wallet renderer projection records', () => {
         },
         authorization: {
           decision: 'autonomous',
-          principal: {
+          requestSource: {
             type: 'agent',
             origin: 'https://sensitive.example',
             sessionId: 'secret-session'
@@ -73,7 +73,7 @@ describe('wallet renderer projection records', () => {
           requestId: 'request-1',
           request: {
             origin: 'https://sensitive.example',
-            authorization: { principal: { sessionId: 'secret-session' } }
+            authorization: { requestSource: { sessionId: 'secret-session' } }
           },
           futureNavigationField: 'must-not-cross-ipc'
         },
@@ -97,12 +97,12 @@ describe('wallet renderer projection records', () => {
             symbol: 'ETH',
             primaryRpc: 'https://rpc.example',
             secondaryRpc: 'https://backup-rpc.example',
-            authorization: { principal: { sessionId: 'secret-session' } }
+            authorization: { requestSource: { sessionId: 'secret-session' } }
           },
           requestId: 'request-1',
           request: {
             origin: 'https://sensitive.example',
-            authorization: { principal: { sessionId: 'secret-session' } }
+            authorization: { requestSource: { sessionId: 'secret-session' } }
           },
           futureNavigationField: 'must-not-cross-ipc'
         }

@@ -278,8 +278,8 @@ async function sendEvent(event: string, args: unknown[] = [], selector: chrome.t
 function initProvider(requestApproval = false) {
   console.log('Initializing provider connection to Newframe')
 
-  const companionUrl = 'ws://127.0.0.1:1248?identity=newframe-extension'
-  provider = new FrameBackgroundProvider(`${companionUrl}&scope=internal`, {
+  const localApiUrl = 'ws://127.0.0.1:1248?identity=newframe-extension'
+  provider = new FrameBackgroundProvider(`${localApiUrl}&scope=internal`, {
     ...retryOptions(PRIMARY_RETRY_KEY),
     requestApproval
   })
@@ -301,7 +301,7 @@ function initProvider(requestApproval = false) {
   provider.on('connect', () => {
     console.log('Connected to Newframe')
 
-    dappConnection = new RawFrameConnection(companionUrl, retryOptions(DAPP_RETRY_KEY))
+    dappConnection = new RawFrameConnection(localApiUrl, retryOptions(DAPP_RETRY_KEY))
     dappConnection.on('payload', (payload: JsonRpcResponse) => {
       handleDappPayload(payload).catch(console.error)
     })

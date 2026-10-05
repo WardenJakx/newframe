@@ -80,7 +80,7 @@ export function createAgentService(
 
     return {
       session,
-      principal: createAiSessionClientSource({
+      requestSource: createAiSessionClientSource({
         sessionId: session.sessionId,
         accountId: session.accountId,
         expiresAt: session.expiresAt,
@@ -158,13 +158,13 @@ export function createAgentService(
 
       onClose(() => cancel('Agent disconnected before approval'))
 
-      const principal = createLocalApiSource({
+      const requestSource = createLocalApiSource({
         transport: 'http',
         connectionId: handlerId,
         origin: AGENT_ORIGIN
       })
 
-      const routed = accounts.routeRequest(principal, request)
+      const routed = accounts.routeRequest(requestSource, request)
 
       if (!routed) {
         clearPending(handlerId)
@@ -209,7 +209,7 @@ export function createAgentService(
               _origin: AGENT_ORIGIN
             },
             respond,
-            authenticated.principal
+            authenticated.requestSource
           )
         )
       },
