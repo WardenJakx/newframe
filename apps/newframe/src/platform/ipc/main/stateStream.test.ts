@@ -124,7 +124,7 @@ describe('renderer state stream', () => {
             requests: {
               request: {
                 type: 'sign',
-                handlerId: 'request',
+                requestId: 'request',
                 authorization: {
                   decision: 'autonomous',
                   requestSource: {
@@ -385,7 +385,7 @@ describe('renderer state stream', () => {
       lastSignerType: 'address',
       status: 'ok',
       signer: 'secret-signer-id',
-      requests: { secret: { type: 'sign', handlerId: 'secret' } },
+      requests: { secret: { type: 'sign', requestId: 'secret' } },
       created: 'test:1',
       privateKey: 'must-not-cross-ipc'
     }

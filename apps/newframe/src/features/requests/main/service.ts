@@ -48,7 +48,7 @@ const editable = (request: AccountRequest) =>
 
 type Continuation = {
   respond: RPCRequestCallback
-  request?: Pick<AccountRequest, 'account' | 'handlerId' | 'payload'> & { safeTxHash?: string }
+  request?: Pick<AccountRequest, 'account' | 'requestId' | 'payload'> & { safeTxHash?: string }
 }
 
 export interface PromptedRequestContinuationPort {
@@ -207,33 +207,33 @@ export function createRequestService(ports: RequestServicePorts) {
     return true
   }
 
-  const failApproval = (request: AccountRequest, error: unknown, key = request.handlerId) => {
+  const failApproval = (request: AccountRequest, error: unknown, key = request.requestId) => {
     approvalsInFlight.delete(key)
     if (normalizedError(error).code === 4001) {
       const account = ports.accounts.getFrameAccount(request.account)
-      if (account?.getRequest(request.handlerId)) {
+      if (account?.getRequest(request.requestId)) {
         account.rejectRequest(request, normalizedError(error))
         return
       }
     }
-    if (!settle(request.handlerId, rpcError(request, normalizedError(error)))) {
+    if (!settle(request.requestId, rpcError(request, normalizedError(error)))) {
       return
     }
     ports.accounts.setRequestError(
-      request.handlerId,
+      request.requestId,
       error instanceof Error ? error : new Error(String(error))
     )
   }
 
-  const completeApproval = (request: AccountRequest, result: unknown, key = request.handlerId) => {
+  const completeApproval = (request: AccountRequest, result: unknown, key = request.requestId) => {
     approvalsInFlight.delete(key)
-    if (!settle(request.handlerId, rpcSuccess(request, result))) {
+    if (!settle(request.requestId, rpcSuccess(request, result))) {
       return
     }
     if (isTransactionRequest(request)) {
-      ports.accounts.setTxSent(request.handlerId, result as string)
+      ports.accounts.setTxSent(request.requestId, result as string)
     } else {
-      ports.accounts.setRequestSuccess(request.handlerId)
+      ports.accounts.setRequestSuccess(request.requestId)
     }
   }
 
@@ -362,7 +362,7 @@ export function createRequestService(ports: RequestServicePorts) {
     adjustments?: TransactionApprovalAdjustments
   ) => {
     const selectedId = ownerId ?? executorId
-    const key = approvalKey(request.handlerId, selectedId)
+    const key = approvalKey(request.requestId, selectedId)
     if (approvalsInFlight.has(key)) {
       return true
     }
@@ -380,19 +380,19 @@ export function createRequestService(ports: RequestServicePorts) {
         const accepted = ports.safeTransactions.approve(
           {
             type: 'request.approve',
-            operationId: `${request.handlerId}:${ownerId}:${randomUUID()}`,
+            operationId: `${request.requestId}:${ownerId}:${randomUUID()}`,
             ...identity,
             ownerId
           },
           context
         )
         if (accepted) {
-          setGate(account, request.handlerId)
+          setGate(account, request.requestId)
           ports.accounts.setRequestPending(request)
         }
         return accepted
       }
-      setGate(account, request.handlerId)
+      setGate(account, request.requestId)
       ports.accounts.setRequestPending(request)
       approvalsInFlight.add(key)
       void ports.safeTransactions
@@ -401,7 +401,7 @@ export function createRequestService(ports: RequestServicePorts) {
           executorId!,
           adjustments,
           context,
-          `${request.handlerId}:${executorId}:execute:${randomUUID()}`
+          `${request.requestId}:${executorId}:execute:${randomUUID()}`
         )
         .then(
           () => approvalsInFlight.delete(key),
@@ -411,10 +411,10 @@ export function createRequestService(ports: RequestServicePorts) {
     }
 
     approvalsInFlight.add(key)
-    setGate(account, request.handlerId)
+    setGate(account, request.requestId)
     ports.accounts.setRequestPending(request)
 
-    const continuation = continuations.get(request.handlerId)
+    const continuation = continuations.get(request.requestId)
     const initialState = ports.store.getState()
     const initialAccounts = initialState.main.accounts as Record<
       string,
@@ -423,7 +423,7 @@ export function createRequestService(ports: RequestServicePorts) {
     const created = initialAccounts[request.account]?.created
     const actionId = request.authorization?.actionId
     const complete = (settleApproval: () => void) => {
-      if (continuations.get(request.handlerId) !== continuation) {
+      if (continuations.get(request.requestId) !== continuation) {
         return
       }
       const currentState = ports.store.getState()
@@ -432,11 +432,11 @@ export function createRequestService(ports: RequestServicePorts) {
         (typeof currentState.main.accounts)[string] | undefined
       >
       const currentAccount = currentAccounts[request.account]
-      const currentRequest = currentAccount?.requests[request.handlerId] as AccountRequest | undefined
+      const currentRequest = currentAccount?.requests[request.requestId] as AccountRequest | undefined
       if (currentAccount?.created !== created || currentRequest?.authorization?.actionId !== actionId) {
         approvalsInFlight.delete(key)
         settle(
-          request.handlerId,
+          request.requestId,
           rpcError(request, { code: 4001, message: 'Signing approval is no longer active' })
         )
         return
@@ -523,13 +523,13 @@ export function createRequestService(ports: RequestServicePorts) {
   ) => {
     const nextSignerGate = signerGate(account, request, confirmed)
     if (nextSignerGate) {
-      setGate(account, request.handlerId, nextSignerGate)
+      setGate(account, request.requestId, nextSignerGate)
       return true
     }
     if (isTransactionRequest(request)) {
       const nextGasGate = gasFeeGate(request, confirmed)
       if (nextGasGate) {
-        setGate(account, request.handlerId, nextGasGate)
+        setGate(account, request.requestId, nextGasGate)
         return true
       }
     }
@@ -538,11 +538,11 @@ export function createRequestService(ports: RequestServicePorts) {
 
   const service = {
     bind(request: AccountRequest) {
-      const continuation = continuations.get(request.handlerId)
+      const continuation = continuations.get(request.requestId)
       if (continuation) {
         continuation.request = request
         if (isTransactionRequest(request) && request.safeTxHash) {
-          safeContinuations.set(request.safeTxHash.toLowerCase(), request.handlerId)
+          safeContinuations.set(request.safeTxHash.toLowerCase(), request.requestId)
         }
       }
     },
@@ -568,13 +568,13 @@ export function createRequestService(ports: RequestServicePorts) {
     respond: settle,
 
     resolve(request: AccountRequest, result?: unknown) {
-      return settle(request.handlerId, rpcSuccess(request, result))
+      return settle(request.requestId, rpcSuccess(request, result))
     },
 
     reject(request: AccountRequest, error: EVMError) {
-      clearApprovalKeys(request.handlerId)
+      clearApprovalKeys(request.requestId)
       removeUnsignedSafeDraft(request)
-      return settle(request.handlerId, rpcError(request, error))
+      return settle(request.requestId, rpcError(request, error))
     },
 
     approve(
@@ -830,7 +830,7 @@ export function createRequestService(ports: RequestServicePorts) {
       }
       ports.store.getState().navHome({
         view: 'addChain',
-        data: { chain: located.request.chain, requestId: located.request.handlerId }
+        data: { chain: located.request.chain, requestId: located.request.requestId }
       })
       return true
     },
@@ -868,7 +868,7 @@ export function createRequestService(ports: RequestServicePorts) {
           ? Object.values(located.account.requests).filter(
               (candidate): candidate is AddChainRequest =>
                 candidate?.type === 'addChain' &&
-                candidate.handlerId !== request.handlerId &&
+                candidate.requestId !== request.requestId &&
                 candidate.origin === request.origin &&
                 JSON.stringify(candidate.payload.params) === requestParams
             )

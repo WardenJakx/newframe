@@ -9,7 +9,7 @@ import { RequestActions } from '../../ui/RequestActions.tsx'
 
 interface TxApprovalProps {
   capability: Pick<RequestReviewCapability, 'confirmApproval' | 'reject'>
-  req: { handlerId: string }
+  req: { requestId: string }
   approval: {
     type: 'approveOtherChain' | 'approveGasLimit'
     data?: { message?: string }
@@ -36,13 +36,13 @@ export default function TxApproval({ capability, req, approval }: TxApprovalProp
             label: 'Proceed',
             onPress: () =>
               void capability.confirmApproval({
-                requestId: req.handlerId,
+                requestId: req.requestId,
                 approvalType: approval.type
               })
           }}
           secondary={{
             label: 'Reject',
-            onPress: () => void capability.reject({ requestId: req.handlerId })
+            onPress: () => void capability.reject({ requestId: req.requestId })
           }}
         />
       </Stack>

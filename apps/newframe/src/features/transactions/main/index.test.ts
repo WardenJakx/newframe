@@ -388,7 +388,7 @@ describe('#classifyTransaction', () => {
   ): Omit<TransactionRequest, 'classification'> => {
     const data = transaction(param)
     return {
-      handlerId: 'test-request',
+      requestId: 'test-request',
       type: 'transaction',
       origin: 'test',
       account: from,

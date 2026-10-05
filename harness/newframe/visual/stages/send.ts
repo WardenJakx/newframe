@@ -264,7 +264,7 @@ export const sendStage: VisualStage = {
     runtime.evidence('sendOperationId', sendOperationId)
     runtime.evidence('sendTransactionHash', sendTransactionHash)
     runtime.evidence('sendActivityStatus', sendActivity.status ?? null)
-    runtime.evidence('sendRequestId', sendRequest.handlerId)
+    runtime.evidence('sendRequestId', sendRequest.requestId)
     runtime.evidence('sendRecipient', vitalik.address)
     runtime.evidence('sendValueWei', oneEthWei.toString())
     await driver.clearPanelAndOverlays()

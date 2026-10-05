@@ -123,7 +123,7 @@ export function signerFixture(record = publicAccount()) {
       requestData = { typedMessage: data as TypedMessage }
     }
     const record: CanonicalAccountRequest & { data?: unknown; typedMessage?: TypedMessage } = {
-      handlerId: owner.context.requestId,
+      requestId: owner.context.requestId,
       type,
       origin: 'airgap-test',
       account: address,

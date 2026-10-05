@@ -208,7 +208,7 @@ export const aiSessionStage: VisualStage = {
       await runtime.screenshot(tray, '08c-ai-session-request.png')
       await driver.executeCommand(tray, {
         type: 'request.ai-session-resolve',
-        requestId: request.handlerId,
+        requestId: request.requestId,
         approved: true
       })
       const credentials = await connection

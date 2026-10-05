@@ -19,7 +19,7 @@ const safeTxHash = `0x${'a'.repeat(64)}`
 
 function transactionRequest(requestId: string): TransactionRequest {
   return {
-    handlerId: requestId,
+    requestId: requestId,
     type: 'transaction',
     origin: 'app.example',
     account: accountId,
@@ -110,15 +110,15 @@ function fixture() {
     },
     rejectRequest(request: AccountRequest, error: EVMError) {
       service.reject(request, error)
-      delete requests[request.handlerId]
+      delete requests[request.requestId]
     },
     resolveRequest(request: AccountRequest, result?: unknown) {
       service.resolve(request, result)
-      delete requests[request.handlerId]
+      delete requests[request.requestId]
     },
     setAccess: mock((request: AccountRequest, approved: boolean, targetAddress = accountId) => {
       service.resolve(request, approved ? targetAddress : undefined)
-      delete requests[request.handlerId]
+      delete requests[request.requestId]
     })
   }
   const approval = Promise.withResolvers<string>()
@@ -136,19 +136,19 @@ function fixture() {
     getFrameAccount: (id: string) => (id === accountId || id === otherAccountId ? account : undefined),
     rejectRequest(request: AccountRequest, error: EVMError) {
       service.reject(request, error)
-      delete requests[request.handlerId]
+      delete requests[request.requestId]
     },
     replaceTx: mock(async () => undefined),
     resolveRequest(request: AccountRequest, result?: unknown) {
       service.resolve(request, result)
-      delete requests[request.handlerId]
+      delete requests[request.requestId]
     },
     setAccess: mock(),
     setRequestError: mock((requestId: string, error: Error) => {
       Object.assign(requests[requestId] ?? {}, { status: 'error', notice: error.message })
     }),
     setRequestPending: mock((request: AccountRequest) => {
-      Object.assign(requests[request.handlerId] ?? {}, { status: 'pending' })
+      Object.assign(requests[request.requestId] ?? {}, { status: 'pending' })
     }),
     setRequestSuccess: mock((requestId: string) => {
       Object.assign(requests[requestId] ?? {}, { status: 'success' })
@@ -186,8 +186,8 @@ function fixture() {
   })
 
   const add = (request: AccountRequest, respond: RPCRequestCallback) => {
-    requests[request.handlerId] = request
-    service.create(respond, request.handlerId)
+    requests[request.requestId] = request
+    service.create(respond, request.requestId)
     service.bind(request)
   }
 
@@ -241,7 +241,7 @@ describe('prompted request lifecycle', () => {
         ;(request as AccountRequest).type = 'sign'
       }
       const original = structuredClone(request)
-      expect(test.service.approve(request.handlerId, undefined, { nonce: '0x2' })).toBeFalse()
+      expect(test.service.approve(request.requestId, undefined, { nonce: '0x2' })).toBeFalse()
       expect(request).toEqual(original)
       expect(test.approveTransactionRequest).not.toHaveBeenCalled()
     }
@@ -255,7 +255,7 @@ describe('prompted request lifecycle', () => {
     test.add(request, mock())
     const context = { owner: { clientType: 'wallet-ui', windowInstanceId: 'window' } } as never
 
-    expect(test.service.approve(request.handlerId, context, undefined, otherAccountId)).toBeTrue()
+    expect(test.service.approve(request.requestId, context, undefined, otherAccountId)).toBeTrue()
     expect(test.approveSafeTransaction).toHaveBeenCalledTimes(1)
     const [command, approvalContext] = test.approveSafeTransaction.mock.calls[0]
     expect(command).toMatchObject({
@@ -265,13 +265,13 @@ describe('prompted request lifecycle', () => {
       safeTxHash,
       ownerId: otherAccountId
     })
-    expect(command.operationId).toMatch(new RegExp(`^${request.handlerId}:${otherAccountId}:[0-9a-f-]{36}$`))
+    expect(command.operationId).toMatch(new RegExp(`^${request.requestId}:${otherAccountId}:[0-9a-f-]{36}$`))
     expect(approvalContext).toBe(context)
     expect(test.approveTransactionRequest).not.toHaveBeenCalled()
     expect(test.accounts.setTxSent).not.toHaveBeenCalled()
     expect(request.status).toBe(RequestStatus.Pending)
 
-    expect(test.service.approve(request.handlerId, context, undefined, otherAccountId)).toBeTrue()
+    expect(test.service.approve(request.requestId, context, undefined, otherAccountId)).toBeTrue()
     expect(test.approveSafeTransaction).toHaveBeenCalledTimes(2)
     expect(test.approveSafeTransaction.mock.calls[1][0].operationId).not.toBe(command.operationId)
   })
@@ -287,7 +287,7 @@ describe('prompted request lifecycle', () => {
     const adjustments = { gasLimit: '0x1234' }
 
     expect(
-      test.service.approve(request.handlerId, context, adjustments, undefined, otherAccountId)
+      test.service.approve(request.requestId, context, adjustments, undefined, otherAccountId)
     ).toBeTrue()
     await Promise.resolve()
     expect(test.executeSafeTransaction).toHaveBeenCalledTimes(1)
@@ -298,7 +298,7 @@ describe('prompted request lifecycle', () => {
       adjustments,
       context
     ])
-    expect(execution[4]).toMatch(new RegExp(`^${request.handlerId}:${otherAccountId}:execute:[0-9a-f-]{36}$`))
+    expect(execution[4]).toMatch(new RegExp(`^${request.requestId}:${otherAccountId}:execute:[0-9a-f-]{36}$`))
 
     const outerTxHash = `0x${'c'.repeat(64)}`
     expect(test.service.notifySafeTransactionSubmitted({ safeTxHash, outerTxHash })).toBeTrue()
@@ -306,7 +306,7 @@ describe('prompted request lifecycle', () => {
     expect(respond).toHaveBeenCalledTimes(1)
     expect(respond).toHaveBeenCalledWith({ id: 7, jsonrpc: '2.0', result: outerTxHash })
     expect(test.accounts.setTxSent).toHaveBeenCalledTimes(1)
-    expect(test.accounts.setTxSent).toHaveBeenCalledWith(request.handlerId, outerTxHash)
+    expect(test.accounts.setTxSent).toHaveBeenCalledWith(request.requestId, outerTxHash)
     expect(test.trackSafeExecution).not.toHaveBeenCalled()
   })
 
@@ -322,10 +322,10 @@ describe('prompted request lifecycle', () => {
       .mockRejectedValueOnce(new Error('broadcast failed'))
       .mockResolvedValueOnce(`0x${'b'.repeat(64)}`)
 
-    expect(test.service.approve(request.handlerId, context, undefined, undefined, otherAccountId)).toBeTrue()
+    expect(test.service.approve(request.requestId, context, undefined, undefined, otherAccountId)).toBeTrue()
     await Promise.resolve()
     await Promise.resolve()
-    expect(test.service.approve(request.handlerId, context, undefined, undefined, otherAccountId)).toBeTrue()
+    expect(test.service.approve(request.requestId, context, undefined, undefined, otherAccountId)).toBeTrue()
     await Promise.resolve()
 
     expect(test.executeSafeTransaction).toHaveBeenCalledTimes(2)
@@ -351,7 +351,7 @@ describe('prompted request lifecycle', () => {
     request.safeTxHash = safeTxHash
     test.add(request, mock())
 
-    expect(test.service.rejectRequest(request.handlerId)).toBeTrue()
+    expect(test.service.rejectRequest(request.requestId)).toBeTrue()
     expect(test.removeUnsigned).toHaveBeenCalledWith({
       type: 'safe.confirmation-status',
       accountId,
@@ -365,31 +365,31 @@ describe('prompted request lifecycle', () => {
     const request = transactionRequest('adjusted')
     request.automaticFeeUpdateNotice = { previousFee: '0x1' }
     test.add(request, mock())
-    expect(test.service.approve(request.handlerId)).toBeTrue()
+    expect(test.service.approve(request.requestId)).toBeTrue()
     const gate = request.approvalGate
     expect(gate?.type).toBe('gas-fee')
-    expect(test.service.approve(request.handlerId, undefined, { gasPrice: request.data.gasPrice })).toBeTrue()
+    expect(test.service.approve(request.requestId, undefined, { gasPrice: request.data.gasPrice })).toBeTrue()
     expect(request.feesUpdatedByUser).toBeTrue()
     expect(request.automaticFeeUpdateNotice).toBeUndefined()
     expect(request.approvalGate).toEqual(gate)
-    expect(test.service.confirmWarning(request.handlerId, 'gas-fee')).toBeTrue()
+    expect(test.service.confirmWarning(request.requestId, 'gas-fee')).toBeTrue()
     expect(test.approveTransactionRequest).toHaveBeenCalledWith(request, undefined)
-    expect(test.service.approve(request.handlerId, undefined, { nonce: '0x2' })).toBeFalse()
+    expect(test.service.approve(request.requestId, undefined, { nonce: '0x2' })).toBeFalse()
     expect(request.data.nonce).toBe('0x0')
   })
 
   it('recomputes a warning after candidate changes and rejects invalid candidates without partial writes', () => {
     const request = transactionRequest('adjusted')
     test.add(request, mock())
-    test.service.approve(request.handlerId)
+    test.service.approve(request.requestId)
     const original = structuredClone(request)
     expect(() =>
-      test.service.approve(request.handlerId, undefined, { nonce: '0x2', gasPrice: '0xffffffffffffffff' })
+      test.service.approve(request.requestId, undefined, { nonce: '0x2', gasPrice: '0xffffffffffffffff' })
     ).toThrow()
     expect(request).toEqual(original)
     expect(test.approveTransactionRequest).not.toHaveBeenCalled()
     expect(
-      test.service.approve(request.handlerId, undefined, { gasPrice: '0x3b9aca00', nonce: '0x2' })
+      test.service.approve(request.requestId, undefined, { gasPrice: '0x3b9aca00', nonce: '0x2' })
     ).toBeTrue()
     expect(request.approvalGate).toBeUndefined()
     expect(request.data.nonce).toBe('0x2')
@@ -398,7 +398,7 @@ describe('prompted request lifecycle', () => {
 
   it.each([1, 8453])('returns null after approving chain %i', async (chainId) => {
     const request: AddChainRequest = {
-      handlerId: 'add-chain',
+      requestId: 'add-chain',
       type: 'addChain',
       origin: 'app.example',
       account: accountId,
@@ -419,12 +419,12 @@ describe('prompted request lifecycle', () => {
     const responses: RPCResponsePayload[] = []
     test.add(request, (response) => responses.push(response))
 
-    test.service.reviewAddChain(request.handlerId)
+    test.service.reviewAddChain(request.requestId)
     expect(responses).toEqual([])
 
     await test.service.resolveChain({
       type: 'chain.request-resolve',
-      requestId: request.handlerId,
+      requestId: request.requestId,
       approved: true
     })
 
@@ -436,7 +436,7 @@ describe('prompted request lifecycle', () => {
     'settles duplicate add-chain requests together when approved=%s',
     async (approved) => {
       const request: AddChainRequest = {
-        handlerId: 'first',
+        requestId: 'first',
         type: 'addChain',
         origin: 'app.example',
         account: accountId,
@@ -454,16 +454,16 @@ describe('prompted request lifecycle', () => {
           params: [{ chainId: '0x1237', chainName: 'Robinhood Mainnet' }]
         }
       }
-      const duplicate = { ...request, handlerId: 'second', payload: { ...request.payload, id: 9 } }
+      const duplicate = { ...request, requestId: 'second', payload: { ...request.payload, id: 9 } }
       const otherOrigin = {
         ...request,
-        handlerId: 'other',
+        requestId: 'other',
         origin: 'other.example',
         payload: { ...request.payload, id: 10 }
       }
       const differentSettings = {
         ...request,
-        handlerId: 'different',
+        requestId: 'different',
         chain: { ...request.chain, primaryRpc: 'https://other.example' },
         payload: {
           ...request.payload,
@@ -479,7 +479,7 @@ describe('prompted request lifecycle', () => {
 
       await test.service.resolveChain({
         type: 'chain.request-resolve',
-        requestId: request.handlerId,
+        requestId: request.requestId,
         approved
       })
 
@@ -518,9 +518,9 @@ describe('prompted request lifecycle', () => {
     const respond = mock()
     test.state.main.mute.gasFeeWarning = true
     test.add(request, respond)
-    test.service.approve(request.handlerId)
-    expect(test.service.cancel(request.handlerId)).toBe(true)
-    expect(test.requests[request.handlerId]).toBeUndefined()
+    test.service.approve(request.requestId)
+    expect(test.service.cancel(request.requestId)).toBe(true)
+    expect(test.requests[request.requestId]).toBeUndefined()
     test.approval.resolve('0xlate')
     await Promise.resolve()
     expect(respond).not.toHaveBeenCalled()
@@ -532,15 +532,15 @@ describe('prompted request lifecycle', () => {
     const respond = mock()
     test.state.main.mute.gasFeeWarning = true
     test.add(request, respond)
-    test.service.approve(request.handlerId)
+    test.service.approve(request.requestId)
     const replacement = {
       ...request,
       authorization: { ...request.authorization!, actionId: 'replacement-action' }
     }
-    test.requests[request.handlerId] = replacement
+    test.requests[request.requestId] = replacement
     test.approval.reject(Object.assign(new Error('cancelled'), { code: 4001 }))
     await Promise.resolve()
-    expect(test.requests[request.handlerId]).toBe(replacement)
+    expect(test.requests[request.requestId]).toBe(replacement)
     expect(test.accounts.setRequestError).not.toHaveBeenCalled()
     expect(respond).toHaveBeenCalledWith(
       expect.objectContaining({ error: expect.objectContaining({ code: 4001 }) as unknown })
@@ -553,18 +553,18 @@ describe('prompted request lifecycle', () => {
     const responses: RPCResponsePayload[] = []
     test.add(request, (response) => responses.push(response))
 
-    expect(test.service.approve(request.handlerId)).toBe(true)
-    expect(test.service.approve(request.handlerId)).toBe(true)
+    expect(test.service.approve(request.requestId)).toBe(true)
+    expect(test.service.approve(request.requestId)).toBe(true)
     expect(test.approveTransactionRequest.mock.calls.length).toBe(1)
 
     test.approval.resolve('0xhash')
     await test.approval.promise
     await Promise.resolve()
-    expect(test.service.approve(request.handlerId)).toBe(true)
+    expect(test.service.approve(request.requestId)).toBe(true)
     expect(test.approveTransactionRequest.mock.calls.length).toBe(1)
     expect(responses).toEqual([{ id: 7, jsonrpc: '2.0', result: '0xhash' }])
     expect(test.accounts.setTxSent).toHaveBeenCalledTimes(1)
-    expect(test.requests[request.handlerId]).toMatchObject({
+    expect(test.requests[request.requestId]).toMatchObject({
       status: 'verifying',
       tx: { hash: '0xhash', confirmations: 0 }
     })
@@ -575,20 +575,20 @@ describe('prompted request lifecycle', () => {
     test.signerCompatibility.mockReturnValue({ signer: 'ledger', tx: 'london', compatible: false })
     test.add(request, mock())
 
-    expect(test.service.approve(request.handlerId)).toBe(true)
-    expect(test.requests[request.handlerId]!.approvalGate).toMatchObject({
+    expect(test.service.approve(request.requestId)).toBe(true)
+    expect(test.requests[request.requestId]!.approvalGate).toMatchObject({
       type: 'signer-compatibility',
       reason: 'incompatible'
     })
-    expect(test.service.confirmWarning(request.handlerId, 'gas-fee')).toBe(false)
-    expect(test.service.confirmWarning(request.handlerId, 'signer-compatibility')).toBe(true)
-    expect(test.requests[request.handlerId]!.approvalGate).toEqual({
+    expect(test.service.confirmWarning(request.requestId, 'gas-fee')).toBe(false)
+    expect(test.service.confirmWarning(request.requestId, 'signer-compatibility')).toBe(true)
+    expect(test.requests[request.requestId]!.approvalGate).toEqual({
       type: 'gas-fee',
       feeUSD: '84.00',
       currentSymbol: 'ETH'
     })
-    expect(test.service.confirmWarning(request.handlerId, 'signer-compatibility')).toBe(false)
-    expect(test.service.confirmWarning(request.handlerId, 'gas-fee')).toBe(true)
+    expect(test.service.confirmWarning(request.requestId, 'signer-compatibility')).toBe(false)
+    expect(test.service.confirmWarning(request.requestId, 'gas-fee')).toBe(true)
     expect(test.approveTransactionRequest.mock.calls.length).toBe(1)
   })
 
@@ -629,7 +629,7 @@ it.each([
     const test = fixture()
     const request: AccessRequest = {
       type: 'access',
-      handlerId: 'connect',
+      requestId: 'connect',
       origin: 'app.example',
       account: accountId,
       payload: { id: 17, jsonrpc: '2.0', method, params: [] }
@@ -637,9 +637,9 @@ it.each([
     const respond = mock<RPCRequestCallback>()
     test.add(request, respond)
     test.state.main.currentAccount = selected
-    expect(test.service.resolveAccess(request.handlerId, approved)).toBe(true)
+    expect(test.service.resolveAccess(request.requestId, approved)).toBe(true)
     expect(respond).toHaveBeenCalledWith({ id: 17, jsonrpc: '2.0', result: target })
-    expect(test.requests[request.handlerId]).toBeUndefined()
+    expect(test.requests[request.requestId]).toBeUndefined()
     if (target === otherAccountId) {
       expect(test.account.setAccess).toHaveBeenCalledWith(request, true, otherAccountId)
     }

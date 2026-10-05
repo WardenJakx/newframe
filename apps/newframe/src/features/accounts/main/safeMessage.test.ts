@@ -22,7 +22,7 @@ function fixture(options: { threshold?: number; ownerCount?: number; version?: S
   }
   const request: SignatureRequest = options.version
     ? {
-        handlerId: 'request-1',
+        requestId: 'request-1',
         type: 'signTypedData',
         account: safe,
         chainId: 1,
@@ -47,7 +47,7 @@ function fixture(options: { threshold?: number; ownerCount?: number; version?: S
         }
       }
     : {
-        handlerId: 'request-1',
+        requestId: 'request-1',
         type: 'sign',
         account: safe,
         chainId: 1,
@@ -65,7 +65,7 @@ function fixture(options: { threshold?: number; ownerCount?: number; version?: S
       lastSignerType: 'address',
       status: 'ok',
       created: 'safe:1',
-      requests: { [request.handlerId]: request },
+      requests: { [request.requestId]: request },
       safe: { '1': { chainId: 1, address: safe, configuration } }
     },
     ...Object.fromEntries(

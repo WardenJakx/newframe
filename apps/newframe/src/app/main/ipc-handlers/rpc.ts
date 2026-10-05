@@ -769,10 +769,10 @@ export class RpcIpcHandlers extends EventEmitter {
       }
 
       const { feesUpdated: _feesUpdated, recipientType, ...data } = transactionMetadata.tx
-      const handlerId = this.requests.create(res)
-      const respond = (response: RPCResponsePayload) => this.requests.respond(handlerId, response)
+      const requestId = this.requests.create(res)
+      const respond = (response: RPCResponsePayload) => this.requests.respond(requestId, response)
       const unclassifiedRequest = {
-        handlerId,
+        requestId,
         type: 'transaction',
         data,
         payload,
@@ -825,10 +825,10 @@ export class RpcIpcHandlers extends EventEmitter {
     const message = encodePersonalSignMessage(rawMessage)
 
     const normalizedPayload = { ...payload, params: [account.id, message, ...orderedParams.slice(2)] }
-    const handlerId = this.requests.create(res)
-    const respond = (response: RPCResponsePayload) => this.requests.respond(handlerId, response)
+    const requestId = this.requests.create(res)
+    const respond = (response: RPCResponsePayload) => this.requests.respond(requestId, response)
     const request: SignatureRequest = {
-      handlerId,
+      requestId,
       type: 'sign',
       payload: normalizedPayload,
       account: account.id,
@@ -904,10 +904,10 @@ export class RpcIpcHandlers extends EventEmitter {
     } as RPC.SignTypedData.Request
     const typedMessage: TypedMessage = { data: validatedTypedData, version }
     const digests = getEip712Digests(typedMessage)
-    const handlerId = this.requests.create(res)
-    const respond = (response: RPCResponsePayload) => this.requests.respond(handlerId, response)
+    const requestId = this.requests.create(res)
+    const respond = (response: RPCResponsePayload) => this.requests.respond(requestId, response)
     const request: SignTypedDataRequest = {
-      handlerId,
+      requestId,
       type: 'signTypedData',
       typedMessage,
       ...(digests ? { digests } : {}),
@@ -1024,9 +1024,9 @@ export class RpcIpcHandlers extends EventEmitter {
           origin: payload._origin,
           ...(localDecoded ? { localDecoded } : {})
         })
-        const handlerId = this.requests.create(res)
+        const requestId = this.requests.create(res)
         const unclassifiedReq = {
-          handlerId,
+          requestId,
           type: 'transaction',
           data: inner,
           safeTxHash: draft.proposal.safeTxHash,
@@ -1047,7 +1047,7 @@ export class RpcIpcHandlers extends EventEmitter {
           return
         }
         try {
-          this.safeTransactions.attach(draft, handlerId)
+          this.safeTransactions.attach(draft, requestId)
         } catch (error) {
           currentAccount.rejectRequest(req, {
             code: -1,
@@ -1062,14 +1062,14 @@ export class RpcIpcHandlers extends EventEmitter {
         if (err) {
           resError(err, payload, res)
         } else {
-          const handlerId = this.requests.create(res)
+          const requestId = this.requests.create(res)
           const txMetadata = transactionMetadata as TransactionMetadata
           const { feesUpdated, recipientType, ...data } = txMetadata.tx
           const calldata = data.data
           const calldataDigest = calldata && isNonZeroHex(calldata) ? getCalldataDigest(calldata) : undefined
 
           const unclassifiedReq = {
-            handlerId,
+            requestId,
             type: 'transaction',
             data: {
               ...data,
@@ -1154,10 +1154,10 @@ export class RpcIpcHandlers extends EventEmitter {
       return resError('Sign request is not from currently selected account', payload, res)
     }
 
-    const handlerId = this.requests.create(res)
+    const requestId = this.requests.create(res)
 
     const req = {
-      handlerId,
+      requestId,
       type: 'sign',
       payload,
       account: currentAccount.getAccounts()[0],
@@ -1246,7 +1246,7 @@ export class RpcIpcHandlers extends EventEmitter {
       return resError('Lattice only supports eth_signTypedData_v3+', payload, res)
     }
 
-    const handlerId = this.requests.create(res as RPCRequestCallback)
+    const requestId = this.requests.create(res as RPCRequestCallback)
     const typedMessage: TypedMessage<typeof version> = {
       data: validatedTypedData,
       version
@@ -1256,7 +1256,7 @@ export class RpcIpcHandlers extends EventEmitter {
     const type = sigParser.identify(typedMessage)
 
     const req: SignTypedDataRequest = {
-      handlerId,
+      requestId,
       type: 'signTypedData',
       typedMessage,
       ...(digests ? { digests } : {}),
@@ -1575,7 +1575,7 @@ export class RpcIpcHandlers extends EventEmitter {
       }
     }
 
-    const handlerId = this.requests.create(res)
+    const requestId = this.requests.create(res)
     const requestChain = existing
       ? {
           id,
@@ -1597,7 +1597,7 @@ export class RpcIpcHandlers extends EventEmitter {
           ...(icon ? { icon } : {})
         }
     this.accounts.routeRequest(requestSource, {
-      handlerId,
+      requestId,
       type: 'addChain',
       chain: requestChain,
       account: (this.accounts.getAccounts() ?? [])[0],
@@ -1686,11 +1686,11 @@ export class RpcIpcHandlers extends EventEmitter {
             return resError('no account selected', payload, cb)
           }
 
-          const handlerId = this.requests.create(() => {})
+          const requestId = this.requests.create(() => {})
           cb({ id: payload.id, jsonrpc: '2.0', result: true })
 
           this.accounts.routeRequest(requestSource, {
-            handlerId,
+            requestId,
             type: 'addToken',
             token,
             ...(similarToken

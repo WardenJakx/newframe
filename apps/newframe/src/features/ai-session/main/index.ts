@@ -116,9 +116,9 @@ export function createAiSessionService(
     }
 
     return new Promise((resolve, reject) => {
-      let handlerId = ''
-      handlerId = requests.create((response) => {
-        clearPending(handlerId)
+      let requestId = ''
+      requestId = requests.create((response) => {
+        clearPending(requestId)
         if (response.error) {
           reject(new TRPCError({ code: 'FORBIDDEN', message: response.error.message }))
           return
@@ -127,11 +127,11 @@ export function createAiSessionService(
       })
       const request: AiSessionRequest = {
         type: 'aiSession',
-        handlerId,
+        requestId,
         origin: AI_SESSION_ORIGIN,
         account: account.id,
         payload: {
-          id: handlerId,
+          id: requestId,
           jsonrpc: '2.0',
           method: 'ai_session_connect',
           params: []
@@ -141,17 +141,17 @@ export function createAiSessionService(
       }
 
       const cancel = (message: string) => {
-        const pending = pendingConnections.get(handlerId)
+        const pending = pendingConnections.get(requestId)
         if (!pending) {
           return
         }
         accounts.getFrameAccount(pending.accountId)?.rejectRequest(pending.request, { code: 4001, message })
-        clearPending(handlerId)
+        clearPending(requestId)
         reject(new TRPCError({ code: 'FORBIDDEN', message }))
       }
       const timer = setTimeout(() => cancel('AI session request expired'), CONNECTION_TIMEOUT_MS)
 
-      pendingConnections.set(handlerId, {
+      pendingConnections.set(requestId, {
         accountId: account.id,
         descriptor: input.descriptor,
         durationSeconds: input.durationSeconds,
@@ -163,14 +163,14 @@ export function createAiSessionService(
 
       const requestSource = createLocalApiSource({
         transport: 'http',
-        connectionId: handlerId,
+        connectionId: requestId,
         origin: AI_SESSION_ORIGIN
       })
 
       const routed = accounts.routeRequest(requestSource, request)
 
       if (!routed) {
-        clearPending(handlerId)
+        clearPending(requestId)
         reject(new TRPCError({ code: 'FORBIDDEN', message: 'AI session denied' }))
       }
     })

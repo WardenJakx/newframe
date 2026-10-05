@@ -21,7 +21,7 @@ const safeAccount: Account = {
 }
 
 const request: SignatureRequest = {
-  handlerId: 'request-1',
+  requestId: 'request-1',
   type: 'sign',
   origin: 'example.test',
   payload: {

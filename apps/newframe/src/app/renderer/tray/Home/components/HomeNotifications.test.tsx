@@ -112,9 +112,9 @@ it('shows normal requests as a prominent home notification and opens the request
           status: 'ok',
           signer: 'watch',
           requests: {
-            'request-1': { handlerId: 'request-1', mode: 'normal', type: 'access' },
-            'request-2': { handlerId: 'request-2', mode: 'normal', type: 'access' },
-            monitor: { handlerId: 'monitor', mode: 'monitor', type: 'transaction' }
+            'request-1': { requestId: 'request-1', mode: 'normal', type: 'access' },
+            'request-2': { requestId: 'request-2', mode: 'normal', type: 'access' },
+            monitor: { requestId: 'monitor', mode: 'monitor', type: 'transaction' }
           },
           created: '2026-01-01T00:00:00.000Z'
         } as unknown as WalletRendererState['accounts'][string]
@@ -148,7 +148,7 @@ it('does not show a request notification when there are no actionable requests',
           lastSignerType: 'address',
           status: 'ok',
           signer: 'watch',
-          requests: { monitor: { handlerId: 'monitor', mode: 'monitor', type: 'transaction' } },
+          requests: { monitor: { requestId: 'monitor', mode: 'monitor', type: 'transaction' } },
           created: '2026-01-01T00:00:00.000Z'
         } as unknown as WalletRendererState['accounts'][string]
       },
@@ -176,7 +176,7 @@ it('counts Safe proposals with RPC requests and opens failed queues from a separ
     status: 'ok',
     signer: 'watch',
     created: '',
-    requests: { rpc: { handlerId: 'rpc', mode: 'normal', type: 'access' } },
+    requests: { rpc: { requestId: 'rpc', mode: 'normal', type: 'access' } },
     safe: {
       '1': {
         chainId: 1,

@@ -238,7 +238,7 @@ export const WalletRequestSchema = z
       'switchChain',
       'addToken'
     ]),
-    handlerId: z.string(),
+    requestId: z.string(),
     origin: z.string().optional(),
     payload: z.unknown().optional(),
     account: z.string().optional(),

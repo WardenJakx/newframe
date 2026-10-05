@@ -190,7 +190,7 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
     activePermissionChecks.set(permissionCheckId, result)
     const request: AccessRequest = {
       payload,
-      handlerId: originId,
+      requestId: originId,
       type: 'access',
       origin: originId,
       account: address
@@ -202,10 +202,10 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
           'result' in response && typeof response.result === 'string' ? response.result : undefined
         activePermissionChecks.delete(permissionCheckId)
         resolveCheck(grantedAddress)
-      }, request.handlerId)
+      }, request.requestId)
       dependencies.accounts.routeRequest(requestSource, request)
     } catch (error) {
-      dependencies.requests.cancel(request.handlerId)
+      dependencies.requests.cancel(request.requestId)
       activePermissionChecks.delete(permissionCheckId)
       rejectCheck(error)
     }

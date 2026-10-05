@@ -123,11 +123,11 @@ function WarningMute({ checked, onToggle }: { checked: boolean; onToggle: () => 
 
 function confirmWarning(
   review: Pick<RequestReviewCapability, 'confirmWarning'>,
-  req: { handlerId?: string } | undefined,
+  req: { requestId?: string } | undefined,
   gate: 'signer-compatibility' | 'gas-fee'
 ) {
-  if (req?.handlerId) {
-    void review.confirmWarning({ requestId: req.handlerId, gate })
+  if (req?.requestId) {
+    void review.confirmWarning({ requestId: req.requestId, gate })
   }
 }
 

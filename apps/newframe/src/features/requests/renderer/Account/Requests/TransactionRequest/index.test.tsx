@@ -19,11 +19,11 @@ const fixture = registerTestRuntimeFixture()
 let capabilities: RequestRendererCapabilitiesFake
 type TransactionRequestFixture = Omit<
   Partial<TransactionRequestView>,
-  'account' | 'data' | 'handlerId' | 'origin' | 'payload' | 'tx' | 'type'
+  'account' | 'data' | 'requestId' | 'origin' | 'payload' | 'tx' | 'type'
 > & {
   account?: string
   data: Partial<TransactionRequestView['data']> & Pick<TransactionRequestView['data'], 'chainId'>
-  handlerId: string
+  requestId: string
   origin: string
   payload?: Partial<TransactionRequestView['payload']> & Record<string, unknown>
   tx?: TransactionRequestView['tx'] & { confirmations?: number }
@@ -165,7 +165,7 @@ function safeRequestFixture() {
     error: 'Trace unavailable'
   })
   const req = {
-    handlerId: 'safe-request',
+    requestId: 'safe-request',
     type: 'transaction',
     origin: 'test-origin',
     account: safe,
@@ -296,7 +296,7 @@ describe('confirm', () => {
     expect(await screen.findByText('Pending proposal')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Execute transaction' })).toBeNull()
     await user.click(screen.getByRole('button', { name: 'Sign' }))
-    expect(capabilities.review.approve).toHaveBeenCalledWith({ requestId: req.handlerId, ownerId: owner })
+    expect(capabilities.review.approve).toHaveBeenCalledWith({ requestId: req.requestId, ownerId: owner })
     expect(capabilities.review.approve).toHaveBeenCalledTimes(1)
     expect(capabilities.safe.prepareExecution).not.toHaveBeenCalled()
 
@@ -337,7 +337,7 @@ describe('confirm', () => {
     const adjustments = 'adjustments' in approval ? approval.adjustments : undefined
     expect(TransactionApprovalAdjustmentsSchema.safeParse(adjustments).success).toBe(true)
     expect(approval).toEqual({
-      requestId: req.handlerId,
+      requestId: req.requestId,
       executorId: owner,
       adjustments: {
         gasLimit: '0x55f0',
@@ -373,7 +373,7 @@ describe('confirm', () => {
 
   it('renders a transaction notice', () => {
     const req = {
-      handlerId: 'test-req',
+      requestId: 'test-req',
       type: 'transaction',
       status: RequestStatus.Confirming,
       notice: 'insufficient funds for gas',
@@ -393,7 +393,7 @@ describe('confirm', () => {
 
   it('uses the request status and keeps gas settings collapsed', () => {
     const req = {
-      handlerId: 'test-req',
+      requestId: 'test-req',
       type: 'transaction',
       status: RequestStatus.Confirming,
       origin: 'test-origin',
@@ -450,7 +450,7 @@ describe('confirm', () => {
       windows: { panel: { nav: [] } }
     })
     const req = {
-      handlerId: 'test-req',
+      requestId: 'test-req',
       type: 'transaction',
       origin: 'test-origin',
       account: senderAddress,
@@ -518,7 +518,7 @@ describe('confirm', () => {
 
   it('renders the full token symbol in the fallback asset icon', () => {
     const req = {
-      handlerId: 'test-req',
+      requestId: 'test-req',
       type: 'transaction',
       origin: 'test-origin',
       data: {
@@ -554,7 +554,7 @@ describe('confirm', () => {
 
   it('styles transaction effect icons by asset direction', () => {
     const req = {
-      handlerId: 'test-req',
+      requestId: 'test-req',
       type: 'transaction',
       origin: 'test-origin',
       data: {
@@ -639,7 +639,7 @@ describe('confirm', () => {
       windows: { panel: { nav: [] } }
     })
     const req = {
-      handlerId: 'test-req',
+      requestId: 'test-req',
       type: 'transaction',
       origin: 'test-origin',
       data: {
@@ -677,7 +677,7 @@ describe('confirm', () => {
 
   it('renders fee rate presets for unsigned transactions', () => {
     const req = {
-      handlerId: 'test-req',
+      requestId: 'test-req',
       type: 'transaction',
       origin: 'test-origin',
       data: {
@@ -712,7 +712,7 @@ describe('confirm', () => {
 
   it('reveals full calldata inline without opening a raw transaction view', () => {
     const req = {
-      handlerId: 'test-req',
+      requestId: 'test-req',
       type: 'transaction',
       origin: 'test-origin',
       data: {
@@ -739,7 +739,7 @@ describe('confirm', () => {
     const contract = '0x1eba19f260421142AD9Bf5ba193f6d4A0825e698'
     const requestedAmount = 70_000n
     const req: TransactionRequestView = {
-      handlerId: 'test-req',
+      requestId: 'test-req',
       type: 'transaction',
       account: '0x0000000000000000000000000000000000000001',
       origin: 'test-origin',
@@ -801,7 +801,7 @@ describe('confirm', () => {
 it('keeps a single named argument visible and separates calldata verification from transaction hashes', () => {
   const calldata = '0x60fe47b1000000000000000000000000000000000000000000000000000000000000002a'
   const req = {
-    handlerId: 'named-arg',
+    requestId: 'named-arg',
     type: 'transaction',
     origin: 'test-origin',
     data: {
@@ -847,7 +847,7 @@ it('shows the approval spender separately from the token contract without invent
   const spender = '0x0000000000000000000000000000000000000011'
   const contract = '0x0000000000000000000000000000000000000022'
   renderRequest({
-    handlerId: 'approval',
+    requestId: 'approval',
     type: 'transaction',
     origin: 'test-origin',
     data: { chainId: '0x89', to: contract },
@@ -888,7 +888,7 @@ it.each([
   }
 ])('treats $signature as a generic call despite token metadata', (decodedData) => {
   renderRequest({
-    handlerId: 'generic',
+    requestId: 'generic',
     type: 'transaction',
     origin: 'test-origin',
     data: { chainId: '0x89', to: '0x0000000000000000000000000000000000000010' },
@@ -906,7 +906,7 @@ it.each([
 
 it('shows unknown calldata and simulation failure even when value creates a visible effect', () => {
   renderRequest({
-    handlerId: 'unknown',
+    requestId: 'unknown',
     type: 'transaction',
     origin: 'test-origin',
     data: { chainId: '0x89', data: '0xdeadbeef1234', value: '0x1' },

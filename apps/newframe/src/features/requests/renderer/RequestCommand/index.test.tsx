@@ -57,7 +57,7 @@ it('uses synchronized lock state instead of querying Electron before signing', (
 
 it('approves and rejects requests using canonical IDs', () => {
   approveRequest(capabilities.review, 'request-1')
-  declineRequest(capabilities.review, { handlerId: 'request-2' })
+  declineRequest(capabilities.review, { requestId: 'request-2' })
 
   expect(capabilities.review.approve).toHaveBeenCalledWith({ requestId: 'request-1' })
   expect(capabilities.review.reject).toHaveBeenCalledWith({ requestId: 'request-2' })
@@ -66,7 +66,7 @@ it('approves and rejects requests using canonical IDs', () => {
 it('submits local adjustments and shows approval failure without modifying the canonical request', async () => {
   const req = {
     type: 'transaction',
-    handlerId: 'request-1',
+    requestId: 'request-1',
     approvals: [],
     data: { chainId: '0x1', gasPrice: '0x1' }
   }
@@ -88,7 +88,7 @@ it('submits local adjustments and shows approval failure without modifying the c
 
 it('displays the main-projected signer compatibility gate without querying Electron', () => {
   const req = {
-    handlerId: 'request-1',
+    requestId: 'request-1',
     type: 'transaction',
     approvals: [],
     data: { chainId: '0x1', gasLimit: '0x5208', gasPrice: '0x1' },
@@ -131,7 +131,7 @@ it.each([
     approvalGate: { type: 'signer-compatibility', reason: 'no-signer' }
   }
 ] as const)('disables $type requests when no signer is attached', (request) => {
-  const req = { ...request, handlerId: 'request-1' }
+  const req = { ...request, requestId: 'request-1' }
   const props = createProps(false, req, false)
   render(<RequestCommand {...props} />)
 
@@ -143,7 +143,7 @@ it('uses the projected signature capability instead of a direct account signer a
   const owner = safeOwner(1)
   const req: RequestCommandRequest = {
     type: 'sign',
-    handlerId: 'request-1',
+    requestId: 'request-1',
     signingCapability: { type: 'direct', status: 'ready', candidates: [owner] }
   }
   render(<RequestCommand {...createProps(false, req, false)} />)
@@ -165,7 +165,7 @@ const safeOwner = (index: number, status: 'ready' | 'unavailable' = 'ready') => 
 it('explains when the Safe is not configured on the request chain', () => {
   const req: RequestCommandRequest = {
     type: 'sign',
-    handlerId: 'safe-request',
+    requestId: 'safe-request',
     account: `0x${'a'.repeat(40)}`,
     signingCapability: {
       type: 'safe',
@@ -193,7 +193,7 @@ it('explains when the Safe is not configured on the request chain', () => {
 it('selects a projected Safe owner and sends its ID without replacing the Safe request account', async () => {
   const req: RequestCommandRequest = {
     type: 'sign',
-    handlerId: 'safe-request',
+    requestId: 'safe-request',
     account: `0x${'a'.repeat(40)}`,
     signingCapability: {
       type: 'safe',
@@ -220,7 +220,7 @@ it('selects a projected Safe owner and sends its ID without replacing the Safe r
   await user.click(screen.getByRole('button', { name: 'Sign as owner' }))
 
   expect(capabilities.review.approve).toHaveBeenCalledWith({
-    requestId: req.handlerId,
+    requestId: req.requestId,
     ownerId: 'owner-2'
   })
   expect(req.account).toBe(`0x${'a'.repeat(40)}`)
@@ -231,7 +231,7 @@ it('shows verified Safe progress and permits another projected owner while the R
   const second = safeOwner(2)
   const req: RequestCommandRequest = {
     type: 'signTypedData',
-    handlerId: 'safe-request',
+    requestId: 'safe-request',
     account: `0x${'a'.repeat(40)}`,
     status: 'pending',
     notice: 'See signer',
@@ -258,7 +258,7 @@ it('shows verified Safe progress and permits another projected owner while the R
   expect(screen.getByRole('button', { name: 'Owner signer' }).textContent).toContain('Owner 2')
   await user.click(screen.getByRole('button', { name: 'Sign as owner' }))
   expect(capabilities.review.approve).toHaveBeenCalledWith({
-    requestId: req.handlerId,
+    requestId: req.requestId,
     ownerId: second.accountId
   })
 })
@@ -267,7 +267,7 @@ it('shows a retryable Safe publication failure', async () => {
   const owner = safeOwner(1)
   const req: RequestCommandRequest = {
     type: 'sign',
-    handlerId: 'safe-request',
+    requestId: 'safe-request',
     account: `0x${'a'.repeat(40)}`,
     signingCapability: {
       type: 'safe',
@@ -308,7 +308,7 @@ it('shows a retryable Safe publication failure', async () => {
   expect(screen.getByRole('alert').textContent).toContain('publication failed')
   await user.click(screen.getByRole('button', { name: 'Retry publication' }))
   expect(capabilities.review.approve).toHaveBeenLastCalledWith({
-    requestId: req.handlerId,
+    requestId: req.requestId,
     ownerId: owner.accountId
   })
 })
@@ -316,7 +316,7 @@ it('shows a retryable Safe publication failure', async () => {
 it('uses renderer-generated idempotency keys for transaction replacement', () => {
   const req = {
     type: 'transaction',
-    handlerId: 'request-1',
+    requestId: 'request-1',
     status: 'sent',
     notice: 'Submitted',
     data: { chainId: '0x1' },
@@ -328,12 +328,12 @@ it('uses renderer-generated idempotency keys for transaction replacement', () =>
   fireEvent.click(screen.getByLabelText('Speed up transaction'))
 
   expect(capabilities.transaction.replace).toHaveBeenNthCalledWith(1, {
-    requestId: req.handlerId,
+    requestId: req.requestId,
     replacement: 'cancel',
     idempotencyKey: expect.stringMatching(/^[0-9a-f-]{36}$/) as unknown
   })
   expect(capabilities.transaction.replace).toHaveBeenNthCalledWith(2, {
-    requestId: req.handlerId,
+    requestId: req.requestId,
     replacement: 'speed',
     idempotencyKey: expect.stringMatching(/^[0-9a-f-]{36}$/) as unknown
   })
@@ -342,7 +342,7 @@ it('uses renderer-generated idempotency keys for transaction replacement', () =>
 it('dismisses fee notices locally', () => {
   const req = {
     type: 'transaction',
-    handlerId: 'request-1',
+    requestId: 'request-1',
     automaticFeeUpdateNotice: {},
     approvals: [],
     data: { chainId: '0x1', gasLimit: '0x0', gasPrice: '0x0' }
@@ -356,7 +356,7 @@ it('dismisses fee notices locally', () => {
 })
 
 it('uses typed request commands for required approvals', () => {
-  const req = { handlerId: 'request-1' }
+  const req = { requestId: 'request-1' }
   const approval = { type: 'approveGasLimit' as const, data: { message: 'Estimated to fail' } }
   render(<TxApproval capability={capabilities.review} req={req} approval={approval} />)
 
@@ -364,11 +364,11 @@ it('uses typed request commands for required approvals', () => {
   fireEvent.click(screen.getByText('Reject'))
 
   expect(capabilities.review.confirmApproval).toHaveBeenCalledWith({
-    requestId: req.handlerId,
+    requestId: req.requestId,
     approvalType: approval.type
   })
   expect(capabilities.review.reject).toHaveBeenCalledWith({
-    requestId: req.handlerId
+    requestId: req.requestId
   })
 })
 
@@ -376,7 +376,7 @@ it('keeps the connected transaction review mounted when an AirGap session appear
   const accountId = `0x${'1'.repeat(40)}`
   const reference = { signerId: 'airgap-1', requestId: 'request-1', sessionId: 'session-1' }
   const req = {
-    handlerId: reference.requestId,
+    requestId: reference.requestId,
     account: accountId,
     type: 'transaction',
     approvals: [],
@@ -418,7 +418,7 @@ it('keeps the connected transaction review mounted when an AirGap session appear
     </RequestViewProvider>
   )
   fireEvent.click(screen.getByRole('button', { name: 'Sign' }))
-  expect(capabilities.review.approve).toHaveBeenCalledWith({ requestId: req.handlerId })
+  expect(capabilities.review.approve).toHaveBeenCalledWith({ requestId: req.requestId })
   expect(notifications).toEqual([])
   const pending = { ...req, status: 'pending', notice: 'See signer' }
   view.rerender(

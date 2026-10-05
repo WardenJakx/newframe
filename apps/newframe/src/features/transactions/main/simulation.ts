@@ -695,7 +695,7 @@ export async function simulateTransactionEffects(
     trace = await traceCall(req, chainId, provider)
   } catch (error) {
     log.warn('transaction simulation unavailable', {
-      handlerId: req.handlerId,
+      requestId: req.requestId,
       error
     })
     return simulationUnavailable(error)
@@ -752,7 +752,7 @@ export async function simulateTransactionEffects(
     }
   } catch (error) {
     log.warn('transaction simulation failed', {
-      handlerId: req.handlerId,
+      requestId: req.requestId,
       error
     })
     return {

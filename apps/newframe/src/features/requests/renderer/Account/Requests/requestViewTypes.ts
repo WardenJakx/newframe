@@ -20,7 +20,7 @@ type RequestRpcPayload = {
 
 type RequestViewBase<TType extends string> = {
   type: TType
-  handlerId: string
+  requestId: string
   origin: string
   account: string
   payload: RequestRpcPayload
@@ -33,7 +33,7 @@ type RequestViewBase<TType extends string> = {
 
 export type RequestItemRequestView = Pick<
   RequestViewBase<string>,
-  'created' | 'handlerId' | 'notice' | 'status' | 'type'
+  'created' | 'requestId' | 'notice' | 'status' | 'type'
 >
 
 export type SignRequestView = RequestViewBase<'sign'> & {
@@ -168,7 +168,7 @@ export type TransactionRequestView = RequestViewBase<'transaction'> & {
   classification?: TxClassification
 }
 
-export type AdjustFeeRequestView = Pick<TransactionRequestView, 'data' | 'handlerId'>
+export type AdjustFeeRequestView = Pick<TransactionRequestView, 'data' | 'requestId'>
 
 export type RenderableRequestView =
   | AccessRequestView

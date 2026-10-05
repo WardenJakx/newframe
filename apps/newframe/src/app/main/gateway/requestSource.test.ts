@@ -13,7 +13,7 @@ import {
 function request(type: RequestType = 'transaction'): AccountRequest {
   return {
     type,
-    handlerId: 'request-1',
+    requestId: 'request-1',
     origin: 'renderer-controlled-origin-is-not-authority',
     account: '0x1111111111111111111111111111111111111111',
     payload: {

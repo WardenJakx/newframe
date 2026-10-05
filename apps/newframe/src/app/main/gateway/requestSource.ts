@@ -218,7 +218,7 @@ function buildOperationIntent(
   requestSource: RequestSource,
   request: AccountRequest
 ): GatewayOperationIntent | undefined {
-  if (!requestTypes.has(request.type) || !request.account || !request.handlerId || !request.payload.method) {
+  if (!requestTypes.has(request.type) || !request.account || !request.requestId || !request.payload.method) {
     return
   }
 

@@ -102,7 +102,7 @@ export default function RequestItem({
         ) : undefined
       }
       headerMode={headerMode}
-      onOpen={() => void panel.openRequest({ requestId: req.handlerId })}
+      onOpen={() => void panel.openRequest({ requestId: req.requestId })}
     >
       {children}
     </RequestCard>

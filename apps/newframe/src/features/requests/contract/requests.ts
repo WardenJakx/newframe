@@ -105,7 +105,7 @@ export type RequestType =
 
 interface Request {
   type: RequestType
-  handlerId: string
+  requestId: string
 }
 
 type RequestSourceSummary =

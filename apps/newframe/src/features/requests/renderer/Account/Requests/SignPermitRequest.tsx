@@ -60,7 +60,7 @@ const PermitOverview = ({
   const {
     permit: { spender, value, deadline },
     tokenData,
-    handlerId
+    requestId
   } = req
 
   const [showCopiedMessage, copySpender] = useCopiedMessage(capabilities.external, spender.address)
@@ -78,7 +78,7 @@ const PermitOverview = ({
     <Stack gap='medium'>
       <RequestItem
         panel={capabilities.panel}
-        key={`signErc20Permit:${handlerId}`}
+        key={`signErc20Permit:${requestId}`}
         req={req}
         title={`${chainName} Token Permit`}
         img={icon}
@@ -175,7 +175,7 @@ const EditPermit = ({ capabilities, req, identities }: EditPermitProps) => {
   const updateRequest = (newAmt: SourceValue) => {
     void capabilities.review.updateTokenApproval({
       requestKind: 'permit',
-      requestId: req.handlerId,
+      requestId: req.requestId,
       amount: String(newAmt)
     })
   }
@@ -230,7 +230,7 @@ const PermitRequest = ({ capabilities, req, originName, favicon, step, chainData
     }
   }
 
-  return <div key={req.id ?? req.handlerId}>{renderStep()}</div>
+  return <div key={req.id ?? req.requestId}>{renderStep()}</div>
 }
 
 export default PermitRequest

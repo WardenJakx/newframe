@@ -403,7 +403,7 @@ export function createSafeMessageService({ store, accounts, client, clock }: Saf
     const original = originalMessage(request)
     const hash = getSafeMessageHash(original, request.chainId, deployment.address, configuration.version)
     const entry: Entry = {
-      requestId: request.handlerId,
+      requestId: request.requestId,
       accountId: request.account,
       chainId: request.chainId,
       safeAddress: deployment.address,
@@ -416,7 +416,7 @@ export function createSafeMessageService({ store, accounts, client, clock }: Saf
       controller,
       settled: false
     }
-    entries.set(request.handlerId, entry)
+    entries.set(request.requestId, entry)
     progress(entry, 'collecting')
     return entry
   }
@@ -442,7 +442,7 @@ export function createSafeMessageService({ store, accounts, client, clock }: Saf
       if (disposed) {
         throw new Error('Safe message service is disposed.')
       }
-      let entry = entries.get(request.handlerId)
+      let entry = entries.get(request.requestId)
       entry ??= await createEntry(request)
       if (entry.settled) {
         throw new Error('Safe message request is already complete.')
@@ -451,7 +451,7 @@ export function createSafeMessageService({ store, accounts, client, clock }: Saf
         cancel(entry)
         throw new Error('Safe message request changed. Review it again.')
       }
-      const key = `${request.handlerId}:${ownerId.toLowerCase()}`
+      const key = `${request.requestId}:${ownerId.toLowerCase()}`
       const existing = ownerActions.get(key)
       if (existing) {
         return existing
