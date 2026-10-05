@@ -142,12 +142,15 @@ The harness is split by responsibility:
 - `core/reaper.ts` starts every child as its own process group and guarantees those groups and the
   harness's temporary files die with the harness, however it exits.
 - `live-harness.ts` is the regular live-local entrypoint.
-- `run-visual-harness.ts` is the visual entrypoint. It picks free ports, then runs `visual-harness.ts`.
-- `visual-harness.ts` is only the visual high-level orchestration.
+- `run-visual-harness.ts` is the visual entrypoint. It picks free ports, then runs `visual-harness.ts` with
+  the suite named by its argument: the desktop suite by default, or `extension`.
+- `visual-harness.ts` is only the visual high-level orchestration: it prepares the desktop app, then runs a
+  suite's stages in order.
 - `visual/driver.ts` owns reusable Newframe interactions and state polling.
 - `visual/anvil-client.ts` owns reusable Anvil RPC interactions.
 - `visual/runtime.ts` owns stages, screenshots, summaries, and failure artifacts.
 - `visual/stages/` contains one visual surface per file. `visual/stages/index.ts` defines their order.
+- `extension/` is the extension suite; see [Extension suite](#extension-suite).
 
 The visual driver is fully typed: every tray-bound operation uses the application's command/query bridge,
 with no generic channel or RPC fallback. State assertions run in Electron's main process against a read-only
@@ -184,11 +187,12 @@ The visual harness runs on the host, next to the developer's own Newframe and `b
 The visual harness writes `summary.json` to a new temporary directory per run, printed at preflight
 (`NEWFRAME_HARNESS_OUTPUT_DIR` overrides it). The summary records overall duration,
 per-stage duration, screenshots, contract evidence such as transaction/order/request identifiers, and
-tray diagnostics. Each screenshot has a sibling `<name>.aria.yml` with the page's ARIA snapshot, a
+page diagnostics. Each screenshot has a sibling `<name>.aria.yml` with the page's ARIA snapshot, a
 text view of the same state that diffs cleanly and is cheaper than reading the image. Failed runs also
 write a Playwright `trace.zip` (DOM snapshots, actions, console, and network up to the failure); open it
-with `bunx playwright-core show-trace <path>/trace.zip`. Unexpected tray `console.error`, uncaught
-page errors, or tray crashes fail the responsible stage. The source allowlist is intentionally empty by default; any future allowance must
+with `bunx playwright-core show-trace <path>/trace.zip`. Unexpected `console.error`, uncaught page
+errors, or crashes in trays (and, in the extension suite, in Chromium pages and the extension's service
+worker) fail the responsible stage. The source allowlist is intentionally empty by default; any future allowance must
 use a narrow message pattern and document why the underlying browser diagnostic is understood and cannot
 reasonably be fixed.
 
@@ -204,6 +208,35 @@ Opening screenshots is off by default. A launch failure is logged without failin
 Operator-driven provider scripts live under `harness/newframe/scenarios`. They may require manual wallet
 approval or mutate a running developer profile, so they are not part of the automated unit suite or the
 authoritative visual harness.
+
+### Extension suite
+
+`bun run visual:harness:extension` runs the built Newframe extension in Chromium against the harness desktop
+app, so the extension ↔ desktop boundary is exercised for real instead of through the Node stand-in
+(`core/extension.ts`) the desktop suite uses. It covers extension approval, extension account access, a dapp
+connecting and adding Anvil, the extension's account while the desktop app selects one the extension cannot
+see, sharing and choosing another account from the extension, and a dapp signing and sending transactions
+whose effects are checked on Anvil. Run it for changes that can affect the extension or that boundary.
+
+- **Setup.** It reuses the desktop bootstrap and setup stages, then starts `ExtensionBrowser`
+  (`extension/browser.ts`), so Chromium launches only once the desktop app is unlocked. Playwright's
+  Chromium is installed on first use.
+- **Port isolation.** The extension dials the local API on port 1248 by default, where the developer's own
+  Newframe listens. The suite builds it with `NEWFRAME_LOCAL_API_PORT` set to the run's desktop port and
+  `NEWFRAME_EXTENSION_OUTDIR` set to a temporary directory, so it can only reach the harness desktop app.
+  The build and the browser profile are temporary and removed with the run.
+- **Dapp.** `extension/dapp.ts` is a small page served at `http://dapp.newframe.test/` from inside the browser.
+  It reaches Newframe only through the provider the extension injects, and shows `Account`, `Chain`,
+  `Result`, and `Error` as labelled outputs. Verification imports the same constants it sends.
+- **Popup.** Playwright cannot reach the extension's action popup, so `openPopup()` opens its page,
+  `settings.html`, in a background tab. The dapp's tab stays active, so the page treats the dapp as the
+  current site exactly as the popup does. Stages close it when done, as a human closes the popup.
+- **Diagnostics.** Screenshots are prefixed `ext-`. A failure also writes `extension-trace.zip` and a
+  screenshot of each Chromium page.
+- **Extension account.** Stages assert that the extension keeps its own account while the desktop app
+  selects another one, as `GLOSSARY.md` defines the extension account.
+
+Both suites write the checkout's build output, so they share one lock and queue behind each other.
 
 ### Add a visual surface
 

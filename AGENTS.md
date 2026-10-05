@@ -1,3 +1,4 @@
 - For a component preview (an isolated rendering of a desktop app component from a fixture, with interaction and screenshots, without launching the full app), use [component-preview](harness/newframe/component-preview/SKILL.md).
 - For changes that can affect the app, run the visual harness (`bun run visual:harness:newframe`) as part of testing. It is the end-to-end visual check of the live development desktop app: it exercises user flows and captures screenshots of the resulting UI states.
+- For changes that can affect the browser extension or the extension ↔ desktop boundary, also run `bun run visual:harness:extension`. It drives the built extension in Chromium, a scripted dapp, and the desktop app together.
 - Secrets are defined at the root `.env` and are picked up by bun by default. there is no need to validate that they exist.

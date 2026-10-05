@@ -38,6 +38,8 @@
     "dep:report": "bun scripts/dep-report.ts",
     "visual:harness:newframe": "scripts/with-lock.sh node_modules/.visual-harness.lock bun run visual:harness:newframe:unlocked",
     "visual:harness:newframe:unlocked": "bun run flash:build && bun exec 'node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON harness/newframe/run-visual-harness.ts'",
+    "visual:harness:extension": "scripts/with-lock.sh node_modules/.visual-harness.lock bun run visual:harness:extension:unlocked",
+    "visual:harness:extension:unlocked": "bun run flash:build && bun exec 'node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON harness/newframe/run-visual-harness.ts extension'",
     "scenario:newframe:provider": "bun harness/newframe/scenarios/provider-smoke.ts"
   },
   "lint-staged": {

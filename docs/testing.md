@@ -61,7 +61,7 @@ Rules:
 | Safe transaction service     | Local Safe service, with Safe wallets deployed on Anvil | Exists                                                                                   |
 | Portfolio and price sources  | Local portfolio service                                 | Missing                                                                                  |
 | Contract description sources | Local description service                               | Missing                                                                                  |
-| Dapp, through the extension  | Harness extension relaying for a scripted dapp          | Exists                                                                                   |
+| Dapp, through the extension  | Scripted dapp page and the built extension in Chromium  | Exists. The desktop suite relays through a Node stand-in for the extension instead       |
 | Local API client             | The Newframe CLI and scripts using the real client      | Exists                                                                                   |
 | Hardware wallet              | None                                                    | Not virtualized. Integration tests use hot wallets; hardware wallets are checked by hand |
 
