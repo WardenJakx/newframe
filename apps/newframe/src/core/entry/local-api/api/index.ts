@@ -16,8 +16,8 @@ import {
   createProductionOriginsService
 } from '../../../../features/connections/main/origins.ts'
 import type { RequestService } from '../../../../features/requests/main/service.ts'
-import type { FlashService } from '../../../../features/transactions/trade/main/index.ts'
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
+import type { FlashService } from '../../../features/trading/index.ts'
 import type { AiSessionService } from '../../ai-session/index.ts'
 import { localApiPort } from '../endpoint.ts'
 import { createHttpRpcTransport } from '../http.ts'

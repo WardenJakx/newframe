@@ -1,7 +1,7 @@
-import { internet } from '../../../../core/internet/index.ts'
-import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
-import type { Accounts } from '../../../accounts/main/index.ts'
-import type { AssetRateService } from '../../../asset-data/main/assetRates/service.ts'
+import type { Accounts } from '../../../features/accounts/main/index.ts'
+import type { AssetRateService } from '../../../features/asset-data/main/assetRates/service.ts'
+import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
+import { internet } from '../../internet/index.ts'
 import { createFlashService } from './index.ts'
 
 export function createProductionFlashService(

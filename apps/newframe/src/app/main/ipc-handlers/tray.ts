@@ -50,8 +50,8 @@ export interface OperationServices {
   requestEdits: import('../../../features/requests/main/requestEdits/service.ts').RequestEditService
   requests: import('../../../features/requests/main/service.ts').RequestService
   security: import('../../../features/security/main/service.ts').SecurityService
-  send: import('../../../features/transactions/send/main/service.ts').SendService
-  trade: import('../../../features/transactions/trade/main/service.ts').TradeService
+  send: import('../../../core/features/send/service.ts').SendService
+  trade: import('../../../core/features/trading/service.ts').TradeService
   settings: ReturnType<typeof import('../../../features/settings/main/service.ts').createSettingsService>
   tokens: import('../../../features/tokens/main/service.ts').TokenService
   authorizeTray(event: Electron.IpcMainInvokeEvent): AuthorizationContext | undefined

@@ -1,9 +1,9 @@
+import type { FlashService } from '../../../core/features/trading/index.ts'
 import type { OperationService } from '../../../platform/operations/service.ts'
 import type { OperationOwner, OperationReference } from '../../../platform/operations/types.ts'
 import type { CanonicalStore } from '../../../platform/state-store/actions.ts'
 import type { Accounts } from '../../accounts/main/index.ts'
 import type { AssetRateService } from '../../asset-data/main/assetRates/service.ts'
-import type { FlashService } from '../../transactions/trade/main/index.ts'
 import type { TokenDiscoveryProviderAccess } from './index.ts'
 
 type PortfolioState = Pick<
