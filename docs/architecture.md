@@ -278,7 +278,6 @@ Most of the endgame is restructuring. These change what Newframe does:
 | Each dapp has its own selected chain                                                                                                                                                        | One selected chain for the whole desktop app. A dapp's request to switch it is a pending request the human approves; a switch the human makes in the extension's own panel applies at once. Every connected dapp is told when it changes                          |
 | Clear-signing descriptions are downloaded while running, from the live branch of a public repository                                                                                        | A copy is kept in the source and updated only by a release                                                                                                                                                                                                        |
 | Each edit during review (fees, nonce, token allowance) is sent to the core as it is made, and the core tracks whether the human has set fees                                                | Edits stay in the tray. The approval carries the final values of the editable fields                                                                                                                                                                              |
-| Local API messages are named after the project Newframe was forked from (`frame_*`, `__frame*`)                                                                                             | Named to match the glossary                                                                                                                                                                                                                                       |
 | A tray is allowed to connect to any address                                                                                                                                                 | A tray connects to nothing but the core                                                                                                                                                                                                                           |
 | Secrets are kept in three places: the vault file, a signers folder, and general stored state                                                                                                | One store, owned by the vault                                                                                                                                                                                                                                     |
 | Switches that exist for tests live in the core: one exposes all state to the visual harness, others move the local API and point at virtual services                                        | One setting at the composition root for pointing the core at virtual services, available only in a development profile                                                                                                                                            |
@@ -302,11 +301,10 @@ Most of the endgame is restructuring. These change what Newframe does:
 
 The code predates the glossary. Counts are occurrences outside tests.
 
-| Glossary term           | Code says                                                  | Occurrences |
-| ----------------------- | ---------------------------------------------------------- | ----------- |
-| Tray, main tray         | `renderer` in folder, tsconfig and script names            | About 450   |
-| AI session              | `agentEnabled`, the stored account flag                    | 18          |
-| Request                 | `handlerId`, the stored key on activity records and grants | 12          |
-| Account access grant    | `permissions`, the stored key                              | 36          |
-| Request source          | `origin` for any request source, not just dapps            | About 1,200 |
-| Local API message names | `frame_*`, `__frame*`, the `agent` route and header        | 65          |
+| Glossary term        | Code says                                                  | Occurrences |
+| -------------------- | ---------------------------------------------------------- | ----------- |
+| Tray, main tray      | `renderer` in folder, tsconfig and script names            | About 450   |
+| AI session           | `agentEnabled`, the stored account flag                    | 18          |
+| Request              | `handlerId`, the stored key on activity records and grants | 12          |
+| Account access grant | `permissions`, the stored key                              | 36          |
+| Request source       | `origin` for any request source, not just dapps            | About 1,200 |

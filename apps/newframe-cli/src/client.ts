@@ -117,7 +117,7 @@ export class NewframeClient {
       fetch: this.fetcher,
       headers: () => ({
         authorization: `Bearer ${session.sessionToken}`,
-        'x-newframe-agent-session': session.sessionId
+        'x-newframe-ai-session': session.sessionId
       })
     })
   }
@@ -138,7 +138,7 @@ export class NewframeClient {
     if (existing) {
       let stale = false
       try {
-        await this.aiSessionClient(existing).agent.status.query()
+        await this.aiSessionClient(existing).aiSession.status.query()
       } catch (error) {
         if (isDesktopClientError(error) && error.data?.code === 'UNAUTHORIZED') {
           stale = true
@@ -154,7 +154,7 @@ export class NewframeClient {
     }
     const { durationSeconds, ...descriptor } = input
     const session = SessionSchema.parse(
-      await this.desktop.agent.connect.mutate({ descriptor, durationSeconds })
+      await this.desktop.aiSession.connect.mutate({ descriptor, durationSeconds })
     )
     if (session.expiresAt <= Date.now()) {
       throw new Error('Newframe returned expired session credentials')
@@ -194,7 +194,7 @@ export class NewframeClient {
   }
 
   private revokeCredentials(session: StoredSession) {
-    return this.aiSessionClient(session).agent.revoke.mutate({ sessionId: session.sessionId })
+    return this.aiSessionClient(session).aiSession.revoke.mutate({ sessionId: session.sessionId })
   }
 
   async rpc(method: string, params: unknown[] = [], chainId?: number): Promise<unknown> {

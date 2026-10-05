@@ -106,44 +106,44 @@ export const desktopRouter = t.router({
     getStatus: p
       .input(RoutingSchema)
       .output(output(OriginStatusSchema))
-      .query(({ ctx, input }) => ctx.rpc({ ...input, method: 'frame_getOriginStatus', params: [] })),
+      .query(({ ctx, input }) => ctx.rpc({ ...input, method: 'newframe_getDappStatus', params: [] })),
     disconnect: p
       .input(RoutingSchema)
       .output(output(OriginStatusSchema))
-      .mutation(({ ctx, input }) => ctx.rpc({ ...input, method: 'frame_disconnectOrigin', params: [] }))
+      .mutation(({ ctx, input }) => ctx.rpc({ ...input, method: 'newframe_disconnectDapp', params: [] }))
   }),
   extension: t.router({
     connect: p
       .input(RoutingSchema)
       .output(output(z.string()))
       .mutation(({ ctx, input }) =>
-        ctx.rpc({ ...input, method: 'frame_requestExtensionConnection', params: [] })
+        ctx.rpc({ ...input, method: 'newframe_requestExtensionApproval', params: [] })
       ),
     accounts: p
       .input(RoutingSchema)
       .output(output(ExtensionAccountsSchema))
-      .query(({ ctx, input }) => ctx.rpc({ ...input, method: 'frame_getExtensionAccounts', params: [] })),
+      .query(({ ctx, input }) => ctx.rpc({ ...input, method: 'newframe_getExtensionAccounts', params: [] })),
     selectAccount: p
       .input(RoutingSchema.extend({ address: AddressSchema }))
       .output(output(ExtensionAccountsSchema))
       .mutation(({ ctx, input: { address, ...route } }) =>
-        ctx.rpc({ ...route, method: 'frame_selectExtensionAccount', params: [address] })
+        ctx.rpc({ ...route, method: 'newframe_selectExtensionAccount', params: [address] })
       ),
     requestAccounts: p
       .input(RoutingSchema)
       .output(output(ExtensionAccountsSchema))
       .mutation(({ ctx, input }) =>
-        ctx.rpc({ ...input, method: 'frame_requestExtensionAccounts', params: [] })
+        ctx.rpc({ ...input, method: 'newframe_requestExtensionAccounts', params: [] })
       ),
     summon: p
       .input(RoutingSchema)
       .output(output(z.null()))
       .mutation(async ({ ctx, input }) => {
-        await ctx.rpc({ ...input, method: 'frame_summon', params: [] })
+        await ctx.rpc({ ...input, method: 'newframe_summon', params: [] })
         return null
       })
   }),
-  agent: t.router({
+  aiSession: t.router({
     connect: aiSession
       .input(AiSessionConnectSchema)
       .output(output(AiSessionCredentialsSchema))

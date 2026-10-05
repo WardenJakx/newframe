@@ -104,7 +104,7 @@ it('does not let relayed dapps inherit extension controls or internal account ac
   const replies: RPCResponsePayload[] = []
   for (const source of [dapp, extension]) {
     await gateway({
-      payload: request('frame_summon'),
+      payload: request('newframe_summon'),
       chainId: '0x1',
       source,
       respond: (reply) => replies.push(reply)

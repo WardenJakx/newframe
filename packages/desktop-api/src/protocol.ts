@@ -25,8 +25,8 @@ export const HttpJsonRpcRequestSchema = z.strictObject({
 })
 export const WebSocketJsonRpcRequestSchema = z.strictObject({
   ...routedRequestShape,
-  __frameOrigin: z.string().optional(),
-  __frameFavicon: z.json().optional(),
+  __dappOrigin: z.string().optional(),
+  __dappFavicon: z.json().optional(),
   __extensionConnecting: z.boolean().optional()
 })
 
@@ -87,8 +87,8 @@ export const ExtensionRpcPayloadSchema = z.object({
   method: z.string(),
   params: z.array(z.unknown()).readonly().optional(),
   chainId: z.string().optional(),
-  __frameOrigin: z.string().optional(),
-  __frameFavicon: z.string().optional(),
+  __dappOrigin: z.string().optional(),
+  __dappFavicon: z.string().optional(),
   __extensionConnecting: z.boolean().optional()
 })
 export const SubscriptionParamsSchema = z.object({ subscription: z.string(), result: z.unknown() })

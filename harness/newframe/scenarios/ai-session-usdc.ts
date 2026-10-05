@@ -34,13 +34,13 @@ const aiSessionClient = (credentials: AiSessionCredentials) =>
   createDesktopClient(NEWFRAME_RPC_URL, {
     headers: () => ({
       authorization: `Bearer ${credentials.sessionToken}`,
-      'x-newframe-agent-session': credentials.sessionId
+      'x-newframe-ai-session': credentials.sessionId
     })
   })
 
 async function requestAiSession() {
   console.log('Approve the "USDC Transfer E2E" AI session in Newframe to continue.')
-  return createDesktopClient(NEWFRAME_RPC_URL).agent.connect.mutate({
+  return createDesktopClient(NEWFRAME_RPC_URL).aiSession.connect.mutate({
     descriptor: {
       name: 'USDC Transfer E2E',
       description: 'Sends 10 USDC to the requested recipient on the Newframe Anvil chain.'
@@ -126,7 +126,7 @@ async function main() {
       })
     )
   } finally {
-    await aiSessionClient(credentials).agent.revoke.mutate({ sessionId: credentials.sessionId })
+    await aiSessionClient(credentials).aiSession.revoke.mutate({ sessionId: credentials.sessionId })
   }
 }
 

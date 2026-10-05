@@ -106,7 +106,7 @@ it('characterizes AI session prompt timeout, disconnect, approval idempotency, a
     const connect = (response = new EventEmitter()) =>
       createDesktopCaller(
         service.createContext({ headers: {} } as never, response as never, {} as never)
-      ).agent.connect(input)
+      ).aiSession.connect(input)
 
     const pending = Array.from({ length: 8 }, () => connect())
     await routedRequest.promise
@@ -125,7 +125,7 @@ it('characterizes AI session prompt timeout, disconnect, approval idempotency, a
         {} as never
       )
     )
-    expect(browser.agent.connect(input)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    expect(browser.aiSession.connect(input)).rejects.toMatchObject({ code: 'FORBIDDEN' })
 
     const timedOutResponse = connect().catch((error: unknown) => error)
     await routedRequest.promise
@@ -176,7 +176,7 @@ it('characterizes AI session prompt timeout, disconnect, approval idempotency, a
         {
           headers: {
             authorization: `Bearer ${credentials.sessionToken}`,
-            'x-newframe-agent-session': credentials.sessionId
+            'x-newframe-ai-session': credentials.sessionId
           }
         } as never,
         new EventEmitter() as never,
@@ -238,6 +238,6 @@ it.each(['safe', 'airgap'] as const)('rejects %s AI enablement and session readi
   const caller = createDesktopCaller(
     service.createContext({ headers: {} } as never, new EventEmitter() as never, {} as never)
   )
-  expect(caller.agent.connect(input)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+  expect(caller.aiSession.connect(input)).rejects.toMatchObject({ code: 'FORBIDDEN' })
   service.dispose()
 })

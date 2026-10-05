@@ -351,7 +351,7 @@ export default class FrameBackgroundProvider extends EventEmitter {
       method: payload.method,
       params: payload.params ? [...payload.params] : [],
       chainId: payload.chainId,
-      origin: payload.__frameOrigin,
+      origin: payload.__dappOrigin,
       connecting: payload.__extensionConnecting
     })
   }

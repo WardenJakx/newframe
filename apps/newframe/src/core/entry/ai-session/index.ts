@@ -62,7 +62,7 @@ export function createAiSessionService(
   }
 
   function requestedSessionId(req: IncomingMessage) {
-    const value = req.headers['x-newframe-agent-session']
+    const value = req.headers['x-newframe-ai-session']
     return typeof value === 'string' ? value : ''
   }
 
