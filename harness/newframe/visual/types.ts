@@ -13,7 +13,7 @@ export type HarnessSummary = {
   evidence: HarnessEvidence[]
   ok: boolean
   failedStage: string | null
-  trayErrors: TrayError[]
+  pageErrors: PageError[]
   screenshots: string[]
   stages: StageSummary[]
   startedAt: string
@@ -25,7 +25,8 @@ export type HarnessEvidence = {
   value: boolean | number | string | null
 }
 
-export type TrayError = {
+/** An error reported by a tray, a browser page, or the extension's service worker. */
+export type PageError = {
   allowed: boolean
   allowance?: string
   kind: 'console' | 'crash' | 'pageerror'
@@ -183,7 +184,13 @@ export type VisualHarnessContext = {
   accounts?: HarnessAccounts
 }
 
-export type VisualStage = {
+export type VisualStage<C extends VisualHarnessContext = VisualHarnessContext> = {
   name: string
-  run(context: VisualHarnessContext): Promise<void>
+  run(context: C): Promise<void>
+}
+
+/** Stages that run in order against the desktop app; `context` adds what they need beyond it. */
+export type VisualSuite<C extends VisualHarnessContext> = {
+  stages: VisualStage<C>[]
+  context(desktop: VisualHarnessContext): C
 }

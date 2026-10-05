@@ -4,14 +4,14 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
 
-import type { ElectronApplication, Page } from 'playwright-core'
+import type { BrowserContext, ConsoleMessage, ElectronApplication, Page } from 'playwright-core'
 
 import { commandOutputCollector } from '../core/process.ts'
 import { tail, withTimeout } from '../core/utils.ts'
 import type {
   HarnessEvidence,
   HarnessSummary,
-  TrayError,
+  PageError,
   VisualHarnessContext,
   VisualStage
 } from './types.ts'
@@ -23,7 +23,12 @@ type ConsoleErrorAllowance = {
 
 // Keep this list empty unless a browser/runtime diagnostic is both understood and unactionable.
 // Every future entry must match narrowly and explain why fixing the underlying error is inappropriate.
-const trayConsoleErrorAllowlist: ConsoleErrorAllowance[] = []
+const consoleErrorAllowlist: ConsoleErrorAllowance[] = []
+
+function consoleSource(message: ConsoleMessage) {
+  const location = message.location()
+  return location.url ? `${location.url}:${location.line + 1}:${location.column + 1}` : undefined
+}
 
 type ElectronDiagnostics = {
   appReady: boolean
@@ -52,7 +57,7 @@ export class VisualHarnessRuntime {
     evidence: [],
     failedStage: null,
     ok: false,
-    trayErrors: [],
+    pageErrors: [],
     screenshots: [],
     stages: [],
     startedAt: new Date(this.startedAt).toISOString()
@@ -61,6 +66,7 @@ export class VisualHarnessRuntime {
   currentStage = 'startup'
   private electronOutput = () => ''
   private monitoredPages = new WeakSet<Page>()
+  private readonly browsers = new Map<string, BrowserContext>()
 
   log(message: string) {
     console.log(`[visual-harness] ${message}`)
@@ -100,7 +106,7 @@ export class VisualHarnessRuntime {
     await this.writeSummary()
   }
 
-  async runStage(context: VisualHarnessContext, visualStage: VisualStage) {
+  async runStage<C extends VisualHarnessContext>(context: C, visualStage: VisualStage<C>) {
     this.currentStage = visualStage.name
     this.log(visualStage.name)
     const startedAt = Date.now()
@@ -116,7 +122,7 @@ export class VisualHarnessRuntime {
 
     try {
       await visualStage.run(context)
-      this.assertNoUnexpectedTrayErrors()
+      this.assertNoUnexpectedPageErrors()
       Object.assign(stage, { durationMs: Date.now() - startedAt, status: 'passed' as const })
     } catch (error) {
       Object.assign(stage, { durationMs: Date.now() - startedAt, status: 'failed' as const })
@@ -139,37 +145,41 @@ export class VisualHarnessRuntime {
     const child = app.process()
     this.electronOutput = commandOutputCollector(child)
 
-    const monitorPage = (page: Page) => {
-      if (this.monitoredPages.has(page)) {
-        return
-      }
-      this.monitoredPages.add(page)
-      page.on('console', (message) => {
-        if (message.type() !== 'error') {
-          return
-        }
-        const location = message.location()
-        const source = location.url
-          ? `${location.url}:${location.lineNumber + 1}:${location.columnNumber + 1}`
-          : undefined
-        this.recordTrayError('console', message.text(), page.url(), source)
-      })
-      page.on('crash', () => this.recordTrayError('crash', 'Tray crashed', page.url()))
-      page.on('pageerror', (err) => this.recordTrayError('pageerror', err.message, page.url()))
-    }
-
-    app.windows().forEach(monitorPage)
-    app.on('window', monitorPage)
+    app.windows().forEach(this.monitorPage)
+    app.on('window', this.monitorPage)
   }
 
-  assertNoUnexpectedTrayErrors() {
-    const unexpected = this.summary.trayErrors.filter((error) => !error.allowed)
+  /**
+   * Holds a browser's pages and workers to the same error policy as trays, and traces it so a failure
+   * leaves `<name>-trace.zip` and a screenshot of each page.
+   */
+  async monitorBrowser(name: string, context: BrowserContext) {
+    context.pages().forEach(this.monitorPage)
+    context.on('page', this.monitorPage)
+    // Pages report through their own listeners; these catch the extension's service worker.
+    context.on('console', (message) => {
+      if (message.type() === 'error' && !message.page()) {
+        this.recordPageError('console', message.text(), message.worker()?.url() ?? '', consoleSource(message))
+      }
+    })
+    context.on('weberror', (error) => {
+      if (!error.page()) {
+        this.recordPageError('pageerror', error.error().message, error.location().url)
+      }
+    })
+    this.browsers.set(name, context)
+    context.once('close', () => this.browsers.delete(name))
+    await context.tracing.start({ screenshots: true, snapshots: true })
+  }
+
+  assertNoUnexpectedPageErrors() {
+    const unexpected = this.summary.pageErrors.filter((error) => !error.allowed)
     if (unexpected.length === 0) {
       return
     }
 
     this.fail(
-      `Unexpected tray errors: ${unexpected
+      `Unexpected page errors: ${unexpected
         .map((error) => `${error.kind} on ${error.pageUrl || '<blank>'}: ${error.message}`)
         .join(' | ')}`
     )
@@ -212,6 +222,44 @@ export class VisualHarnessRuntime {
     }
   }
 
+  async captureBrowserFailureArtifacts() {
+    for (const [name, context] of this.browsers) {
+      const tracePath = path.join(this.outputDir, `${name}-trace.zip`)
+      await withTimeout(context.tracing.stop({ path: tracePath }), `${name} failure trace`, 30_000).then(
+        () => this.log(`${name} failure trace: ${tracePath}`),
+        (err: unknown) => {
+          this.log(`could not save ${name} trace: ${err instanceof Error ? err.message : String(err)}`)
+        }
+      )
+
+      for (const [index, page] of context.pages().entries()) {
+        await withTimeout(
+          this.screenshot(page, `debug-failure-${name}-${index}.png`),
+          `failure screenshot for ${name} page ${index}`,
+          5_000
+        ).catch((err: unknown) => {
+          this.log(
+            `could not capture ${name} page ${index}: ${err instanceof Error ? err.message : String(err)}`
+          )
+        })
+      }
+    }
+  }
+
+  private readonly monitorPage = (page: Page) => {
+    if (this.monitoredPages.has(page)) {
+      return
+    }
+    this.monitoredPages.add(page)
+    page.on('console', (message) => {
+      if (message.type() === 'error') {
+        this.recordPageError('console', message.text(), page.url(), consoleSource(message))
+      }
+    })
+    page.on('crash', () => this.recordPageError('crash', 'Page crashed', page.url()))
+    page.on('pageerror', (err) => this.recordPageError('pageerror', err.message, page.url()))
+  }
+
   private async logElectronDiagnostics(app: ElectronApplication, label: string) {
     const trayPages = app.windows().map((page) => page.url() || '<blank>')
     const diagnostics = await withTimeout(
@@ -238,9 +286,9 @@ export class VisualHarnessRuntime {
     this.log(`${label}: ${JSON.stringify({ diagnostics, trayPages })}`)
   }
 
-  private recordTrayError(kind: TrayError['kind'], message: string, pageUrl: string, source?: string) {
-    const allowance = trayConsoleErrorAllowlist.find(({ pattern }) => pattern.test(message))
-    const diagnostic: TrayError = {
+  private recordPageError(kind: PageError['kind'], message: string, pageUrl: string, source?: string) {
+    const allowance = consoleErrorAllowlist.find(({ pattern }) => pattern.test(message))
+    const diagnostic: PageError = {
       allowed: Boolean(allowance),
       ...(allowance ? { allowance: allowance.reason } : {}),
       kind,
@@ -248,8 +296,8 @@ export class VisualHarnessRuntime {
       pageUrl: pageUrl || '<blank>',
       ...(source ? { source } : {})
     }
-    this.summary.trayErrors.push(diagnostic)
-    this.log(`${allowance ? 'allowed' : 'unexpected'} tray ${kind}: ${message} (${pageUrl || '<blank>'})`)
+    this.summary.pageErrors.push(diagnostic)
+    this.log(`${allowance ? 'allowed' : 'unexpected'} ${kind}: ${message} (${pageUrl || '<blank>'})`)
     void this.writeSummary().catch(() => undefined)
   }
 }

@@ -19,4 +19,5 @@ if (!hasSourceProfile && !readHarnessPassword()) {
 }
 
 const { runVisualHarness } = await import('./visual-harness.ts')
-await runVisualHarness()
+const { visualStages } = await import('./visual/stages/index.ts')
+await runVisualHarness({ stages: visualStages, context: (desktop) => desktop })
