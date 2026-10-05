@@ -3,7 +3,7 @@ import { EventEmitter } from 'events'
 
 import { MAX_RPC_REQUEST_BYTES } from '@newframe/desktop-api/protocol'
 
-import type { JSONRPCRequestPayload, RPCResponsePayload } from '../../shared/domain/rpc.ts'
+import type { JSONRPCRequestPayload, RPCResponsePayload } from '../../../shared/domain/rpc.ts'
 import type { RpcRequestDescription } from './request.ts'
 import { createWebSocketRpcTransport } from './ws.ts'
 

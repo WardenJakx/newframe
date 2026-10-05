@@ -1,7 +1,7 @@
 import { expect, it } from 'bun:test'
 import { EventEmitter } from 'events'
 
-import { createApiServer } from '../../../platform/local-rpc/server.ts'
+import { createApiServer } from '../server.ts'
 
 class FakeHttpServer extends EventEmitter {
   readonly listens: Array<{ port: number; host: string }> = []

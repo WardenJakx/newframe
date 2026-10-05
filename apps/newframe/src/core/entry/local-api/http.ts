@@ -8,9 +8,9 @@ import {
 } from '@newframe/desktop-api/protocol'
 import log from 'electron-log'
 
-import { rpcMethodPolicy } from '../../app/main/gateway/rpcPolicy.ts'
-import { parseOrigin, parseRequestChainId } from '../../features/connections/main/origins.ts'
-import type { JSONRPCRequestPayload, RPC, RPCResponsePayload } from '../../shared/domain/rpc.ts'
+import { rpcMethodPolicy } from '../../../app/main/gateway/rpcPolicy.ts'
+import { parseOrigin, parseRequestChainId } from '../../../features/connections/main/origins.ts'
+import type { JSONRPCRequestPayload, RPC, RPCResponsePayload } from '../../../shared/domain/rpc.ts'
 import {
   createOriginSessionMonitor,
   type ApiTimerPort,

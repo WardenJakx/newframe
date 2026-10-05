@@ -4,13 +4,13 @@ import { EventEmitter } from 'events'
 import { createDesktopCaller } from '@newframe/desktop-api/router'
 
 import { createRpcGateway } from '../../../app/main/gateway/rpc.ts'
+import type { AccountRequest } from '../../../features/requests/contract/requests.ts'
 import type {
   EVMError,
   RPCRequestCallback,
   RPCRequestPayload,
   RPCResponsePayload
 } from '../../../shared/domain/rpc.ts'
-import type { AccountRequest } from '../../requests/contract/requests.ts'
 import { createAiSessionService } from './index.ts'
 
 const accountId = '0x1111111111111111111111111111111111111111'

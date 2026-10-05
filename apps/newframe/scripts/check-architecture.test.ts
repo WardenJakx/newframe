@@ -56,7 +56,7 @@ const authorityCases: RejectCase[] = [
   ['generic workflow', checkOperationContractAuthority, 'apps/newframe/src/platform/operations/sideTrayTransactions.ts', 'export const submit = () => undefined', 'generic operation workflow helpers are forbidden'],
   ['legacy context menu', checkPlatformCommandAuthority, 'apps/newframe/src/renderer/tray/index.tsx', "link.executeCommand({ type: 'side-tray.context-menu' })", 'tray context menus must use tray.context-menu'],
   ['migrated workflow forwarder', checkPlatformCommandAuthority, 'apps/newframe/src/platform/operations/walletWorkflows.ts', 'return { refreshPortfolio: () => refreshBalances() }', 'migrated passive and platform commands cannot return'],
-  ['legacy account selection port', checkPlatformCommandAuthority, 'apps/newframe/src/platform/ipc/main/operations.ts', 'type OperationServices = { selectAccount: () => void }', 'account selection must be owned by the account service'],
+  ['legacy account selection port', checkPlatformCommandAuthority, 'apps/newframe/src/core/entry/tray/operations.ts', 'type OperationServices = { selectAccount: () => void }', 'account selection must be owned by the account service'],
   ['renderer execution', checkPlatformCommandAuthority, 'apps/newframe/src/features/transactions/send/renderer/index.tsx', "link.executeCommand({ type: 'transaction.submit' })", 'renderer execution capabilities are forbidden'],
   ['private Trade execution', checkPlatformCommandAuthority, 'apps/newframe/src/features/transactions/trade/renderer/tradeService.ts', 'const request = buildTradeSubmitRequest()', 'Trade renderer may retain only ticket, safe quote, review correlation'],
   ['legacy Send chain', checkPlatformCommandAuthority, 'apps/newframe/src/features/transactions/send/renderer/sendService.ts', "link.executeQuery({ type: 'name.resolve' })", 'Send must issue one request.create intent'],
@@ -80,8 +80,8 @@ test('allows each canonical authority', () => {
     [checkPlatformCommandAuthority, 'apps/newframe/src/features/transactions/trade/renderer/index.tsx', 'const review = { safeQuote, operationId }'],
     [checkPlatformCommandAuthority, 'apps/newframe/src/features/transactions/send/renderer/index.tsx', "link.executeCommand({ type: 'request.create' })"],
     [checkRawIpcAuthority, 'apps/newframe/src/preload/index.ts', 'ipcRenderer.invoke(channel)'],
-    [checkRawIpcAuthority, 'apps/newframe/src/platform/ipc/main/operations.ts', 'ipcMain.handle(channel)'],
-    [checkRawIpcAuthority, 'apps/newframe/src/platform/ipc/main/stateStream.ts', 'webContents.send(channel)']
+    [checkRawIpcAuthority, 'apps/newframe/src/core/entry/tray/operations.ts', 'ipcMain.handle(channel)'],
+    [checkRawIpcAuthority, 'apps/newframe/src/core/entry/tray/stateStream.ts', 'webContents.send(channel)']
   ]
   for (const [check, file, source] of cases) {
     allows(check, file, source)
@@ -99,7 +99,7 @@ const sourceCases: SourceCase[] = [
   ['raw renderer link', renderer, "link.invoke('channel')", 'renderer code must use typed commands, queries, and state connections', renderer, "link.executeCommand({ type: 'account.select' })"],
   ['non-Zustand renderer mirror', renderer, 'useSyncExternalStore(subscribe, snapshot)', 'renderer mirrors must use Zustand store mechanics', renderer, 'useWalletSelector(selectAccount)'],
   ['class component', renderer, 'class View extends React.Component {}', 'React components must be functions', renderer, 'function View() { return null }'],
-  ['synchronous main IPC', 'apps/newframe/src/features/example/main/service.ts', 'ipcMain.on(channel)', 'application IPC must use typed asynchronous handlers', 'apps/newframe/src/platform/ipc/main/operations.ts', 'ipcMain.handle(channel)'],
+  ['synchronous main IPC', 'apps/newframe/src/features/example/main/service.ts', 'ipcMain.on(channel)', 'application IPC must use typed asynchronous handlers', 'apps/newframe/src/core/entry/tray/operations.ts', 'ipcMain.handle(channel)'],
   ['direct account request', 'apps/newframe/src/features/connections/main/provider/service.ts', 'account.addRequest(request)', 'production account requests must pass through accounts.routeRequest', 'apps/newframe/src/features/accounts/main/service.ts', 'account.addRequest(request)'],
   ['production test import', domain, "import value from './model.test.ts'", 'production code cannot import test files', domain, "import type { State } from './state'"],
   ['component CSS', 'apps/newframe/src/app/renderer/tray/View.css', '.view {}', 'component styles must be authored with Panda', 'apps/newframe/src/shared/legacy/View.css', '.view {}'],
@@ -299,9 +299,9 @@ test('rejects broad singleton access through every supported import form and ser
   const cases = [
     ['apps/newframe/src/features/asset-data/main/externalData/index.ts', "import type store from '../../../../platform/state-store'"],
     ['apps/newframe/src/features/asset-data/main/images/index.ts', "import { openExternal } from '../../../../platform/desktop/windows/window'"],
-    ['apps/newframe/src/platform/local-rpc/server.ts', "require('../desktop/windows/dialog')"],
+    ['apps/newframe/src/core/entry/local-api/server.ts', "require('../../../platform/desktop/windows/dialog')"],
     ['apps/newframe/src/features/transactions/main/simulation.ts', "void import('../../../platform/secrets/vault')"],
-    ['apps/newframe/src/platform/ipc/main/operations.ts', "import('@newframe/src/platform/desktop/windows/side-tray')"],
+    ['apps/newframe/src/core/entry/tray/operations.ts', "import('@newframe/src/platform/desktop/windows/side-tray')"],
     ['apps/newframe/src/features/accounts/main/service.ts', "import store from '../../../platform/state-store'"],
     ['apps/newframe/src/features/transactions/trade/main/service.ts', "import type store from '../../../../platform/state-store'"],
     ['apps/newframe/src/features/name-resolution/main/nameResolution.ts', "export * from '../../../platform/desktop/windows/window'"],
@@ -336,7 +336,7 @@ test('keeps source issuance, gateway policy, and signer effects in their owners'
   rejects(checkSource, mainService, 'signer.signTransaction(tx)', 'protected operations service')
   rejects(
     checkSource,
-    'apps/newframe/src/platform/local-rpc/http.ts',
+    'apps/newframe/src/core/entry/local-api/http.ts',
     'origins.hasAccountAccessGrant(payload, source)',
     'pass operation policy'
   )

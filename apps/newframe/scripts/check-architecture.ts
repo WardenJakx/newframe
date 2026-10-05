@@ -487,8 +487,8 @@ export function checkRawIpcAuthority(file: string, source: string) {
     const rawMainIpc = source.match(/\bipcMain\.(?:addListener|emit|handle|invoke|on|once|send)\b/)
     if (rawMainIpc?.index !== undefined) {
       const allowed = new Set([
-        path.join('apps', 'newframe', 'src', 'platform', 'ipc', 'main', 'operations.ts'),
-        path.join('apps', 'newframe', 'src', 'platform', 'ipc', 'main', 'stateStream.ts')
+        path.join('apps', 'newframe', 'src', 'core', 'entry', 'tray', 'operations.ts'),
+        path.join('apps', 'newframe', 'src', 'core', 'entry', 'tray', 'stateStream.ts')
       ])
       if (!allowed.has(file)) {
         violations.push(`${file}: raw ipcMain access is restricted to typed IPC modules`)
@@ -496,7 +496,7 @@ export function checkRawIpcAuthority(file: string, source: string) {
     }
 
     if (/\bwebContents\.send\b/.test(source)) {
-      const stateStream = path.join('apps', 'newframe', 'src', 'platform', 'ipc', 'main', 'stateStream.ts')
+      const stateStream = path.join('apps', 'newframe', 'src', 'core', 'entry', 'tray', 'stateStream.ts')
       if (file !== stateStream) {
         violations.push(`${file}: webContents.send is restricted to the typed state stream`)
       }
@@ -602,7 +602,7 @@ export function checkPlatformCommandAuthority(file: string, source: string) {
     }
   }
 
-  const operationsIpc = path.join('apps', 'newframe', 'src', 'platform', 'ipc', 'main', 'operations.ts')
+  const operationsIpc = path.join('apps', 'newframe', 'src', 'core', 'entry', 'tray', 'operations.ts')
   if (file === operationsIpc) {
     const legacySelectionPort = source.match(/\bselectAccount\s*:/)
     if (legacySelectionPort?.index !== undefined) {
@@ -630,7 +630,7 @@ function checkRequestBoundaryAuthority(file: string, source: string) {
   ) {
     violations.push(`${file}: signer execution belongs to the protected operations service`)
   }
-  const entrypoint = relative.startsWith('platform/ipc/main/') || relative.startsWith('platform/local-rpc/')
+  const entrypoint = relative.startsWith('core/entry/tray/') || relative.startsWith('core/entry/local-api/')
   if (
     entrypoint &&
     /\.(?:hasAccountAccessGrant|approveSign|approveSignTypedData|approveTransactionRequest|exportPrivateKey)\s*\(/.test(
@@ -644,9 +644,9 @@ function checkRequestBoundaryAuthority(file: string, source: string) {
   const sourceOwners = new Set([
     'app/main/composition/production.ts',
     'app/main/gateway/requestSource.ts',
-    'platform/ipc/main/operations.ts',
-    'platform/local-rpc/request.ts',
-    'features/ai-session/main/index.ts',
+    'core/entry/tray/operations.ts',
+    'core/entry/local-api/request.ts',
+    'core/entry/ai-session/index.ts',
     'app/main/ipc-handlers/rpc.ts'
   ])
   if (

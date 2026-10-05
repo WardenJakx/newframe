@@ -1,7 +1,7 @@
 import { createNewframeInternalSource } from '../../../app/main/gateway/requestSource.ts'
 import { createTrayGateway } from '../../../app/main/gateway/tray.ts'
 import type { OperationServices } from '../../../app/main/ipc-handlers/tray.ts'
-import { ExecuteCommandChannel, ExecuteQueryChannel } from '../contract/ipc.ts'
+import { ExecuteCommandChannel, ExecuteQueryChannel } from '../../../platform/ipc/contract/ipc.ts'
 export interface OperationDispatcher {
   dispatchCommand(event: Electron.IpcMainInvokeEvent, command: unknown): Promise<unknown>
   dispatchQuery(event: Electron.IpcMainInvokeEvent, query: unknown): Promise<unknown>

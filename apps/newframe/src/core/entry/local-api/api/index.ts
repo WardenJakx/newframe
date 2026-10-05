@@ -7,27 +7,24 @@ import { createHTTPHandler } from '@trpc/server/adapters/standalone'
 // oxlint-disable-next-line no-restricted-imports -- The local API server accepts inbound sockets; it opens none.
 import WebSocket, { WebSocketServer } from 'ws'
 
-import type { Accounts } from '../../../features/accounts/main/index.ts'
-import type { AiSessionService } from '../../../features/ai-session/main/index.ts'
-import { createExtensionAccessService } from '../../../features/connections/main/extensionAccess.ts'
+import type { RpcIpcHandlers } from '../../../../app/main/ipc-handlers/rpc.ts'
+import type { Accounts } from '../../../../features/accounts/main/index.ts'
+import { createExtensionAccessService } from '../../../../features/connections/main/extensionAccess.ts'
 import {
   parseOrigin,
   parseRequestChainId,
   createProductionOriginsService
-} from '../../../features/connections/main/origins.ts'
-import type { RequestService } from '../../../features/requests/main/service.ts'
-import type { FlashService } from '../../../features/transactions/trade/main/index.ts'
-import { localApiPort } from '../../../platform/local-rpc/endpoint.ts'
-import { createHttpRpcTransport } from '../../../platform/local-rpc/http.ts'
-import { createOriginSessionMonitor, createRpcRequestHandler } from '../../../platform/local-rpc/request.ts'
-import { createApiServer } from '../../../platform/local-rpc/server.ts'
-import { rpcCall } from '../../../platform/local-rpc/trpc.ts'
-import {
-  createWebSocketRpcTransport,
-  type WebSocketRpcTransportDependencies
-} from '../../../platform/local-rpc/ws.ts'
-import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
-import type { RpcIpcHandlers } from '../ipc-handlers/rpc.ts'
+} from '../../../../features/connections/main/origins.ts'
+import type { RequestService } from '../../../../features/requests/main/service.ts'
+import type { FlashService } from '../../../../features/transactions/trade/main/index.ts'
+import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.ts'
+import type { AiSessionService } from '../../ai-session/index.ts'
+import { localApiPort } from '../endpoint.ts'
+import { createHttpRpcTransport } from '../http.ts'
+import { createOriginSessionMonitor, createRpcRequestHandler } from '../request.ts'
+import { createApiServer } from '../server.ts'
+import { rpcCall } from '../trpc.ts'
+import { createWebSocketRpcTransport, type WebSocketRpcTransportDependencies } from '../ws.ts'
 
 export function createProductionApiServer(
   provider: RpcIpcHandlers,

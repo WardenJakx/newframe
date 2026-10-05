@@ -5,7 +5,7 @@ import type { BrowserWindowConstructorOptions } from 'electron'
 import { BrowserWindow, shell } from 'electron'
 import log from 'electron-log'
 
-import type { TrayAuthorizationRegistry } from '../../ipc/main/authorization.ts'
+import type { TrayAuthorizationRegistry } from '../../../core/entry/tray/authorization.ts'
 import { isVisualHarness } from '../../runtime/visualHarness.ts'
 import type { CanonicalStore } from '../../state-store/actions.ts'
 import type { ChainId } from '../../state-store/state/index.ts'

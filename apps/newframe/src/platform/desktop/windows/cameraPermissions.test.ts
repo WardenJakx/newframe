@@ -2,7 +2,7 @@ import { expect, it } from 'bun:test'
 
 import type { Session, WebContents } from 'electron'
 
-import { createTrayAuthorizationRegistry } from '../../ipc/main/authorization.ts'
+import { createTrayAuthorizationRegistry } from '../../../core/entry/tray/authorization.ts'
 import { installCameraPermissions } from './cameraPermissions.ts'
 
 type PermissionSession = Parameters<typeof installCameraPermissions>[0]

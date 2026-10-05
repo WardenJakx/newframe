@@ -1,7 +1,11 @@
 import { expect, it } from 'bun:test'
 
-import { createRpcGateway } from '../../app/main/gateway/rpc.ts'
-import type { JSONRPCRequestPayload, RPCRequestPayload, RPCResponsePayload } from '../../shared/domain/rpc.ts'
+import { createRpcGateway } from '../../../app/main/gateway/rpc.ts'
+import type {
+  JSONRPCRequestPayload,
+  RPCRequestPayload,
+  RPCResponsePayload
+} from '../../../shared/domain/rpc.ts'
 import {
   RPC_REQUEST_BURST,
   createOriginSessionMonitor,
