@@ -128,7 +128,7 @@ describe('renderer state stream', () => {
                 authorization: {
                   decision: 'autonomous',
                   requestSource: {
-                    type: 'agent',
+                    type: 'ai-session',
                     origin: 'https://sensitive.example',
                     sessionId: 'secret-session'
                   }

@@ -221,12 +221,12 @@ const sendOfficialOrder = (
   order: Record<string, unknown>
 ) => sendOrders(socket, type, officialOrder(order))
 
-const startAgentSession = (
+const startAiSession = (
   flash: ReturnType<typeof createFlashService>,
   accountAddress: string,
   sessionId: string,
   ttl = 60_000
-) => flash.startAgentSession({ accountAddress, expiresAt: Date.now() + ttl, sessionId })
+) => flash.startAiSession({ accountAddress, expiresAt: Date.now() + ttl, sessionId })
 describe('main Flash facade helpers', () => {
   beforeEach(() => {
     assetRateService.observe.mockClear()
@@ -797,7 +797,7 @@ describe('main Flash facade helpers', () => {
       positionSync: { track, refresh }
     })
     services.push(flash)
-    expect(startAgentSession(flash, funderAddress, 'cross-chain-session')).toBe(true)
+    expect(startAiSession(flash, funderAddress, 'cross-chain-session')).toBe(true)
     socket.open()
 
     sendOrders(
@@ -860,7 +860,7 @@ describe('main Flash facade helpers', () => {
     const track = mock()
     const refresh = mock((_update: { chainId: number }) => {})
     const accountAddress = '0x00000000000000000000000000000000000000a1'
-    const orderId = 'websocket-agent-order'
+    const orderId = 'websocket-ai-session-order'
     const flash = createFlashService({
       assetRateService,
       internet: openInternet(),
@@ -873,8 +873,8 @@ describe('main Flash facade helpers', () => {
       positionSync: { track, refresh }
     })
     services.push(flash)
-    for (const sessionId of ['agent-session-one', 'agent-session-two']) {
-      expect(startAgentSession(flash, accountAddress, sessionId)).toBe(true)
+    for (const sessionId of ['ai-session-one', 'ai-session-two']) {
+      expect(startAiSession(flash, accountAddress, sessionId)).toBe(true)
     }
     expect(sockets).toHaveLength(2)
     const socket = sockets[0]
@@ -929,10 +929,10 @@ describe('main Flash facade helpers', () => {
     expect(persistedOrder()).toMatchObject({ status: 'filled', open: false })
     expect(notification()).toMatchObject({ state: 'completed', metadata: { orderId, status: 'filled' } })
     expect(refresh).toHaveBeenCalledTimes(2)
-    expect(flash.stopAgentSession('agent-session-one')).toBe(true)
+    expect(flash.stopAiSession('ai-session-one')).toBe(true)
     expect(sockets[0].readyState).toBe(WebSocket.CLOSED)
     expect(sockets[1].readyState).toBe(WebSocket.CONNECTING)
-    expect(flash.stopAgentSession('agent-session-two')).toBe(true)
+    expect(flash.stopAiSession('ai-session-two')).toBe(true)
     expect(sockets[1].readyState).toBe(WebSocket.CLOSED)
   })
   it('stops order polling and streams while the internet is closed and resumes them when it opens', async () => {
@@ -952,7 +952,7 @@ describe('main Flash facade helpers', () => {
       }
     })
     await flash.listOrders({ accountAddress })
-    startAgentSession(flash, '0x00000000000000000000000000000000000000b1', 'paused-session', 60 * 60 * 1000)
+    startAiSession(flash, '0x00000000000000000000000000000000000000b1', 'paused-session', 60 * 60 * 1000)
     const requests = fetchMock.mock.calls.length
 
     internet.setOpen(false)
@@ -969,7 +969,7 @@ describe('main Flash facade helpers', () => {
     expect(sockets.map((socket) => socket.readyState)).toEqual([WebSocket.CLOSED, WebSocket.CONNECTING])
     expect(fetchMock.mock.calls.length).toBeGreaterThan(requests)
   })
-  it('closes an agent order stream when its session expires', () => {
+  it('closes an AI session order stream when its session expires', () => {
     timers.useFakeTimers()
     const socket = new FakeFlashWebSocket()
     const flash = createFlashService({
@@ -980,10 +980,10 @@ describe('main Flash facade helpers', () => {
     })
     services.push(flash)
     expect(
-      startAgentSession(flash, '0x00000000000000000000000000000000000000a2', 'expiring-agent-session', 25)
+      startAiSession(flash, '0x00000000000000000000000000000000000000a2', 'expiring-ai-session', 25)
     ).toBe(true)
     timers.advanceTimersByTime(25)
     expect(socket.readyState).toBe(WebSocket.CLOSED)
-    expect(flash.stopAgentSession('expiring-agent-session')).toBe(false)
+    expect(flash.stopAiSession('expiring-ai-session')).toBe(false)
   })
 })

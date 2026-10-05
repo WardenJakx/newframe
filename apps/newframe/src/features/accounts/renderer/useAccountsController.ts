@@ -92,12 +92,12 @@ export function useAccountsController(input: {
   }
 
   const events = {
-    onAccountAgentAccessChange: (account: AccountListItem, enabled: boolean) => {
+    onAccountAiSessionsEnabledChange: (account: AccountListItem, enabled: boolean) => {
       void input.capability.updateAccount({ accountId: account.id, enabled })
       dispatch({ type: 'menu.closed' })
     },
-    onAccountAgentSessionsRevoke: (accountId: string) => {
-      void input.capability.revokeAccountAgentSessions({ accountId })
+    onAccountAiSessionsRevoke: (accountId: string) => {
+      void input.capability.revokeAccountAiSessions({ accountId })
       dispatch({ type: 'menu.closed' })
     },
     onAccountCopy: (account: AccountListItem) => {

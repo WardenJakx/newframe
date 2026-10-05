@@ -7,7 +7,7 @@ import { cva } from '../../../../../../generated/styled-system/css/cva.js'
 import { persistedImageSource } from '../../../../asset-data/domain/image/index.ts'
 import type {
   AccessRequest,
-  AgentAccessRequest,
+  AiSessionRequest,
   AccountRequest,
   AddChainRequest,
   AddTokenRequest,
@@ -28,7 +28,7 @@ import TxOverview from './TransactionRequest/TxMainNew/overview.tsx'
 
 type RenderableRequest =
   | AccessRequest
-  | AgentAccessRequest
+  | AiSessionRequest
   | AddChainRequest
   | AddTokenRequest
   | SignatureRequest
@@ -61,8 +61,8 @@ function Requests(props: RequestsProps) {
     let img: string | undefined
     let detail: ReactNode
 
-    if (req.type === 'agentAccess') {
-      title = 'Agent Access'
+    if (req.type === 'aiSession') {
+      title = 'AI Session'
       svgName = 'edit'
     } else if (req.type === 'access') {
       title = 'Account Access'

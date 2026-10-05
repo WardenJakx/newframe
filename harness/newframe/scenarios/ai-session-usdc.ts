@@ -1,5 +1,5 @@
 import { createDesktopClient } from '@newframe/desktop-api/client'
-import type { AgentCredentials } from '@newframe/desktop-api/schemas'
+import type { AiSessionCredentials } from '@newframe/desktop-api/schemas'
 import { FLASH_ANVIL_CHAIN_ID, FLASH_USDC_ADDRESS } from '@newframe/flash/constants'
 import { Interface, parseUnits } from 'ethers'
 
@@ -30,7 +30,7 @@ function requireString(value: unknown, label: string) {
 }
 
 const desktop = createDesktopClient(NEWFRAME_RPC_URL)
-const agentClient = (credentials: AgentCredentials) =>
+const aiSessionClient = (credentials: AiSessionCredentials) =>
   createDesktopClient(NEWFRAME_RPC_URL, {
     headers: () => ({
       authorization: `Bearer ${credentials.sessionToken}`,
@@ -38,8 +38,8 @@ const agentClient = (credentials: AgentCredentials) =>
     })
   })
 
-async function requestAgentSession() {
-  console.log('Approve the "USDC Transfer E2E" agent session in Newframe to continue.')
+async function requestAiSession() {
+  console.log('Approve the "USDC Transfer E2E" AI session in Newframe to continue.')
   return createDesktopClient(NEWFRAME_RPC_URL).agent.connect.mutate({
     descriptor: {
       name: 'USDC Transfer E2E',
@@ -86,11 +86,11 @@ async function waitForReceipt(transactionHash: string) {
 
 async function main() {
   const balanceBefore = await usdcBalance(RECIPIENT)
-  const credentials = await requestAgentSession()
+  const credentials = await requestAiSession()
 
   try {
     const data = usdcInterface.encodeFunctionData('transfer', [RECIPIENT, TRANSFER_AMOUNT])
-    const transactionHash = await agentClient(credentials).wallet.sendTransaction.mutate({
+    const transactionHash = await aiSessionClient(credentials).wallet.sendTransaction.mutate({
       transaction: {
         from: credentials.account,
         to: FLASH_USDC_ADDRESS,
@@ -126,7 +126,7 @@ async function main() {
       })
     )
   } finally {
-    await agentClient(credentials).agent.revoke.mutate({ sessionId: credentials.sessionId })
+    await aiSessionClient(credentials).agent.revoke.mutate({ sessionId: credentials.sessionId })
   }
 }
 

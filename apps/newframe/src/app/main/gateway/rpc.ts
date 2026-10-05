@@ -38,7 +38,7 @@ export function createRpcGateway(ports: RpcGatewayPorts) {
       }
     }
     // Dapps and AI sessions get nothing while locked: no accounts and no chain reads.
-    if ((source?.kind === 'rpc' || source?.kind === 'agent') && ports.isLocked()) {
+    if ((source?.kind === 'rpc' || source?.kind === 'ai-session') && ports.isLocked()) {
       reply(
         input.method === 'eth_accounts'
           ? { id: input.id, jsonrpc: input.jsonrpc, result: [] }
@@ -83,7 +83,7 @@ export function createRpcGateway(ports: RpcGatewayPorts) {
           if (source && !isRequestSource(source)) {
             return false
           }
-          if (source?.kind === 'agent') {
+          if (source?.kind === 'ai-session') {
             return isAiSessionActive(source) && rpcMethodPolicy(payload.method)?.aiSession === true
           }
           const policy = rpcMethodPolicy(payload.method)

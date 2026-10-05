@@ -3,8 +3,8 @@ import { z } from 'zod'
 
 import {
   AddressSchema,
-  AgentConnectSchema,
-  AgentCredentialsSchema,
+  AiSessionConnectSchema,
+  AiSessionCredentialsSchema,
   ChainSchema,
   ExtensionAccountsSchema,
   HashSchema,
@@ -14,7 +14,7 @@ import {
   RoutingSchema,
   RpcCallSchema,
   WalletEventSchema,
-  type AgentConnect,
+  type AiSessionConnect,
   type RpcCall,
   type RpcError,
   type ProviderEvent,
@@ -25,8 +25,8 @@ import {
 export interface DesktopContext {
   rpc(this: void, input: RpcCall): Promise<unknown>
   events?(events: ProviderEvent[], signal?: AbortSignal): AsyncIterable<WalletEvent>
-  agent?: {
-    connect(input: AgentConnect, signal?: AbortSignal): Promise<unknown>
+  aiSession?: {
+    connect(input: AiSessionConnect, signal?: AbortSignal): Promise<unknown>
     status(): void
     revoke(sessionId: string): void
   }
@@ -47,14 +47,14 @@ const t = initTRPC.context<DesktopContext>().create({
 // Gateway results are unknown until the output validator parses them.
 const output = <S extends z.ZodType>(schema: S) => z.preprocess((value) => value, schema)
 const p = t.procedure
-const agent = p.use(({ ctx, next }) => {
-  if (!ctx.agent) {
+const aiSession = p.use(({ ctx, next }) => {
+  if (!ctx.aiSession) {
     throw new TRPCError({
       code: 'FORBIDDEN',
-      message: 'Agent API does not accept browser-originated requests'
+      message: 'AI session API does not accept browser-originated requests'
     })
   }
-  return next({ ctx: { ...ctx, agent: ctx.agent } })
+  return next({ ctx: { ...ctx, aiSession: ctx.aiSession } })
 })
 export const desktopRouter = t.router({
   rpc: p.input(RpcCallSchema).mutation(({ ctx, input }) => ctx.rpc(input)),
@@ -144,16 +144,16 @@ export const desktopRouter = t.router({
       })
   }),
   agent: t.router({
-    connect: agent
-      .input(AgentConnectSchema)
-      .output(output(AgentCredentialsSchema))
-      .mutation(({ ctx, input, signal }) => ctx.agent.connect(input, signal)),
-    status: agent.query(({ ctx }) => {
-      ctx.agent.status()
+    connect: aiSession
+      .input(AiSessionConnectSchema)
+      .output(output(AiSessionCredentialsSchema))
+      .mutation(({ ctx, input, signal }) => ctx.aiSession.connect(input, signal)),
+    status: aiSession.query(({ ctx }) => {
+      ctx.aiSession.status()
       return { active: true as const }
     }),
-    revoke: agent.input(z.object({ sessionId: z.string() })).mutation(({ ctx, input }) => {
-      ctx.agent.revoke(input.sessionId)
+    revoke: aiSession.input(z.object({ sessionId: z.string() })).mutation(({ ctx, input }) => {
+      ctx.aiSession.revoke(input.sessionId)
       return { revoked: true as const }
     })
   })

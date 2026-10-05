@@ -114,7 +114,7 @@ it('authorizes and validates final adjustments against canonical state before si
     transactionPolicy: { signerCompatibility: () => ({ compatible: true }) } as never,
     store: store.store,
     vault: { exists: () => false, isUnlocked: () => true },
-    agent: { resolveAccess: () => false },
+    aiSession: { resolveAccess: () => false },
     clock: { delay: async () => {} },
     chain: { rpcMatchesChain: async () => true }
   })
@@ -184,7 +184,7 @@ it('acknowledges a real command and projects its completion only to the owning w
     safes: {} as OperationServices['safes'],
     accountMutations: {} as OperationServices['accountMutations'],
     accountOnboarding: {} as OperationServices['accountOnboarding'],
-    agent: {} as OperationServices['agent'],
+    aiSession: {} as OperationServices['aiSession'],
     chains: {} as OperationServices['chains'],
     portfolio: {} as OperationServices['portfolio'],
     profiles: {} as OperationServices['profiles'],

@@ -18,12 +18,12 @@
     },
     {
       "name": "signing-and-secrets",
-      "rationale": "Digest construction, clear-signing interpretation, vault access, and agent sessions protect signatures or secret material.",
+      "rationale": "Digest construction, clear-signing interpretation, vault access, and AI sessions protect signatures or secret material.",
       "patterns": [
         "src/platform/signing/signatures/digests.ts",
         "src/platform/signing/signatures/erc7730.ts",
         "src/platform/secrets/vault.ts",
-        "src/features/agent-access/main/sessionStore.ts",
+        "src/features/ai-session/main/sessionStore.ts",
         "src/app/main/protected-operations/*.ts"
       ],
       "minimum": {

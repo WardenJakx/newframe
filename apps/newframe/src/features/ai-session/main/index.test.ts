@@ -11,13 +11,13 @@ import type {
   RPCResponsePayload
 } from '../../../shared/domain/rpc.ts'
 import type { AccountRequest } from '../../requests/contract/requests.ts'
-import { createAgentService } from './index.ts'
+import { createAiSessionService } from './index.ts'
 
 const accountId = '0x1111111111111111111111111111111111111111'
 
 const input = { descriptor: { name: 'Test Agent' }, durationSeconds: 60 }
 
-it('characterizes agent prompt timeout, disconnect, approval idempotency, and dispose cleanup', async () => {
+it('characterizes AI session prompt timeout, disconnect, approval idempotency, and dispose cleanup', async () => {
   timers.useFakeTimers()
   try {
     const requests: Record<string, AccountRequest> = {}
@@ -76,7 +76,7 @@ it('characterizes agent prompt timeout, disconnect, approval idempotency, and di
             kind: 'rpc',
             transport: 'http',
             connectionId: routed.handlerId,
-            origin: 'newframe-agent'
+            origin: 'newframe-ai-session'
           },
           intent: {
             requestType: routed.type,
@@ -91,11 +91,11 @@ it('characterizes agent prompt timeout, disconnect, approval idempotency, and di
       }
     }
     const flash = {
-      startAgentSession: mock(),
-      stopAgentSession: mock(),
-      stopAgentSessionsForAccount: mock()
+      startAiSession: mock(),
+      stopAiSession: mock(),
+      stopAiSessionsForAccount: mock()
     }
-    const service = createAgentService(
+    const service = createAiSessionService(
       accounts as never,
       flash as never,
       {
@@ -112,10 +112,10 @@ it('characterizes agent prompt timeout, disconnect, approval idempotency, and di
     await routedRequest.promise
     expect(connect()).rejects.toMatchObject({ code: 'TOO_MANY_REQUESTS' })
     for (const id of Object.keys(requests)) {
-      service.resolveAgentAccessRequest(id, true)
+      service.resolveAiSessionRequest(id, true)
     }
     await Promise.all(pending)
-    flash.startAgentSession.mockClear()
+    flash.startAiSession.mockClear()
     routedRequest = Promise.withResolvers<void>()
 
     const browser = createDesktopCaller(
@@ -134,9 +134,9 @@ it('characterizes agent prompt timeout, disconnect, approval idempotency, and di
     timers.advanceTimersByTime(119_999)
     expect(Boolean(requests[timedOutId])).toBe(true)
     timers.advanceTimersByTime(1)
-    expect(await timedOutResponse).toMatchObject({ message: 'Agent connection request expired' })
+    expect(await timedOutResponse).toMatchObject({ message: 'AI session request expired' })
     expect({
-      lateApproval: service.resolveAgentAccessRequest(timedOutId, true),
+      lateApproval: service.resolveAiSessionRequest(timedOutId, true),
       pending: Boolean(requests[timedOutId])
     }).toEqual({
       lateApproval: false,
@@ -149,9 +149,11 @@ it('characterizes agent prompt timeout, disconnect, approval idempotency, and di
     routedRequest = Promise.withResolvers<void>()
     const disconnectedId = Object.keys(requests)[0]
     disconnected.emit('close')
-    expect(await disconnectedResponse).toMatchObject({ message: 'Agent disconnected before approval' })
+    expect(await disconnectedResponse).toMatchObject({
+      message: 'AI session client disconnected before approval'
+    })
     expect({
-      lateApproval: service.resolveAgentAccessRequest(disconnectedId, true),
+      lateApproval: service.resolveAiSessionRequest(disconnectedId, true),
       pending: Boolean(requests[disconnectedId])
     }).toEqual({
       lateApproval: false,
@@ -162,11 +164,11 @@ it('characterizes agent prompt timeout, disconnect, approval idempotency, and di
     await routedRequest.promise
     routedRequest = Promise.withResolvers<void>()
     const approvedId = Object.keys(requests)[0]
-    expect(service.resolveAgentAccessRequest(approvedId, true)).toBe(true)
-    expect(service.resolveAgentAccessRequest(approvedId, true)).toBe(false)
+    expect(service.resolveAiSessionRequest(approvedId, true)).toBe(true)
+    expect(service.resolveAiSessionRequest(approvedId, true)).toBe(false)
     const credentials = await approvedResponse
     expect(credentials).toMatchObject({ account: accountId })
-    expect(flash.startAgentSession).toHaveBeenCalledTimes(1)
+    expect(flash.startAiSession).toHaveBeenCalledTimes(1)
 
     const handleRpc = mock((_payload: RPCRequestPayload) => {})
     const caller = createDesktopCaller(
@@ -200,9 +202,9 @@ it('characterizes agent prompt timeout, disconnect, approval idempotency, and di
     routedRequest = Promise.withResolvers<void>()
     const disposedId = Object.keys(requests)[0]
     service.dispose()
-    expect(await disposedResponse).toMatchObject({ message: 'Agent service stopped before approval' })
+    expect(await disposedResponse).toMatchObject({ message: 'AI session service stopped before approval' })
     expect({
-      lateApproval: service.resolveAgentAccessRequest(disposedId, true),
+      lateApproval: service.resolveAiSessionRequest(disposedId, true),
       requestRemainsCanonical: Boolean(requests[disposedId])
     }).toEqual({
       lateApproval: false,
@@ -224,13 +226,13 @@ it.each(['safe', 'airgap'] as const)('rejects %s AI enablement and session readi
     getSigner: () => ({ type: kind === 'safe' ? 'seed' : 'airgap', status: 'ok' })
   }
   const accounts = { current: () => account, get: () => account, getFrameAccount: () => account }
-  const service = createAgentService(
+  const service = createAiSessionService(
     accounts as never,
     {} as never,
     { getState: () => ({ main: { appLock: { locked: false } } }) } as never,
     {} as never
   )
-  expect(service.setAgentAccess(accountId, true)).toBeFalse()
+  expect(service.setAiSessionsEnabled(accountId, true)).toBeFalse()
   expect(account.agentEnabled).toBeFalse()
   account.agentEnabled = true
   const caller = createDesktopCaller(

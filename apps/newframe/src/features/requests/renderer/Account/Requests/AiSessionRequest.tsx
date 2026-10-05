@@ -2,7 +2,7 @@ import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 
-import type { AgentAccessRequestView } from './requestViewTypes.ts'
+import type { AiSessionRequestView } from './requestViewTypes.ts'
 
 function durationLabel(seconds: number) {
   if (seconds % 86_400 === 0) {
@@ -14,7 +14,7 @@ function durationLabel(seconds: number) {
   return `${Math.ceil(seconds / 60)} minutes`
 }
 
-export default function AgentAccessRequest({ req }: { req: AgentAccessRequestView }) {
+export default function AiSessionRequest({ req }: { req: AiSessionRequestView }) {
   return (
     <Surface padding='large' radius='card'>
       <Stack align='center' gap='medium'>

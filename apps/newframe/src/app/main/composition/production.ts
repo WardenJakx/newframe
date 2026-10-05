@@ -27,7 +27,7 @@ import { createDeferredSafeMessageApprovalPort } from '../../../features/account
 import { simulateSafeProposal } from '../../../features/accounts/main/safeSimulation.ts'
 import type { SafeTransactionPort } from '../../../features/accounts/main/safeTransactionPort.ts'
 import { createAccountService, type AccountService } from '../../../features/accounts/main/service.ts'
-import { createAgentService, type AgentService } from '../../../features/agent-access/main/index.ts'
+import { createAiSessionService, type AiSessionService } from '../../../features/ai-session/main/index.ts'
 import { createAssetRateService } from '../../../features/asset-data/main/assetRates/service.ts'
 import createExternalDataScanner from '../../../features/asset-data/main/externalData/index.ts'
 import {
@@ -130,7 +130,7 @@ export interface ProductionMainAppDependencies {
   nameResolution: NameResolutionService
   accountCapabilities: ProductionAccountCapabilities
   infrastructureCallbacks: { dispose(): void }
-  agentService: AgentService
+  aiSessionService: AiSessionService
   imageService: ImageService
   rendererAuthorization: RendererAuthorizationRegistry
   sideTrayTransactions: SideTrayTransactionService
@@ -235,8 +235,8 @@ export function createProductionCapabilities(
       setTxSent: (requestId, hash) => accounts.setTxSent(requestId, hash),
       trackSafeExecution: (safeTxHash, outerTxHash) => accounts.trackSafeExecution(safeTxHash, outerTxHash)
     },
-    agent: {
-      resolveAccess: (requestId, approved) => agentService.resolveAgentAccessRequest(requestId, approved)
+    aiSession: {
+      resolveAccess: (requestId, approved) => aiSessionService.resolveAiSessionRequest(requestId, approved)
     },
     clock: { delay: (ms) => new Promise((resolve) => setTimeout(resolve, ms)) },
     chain: adapters.chain,
@@ -388,7 +388,7 @@ export function createProductionCapabilities(
     operations: operationService,
     store
   })
-  const agentService = createAgentService(accounts, flashService, store, requestService)
+  const aiSessionService = createAiSessionService(accounts, flashService, store, requestService)
   const imageService = createImageService(store, adapters.images)
   const rendererAuthorization = createRendererAuthorizationRegistry()
   const providerRequests = createProviderRequestAdapter(provider)
@@ -471,7 +471,7 @@ export function createProductionCapabilities(
         adapters.security.dispose?.()
       }
     },
-    agentService,
+    aiSessionService,
     imageService,
     operationService,
     platformService,
@@ -498,7 +498,7 @@ function createProductionOperationServices(
   provider: RpcIpcHandlers,
   accounts: Accounts,
   nameResolution: NameResolutionService,
-  agentService: AgentService,
+  aiSessionService: AiSessionService,
   imageService: ImageService,
   rendererAuthorization: RendererAuthorizationRegistry,
   sideTrayTransactions: SideTrayTransactionService,
@@ -522,7 +522,7 @@ function createProductionOperationServices(
     accounts,
     airgap: airgapService,
     accountMutations: accountService,
-    agent: agentService,
+    aiSession: aiSessionService,
     chains: chainService,
     portfolio: portfolioService,
     platform: platformService,
@@ -555,7 +555,7 @@ export function createProductionMainApp({
   nameResolution,
   accountCapabilities,
   infrastructureCallbacks,
-  agentService,
+  aiSessionService,
   imageService,
   rendererAuthorization,
   sideTrayTransactions,
@@ -580,7 +580,7 @@ export function createProductionMainApp({
       provider,
       accounts,
       nameResolution,
-      agentService,
+      aiSessionService,
       imageService,
       rendererAuthorization,
       sideTrayTransactions,
@@ -666,7 +666,7 @@ export function createProductionMainApp({
         tradeService.dispose()
         sendService.dispose()
         imageService.dispose()
-        agentService.dispose()
+        aiSessionService.dispose()
         requestService.dispose()
         infrastructureCallbacks.dispose()
         flashService.dispose()
@@ -687,7 +687,7 @@ export function createProductionMainApp({
       tradeService.dispose()
       sendService.dispose()
       imageService.dispose()
-      agentService.dispose()
+      aiSessionService.dispose()
       requestService.dispose()
       infrastructureCallbacks.dispose()
       flashService.dispose()

@@ -4,7 +4,7 @@ import type {
   TypedDataV1,
   TypedMessage as BaseTypedMessage
 } from '@metamask/eth-sig-util'
-import type { AgentConnect } from '@newframe/desktop-api/schemas'
+import type { AiSessionConnect } from '@newframe/desktop-api/schemas'
 
 import type { Address } from '../../../shared/domain/address.ts'
 import type { JSONRPCRequestPayload, RPC } from '../../../shared/domain/rpc.ts'
@@ -97,7 +97,7 @@ type SignatureRequestType = 'sign' | TypedSignatureRequestType
 export type RequestType =
   | SignatureRequestType
   | 'transaction'
-  | 'agentAccess'
+  | 'aiSession'
   | 'access'
   | 'addChain'
   | 'switchChain'
@@ -123,7 +123,7 @@ type RequestSourceSummary =
       origin: string
     }
   | {
-      kind: 'agent'
+      kind: 'ai-session'
       sessionId: string
       accountId: string
       expiresAt: number
@@ -370,8 +370,8 @@ export interface PermitSignatureRequest extends AccountRequest<'signErc20Permit'
 
 export type AccessRequest = AccountRequest<'access'>
 
-export interface AgentAccessRequest extends AccountRequest<'agentAccess'> {
-  data: AgentConnect
+export interface AiSessionRequest extends AccountRequest<'aiSession'> {
+  data: AiSessionConnect
 }
 
 export interface AddChainRequest extends AccountRequest<'addChain'> {

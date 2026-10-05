@@ -373,10 +373,10 @@ describe('#routeRequest', () => {
     })
   })
 
-  it('executes an authorized agent action without adding it to the prompt queue', () => {
+  it('executes an authorized AI session action without adding it to the prompt queue', () => {
     const execute = mock()
     const requestSource = createAiSessionClientSource({
-      sessionId: 'agent-session',
+      sessionId: 'ai-session',
       accountId: account.address,
       expiresAt: Date.now() + 60_000,
       isActive: () => true
@@ -394,7 +394,7 @@ describe('#routeRequest', () => {
     const respond = mock()
     requestLifecycle.create(respond, request.handlerId)
     const requestSource = createAiSessionClientSource({
-      sessionId: 'agent-session',
+      sessionId: 'ai-session',
       accountId: account.address,
       expiresAt: Date.now() + 60_000,
       isActive: () => true

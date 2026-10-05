@@ -646,7 +646,7 @@ function checkRequestBoundaryAuthority(file: string, source: string) {
     'app/main/gateway/requestSource.ts',
     'platform/ipc/main/operations.ts',
     'platform/local-rpc/request.ts',
-    'features/agent-access/main/index.ts',
+    'features/ai-session/main/index.ts',
     'app/main/ipc-handlers/rpc.ts'
   ])
   if (

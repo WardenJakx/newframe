@@ -12,8 +12,7 @@ export function createAccountsCapabilityFake() {
     updateAccount: acknowledged<Parameters<AccountsCapability['updateAccount']>[0]>(),
     selectAccount: acknowledged<Parameters<AccountsCapability['selectAccount']>[0]>(),
     removeAccount: acknowledged<Parameters<AccountsCapability['removeAccount']>[0]>(),
-    revokeAccountAgentSessions:
-      acknowledged<Parameters<AccountsCapability['revokeAccountAgentSessions']>[0]>(),
+    revokeAccountAiSessions: acknowledged<Parameters<AccountsCapability['revokeAccountAiSessions']>[0]>(),
     exportAccountPrivateKey: mock(
       async (
         _input: Parameters<AccountsCapability['exportAccountPrivateKey']>[0]

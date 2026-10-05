@@ -1,6 +1,6 @@
 import type { VisualStage } from '../types.ts'
 import { activityStage } from './activity.ts'
-import { agentSessionStage } from './agent-session.ts'
+import { aiSessionStage } from './ai-session.ts'
 import { anvilPositionsStage } from './anvil-positions.ts'
 import { chainOnboardingStage } from './chain-onboarding.ts'
 import { harnessAccountStage } from './harness-account.ts'
@@ -43,5 +43,5 @@ export const visualStages: VisualStage[] = [
   sendStage,
   usdcIntegrationStage,
   activityStage,
-  agentSessionStage
+  aiSessionStage
 ]

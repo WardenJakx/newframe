@@ -134,12 +134,12 @@ export function Footer({ capabilities, notify, shared, step, onContinue }: Foote
           }
         }
         break
-      case 'agentAccess':
+      case 'aiSession':
         actions = {
           primary: {
             label: 'Allow autonomous access',
             onPress: () =>
-              void capabilities.review.resolveAgentAccess({
+              void capabilities.review.resolveAiSession({
                 requestId: req.handlerId,
                 approved: true
               })
@@ -147,7 +147,7 @@ export function Footer({ capabilities, notify, shared, step, onContinue }: Foote
           secondary: {
             label: 'Decline',
             onPress: () =>
-              void capabilities.review.resolveAgentAccess({ requestId: req.handlerId, approved: false })
+              void capabilities.review.resolveAiSession({ requestId: req.handlerId, approved: false })
           }
         }
         break

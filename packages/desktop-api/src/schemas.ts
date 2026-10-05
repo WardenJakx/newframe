@@ -3,7 +3,7 @@ import { z } from 'zod'
 export const AddressSchema = z.string().regex(/^0x[0-9a-f]{40}$/i)
 export const HexSchema = z.string().regex(/^0x[0-9a-f]*$/i)
 export const HashSchema = z.string().regex(/^0x[0-9a-f]{64}$/i)
-export const AgentDescriptorSchema = z.strictObject({
+export const AiSessionDescriptorSchema = z.strictObject({
   name: z.string().trim().min(1).max(128),
   description: z.string().trim().max(512).optional(),
   url: z
@@ -11,8 +11,8 @@ export const AgentDescriptorSchema = z.strictObject({
     .max(2048)
     .optional()
 })
-export const AgentConnectSchema = z.strictObject({
-  descriptor: AgentDescriptorSchema,
+export const AiSessionConnectSchema = z.strictObject({
+  descriptor: AiSessionDescriptorSchema,
   durationSeconds: z
     .number()
     .int()
@@ -25,7 +25,7 @@ export const SessionSchema = z.object({
   account: AddressSchema,
   expiresAt: z.number()
 })
-export const AgentCredentialsSchema = SessionSchema.extend({ descriptor: AgentDescriptorSchema })
+export const AiSessionCredentialsSchema = SessionSchema.extend({ descriptor: AiSessionDescriptorSchema })
 export const RoutingSchema = z.object({
   chainId: z.string().optional(),
   origin: z.string().optional(),
@@ -75,9 +75,9 @@ export const RpcErrorSchema = z.object({
   data: z.unknown().optional()
 })
 export type RpcCall = z.infer<typeof RpcCallSchema>
-export type AgentDescriptor = z.infer<typeof AgentDescriptorSchema>
-export type AgentConnect = z.infer<typeof AgentConnectSchema>
-export type AgentCredentials = z.infer<typeof AgentCredentialsSchema>
+export type AiSessionDescriptor = z.infer<typeof AiSessionDescriptorSchema>
+export type AiSessionConnect = z.infer<typeof AiSessionConnectSchema>
+export type AiSessionCredentials = z.infer<typeof AiSessionCredentialsSchema>
 export type Session = z.infer<typeof SessionSchema>
 export type AvailableChain = z.infer<typeof ChainSchema>
 export type OriginStatus = z.infer<typeof OriginStatusSchema>

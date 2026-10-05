@@ -162,7 +162,7 @@ function fixture() {
   const vault = { exists: mock(() => false), isUnlocked: mock(() => true) }
   const service: RequestService = createRequestService({
     accounts: accounts as never,
-    agent: { resolveAccess: mock(() => true) },
+    aiSession: { resolveAccess: mock(() => true) },
     clock: { delay: async () => undefined },
     chain: { rpcMatchesChain: mock(async () => true) },
     provider: {
