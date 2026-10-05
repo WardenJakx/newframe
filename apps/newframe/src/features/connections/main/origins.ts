@@ -119,7 +119,7 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
     })
 
   /**
-   * Browser code always sends a serialized Origin ("scheme://host" or "null"), and websites must
+   * Browser code always sends a serialized Origin ("scheme://host" or "null"), and dapps must
    * reach Newframe through the extension, so the only browser connection admitted is the
    * extension's WebSocket. Local tools and workers may label themselves with a scheme-less origin.
    */
@@ -214,8 +214,8 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
 
   const hasAccountAccessGrant = async (payload: RPCRequestPayload, requestSource: LocalApiSource) => {
     const originName = dependencies.store.getOrigin(payload._origin)?.name ?? 'Unknown'
-    // Websites relayed by the extension act as the extension's account, not the app's selection.
-    const extensionId = requestSource.participant === 'website' ? requestSource.extensionId : undefined
+    // Dapps relayed by the extension act as the extension's account, not the app's selection.
+    const extensionId = requestSource.participant === 'dapp' ? requestSource.extensionId : undefined
     const actingAccount = () =>
       extensionId ? dependencies.extensions.account(extensionId) : dependencies.accounts.current()
     let currentAccount = actingAccount()

@@ -76,7 +76,7 @@ The package's `compile`, `bundle`, and `build` scripts are build/release steps. 
 
 ### Connect through the browser extension
 
-The browser extension injects a Newframe-connected [EIP-1193](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1193.md) provider into web apps as `window.ethereum`. Websites always connect through the extension: Newframe rejects browser pages that call its local endpoints directly. The extension only sees the accounts you share with it; manage them from **Dapps** in the app.
+The browser extension injects a Newframe-connected [EIP-1193](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1193.md) provider into web apps as `window.ethereum`. Dapps always connect through the extension: Newframe rejects browser pages that call its local endpoints directly. The extension only sees the accounts you share with it; manage them from **Dapps** in the app.
 
 ### Connect to Newframe natively
 

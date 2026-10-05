@@ -19,8 +19,8 @@ class RpcError extends Error {
   }
 }
 
-/** The ethers view of a website whose requests the harness extension relays. */
-class RelayedWebsiteProvider extends JsonRpcApiProvider {
+/** The ethers view of a dapp whose requests the harness extension relays. */
+class RelayedDappProvider extends JsonRpcApiProvider {
   private readonly relay: (payload: JsonRpcPayload) => Promise<RelayedResponse>
 
   constructor(relay: (payload: JsonRpcPayload) => Promise<RelayedResponse>, chainId?: number) {
@@ -44,9 +44,9 @@ class RelayedWebsiteProvider extends JsonRpcApiProvider {
 }
 
 /**
- * A minimal stand-in for the Newframe browser extension. Websites can only reach Newframe through
- * the extension, so harness websites relay their requests here. Like the real extension, this
- * connection carries the extension's browser origin, and each relayed request carries the website
+ * A minimal stand-in for the Newframe browser extension. Dapps can only reach Newframe through
+ * the extension, so harness dapps relay their requests here. Like the real extension, this
+ * connection carries the extension's browser origin, and each relayed request carries the dapp
  * origin the extension derives from the browser.
  */
 export class HarnessExtension {
@@ -94,7 +94,7 @@ export class HarnessExtension {
     return new HarnessExtension(socket)
   }
 
-  private send(method: string, params: unknown, websiteOrigin?: string, chainId?: number) {
+  private send(method: string, params: unknown, dappOrigin?: string, chainId?: number) {
     const id = this.nextId++
     return new Promise<RelayedResponse>((resolve, reject) => {
       this.pending.set(id, { resolve, reject })
@@ -105,14 +105,14 @@ export class HarnessExtension {
           method,
           params,
           ...(chainId ? { chainId: `0x${chainId.toString(16)}` } : {}),
-          ...(websiteOrigin ? { __frameOrigin: websiteOrigin } : {})
+          ...(dappOrigin ? { __frameOrigin: dappOrigin } : {})
         })
       )
     })
   }
 
-  private async result<T>(method: string, params: unknown, websiteOrigin?: string): Promise<T> {
-    const response = await this.send(method, params, websiteOrigin)
+  private async result<T>(method: string, params: unknown, dappOrigin?: string): Promise<T> {
+    const response = await this.send(method, params, dappOrigin)
     if (response.error) {
       throw new RpcError(response.error.message ?? 'RPC error', response.error.code)
     }
@@ -124,22 +124,22 @@ export class HarnessExtension {
     return this.result<T>(method, params)
   }
 
-  /** The EIP-1193 provider the extension injects into a website. */
-  eip1193(websiteOrigin: string) {
+  /** The EIP-1193 provider the extension injects into a dapp. */
+  eip1193(dappOrigin: string) {
     return {
       request: ({ method, params = [] }: { method: string; params?: readonly unknown[] }) =>
-        this.result(method, params, websiteOrigin),
+        this.result(method, params, dappOrigin),
       on: async (event: string, listener: (value: unknown) => void) => {
-        const subscription = await this.result<string>('eth_subscribe', [event], websiteOrigin)
+        const subscription = await this.result<string>('eth_subscribe', [event], dappOrigin)
         this.subscriptions.set(subscription, listener)
       }
     }
   }
 
-  /** A provider for a website whose requests this extension relays. */
-  website(websiteOrigin: string, chainId?: number) {
-    return new RelayedWebsiteProvider(
-      (payload) => this.send(payload.method, payload.params, websiteOrigin, chainId),
+  /** A provider for a dapp whose requests this extension relays. */
+  dapp(dappOrigin: string, chainId?: number) {
+    return new RelayedDappProvider(
+      (payload) => this.send(payload.method, payload.params, dappOrigin, chainId),
       chainId
     )
   }

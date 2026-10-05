@@ -26,7 +26,7 @@ export function createExtensionGateway(
     ) {
       return false
     }
-    // Website chain queries use the ordinary RPC gateway with their website source.
+    // Dapp chain queries use the ordinary RPC gateway with their dapp source.
     if (source.participant !== 'extension' && ['eth_chainId', 'net_version'].includes(payload.method)) {
       return false
     }

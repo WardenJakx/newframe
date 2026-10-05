@@ -107,7 +107,7 @@ export function createProductionApiServer(
     handler: ((req, res) => {
       if (!origins.admitsConnection(req, 'http')) {
         res.writeHead(403, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({ error: 'Websites must connect through the Newframe extension' }))
+        res.end(JSON.stringify({ error: 'Dapps must connect through the Newframe extension' }))
         return
       }
       if (new URL(req.url ?? '/', 'http://127.0.0.1').pathname.startsWith('/trpc/')) {

@@ -11,9 +11,9 @@ import { requireAccounts } from './helpers.ts'
 
 const harnessOriginUrl = process.env.NEWFRAME_ORIGIN ?? 'http://newframe-contracts.local'
 
-type WebsiteProvider = ReturnType<HarnessExtension['website']>
+type DappProvider = ReturnType<HarnessExtension['dapp']>
 
-async function hasNewframeAnvilChain(provider: WebsiteProvider, signal: AbortSignal) {
+async function hasNewframeAnvilChain(provider: DappProvider, signal: AbortSignal) {
   try {
     return Number(await provider.send('eth_chainId', [])) === anvilChainId
   } catch (error) {
@@ -26,13 +26,13 @@ async function hasNewframeAnvilChain(provider: WebsiteProvider, signal: AbortSig
 
 async function ensureNewframeAnvilChain(signal: AbortSignal) {
   await waitForAnvil()
-  // The first request asks Newframe to approve the extension; connecting the website then asks
-  // which accounts the extension may use before Newframe asks for website access.
+  // The first request asks Newframe to approve the extension; connecting the dapp then asks
+  // which accounts the extension may use before Newframe asks for dapp access.
   const extension = await HarnessExtension.connect(newframeRpcUrl)
   const stop = () => extension.close()
   signal.addEventListener('abort', stop, { once: true })
-  const base = extension.website(harnessOriginUrl)
-  const target = extension.website(harnessOriginUrl, anvilChainId)
+  const base = extension.dapp(harnessOriginUrl)
+  const target = extension.dapp(harnessOriginUrl, anvilChainId)
 
   try {
     await base.send('eth_requestAccounts', [])

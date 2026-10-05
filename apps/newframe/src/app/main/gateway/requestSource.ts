@@ -33,9 +33,9 @@ export type TrustedCapability = 'wallet:internal-state'
 
 export type LocalApiSource = RequestSourceBrand & {
   readonly kind: 'rpc'
-  readonly participant: 'local-api-client' | 'website' | 'extension'
-  readonly websiteOrigin?: string
-  /** Set for the extension's own requests and website requests it relays. */
+  readonly participant: 'local-api-client' | 'dapp' | 'extension'
+  readonly dappOrigin?: string
+  /** Set for the extension's own requests and dapp requests it relays. */
   readonly extensionId?: string
   readonly transport: 'http' | 'websocket'
   readonly connectionId: string
@@ -147,7 +147,7 @@ export function createNewframeInternalSource(context: AuthorizationContext): New
 
 export function createLocalApiSource(input: {
   participant?: LocalApiSource['participant']
-  websiteOrigin?: string
+  dappOrigin?: string
   extensionId?: string
   transport: LocalApiSource['transport']
   connectionId: string
@@ -158,12 +158,12 @@ export function createLocalApiSource(input: {
     [requestSourceBrand]: true as const,
     kind: 'rpc' as const,
     participant: input.participant ?? 'local-api-client',
-    ...(input.websiteOrigin ? { websiteOrigin: input.websiteOrigin } : {}),
+    ...(input.dappOrigin ? { dappOrigin: input.dappOrigin } : {}),
     ...(input.extensionId ? { extensionId: input.extensionId } : {}),
     transport: input.transport,
     connectionId: input.connectionId,
     origin: input.origin,
-    capabilities: Object.freeze(input.participant === 'website' ? [] : [...(input.capabilities ?? [])])
+    capabilities: Object.freeze(input.participant === 'dapp' ? [] : [...(input.capabilities ?? [])])
   })
 }
 
@@ -196,7 +196,7 @@ export function hasSourceCapability(requestSource: unknown, capability: TrustedC
   return (
     isRequestSource(requestSource) &&
     (requestSource.kind === 'main' ||
-      (requestSource.kind === 'rpc' && requestSource.participant !== 'website')) &&
+      (requestSource.kind === 'rpc' && requestSource.participant !== 'dapp')) &&
     requestSource.capabilities.includes(capability)
   )
 }

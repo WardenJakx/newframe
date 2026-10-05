@@ -71,7 +71,7 @@ it('rejects copied sources and stale or out-of-scope AI-session authority before
   expect(replies.map((reply) => reply.error?.code)).toEqual([4001, 4001, 4001])
 })
 
-it('does not let relayed websites inherit extension controls or internal account access', async () => {
+it('does not let relayed dapps inherit extension controls or internal account access', async () => {
   let toggles = 0
   const gateway = createExtensionGateway(
     {
@@ -85,9 +85,9 @@ it('does not let relayed websites inherit extension controls or internal account
       request: async () => undefined as never
     }
   )
-  const website = createLocalApiSource({
-    participant: 'website',
-    websiteOrigin: 'https://example.com',
+  const dapp = createLocalApiSource({
+    participant: 'dapp',
+    dappOrigin: 'https://example.com',
     origin: 'example.com',
     transport: 'websocket',
     connectionId: 'shared-socket',
@@ -102,7 +102,7 @@ it('does not let relayed websites inherit extension controls or internal account
     capabilities: ['wallet:internal-state']
   })
   const replies: RPCResponsePayload[] = []
-  for (const source of [website, extension]) {
+  for (const source of [dapp, extension]) {
     await gateway({
       payload: request('frame_summon'),
       chainId: '0x1',
@@ -110,7 +110,7 @@ it('does not let relayed websites inherit extension controls or internal account
       respond: (reply) => replies.push(reply)
     })
   }
-  expect(website.capabilities).toEqual([])
+  expect(dapp.capabilities).toEqual([])
   expect(toggles).toBe(1)
   expect(replies[0]).toMatchObject({ error: { code: 4001 } })
   expect(replies[1]).toMatchObject({ result: null })

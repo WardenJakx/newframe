@@ -60,7 +60,7 @@ async function runUsdcIntegration(signal: AbortSignal) {
     artifactInterface('TestContract.sol/TestContract.json')
   ])
   const extension = await HarnessExtension.connect(newframeRpcUrl)
-  const provider = extension.website(harnessOriginUrl, anvilChainId)
+  const provider = extension.dapp(harnessOriginUrl, anvilChainId)
   const stop = () => extension.close()
   signal.addEventListener('abort', stop, { once: true })
 
