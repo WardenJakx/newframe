@@ -3,7 +3,7 @@ import crypto from 'crypto'
 import { recoverTypedSignature } from '@metamask/eth-sig-util'
 import log from 'electron-log'
 
-import type { Chain, Chains } from '../../../features/chains/main/index.ts'
+import type { Chain, Chains } from '../../../core/services/chains/index.ts'
 import type { AccountRequestPort } from '../../../features/connections/main/provider/accountRequestPort.ts'
 import {
   feeTotalOverMax,

@@ -1,4 +1,4 @@
-import Erc20Contract, { type Erc20ProviderPort } from '../../../platform/chain-rpc/contracts/erc20.ts'
+import Erc20Contract, { type Erc20ProviderPort } from '../../../core/services/chains/rpc/contracts/erc20.ts'
 import {
   fetchRemoteResource,
   downloadImage,

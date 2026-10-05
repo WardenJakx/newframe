@@ -1,6 +1,6 @@
-import { internet } from '../../../core/internet/index.ts'
-import { persistedImageSource } from '../../asset-data/domain/image/index.ts'
-import { downloadImage } from '../../asset-data/main/images/download.ts'
+import { persistedImageSource } from '../../../features/asset-data/domain/image/index.ts'
+import { downloadImage } from '../../../features/asset-data/main/images/download.ts'
+import { internet } from '../../internet/index.ts'
 
 const CHAINLIST_CATALOG_URL = 'https://chainlist.org/rpcs.json'
 const CHAINLIST_ICON_BASE_URL = 'https://icons.llamao.fi/icons/chains/'

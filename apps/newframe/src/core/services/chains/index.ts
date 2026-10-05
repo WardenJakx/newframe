@@ -7,18 +7,18 @@ import { addHexPrefix } from '@ethereumjs/util'
 import log from 'electron-log'
 import { shallow } from 'zustand/vanilla/shallow'
 
-import type { InternetGate } from '../../../core/internet/index.ts'
-import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
-import type { GasFees } from '../../../platform/state-store/state/index.ts'
-import type { EVMError, JSONRPCRequestPayload, RPCRequestCallback } from '../../../shared/domain/rpc.ts'
+import { CHAIN_PRESETS } from '../../../features/chains/domain/chain/presets.ts'
 import {
   createJsonRpcProvider,
   listenForProviderClose,
   sendRpcPayload,
   type EthersRpcProvider
-} from '../../connections/main/provider/connection.ts'
-import GasMonitor from '../../transactions/main/gasMonitor.ts'
-import { CHAIN_PRESETS } from '../domain/chain/presets.ts'
+} from '../../../features/connections/main/provider/connection.ts'
+import GasMonitor from '../../../features/transactions/main/gasMonitor.ts'
+import type { CanonicalStoreReader } from '../../../platform/state-store/actions.ts'
+import type { GasFees } from '../../../platform/state-store/state/index.ts'
+import type { EVMError, JSONRPCRequestPayload, RPCRequestCallback } from '../../../shared/domain/rpc.ts'
+import type { InternetGate } from '../../internet/index.ts'
 import chainConfig from './config.ts'
 import { createGasCalculator } from './gas.ts'
 

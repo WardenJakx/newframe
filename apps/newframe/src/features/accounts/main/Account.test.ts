@@ -50,7 +50,7 @@ const windowsMock = { showTray: mock() }
 const navMock = { forward: mock(), back: mock() }
 
 await mock.module('../../transactions/main/reveal.ts', () => ({ ...revealMock }))
-await mock.module('../../../platform/chain-rpc/contracts/index.ts', () => ({
+await mock.module('../../../core/services/chains/rpc/contracts/index.ts', () => ({
   fetchContract: fetchContractMock
 }))
 await mock.module('../../../platform/signing/signers/index.ts', () => ({ default: signersMock }))

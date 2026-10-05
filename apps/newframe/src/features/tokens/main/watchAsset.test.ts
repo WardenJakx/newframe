@@ -2,7 +2,7 @@ import { expect, it } from 'bun:test'
 
 import { Interface, getAddress } from 'ethers'
 
-import Erc20Contract from '../../../platform/chain-rpc/contracts/erc20.ts'
+import Erc20Contract from '../../../core/services/chains/rpc/contracts/erc20.ts'
 import type { Callback } from '../../../shared/domain/async.ts'
 import type { RPCRequestPayload, RPCResponsePayload } from '../../../shared/domain/rpc.ts'
 import { resolveWatchAsset } from './watchAsset.ts'

@@ -3,7 +3,7 @@ import log from 'electron-log'
 import { Interface } from 'ethers'
 import type { BytesLike } from 'ethers'
 
-import type { Eip1193Provider } from '../../../features/connections/main/provider/connection.ts'
+import type { Eip1193Provider } from '../../../../../features/connections/main/provider/connection.ts'
 import type { Call, CallResult, MulticallConfig } from './constants.ts'
 import { abi, functionSignatureMatcher, multicallAddress } from './constants.ts'
 
