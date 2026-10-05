@@ -43,8 +43,8 @@ describe('account mutation service', () => {
             session: { requests: 0, startedAt: 0, lastUpdatedAt: 0 }
           }
         },
-        permissions: {
-          [first]: { origin: { origin: 'origin-1', provider: false, handlerId: 'origin' } }
+        accountAccessGrants: {
+          [first]: { origin: { origin: 'origin-1', provider: false, requestId: 'origin' } }
         }
       }
     })
@@ -79,7 +79,7 @@ describe('account mutation service', () => {
     expect(store.getState().main.accountOrder).toEqual([second, first])
     expect(service.clearAccountAccessGrant(first, 'missing')).toBeFalse()
     expect(service.clearAccountAccessGrant(first, 'origin')).toBeTrue()
-    expect(store.getState().main.permissions[first]).toEqual({})
+    expect(store.getState().main.accountAccessGrants[first]).toEqual({})
     expect(await service.addressChainUsage([first])).toEqual([
       { address: first, chainIds: [1], complete: true }
     ])

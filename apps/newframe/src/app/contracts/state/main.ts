@@ -93,7 +93,7 @@ export const ActivityRecordSchema = z
   .object({
     id: z.string(),
     hash: z.string().nullable().optional(),
-    handlerId: z.string().nullable().optional(),
+    requestId: z.string().nullable().optional(),
     address: z.string().nullable().optional(),
     account: z.string().nullable().optional(),
     accounts: z.array(z.string()).optional(),
@@ -190,7 +190,7 @@ export const MainSchema = z
     origins: z.record(z.string().describe('Origin Id'), OriginSchema),
     knownExtensions: z.record(z.string(), z.boolean()),
     extensionAccess: z.record(z.string().describe('Extension Id'), ExtensionAccessSchema).default({}),
-    permissions: z.record(
+    accountAccessGrants: z.record(
       z.string().describe('Address'),
       z.record(z.string().describe('Origin Id'), AccountAccessGrantSchema)
     ),

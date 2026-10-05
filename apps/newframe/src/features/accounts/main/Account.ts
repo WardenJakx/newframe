@@ -101,7 +101,7 @@ class FrameAccount {
         lastSignerType: lastSignerType ?? options.type ?? '',
         signer: '',
         signerStatus: '',
-        agentEnabled: false,
+        aiSessionsEnabled: false,
         status: 'ok',
         requests: {}
       })
@@ -181,8 +181,8 @@ class FrameAccount {
     return this.state.signerStatus ?? ''
   }
 
-  get agentEnabled() {
-    return this.state.agentEnabled === true
+  get aiSessionsEnabled() {
+    return this.state.aiSessionsEnabled === true
   }
 
   get status() {
@@ -251,7 +251,7 @@ class FrameAccount {
         const { name } = this.store.getState().main.origins[origin]
         this.store
           .getState()
-          .setAccountAccessGrant(targetAddress, { handlerId: requestId, origin: name, provider: true })
+          .setAccountAccessGrant(targetAddress, { requestId: requestId, origin: name, provider: true })
       } else {
         this.store.getState().revokeAccountAccessGrant(this.address, requestId)
       }

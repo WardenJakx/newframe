@@ -42,7 +42,7 @@ it('characterizes AI session prompt timeout, disconnect, approval idempotency, a
     const account = {
       id: accountId,
       address: accountId,
-      agentEnabled: true,
+      aiSessionsEnabled: true,
       getRequest: (id: string) => requests[id],
       getSigner: () => ({ type: 'seed', status: 'ok' }),
       patch: mock(),
@@ -219,10 +219,10 @@ it.each(['safe', 'airgap'] as const)('rejects %s AI enablement and session readi
   const account = {
     id: accountId,
     address: accountId,
-    agentEnabled: false,
+    aiSessionsEnabled: false,
     lastSignerType: kind === 'safe' ? 'seed' : 'airgap',
     safe: kind === 'safe' ? {} : undefined,
-    patch: (update: { agentEnabled?: boolean }) => Object.assign(account, update),
+    patch: (update: { aiSessionsEnabled?: boolean }) => Object.assign(account, update),
     getSigner: () => ({ type: kind === 'safe' ? 'seed' : 'airgap', status: 'ok' })
   }
   const accounts = { current: () => account, get: () => account, getFrameAccount: () => account }
@@ -233,8 +233,8 @@ it.each(['safe', 'airgap'] as const)('rejects %s AI enablement and session readi
     {} as never
   )
   expect(service.setAiSessionsEnabled(accountId, true)).toBeFalse()
-  expect(account.agentEnabled).toBeFalse()
-  account.agentEnabled = true
+  expect(account.aiSessionsEnabled).toBeFalse()
+  account.aiSessionsEnabled = true
   const caller = createDesktopCaller(
     service.createContext({ headers: {} } as never, new EventEmitter() as never, {} as never)
   )

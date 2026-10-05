@@ -547,7 +547,7 @@ export function projectWalletState(
     operations: projectOperations(state.operations, audience),
     orders: projectOrders(main.orders),
     origins: main.origins,
-    permissions: main.permissions,
+    accountAccessGrants: main.accountAccessGrants,
     portfolioApiKeyConfigured: main.portfolioApiKey.trim().length > 0,
     portfolioProvider: main.portfolioProvider,
     profiles: projectWalletProfiles(main),

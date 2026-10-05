@@ -357,12 +357,12 @@ describe('#clearOrigins', () => {
           [originIds.second]: storedOrigin('second.test'),
           [originIds.third]: storedOrigin('third.test')
         },
-        permissions: {
+        accountAccessGrants: {
           '0xabc': {
             [originIds.first]: {
               origin: 'frame.test',
               provider: true,
-              handlerId: originIds.first
+              requestId: originIds.first
             }
           }
         }
@@ -371,18 +371,18 @@ describe('#clearOrigins', () => {
     actions.clearOrigins()
 
     expect(getState().main.origins).toEqual({})
-    expect(getState().main.permissions).toEqual({})
+    expect(getState().main.accountAccessGrants).toEqual({})
   })
 })
 
 describe('#revokeAccountAccessGrant', () => {
   it('removes the permission entry instead of disabling it', () => {
-    const keepGrant = { origin: 'keep.test', provider: true, handlerId: originIds.third }
+    const keepGrant = { origin: 'keep.test', provider: true, requestId: originIds.third }
     const { actions, getState } = createActionHarness({
       main: {
-        permissions: {
+        accountAccessGrants: {
           '0xabc': {
-            [originIds.second]: { origin: 'frame.test', provider: true, handlerId: originIds.second },
+            [originIds.second]: { origin: 'frame.test', provider: true, requestId: originIds.second },
             [originIds.third]: keepGrant
           }
         }
@@ -390,13 +390,13 @@ describe('#revokeAccountAccessGrant', () => {
     })
     actions.revokeAccountAccessGrant('0xabc', originIds.second)
 
-    expect(getState().main.permissions).toEqual({ '0xabc': { [originIds.third]: keepGrant } })
+    expect(getState().main.accountAccessGrants).toEqual({ '0xabc': { [originIds.third]: keepGrant } })
   })
 })
 
 describe('#removeOrigin', () => {
   it('should remove the specified origin and attached permissions', () => {
-    const keepGrant = { origin: 'keep.test', provider: true, handlerId: originIds.third }
+    const keepGrant = { origin: 'keep.test', provider: true, requestId: originIds.third }
     const origin = (id: number) => ({
       name: 'frame.test',
       chain: { id, type: 'ethereum' as const },
@@ -409,9 +409,9 @@ describe('#removeOrigin', () => {
           [originIds.second]: origin(10),
           [originIds.third]: origin(137)
         },
-        permissions: {
+        accountAccessGrants: {
           '0xabc': {
-            [originIds.second]: { origin: 'frame.test', provider: true, handlerId: originIds.second },
+            [originIds.second]: { origin: 'frame.test', provider: true, requestId: originIds.second },
             [originIds.third]: keepGrant
           }
         }
@@ -423,7 +423,7 @@ describe('#removeOrigin', () => {
       [originIds.first]: origin(1),
       [originIds.third]: origin(137)
     })
-    expect(getState().main.permissions).toEqual({ '0xabc': { [originIds.third]: keepGrant } })
+    expect(getState().main.accountAccessGrants).toEqual({ '0xabc': { [originIds.third]: keepGrant } })
   })
 })
 

@@ -464,7 +464,7 @@ describe('tray state stream', () => {
     expect(snapshot.state.accounts).not.toHaveProperty(dormantId)
     expect(snapshot.state.accountOrder).toEqual([id])
     expect(snapshot.state.orders).toEqual({})
-    expect(snapshot.state).not.toHaveProperty('permissions')
+    expect(snapshot.state).not.toHaveProperty('accountAccessGrants')
     expect(snapshot.state).not.toHaveProperty('portfolioApiKey')
     expect(snapshot.state).not.toHaveProperty('windows')
     expect(snapshot.state.accounts[id]).not.toHaveProperty('requests')

@@ -289,7 +289,7 @@ export function createProductionOriginsService(
     switchOriginChain: (id, chainId) => store.getState().switchOriginChain(id, chainId, 'ethereum'),
     getAccountAccessGrant: (address, origin) => {
       const state = store.getState()
-      const grantsByAddress = state.main.permissions as Record<
+      const grantsByAddress = state.main.accountAccessGrants as Record<
         string,
         Record<string, AccountAccessGrant> | undefined
       >

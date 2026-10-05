@@ -94,14 +94,14 @@ export function AccountRow({
         <Text tone='muted' variant='code'>
           {account.shortAddress}
         </Text>
-        {account.signerLabel || account.agentEnabled ? (
+        {account.signerLabel || account.aiSessionsEnabled ? (
           <Inline align='center' gap='xsmall'>
             {account.signerLabel ? (
               <Text tone='accent' variant='micro'>
                 {account.signerLabel}
               </Text>
             ) : null}
-            {account.agentEnabled ? (
+            {account.aiSessionsEnabled ? (
               <Text tone='accent' variant='micro'>
                 · AI Wallet
               </Text>

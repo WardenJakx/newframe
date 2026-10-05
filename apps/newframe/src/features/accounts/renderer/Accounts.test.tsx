@@ -358,7 +358,7 @@ it('uses the Safe icon without signer labels and stays read-only with a local si
         [account.id]: {
           ...account,
           lastSignerType: 'seed',
-          agentEnabled: true,
+          aiSessionsEnabled: true,
           safe: {
             '1': {
               chainId: 1,
@@ -390,7 +390,7 @@ it.each(['airgap', 'ledger'] as const)(
     const capability = createAccountsCapabilityFake()
     fixture.state.reset(
       walletState({
-        accounts: { [account.id]: { ...account, lastSignerType: type, agentEnabled: false } },
+        accounts: { [account.id]: { ...account, lastSignerType: type, aiSessionsEnabled: false } },
         currentAccount: account.id
       })
     )

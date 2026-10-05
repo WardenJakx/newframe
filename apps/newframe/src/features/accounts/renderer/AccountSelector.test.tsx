@@ -93,7 +93,7 @@ it('renders the shared account row without selection semantics when static', asy
         signerType: 'ledger',
         signerLabel: 'Ledger',
         balanceLabel: '$42.00',
-        agentEnabled: false,
+        aiSessionsEnabled: false,
         hot: false,
         lastSeedAccount: false,
         profileId: 'personal'

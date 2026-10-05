@@ -356,7 +356,7 @@ export class RpcIpcHandlers extends EventEmitter {
             state.main.accounts,
             state.main.accountOrder,
             state.main.extensionAccess,
-            state.main.permissions
+            state.main.accountAccessGrants
           ] as const,
         () => this.extensionAccountsChanged(),
         { equalityFn: shallow }
@@ -1371,13 +1371,13 @@ export class RpcIpcHandlers extends EventEmitter {
 
     for (const candidate of grantAddresses) {
       const state = this.store.getState()
-      const grantsByAddress = state.main.permissions as Record<
+      const grantsByAddress = state.main.accountAccessGrants as Record<
         string,
-        (typeof state.main.permissions)[string] | undefined
+        (typeof state.main.accountAccessGrants)[string] | undefined
       >
       const grants = grantsByAddress[candidate] ?? {}
       const grantEntry = Object.entries(grants).find(([id, p]) => {
-        return id === originId || p.handlerId === originId || p.origin === origin?.name
+        return id === originId || p.requestId === originId || p.origin === origin?.name
       })
 
       if (grantEntry) {

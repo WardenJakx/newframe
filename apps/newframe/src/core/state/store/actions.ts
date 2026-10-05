@@ -435,14 +435,14 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
 
     setAccountAccessGrant: (address: string, grant: AccountAccessGrant) => {
       set((draft) => {
-        const grants = record(mutableMain(draft).permissions)
+        const grants = record(mutableMain(draft).accountAccessGrants)
         const accountGrants = record(grants[address] ?? {})
         grants[address] = accountGrants
 
         if (grant.provider) {
-          accountGrants[grant.handlerId] = grant
+          accountGrants[grant.requestId] = grant
         } else {
-          delete accountGrants[grant.handlerId]
+          delete accountGrants[grant.requestId]
         }
       })
     },
@@ -453,14 +453,14 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       }
 
       set((draft) => {
-        const accountGrants = record(record(mutableMain(draft).permissions)[address] ?? {})
+        const accountGrants = record(record(mutableMain(draft).accountAccessGrants)[address] ?? {})
         delete accountGrants[requestId]
       })
     },
 
     clearAccountAccessGrants: (address: string) => {
       set((draft) => {
-        record(mutableMain(draft).permissions)[address] = {}
+        record(mutableMain(draft).accountAccessGrants)[address] = {}
       })
     },
 
@@ -1346,7 +1346,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       set((draft) => {
         const main = mutableMain(draft)
         main.origins = {}
-        main.permissions = {}
+        main.accountAccessGrants = {}
       })
     },
 
@@ -1355,10 +1355,10 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         const main = mutableMain(draft)
         delete record(main.origins)[originId]
 
-        Object.values(record(main.permissions)).forEach((value) => {
+        Object.values(record(main.accountAccessGrants)).forEach((value) => {
           const accountGrants = record(value)
           Object.entries(accountGrants).forEach(([grantId, grant]) => {
-            if (grantId === originId || record(grant).handlerId === originId) {
+            if (grantId === originId || record(grant).requestId === originId) {
               delete accountGrants[grantId]
             }
           })

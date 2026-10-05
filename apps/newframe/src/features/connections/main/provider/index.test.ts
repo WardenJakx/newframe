@@ -252,13 +252,13 @@ const setOrigins = (origins: Record<string, OriginInput>) => {
     )
   })
 }
-type AccountAccessGrantInput = Omit<AccountAccessGrant, 'handlerId'> & { handlerId?: string }
+type AccountAccessGrantInput = Omit<AccountAccessGrant, 'requestId'> & { requestId?: string }
 const setAccountAccessGrants = (account: string, grants: Record<string, AccountAccessGrantInput>) => {
   store.setState((state) => {
-    state.main.permissions[account] = Object.fromEntries(
+    state.main.accountAccessGrants[account] = Object.fromEntries(
       Object.entries(grants).map(([id, grant]) => [
         id,
-        { handlerId: grant.handlerId ?? `test-${id}`, ...grant }
+        { requestId: grant.requestId ?? `test-${id}`, ...grant }
       ])
     )
   })
@@ -641,7 +641,7 @@ describe('#send', () => {
         const result = rpcResult<{ connected: boolean; address: string }>(response)
         expect(result.connected).toBe(false)
         expect(result.address).toBe('')
-        expect(storeState().main.permissions[address][originId]).toBeUndefined()
+        expect(storeState().main.accountAccessGrants[address][originId]).toBeUndefined()
         expect(typeof storeState().main.origins[originId].session.endedAt).toBe('number')
         expect(accounts.clearRequestsByOrigin).toHaveBeenCalledWith(address, originId)
         const params = subscriptionEvent.params as { subscription: string; result: unknown }

@@ -69,7 +69,7 @@ function accountState(address: string, lastSignerType: string): Account {
     status: '',
     signer: '',
     signerStatus: '',
-    agentEnabled: false,
+    aiSessionsEnabled: false,
     requests: {},
     created: ''
   }
@@ -96,7 +96,7 @@ function isolatedStore(address?: string, signerType = 'ledger') {
       lastSignerType: signerType,
       signer: '',
       signerStatus: '',
-      agentEnabled: false
+      aiSessionsEnabled: false
     })
     isolated.getState().setAccount({ id: address })
   }
@@ -318,7 +318,7 @@ it('keeps refresh state and lifecycle isolated across two production scanner ins
     lastSignerType: 'Address',
     signer: '',
     signerStatus: '',
-    agentEnabled: false
+    aiSessionsEnabled: false
   })
   secondStore.getState().upsertAccount({
     id: secondAddress,
@@ -327,7 +327,7 @@ it('keeps refresh state and lifecycle isolated across two production scanner ins
     lastSignerType: 'Address',
     signer: '',
     signerStatus: '',
-    agentEnabled: false
+    aiSessionsEnabled: false
   })
   firstStore.getState().setAccount({ id: firstAddress })
   secondStore.getState().setAccount({ id: secondAddress })

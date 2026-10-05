@@ -551,7 +551,7 @@ const MainTrayProjectionSchema = z.strictObject({
   orders: WalletOrdersSchema,
   operations: OperationCollectionSchema,
   origins: MainSchema.shape.origins,
-  permissions: MainSchema.shape.permissions,
+  accountAccessGrants: MainSchema.shape.accountAccessGrants,
   portfolioApiKeyConfigured: z.boolean(),
   portfolioProvider: MainSchema.shape.portfolioProvider,
   profiles: z.array(WalletProfileSummarySchema).max(1_000),

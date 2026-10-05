@@ -47,7 +47,7 @@ export function createAiSessionService(
     const account = accounts.getFrameAccount(accountId)
     const signer = account?.getSigner()
     return Boolean(
-      accountState?.agentEnabled &&
+      accountState?.aiSessionsEnabled &&
       isHotAccount(accountId) &&
       !canonicalStore.getState().main.appLock.locked &&
       signer &&
@@ -111,7 +111,7 @@ export function createAiSessionService(
       })
     }
     const account = accounts.current()
-    if (!account || !account.agentEnabled || !isHotAccount(account.id)) {
+    if (!account || !account.aiSessionsEnabled || !isHotAccount(account.id)) {
       throw new TRPCError({ code: 'FORBIDDEN', message: 'Select an AI-enabled hot wallet in Newframe first' })
     }
 
@@ -283,7 +283,7 @@ export function createAiSessionService(
       return false
     }
 
-    account.patch({ agentEnabled: enabled })
+    account.patch({ aiSessionsEnabled: enabled })
     if (!enabled) {
       sessionStore.revokeAccount(accountId)
       flashService.stopAiSessionsForAccount(accountId)
