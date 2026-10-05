@@ -1,6 +1,6 @@
 # Target architecture
 
-The endgame structure for Newframe. Every name here is defined in [CONTEXT.md](../CONTEXT.md). This describes where the code is going, not where it is.
+The endgame structure for Newframe. Every name here is defined in [GLOSSARY.md](../GLOSSARY.md). This describes where the code is going, not where it is.
 
 ## Rules
 
