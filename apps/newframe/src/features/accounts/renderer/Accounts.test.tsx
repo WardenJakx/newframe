@@ -108,6 +108,16 @@ describe('Accounts profile controls', () => {
     expect(profile.textContent).toContain('Personal')
   })
 
+  it('moves a watch-only account to the address book keeping its name', async () => {
+    const { user } = render(
+      <Accounts camera={createQrCameraFake().camera} capability={capability} onClose={mock()} />
+    )
+    await user.click(screen.getByRole('button', { name: 'Primary account actions' }))
+    await user.click(screen.getByRole('button', { name: 'Move to address book' }))
+
+    expect(capability.removeAccount.mock.calls).toEqual([[{ address: account.id, keepName: true }]])
+  })
+
   it('keeps move failures visible and closes only after operation and account projections succeed', async () => {
     const { user } = render(
       <Accounts camera={createQrCameraFake().camera} capability={capability} onClose={mock()} />

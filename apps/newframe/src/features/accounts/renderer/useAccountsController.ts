@@ -141,6 +141,10 @@ export function useAccountsController(input: {
       dispatch({ type: 'remove.closed' })
       dispatch({ type: 'menu.closed' })
     },
+    onAccountMoveToAddressBook: (accountId: string) => {
+      void input.capability.removeAccount({ address: accountId, keepName: true })
+      dispatch({ type: 'menu.closed' })
+    },
     onAccountRemoveCancel: () => dispatch({ type: 'remove.closed' } as const),
     onAccountRemoveOpen: (accountId: string) => dispatch({ type: 'remove.opened', accountId } as const),
     onAccountRenameCancel: () => dispatch({ type: 'rename.closed' } as const),
