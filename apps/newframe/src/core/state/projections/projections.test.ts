@@ -8,7 +8,7 @@ import { TxClassification } from '../../../features/requests/contract/requests.t
 import { GasFeesSource } from '../../../features/transactions/domain/index.ts'
 import { projectionStateSchemas } from '../../../platform/state-sync/contract/projections.ts'
 import createInitialState from '../store/state/index.ts'
-import { projectSideTrayState, projectWalletState } from './projections.ts'
+import { projectAddressNames, projectSideTrayState, projectWalletState } from './projections.ts'
 
 const operation = (id: string) => ({
   id,
@@ -640,6 +640,35 @@ it('projects only active-profile Accounts and derives ordered cached profile val
     }
   })
   expect(sideTray).not.toHaveProperty('profiles')
+})
+
+it('names active-profile addresses by account before address book entry in both trays', () => {
+  const treasury = `0x${'a'.repeat(40)}`
+  const friend = `0x${'b'.repeat(40)}`
+  const elsewhere = `0x${'c'.repeat(40)}`
+  const state = createInitialState()
+  state.main.showLocalNameWithENS = false
+  state.main.accounts = {
+    [treasury]: {
+      ...account(treasury, DEFAULT_PROFILE_ID),
+      address: `0x${'A'.repeat(40)}`,
+      name: 'Treasury',
+      ensName: 'treasury.eth'
+    },
+    [elsewhere]: { ...account(elsewhere, 'other'), name: 'Elsewhere' }
+  }
+  state.main.addressBook = {
+    [DEFAULT_PROFILE_ID]: { [treasury]: 'Stale entry', [friend]: 'Friend' },
+    other: { [friend]: 'Other friend' }
+  }
+
+  const wallet = projectWalletState(state)
+  expect(wallet.addressNames).toEqual({
+    [treasury]: { name: 'treasury.eth', source: 'account', accountType: 'address' },
+    [friend]: { name: 'Friend', source: 'address-book' }
+  })
+  expect(projectSideTrayState(state).addressNames).toBe(wallet.addressNames)
+  expect(projectAddressNames({ ...state.main, showLocalNameWithENS: true })[treasury]?.name).toBe('Treasury')
 })
 
 it('projects Safe display type without changing signer history', () => {

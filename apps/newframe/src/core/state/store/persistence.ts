@@ -282,6 +282,7 @@ export function migratePersistedState(
     fromVersion !== 6 &&
     fromVersion !== 7 &&
     fromVersion !== 8 &&
+    fromVersion !== 9 &&
     fromVersion !== PERSISTENCE_VERSION
   ) {
     log.error('Cannot migrate unsupported canonical state version', fromVersion)
@@ -314,6 +315,7 @@ export function migratePersistedState(
       ...mainWithoutLegacyRates,
       ...(fromVersion === 2 ? { tokens: { byId: {}, accountTokenIds: {} } } : {}),
       ...(fromVersion < 7 ? { orders: {} } : {}),
+      ...(fromVersion < 10 ? { addressBook: {} } : {}),
       chainsMeta: persistedChainMetadata(unknownRecord(mainWithoutLegacyRates.chainsMeta))
     })
   }
@@ -412,6 +414,7 @@ export function mergePersistedState(persistedValue: unknown, current: CanonicalS
     accounts: mergeRecord(currentMain.accounts, saved.accounts),
     appLock: currentMain.appLock,
     accountsMeta: mergeRecord(currentMain.accountsMeta, saved.accountsMeta),
+    addressBook: mergeRecord(currentMain.addressBook, saved.addressBook),
     latticeSettings: mergeRecord(currentMain.latticeSettings, saved.latticeSettings),
     ledger: mergeRecord(currentMain.ledger, saved.ledger),
     mute: mergeRecord(currentMain.mute, saved.mute),

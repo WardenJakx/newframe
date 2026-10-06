@@ -1,4 +1,5 @@
 import { getProfileAccountIds } from '../../../app/contracts/state/main.ts'
+import { accountDisplayName } from '../../../features/accounts/domain/accountDisplayName.ts'
 import { accountDisplayType } from '../../../features/accounts/domain/accountDisplayType.ts'
 import {
   deriveSigningCapability,
@@ -515,6 +516,46 @@ function projectWalletAccounts(main: CanonicalMain) {
   return { accounts: previousWalletAccounts, accountOrder }
 }
 
+type AddressNamesInput = Pick<
+  CanonicalMain,
+  'accounts' | 'addressBook' | 'currentProfile' | 'showLocalNameWithENS'
+>
+let previousAddressNamesInput: AddressNamesInput | undefined
+let previousAddressNames: MainTrayProjection['addressNames'] | undefined
+
+// The one place a tray learns which name the active profile gives an address.
+export function projectAddressNames(main: AddressNamesInput): MainTrayProjection['addressNames'] {
+  const input: AddressNamesInput = {
+    accounts: main.accounts,
+    addressBook: main.addressBook,
+    currentProfile: main.currentProfile,
+    showLocalNameWithENS: main.showLocalNameWithENS
+  }
+  if (sameTopLevelReferences(previousAddressNamesInput, input)) {
+    return previousAddressNames!
+  }
+
+  const addressNames: MainTrayProjection['addressNames'] = {}
+  for (const [address, name] of Object.entries(main.addressBook[main.currentProfile] ?? {})) {
+    addressNames[address] = { name, source: 'address-book' }
+  }
+  for (const account of Object.values(main.accounts)) {
+    const name = accountDisplayName(account, main.showLocalNameWithENS)
+    if (account.profileId === main.currentProfile && name) {
+      const accountType = accountDisplayType(account)
+      addressNames[account.address.toLowerCase()] = {
+        name,
+        source: 'account',
+        ...(accountType ? { accountType } : {})
+      }
+    }
+  }
+
+  previousAddressNamesInput = input
+  previousAddressNames = addressNames
+  return addressNames
+}
+
 export function projectWalletState(
   state: CanonicalState,
   audience?: TrayProjectionAudience
@@ -524,6 +565,7 @@ export function projectWalletState(
   const projection: MainTrayProjection = {
     accounts,
     accountOrder,
+    addressNames: projectAddressNames(main),
     activity: main.activity,
     appLock: main.appLock,
     autoDiscoverTokens: main.autoDiscoverTokens,
@@ -849,6 +891,7 @@ export function projectSideTrayState(
   const projection: SideTrayProjection = {
     accounts,
     accountOrder,
+    addressNames: projectAddressNames(main),
     activity: projectSideTrayActivity(main.activity, currentAddress),
     balances: projectSideTrayBalances(main.balances, main.currentAccount, accounts),
     currentAccount: main.currentAccount,

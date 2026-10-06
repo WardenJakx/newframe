@@ -3,6 +3,7 @@ import type { Draft } from 'immer'
 import { v5 as uuidv5 } from 'uuid'
 
 import {
+  ADDRESS_BOOK_NAME_MAX_LENGTH,
   DEFAULT_PROFILE_ID,
   DEFAULT_PROFILE_NAME,
   getProfileAccountIds,
@@ -10,6 +11,7 @@ import {
   type OrderRecord,
   type PortfolioProviderId
 } from '../../../app/contracts/state/main.ts'
+import { accountDisplayName } from '../../../features/accounts/domain/accountDisplayName.ts'
 import { accountNS, isDefaultAccountName } from '../../../features/accounts/domain/index.ts'
 import type { Account } from '../../../features/accounts/domain/state/account.ts'
 import type { Balance } from '../../../features/asset-data/domain/state/balance.ts'
@@ -164,6 +166,36 @@ function ensureProfileState(main: MutableMain) {
 
 function profileAccountIds(main: MutableMain, profileId: string) {
   return getProfileAccountIds(main, profileId)
+}
+
+function isProfileAccount(main: MutableMain, profileId: string, accountId: string) {
+  return (
+    (record(main.accounts) as Record<string, MutableAccountRecord | undefined>)[accountId]?.profileId ===
+    profileId
+  )
+}
+
+const hasProfile = (main: MutableMain, profileId: string) =>
+  Boolean((record(main.profiles) as Record<string, unknown>)[profileId])
+
+const addressBookOf = (main: MutableMain, profileId: string) =>
+  (main.addressBook as Record<string, Record<string, string> | undefined>)[profileId]
+
+function dropAddressBookEntry(main: MutableMain, profileId: string, address: string) {
+  const book = addressBookOf(main, profileId)
+  if (book && address in book) {
+    delete book[address]
+  }
+}
+
+function writeAddressBookEntry(main: MutableMain, profileId: string, address: string, name: string) {
+  const entryName = name.trim().slice(0, ADDRESS_BOOK_NAME_MAX_LENGTH)
+  if (entryName) {
+    if (!addressBookOf(main, profileId)) {
+      main.addressBook[profileId] = {}
+    }
+    main.addressBook[profileId][address] = entryName
+  }
 }
 
 function selectProfileFallback(main: MutableMain, profileId = main.currentProfile) {
@@ -697,6 +729,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         const deletedIndex = main.profileOrder.indexOf(id)
         const nextProfile = main.profileOrder[deletedIndex + 1] || main.profileOrder[deletedIndex - 1]
         delete profiles[id]
+        delete main.addressBook[id]
         main.profileOrder = main.profileOrder.filter((profileId) => profileId !== id)
 
         if (main.currentProfile === id) {
@@ -724,6 +757,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         }
 
         account.profileId = profileId
+        dropAddressBookEntry(main, profileId, accountId)
         if (main.currentAccount === accountId && main.currentProfile !== profileId) {
           selectProfileFallback(main)
         }
@@ -778,6 +812,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
           return
         }
         Object.values(accountUpdate.requests ?? {}).forEach(stripRequestCapabilities)
+        if (!accounts[id]) {
+          dropAddressBookEntry(main, profileId, id)
+        }
         accounts[id] = {
           ...accountUpdate,
           profileId,
@@ -888,14 +925,54 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
-    removeAccount: (id: string) => {
+    removeAccount: (id: string, keepName = false) => {
       set((draft) => {
         const main = mutableMain(draft)
         ensureProfileState(main)
+        const account = (main.accounts as Record<string, Draft<Account> | undefined>)[id]
+        if (account && keepName) {
+          writeAddressBookEntry(
+            main,
+            account.profileId,
+            id,
+            accountDisplayName(account, main.showLocalNameWithENS)
+          )
+        }
         delete record(main.accounts)[id]
         main.accountOrder = main.accountOrder.filter((accountId) => accountId !== id)
         if (main.currentAccount === id) {
           selectProfileFallback(main)
+        }
+      })
+    },
+
+    saveAddressBookEntry: (profileId: string, address: string, name: string) => {
+      set((draft) => {
+        const main = mutableMain(draft)
+        const id = address.toLowerCase()
+        if (hasProfile(main, profileId) && !isProfileAccount(main, profileId, id)) {
+          writeAddressBookEntry(main, profileId, id, name)
+        }
+      })
+    },
+
+    removeAddressBookEntry: (profileId: string, address: string) => {
+      set((draft) => {
+        dropAddressBookEntry(mutableMain(draft), profileId, address.toLowerCase())
+      })
+    },
+
+    importAddressBookEntries: (profileId: string, entries: readonly { address: string; name: string }[]) => {
+      set((draft) => {
+        const main = mutableMain(draft)
+        if (!hasProfile(main, profileId)) {
+          return
+        }
+        for (const entry of entries) {
+          const id = entry.address.toLowerCase()
+          if (!addressBookOf(main, profileId)?.[id] && !isProfileAccount(main, profileId, id)) {
+            writeAddressBookEntry(main, profileId, id, entry.name)
+          }
         }
       })
     },

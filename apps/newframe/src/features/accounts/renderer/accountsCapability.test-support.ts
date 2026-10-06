@@ -31,6 +31,9 @@ export function createAccountsCapabilityFake() {
         accounts: []
       })
     ),
+    saveAddressBookEntry: acknowledged<Parameters<AccountsCapability['saveAddressBookEntry']>[0]>(),
+    removeAddressBookEntry: acknowledged<Parameters<AccountsCapability['removeAddressBookEntry']>[0]>(),
+    importAddressBookEntries: acknowledged<Parameters<AccountsCapability['importAddressBookEntries']>[0]>(),
     inspectAddressChainUsage: mock(
       async (
         _input: Parameters<AccountsCapability['inspectAddressChainUsage']>[0]

@@ -3,6 +3,7 @@ import { shortAddress } from '../../../shared/renderer/ui/AddressIdentity.tsx'
 import { accountDisplayType, signerTypeLabel } from '../../../shared/renderer/ui/signerPresentation.ts'
 import type { createBalanceSummarySelector } from '../../asset-data/domain/balance/index.ts'
 import { formatUsdRate } from '../../asset-data/domain/balance/index.ts'
+import { accountDisplayName } from '../domain/accountDisplayName.ts'
 
 export type AccountProjection = MainTrayProjection['accounts'][string]
 export type SignerProjection = MainTrayProjection['signers'][string]
@@ -28,13 +29,6 @@ export interface AccountListModel {
   currentAccountId: string
   items: AccountListItem[]
   profiles: ProfileProjection[]
-}
-
-function accountDisplayName(account: AccountProjection | undefined, showLocalNameWithENS: boolean) {
-  if (!account) {
-    return ''
-  }
-  return account.ensName && !showLocalNameWithENS ? account.ensName : account.name
 }
 
 export function shortAccountAddress(address = '') {

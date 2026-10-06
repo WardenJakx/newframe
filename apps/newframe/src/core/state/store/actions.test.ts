@@ -761,6 +761,102 @@ describe('profile actions', () => {
   })
 })
 
+describe('address book actions', () => {
+  const alice = `0x${'a'.repeat(40)}`
+  const bob = `0x${'b'.repeat(40)}`
+  const carol = `0x${'c'.repeat(40)}`
+  const checksummed = (address: string) => `0x${address.slice(2).toUpperCase()}`
+  const profiles = {
+    [DEFAULT_PROFILE_ID]: { id: DEFAULT_PROFILE_ID, name: 'Profile 1' },
+    work: { id: 'work', name: 'Work' }
+  }
+  const watchAccount = (id: string, profileId = DEFAULT_PROFILE_ID) => ({
+    id,
+    profileId,
+    address: id,
+    name: 'Watched',
+    lastSignerType: 'address',
+    status: 'ok',
+    signer: '',
+    requests: {},
+    created: 'test:1'
+  })
+
+  it('keeps an address either an account or an entry within one profile', () => {
+    const { actions, getState } = createActionHarness({
+      main: {
+        profiles,
+        profileOrder: [DEFAULT_PROFILE_ID, 'work'],
+        accounts: { [carol]: watchAccount(carol) }
+      }
+    })
+
+    actions.saveAddressBookEntry(DEFAULT_PROFILE_ID, checksummed(alice), ' Alice ')
+    actions.saveAddressBookEntry(DEFAULT_PROFILE_ID, bob, 'Bob')
+    actions.saveAddressBookEntry('work', alice, 'Alice at work')
+    actions.saveAddressBookEntry('work', bob, 'Bob at work')
+    actions.saveAddressBookEntry(DEFAULT_PROFILE_ID, carol, 'Carol')
+    actions.saveAddressBookEntry('missing', alice, 'Alice')
+    expect(getState().main.addressBook).toEqual({
+      [DEFAULT_PROFILE_ID]: { [alice]: 'Alice', [bob]: 'Bob' },
+      work: { [alice]: 'Alice at work', [bob]: 'Bob at work' }
+    })
+
+    actions.upsertAccount(watchAccount(alice))
+    actions.moveAccountToProfile(alice, 'work')
+    actions.upsertAccount(watchAccount(bob, 'work'))
+    expect(getState().main.addressBook).toEqual({ [DEFAULT_PROFILE_ID]: { [bob]: 'Bob' }, work: {} })
+
+    actions.removeAccount(alice)
+    actions.removeAccount(bob)
+    actions.deleteProfile('work')
+    actions.removeAddressBookEntry(DEFAULT_PROFILE_ID, bob)
+    expect(getState().main.addressBook).toEqual({ [DEFAULT_PROFILE_ID]: {} })
+  })
+
+  it('writes the display name of a removed account as an entry only when asked to keep it', () => {
+    const { actions, getState } = createActionHarness({
+      main: {
+        profiles,
+        profileOrder: [DEFAULT_PROFILE_ID, 'work'],
+        showLocalNameWithENS: false,
+        accounts: {
+          [alice]: { ...watchAccount(alice, 'work'), ensName: 'alice.eth' },
+          [bob]: watchAccount(bob)
+        }
+      }
+    })
+
+    actions.removeAccount(alice, true)
+    actions.removeAccount(bob)
+
+    expect(getState().main.accounts).toEqual({})
+    expect(getState().main.addressBook).toEqual({ work: { [alice]: 'alice.eth' } })
+  })
+
+  it('imports only new addresses, keeps the first name of a duplicate, and is a no-op when re-run', () => {
+    const { actions, getState } = createActionHarness({
+      main: {
+        accounts: { [carol]: watchAccount(carol) },
+        addressBook: { [DEFAULT_PROFILE_ID]: { [alice]: 'Alice' } }
+      }
+    })
+    const entries = [
+      { address: alice, name: 'Imported Alice' },
+      { address: checksummed(bob), name: 'Bob' },
+      { address: bob, name: 'Robert' },
+      { address: carol, name: 'Carol' }
+    ]
+
+    actions.importAddressBookEntries(DEFAULT_PROFILE_ID, entries)
+    const imported = getState().main.addressBook
+    actions.importAddressBookEntries(DEFAULT_PROFILE_ID, entries)
+
+    expect(imported).toEqual({ [DEFAULT_PROFILE_ID]: { [alice]: 'Alice', [bob]: 'Bob' } })
+    expect(getState().main.addressBook).toBe(imported)
+  })
+})
+
 describe('#setPortfolioBalances', () => {
   const staleToken = {
     chainId: 42161,

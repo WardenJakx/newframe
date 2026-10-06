@@ -1166,7 +1166,12 @@ export class Accounts extends EventEmitter {
     })
   }
 
-  async add(address: Address, name = '', options = {}, cb: Callback<FrameAccount> = () => {}) {
+  async add(
+    address: Address,
+    name = '',
+    { explicitName = false, ...options }: { type?: string; explicitName?: boolean } = {},
+    cb: Callback<FrameAccount> = () => {}
+  ) {
     if (!address) {
       return cb(new Error('No address, will not add account'))
     }
@@ -1178,14 +1183,14 @@ export class Accounts extends EventEmitter {
 
       const created = 'new:' + this.dependencies.runtime.now()
       const accountMetaId = uuidv5(address, accountNS)
-      const accountMeta = (
+      const rememberedName = (
         this.store.getState().main.accountsMeta as Record<
           string,
           CanonicalStore['main']['accountsMeta'][string] | undefined
         >
-      )[accountMetaId] ?? { name }
+      )[accountMetaId]?.name
       const createdAccount = new FrameAccount(
-        { address, name: accountMeta.name, created, options },
+        { address, name: explicitName ? name : (rememberedName ?? name), created, options },
         this,
         this.store,
         this.dependencies.chainRpc,
@@ -2366,7 +2371,7 @@ export class Accounts extends EventEmitter {
     })
   }
 
-  remove(address = '') {
+  remove(address = '', keepName = false) {
     address = address.toLowerCase()
     this.stopChainMonitorsForAccount(address)
 
@@ -2394,7 +2399,7 @@ export class Accounts extends EventEmitter {
       handle.close()
     }
 
-    this.store.getState().removeAccount(address)
+    this.store.getState().removeAccount(address, keepName)
     delete this.accounts[address]
   }
 

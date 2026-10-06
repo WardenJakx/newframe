@@ -522,12 +522,20 @@ const WalletProfileSummarySchema = z.strictObject({
   ])
 })
 
+const AddressNameSchema = z.strictObject({
+  name: z.string().min(1),
+  source: z.enum(['account', 'address-book']),
+  accountType: z.string().optional()
+})
+const AddressNamesSchema = z.record(z.string().describe('Lowercase address'), AddressNameSchema)
+
 // Wallet trays receive explicit domain slices. Keeping canonical `main`
 // out of this schema prevents one setting change from cloning every wallet
 // domain and prevents future Electron-only fields from crossing by default.
 const MainTrayProjectionSchema = z.strictObject({
   accounts: z.record(z.string(), WalletAccountSchema),
   accountOrder: MainSchema.shape.accountOrder,
+  addressNames: AddressNamesSchema,
   activity: WalletActivitySchema,
   appLock: MainSchema.shape.appLock,
   autoDiscoverTokens: MainSchema.shape.autoDiscoverTokens,
@@ -601,6 +609,7 @@ const SideTrayChainMetadataSchema = z.strictObject({
 const SideTrayProjectionSchema = z.strictObject({
   accounts: z.record(z.string(), SideTrayAccountSchema),
   accountOrder: z.array(z.string()),
+  addressNames: AddressNamesSchema,
   activity: SideTrayActivitySchema,
   balances: z.record(z.string(), z.array(BalanceSchema)),
   currentAccount: z.string(),

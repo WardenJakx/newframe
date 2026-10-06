@@ -101,7 +101,7 @@ One writer per piece of state. Everything else gets a read-only view.
 | Authority ledger: extension approval, extension account access, account access grants, AI sessions; pending requests | Gateway                     | Primitive |
 | Key material, lock, signers and their pairing secrets, the human's API keys for remote services                      | Vault                       | Primitive |
 | Chains, their node addresses, the selected chain, gas and fee data                                                   | Chains wallet service       | Primitive |
-| Accounts, profiles, ordering, selection                                                                              | Accounts wallet service     | Primitive |
+| Accounts, profiles, address book, ordering, selection                                                                | Accounts wallet service     | Primitive |
 | Each Safe wallet's Safe owners, threshold, Safe proposals and confirmations                                          | Safe wallets wallet service | Primitive |
 | Tokens, balances, prices, images                                                                                     | Assets wallet service       | Primitive |
 | Transaction history                                                                                                  | Transactions wallet service | Primitive |

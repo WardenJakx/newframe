@@ -48,7 +48,7 @@ describe('account mutation service', () => {
         }
       }
     })
-    const remove = mock((_accountId: string) => undefined)
+    const remove = mock((_accountId: string, _keepName?: boolean) => undefined)
     const rename = mock((_accountId: string, _name: string) => undefined)
     const selectAccount = mock(async (_accountId: string) => undefined)
     const removeSigner = mock((_signerId: string) => undefined)
@@ -91,8 +91,8 @@ describe('account mutation service', () => {
       [second, 'origin-1']
     ])
     expect(store.getState().main.origins['origin-1']).toBeUndefined()
-    expect(service.remove(first, true)).toBeTrue()
-    expect(remove.mock.calls).toEqual([[first]])
+    expect(service.remove(first, true, true)).toBeTrue()
+    expect(remove.mock.calls).toEqual([[first, true]])
     expect(removeSigner.mock.calls).toEqual([['seed-1']])
   })
 })

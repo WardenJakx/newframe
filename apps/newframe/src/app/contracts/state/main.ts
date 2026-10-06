@@ -20,6 +20,9 @@ const ProfileSchema = z.object({
   name: z.string().min(1)
 })
 
+export const ADDRESS_BOOK_NAME_MAX_LENGTH = 50
+export const AddressBookNameSchema = z.string().trim().min(1).max(ADDRESS_BOOK_NAME_MAX_LENGTH)
+
 const ShortcutsSchema = z.object({
   summon: ShortcutSchema
 })
@@ -196,6 +199,12 @@ export const MainSchema = z
     ),
     accounts: z.record(z.string(), AccountSchema),
     profiles: z.record(z.string(), ProfileSchema),
+    addressBook: z
+      .record(
+        z.string().describe('Profile Id'),
+        z.record(z.string().describe('Lowercase address'), AddressBookNameSchema)
+      )
+      .default({}),
     profileOrder: z.array(z.string()),
     currentProfile: z.string().min(1),
     currentAccount: z.string().default(''),

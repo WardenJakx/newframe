@@ -13,6 +13,7 @@ import {
 
 import { intToHex } from '@ethereumjs/util'
 import log from 'electron-log'
+import { v5 as uuidv5 } from 'uuid'
 
 import { gweiToHex } from '../../../../test/support/util.ts'
 import {
@@ -47,6 +48,7 @@ import {
   type TransactionEffect,
   type TransactionSimulation
 } from '../../transactions/domain/index.ts'
+import { accountNS } from '../domain/index.ts'
 
 const providerMock = {
   send: mock((_payload: RPCRequestPayload, _callback: RPCRequestCallback) => {}),
@@ -303,7 +305,7 @@ beforeEach((done) => {
   request = createRequest()
 
   void Accounts.add(account2.address, 'Test Account 2')
-  void Accounts.add(account.address, 'Test Account 1', account, (_error, addedAccount) => {
+  void Accounts.add(account.address, 'Test Account 1', {}, (_error, addedAccount) => {
     if (!addedAccount) {
       return done(new Error('Expected account to be added'))
     }
@@ -602,6 +604,27 @@ it('clears the selected account when removing the last account', () => {
 
   expect(Accounts.current()).toBeNull()
   expect(storeState().main.currentAccount).toBe('')
+})
+
+describe('#add', () => {
+  it('names a new account explicitly over its remembered name, and remembered over default', async () => {
+    const explicit = `0x${'d'.repeat(40)}`
+    const defaulted = `0x${'e'.repeat(40)}`
+    store.setState((state) => {
+      for (const address of [explicit, defaulted]) {
+        state.main.accountsMeta[uuidv5(address, accountNS)] = { name: 'Remembered' }
+      }
+    })
+
+    await Accounts.add(explicit, 'Alice', { type: 'Address', explicitName: true })
+    await Accounts.add(defaulted, 'Watch Account', { type: 'Address' })
+
+    expect([storeState().main.accounts[explicit]?.name, storeState().main.accounts[defaulted]?.name]).toEqual(
+      ['Alice', 'Remembered']
+    )
+    Accounts.remove(explicit)
+    Accounts.remove(defaulted)
+  })
 })
 
 describe('#initialize', () => {

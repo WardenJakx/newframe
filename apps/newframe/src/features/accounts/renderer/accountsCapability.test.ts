@@ -15,6 +15,7 @@ it('maps every semantic account command to its exact catalog payload', async () 
   await capability.selectAccount({ accountId: firstAddress })
   await capability.updateAccount({ accountId: firstAddress, name: 'Primary' })
   await capability.removeAccount({ address: firstAddress, removeSeedSigner: true })
+  await capability.removeAccount({ address: firstAddress, keepName: true })
   await capability.updateAccount({ operationId, accountId: firstAddress, profileId: 'work' })
   await capability.updateAccount({ accountId: firstAddress, enabled: true })
   await capability.revokeAccountAiSessions({ accountId: firstAddress })
@@ -22,6 +23,9 @@ it('maps every semantic account command to its exact catalog payload', async () 
   await capability.createProfile({ operationId, name: 'Work', accountIds: [firstAddress] })
   await capability.updateProfile({ operationId, profileId: 'work', name: 'Archive' })
   await capability.deleteProfile({ operationId, profileId: 'work' })
+  await capability.saveAddressBookEntry({ address: firstAddress, name: 'Alice' })
+  await capability.removeAddressBookEntry({ address: firstAddress })
+  await capability.importAddressBookEntries({ entries: [{ address: secondAddress, name: 'Bob' }] })
   await capability.createAccount({
     source: 'signer',
     operationId,
@@ -71,6 +75,7 @@ it('maps every semantic account command to its exact catalog payload', async () 
       { type: 'account.select', accountId: firstAddress },
       { type: 'account.update', accountId: firstAddress, name: 'Primary' },
       { type: 'account.remove', address: firstAddress, removeSeedSigner: true },
+      { type: 'account.remove', address: firstAddress, keepName: true },
       { type: 'account.update', operationId, accountId: firstAddress, profileId: 'work' },
       { type: 'account.update', accountId: firstAddress, enabled: true },
       { type: 'account.ai-sessions-revoke', accountId: firstAddress },
@@ -78,6 +83,9 @@ it('maps every semantic account command to its exact catalog payload', async () 
       { type: 'profile.create', operationId, name: 'Work', accountIds: [firstAddress] },
       { type: 'profile.update', operationId, profileId: 'work', name: 'Archive' },
       { type: 'profile.delete', operationId, profileId: 'work' },
+      { type: 'address-book.save', address: firstAddress, name: 'Alice' },
+      { type: 'address-book.remove', address: firstAddress },
+      { type: 'address-book.import', entries: [{ address: secondAddress, name: 'Bob' }] },
       {
         type: 'account.create',
         source: 'signer',

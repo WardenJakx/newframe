@@ -15,7 +15,7 @@ import {
   FLASH_MIN_TWAP_DURATION_SECONDS
 } from '../../features/transactions/trade/domain/policy.ts'
 import { AirGapRequestReferenceSchema } from '../../platform/signing/domain/airgap.ts'
-import { PortfolioProviderIdSchema } from './state/main.ts'
+import { AddressBookNameSchema, PortfolioProviderIdSchema } from './state/main.ts'
 
 const AddressSchema = z.string().regex(/^0x[0-9a-fA-F]{40}$/)
 const ChainIdSchema = z.number().int().positive()
@@ -377,8 +377,31 @@ export type SignerSessionStartCommand = z.infer<typeof SignerSessionStartCommand
 const AccountRemoveCommandSchema = z.strictObject({
   type: z.literal('account.remove'),
   address: AddressSchema,
-  removeSeedSigner: z.boolean().optional()
+  removeSeedSigner: z.boolean().optional(),
+  keepName: z.boolean().optional()
 })
+
+const AddressBookEntrySchema = z.strictObject({
+  address: AddressSchema,
+  name: AddressBookNameSchema
+})
+
+const AddressBookSaveCommandSchema = AddressBookEntrySchema.extend({
+  type: z.literal('address-book.save')
+})
+export type AddressBookSaveCommand = z.infer<typeof AddressBookSaveCommandSchema>
+
+const AddressBookRemoveCommandSchema = z.strictObject({
+  type: z.literal('address-book.remove'),
+  address: AddressSchema
+})
+export type AddressBookRemoveCommand = z.infer<typeof AddressBookRemoveCommandSchema>
+
+const AddressBookImportCommandSchema = z.strictObject({
+  type: z.literal('address-book.import'),
+  entries: z.array(AddressBookEntrySchema).min(1).max(10_000)
+})
+export type AddressBookImportCommand = z.infer<typeof AddressBookImportCommandSchema>
 
 const SignerRefreshCommandSchema = z.strictObject({
   type: z.literal('signer.refresh'),
@@ -1167,6 +1190,9 @@ export const commandContracts = defineOperationContracts({
   'account.select': acknowledged(AccountSelectCommandSchema),
   'account.remove': acknowledged(AccountRemoveCommandSchema),
   'account.refresh': acknowledged(AccountRefreshCommandSchema),
+  'address-book.save': acknowledged(AddressBookSaveCommandSchema),
+  'address-book.remove': acknowledged(AddressBookRemoveCommandSchema),
+  'address-book.import': acknowledged(AddressBookImportCommandSchema),
   'app.quit': acknowledged(AppQuitCommandSchema),
   'app.restart': acknowledged(AppRestartCommandSchema),
   'clipboard.write': acknowledged(ClipboardWriteCommandSchema),

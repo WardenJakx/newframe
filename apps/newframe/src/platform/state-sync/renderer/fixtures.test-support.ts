@@ -3,6 +3,7 @@ import type { SideTrayProjection, MainTrayProjection } from '../contract/project
 const baseProjectionState = {
   accounts: {},
   accountOrder: [],
+  addressNames: {},
   activity: {},
   balances: {},
   currentAccount: '',
