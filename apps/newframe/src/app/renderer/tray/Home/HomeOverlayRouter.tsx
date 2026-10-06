@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, type KeyboardEvent, type ReactNode 
 
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
 import { Accounts } from '../../../../features/accounts/renderer/Accounts.tsx'
+import { AddressBook } from '../../../../features/accounts/renderer/addressBook/AddressBook.tsx'
 import { Receive } from '../../../../features/accounts/renderer/Receive.tsx'
 import { AddChain } from '../../../../features/chains/renderer/AddChain.tsx'
 import { Chains } from '../../../../features/chains/renderer/Chains.tsx'
@@ -225,6 +226,8 @@ function OverlayRoute({
       )
     case 'dapps':
       return <ConnectedDapps capability={capabilities.connections} onBack={backToMenu} />
+    case 'addressBook':
+      return <AddressBook capability={capabilities.accounts} onBack={backToMenu} />
     case 'tokens':
       return (
         <Tokens

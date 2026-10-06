@@ -6,9 +6,11 @@ import { HomeMenuView } from './HomeMenuView.tsx'
 it('keeps requests out of the main menu', () => {
   render(
     <HomeMenuView
+      addressBookCount={0}
       instanceId='tray-test'
       onClose={mock()}
       onOpenAbout={mock()}
+      onOpenAddressBook={mock()}
       onOpenDapps={mock()}
       onOpenSettings={mock()}
       onOpenTokens={mock()}

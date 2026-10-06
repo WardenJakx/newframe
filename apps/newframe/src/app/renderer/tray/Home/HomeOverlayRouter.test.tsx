@@ -177,7 +177,7 @@ describe('HomeOverlayRouter feature navigation', () => {
 describe('HomeOverlayRouter retained menu layers', () => {
   beforeEach(() => fixture.state.reset(walletState({})))
 
-  for (const label of ['Settings', 'App Info', 'Dapps', 'Custom Tokens']) {
+  for (const label of ['Settings', 'App Info', 'Dapps', 'Custom Tokens', 'Address book']) {
     it(`retains Home and Menu identity, scroll and focus through ${label}`, async () => {
       const { user } = render(<Home capabilities={capabilities} />)
       const homeTrigger = screen.getByRole('button', { name: 'Main menu' })

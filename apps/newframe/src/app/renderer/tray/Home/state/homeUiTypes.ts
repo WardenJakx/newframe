@@ -39,6 +39,7 @@ export type HomeOverlay =
   | { type: 'about' }
   | { type: 'requests' }
   | { type: 'dapps' }
+  | { type: 'addressBook' }
   | { type: 'tokens'; initialToken?: PendingCustomToken }
   | { type: 'addChain'; pending: PendingAddChain }
   | { type: 'asset'; accountId: string; asset: DisplayedBalance }
