@@ -244,7 +244,7 @@ export function createRevealService(proxy: ProviderProxyConnection, nameResoluti
       if (decodedSelectorCall) {
         return {
           contractAddress: contractAddress.toLowerCase(),
-          contractName: 'Unknown Contract',
+          contractName: contractSource?.name ?? '',
           source: 'Function selector registry',
           ...decodedSelectorCall
         }

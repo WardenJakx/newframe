@@ -1,4 +1,13 @@
-import { getAddress, getBytes, hashMessage, isAddress, recoverAddress } from 'ethers'
+import {
+  AbiCoder,
+  dataSlice,
+  getAddress,
+  getBytes,
+  hashMessage,
+  isAddress,
+  recoverAddress,
+  toBigInt
+} from 'ethers'
 import { z } from 'zod'
 
 export const safeAddressSchema = z.string().refine(isAddress, 'Invalid address').transform(getAddress)
@@ -20,6 +29,7 @@ export function recoverSafeConfirmationOwner(hash: string, signature: string): s
     return undefined
   }
 }
+const MAX_SAFE_BATCH_ACTIONS = 100
 const safeDecimalSchema = z
   .string()
   .regex(/^(0|[1-9][0-9]*)$/)
@@ -44,6 +54,22 @@ export const safeDecodedSchema = z.strictObject({
       z.strictObject({ name: z.string().max(200), type: z.string().max(200), value: z.string().max(2000) })
     )
     .max(50)
+})
+export const safeCallDecodedSchema = safeDecodedSchema.extend({
+  source: z.string().max(200),
+  contractName: z.string().max(200).optional()
+})
+const safeOperationSchema = z.union([z.literal(0), z.literal(1)])
+const safeCalldataSchema = z
+  .string()
+  .regex(/^0x(?:[0-9a-fA-F]{2})*$/)
+  .max(262146)
+const safeActionSchema = z.strictObject({
+  operation: safeOperationSchema,
+  to: safeAddressSchema,
+  value: safeDecimalSchema,
+  data: safeCalldataSchema,
+  decoded: safeCallDecodedSchema.optional()
 })
 const safeHashSchema = z
   .string()
@@ -112,11 +138,8 @@ export const safeProposalSchema = z
     nonce: safeDecimalSchema,
     to: safeAddressSchema,
     value: safeDecimalSchema,
-    operation: z.union([z.literal(0), z.literal(1)]),
-    data: z
-      .string()
-      .regex(/^0x(?:[0-9a-fA-F]{2})*$/)
-      .max(262146),
+    operation: safeOperationSchema,
+    data: safeCalldataSchema,
     confirmations: z.array(safeAddressSchema).max(1000),
     safeTxGas: safeDecimalSchema.optional(),
     baseGas: safeDecimalSchema.optional(),
@@ -124,7 +147,8 @@ export const safeProposalSchema = z
     gasToken: safeAddressSchema.optional(),
     refundReceiver: safeAddressSchema.optional(),
     dataDecoded: safeDecodedSchema.optional(),
-    localDecoded: safeDecodedSchema.extend({ source: z.string().max(200) }).optional(),
+    localDecoded: safeCallDecodedSchema.optional(),
+    batch: z.array(safeActionSchema).min(1).max(MAX_SAFE_BATCH_ACTIONS).optional(),
     local: safeProposalLocalSchema.optional(),
     integrity: z
       .strictObject({
@@ -158,6 +182,8 @@ const safeDeploymentSchema = z.strictObject({
   error: z.string().max(2000).optional()
 })
 export type SafeConfiguration = z.infer<typeof safeConfigurationSchema>
+export type SafeCallDecoded = z.infer<typeof safeCallDecodedSchema>
+export type SafeAction = z.infer<typeof safeActionSchema>
 export type SafeProposal = z.infer<typeof safeProposalSchema>
 export type SafeDeployment = z.infer<typeof safeDeploymentSchema>
 
@@ -215,3 +241,77 @@ export const SafeProposalSimulationSchema = z.discriminatedUnion('status', [
   })
 ])
 export type SafeProposalSimulation = z.infer<typeof SafeProposalSimulationSchema>
+
+// Official MultiSend and MultiSendCallOnly deployments (v1.3.0 canonical, eip155 and zkSync; v1.4.1; v1.5.0):
+// https://github.com/safe-global/safe-deployments/tree/main/src/assets
+const MULTI_SEND_ADDRESSES = new Set(
+  [
+    '0xA238CBeb142c10Ef7Ad8442C6D1f9E89e07e7761',
+    '0x998739BFdAAdde7C933B942a68053933098f9EDa',
+    '0x0dFcccB95225ffB03c6FBB2559B530C2B7C8A912',
+    '0x40A2aCCbd92BCA938b02010E17A5b8929b49130D',
+    '0xA1dabEF33b3B82c7814B6D82A79e50F4AC44102B',
+    '0xf220D3b4DFb23C4ade8C88E526C1353AbAcbC38F',
+    '0x38869bf66a61cF6bDB996A6aE40D5853Fd43B526',
+    '0x309D0B190FeCCa8e1D5D8309a16F7e3CB133E885',
+    '0x9641d764fc13c8B624c04430C7356C1C7C8102e2',
+    '0x0408EF011960d02349d50286D20531229BCef773',
+    '0x218543288004CD07832472D464648173c77D7eB7',
+    '0xA83c336B20401Af773B6219BA5027174338D1836'
+  ].map((address) => address.toLowerCase())
+)
+const MULTI_SEND_SELECTOR = '0x8d80ff0a'
+
+/** Splits a delegatecall to an official MultiSend into the calls it makes from the Safe. */
+export function unpackMultiSend(
+  proposal: Pick<SafeProposal, 'to' | 'operation' | 'data'>
+): Omit<SafeAction, 'decoded'>[] | undefined {
+  if (
+    proposal.operation !== 1 ||
+    !MULTI_SEND_ADDRESSES.has(proposal.to.toLowerCase()) ||
+    proposal.data.slice(0, 10).toLowerCase() !== MULTI_SEND_SELECTOR
+  ) {
+    return undefined
+  }
+  let packed: Uint8Array
+  try {
+    packed = getBytes(AbiCoder.defaultAbiCoder().decode(['bytes'], dataSlice(proposal.data, 4))[0] as string)
+  } catch {
+    return undefined
+  }
+  const actions: Omit<SafeAction, 'decoded'>[] = []
+  for (let offset = 0; offset < packed.length;) {
+    if (offset + 85 > packed.length || actions.length === MAX_SAFE_BATCH_ACTIONS) {
+      return undefined
+    }
+    const operation = packed[offset]
+    const length = toBigInt(packed.subarray(offset + 53, offset + 85))
+    const end = offset + 85 + Number(length)
+    if ((operation !== 0 && operation !== 1) || length > BigInt(packed.length) || end > packed.length) {
+      return undefined
+    }
+    actions.push({
+      operation,
+      to: getAddress(dataSlice(packed, offset + 1, offset + 21)),
+      value: toBigInt(packed.subarray(offset + 21, offset + 53)).toString(),
+      data: dataSlice(packed, offset + 85, end)
+    })
+    offset = end
+  }
+  return actions.length ? actions : undefined
+}
+
+/** The calls a Safe proposal makes: each batched call, or the proposal itself. */
+export function safeProposalActions(proposal: SafeProposal): SafeAction[] {
+  return (
+    proposal.batch ?? [
+      {
+        operation: proposal.operation,
+        to: proposal.to,
+        value: proposal.value,
+        data: proposal.data,
+        ...(proposal.localDecoded ? { decoded: proposal.localDecoded } : {})
+      }
+    ]
+  )
+}

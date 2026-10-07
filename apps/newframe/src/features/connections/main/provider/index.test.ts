@@ -1252,7 +1252,8 @@ describe('#send', () => {
             { name: 'to', type: 'address', value: transferTo },
             { name: 'amount', type: 'uint256', value: '42' }
           ],
-          source: 'Local ABI'
+          source: 'Local ABI',
+          contractName: 'Token'
         }
       })
       expect(attachSafeDraft).toHaveBeenCalledTimes(1)

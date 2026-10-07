@@ -18,7 +18,7 @@ import type { SafeTransactionPort } from '../../../core/services/safe-wallets/sa
 import type { CanonicalStoreReader } from '../../../core/state/store/actions.ts'
 import type { AccountAccessGrant } from '../../../core/state/store/state/index.ts'
 import { hasAddress } from '../../../features/accounts/domain/index.ts'
-import { safeDecodedSchema } from '../../../features/accounts/domain/safe.ts'
+import { safeCallDecodedSchema } from '../../../features/accounts/domain/safe.ts'
 import { activeExtensionAccountId } from '../../../features/connections/domain/extensionAccess.ts'
 import type { OriginsService } from '../../../features/connections/main/origins.ts'
 import type { AccountRequestPort } from '../../../features/connections/main/provider/accountRequestPort.ts'
@@ -1001,10 +1001,11 @@ export class RpcIpcHandlers extends EventEmitter {
           try {
             const decoded = await this.reveal.decode(inner.to!, targetChain.id, inner.data)
             if (decoded) {
-              const parsed = safeDecodedSchema.extend({ source: safeDecodedSchema.shape.method }).safeParse({
+              const parsed = safeCallDecodedSchema.safeParse({
                 method: decoded.method,
                 parameters: decoded.args,
-                source: decoded.source
+                source: decoded.source,
+                ...(decoded.contractName ? { contractName: decoded.contractName } : {})
               })
               if (parsed.success) {
                 localDecoded = parsed.data
