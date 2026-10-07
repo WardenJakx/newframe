@@ -180,9 +180,10 @@ jobs:
           retention-days: 14
 
   build:
-    name: Build unsigned macOS arm64 DMG
+    name: Build signed and notarized macOS arm64 DMG
     needs: prepare
     runs-on: macos-26
+    timeout-minutes: 90
     permissions:
       contents: read
     outputs:
@@ -193,6 +194,29 @@ jobs:
       CANDIDATE_SHA: ${{ needs.prepare.outputs.candidate }}
       RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
     steps:
+      - name: Require macOS signing and notarization secrets
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_BASE64 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=false
+          for name in CSC_LINK CSC_KEY_PASSWORD APPLE_API_KEY_BASE64 \
+            APPLE_API_KEY_ID APPLE_API_ISSUER APPLE_TEAM_ID; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::Missing repository secret $name. See docs/desktop-releases.md."
+              missing=true
+            fi
+          done
+          if [[ "$missing" == true ]]; then
+            exit 1
+          fi
+
       - name: Check out the dispatched commit
         uses: actions/checkout@v7
         with:
@@ -278,6 +302,9 @@ jobs:
       - name: Test desktop
         run: bun run test:newframe
 
+      - name: Test macOS release verification
+        run: bun test scripts/release/verify-macos-release.test.ts
+
       - name: Compile and bundle desktop
         shell: bash
         run: |
@@ -285,22 +312,59 @@ jobs:
           bun run --cwd apps/newframe compile
           bun run --cwd apps/newframe bundle
 
-      - name: Package unsigned arm64 DMG
+      - name: Sign and notarize the arm64 application and DMG
         working-directory: apps/newframe
         env:
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_BASE64 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
         shell: bash
         run: |
           set -euo pipefail
+          umask 077
+          export APPLE_API_KEY="$RUNNER_TEMP/newframe-notary-key.p8"
+          trap 'rm -f "$APPLE_API_KEY"' EXIT
+          printf '%s' "$APPLE_API_KEY_BASE64" | base64 --decode > "$APPLE_API_KEY"
+          unset APPLE_API_KEY_BASE64
+
           bun x electron-builder \
             --config build/electron-builder-release.ts \
             --mac dmg \
             --arm64 \
             --publish never
 
+          dmg_path="dist-release/Newframe-Desktop-$RELEASE_VERSION-macOS-arm64.dmg"
+          result="$RUNNER_TEMP/newframe-dmg-notarization.json"
+          submission_failed=false
+          xcrun notarytool submit "$dmg_path" \
+            --key "$APPLE_API_KEY" \
+            --key-id "$APPLE_API_KEY_ID" \
+            --issuer "$APPLE_API_ISSUER" \
+            --wait --timeout 30m --output-format json > "$result" || submission_failed=true
+          if [[ "$submission_failed" == true || "$(jq -r '.status' "$result")" != Accepted ]]; then
+            if submission_id="$(jq -er '.id' "$result")"; then
+              xcrun notarytool log "$submission_id" \
+                --key "$APPLE_API_KEY" \
+                --key-id "$APPLE_API_KEY_ID" \
+                --issuer "$APPLE_API_ISSUER" || true
+            fi
+            echo "::error::Apple did not accept the DMG notarization."
+            exit 1
+          fi
+          xcrun stapler staple "$dmg_path"
+
+      - name: Remove notarization credentials
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/newframe-notary-key.p8"
+
       - name: Validate packaged application and artifact
         id: metadata
         working-directory: apps/newframe
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         shell: bash
         run: |
           set -euo pipefail
@@ -313,16 +377,8 @@ jobs:
             exit 1
           fi
 
-          app_count="$(find dist-release -type d -name 'Newframe.app' -prune -print | wc -l | tr -d ' ')"
-          app_path="$(find dist-release -type d -name 'Newframe.app' -prune -print)"
-          if [[ "$app_count" != "1" ]]; then
-            echo "::error::Expected exactly one packaged Newframe.app."
-            exit 1
-          fi
-          packaged_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' \
-            "$app_path/Contents/Info.plist")"
-          test "$packaged_version" = "$RELEASE_VERSION"
-          test "$(lipo -archs "$app_path/Contents/MacOS/Newframe")" = "arm64"
+          bash ../../scripts/release/verify-macos-release.sh \
+            "$dmg_path" "$RELEASE_VERSION" "$APPLE_TEAM_ID"
 
           (
             cd dist-release
@@ -607,14 +663,8 @@ jobs:
           {
             echo "## Installation"
             echo
-            echo "This is an unsigned, unnotarized Apple Silicon (arm64) macOS build."
-            echo "After verifying the published SHA-256 checksum, open the DMG and drag Newframe into Applications. Then remove the macOS quarantine attribute so the app can open:"
-            echo
-            echo '```bash'
-            echo 'xattr -dr com.apple.quarantine "/Applications/Newframe.app"'
-            echo '```'
-            echo
-            echo "Only run this command if you trust the downloaded DMG and have verified its checksum."
+            echo "This Apple Silicon (arm64) macOS build is signed with Developer ID and notarized by Apple."
+            echo "Verify the published SHA-256 checksum, open the DMG, drag Newframe into Applications, and open it normally."
             echo
             echo "Automatic updates are disabled. Download future desktop releases manually from this repository."
           } >> "$notes_file"
