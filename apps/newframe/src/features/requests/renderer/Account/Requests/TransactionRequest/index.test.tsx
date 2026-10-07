@@ -420,7 +420,7 @@ describe('confirm', () => {
     expect(capabilities.external.writeText).toHaveBeenCalledWith(req.tx.hash)
   })
 
-  it('promotes request identity and resolves ERC-20 transfers to their recipient', () => {
+  it('names the ERC-20 recipient from the profile over the request ENS', () => {
     const tokenAddress = '0x00000000000000000000000000000000000000aa'
     const recipientAddress = '0x0000000000000000000000000000000000001337'
     const senderAddress = '0x0000000000000000000000000000000000000042'
@@ -441,6 +441,9 @@ describe('confirm', () => {
           lastSignerType: 'ledger',
           requests: {}
         }
+      },
+      addressNames: {
+        [recipientAddress]: { name: 'Recipient Ledger', source: 'account', accountType: 'ledger' }
       },
       chains: { ethereum: { 137: { name: 'Polygon', isTestnet: false } } },
       chainsMeta: { ethereum: { 137: { nativeCurrency: { symbol: 'MATIC' } } } },
@@ -494,11 +497,11 @@ describe('confirm', () => {
     expect(within(screen.getByLabelText('Transaction effects')).getByText('25')).toBeTruthy()
 
     const details = screen.getByLabelText('Transaction details')
-    expect(details.textContent).toMatch(/recipient\.eth/i)
+    expect(details.textContent).toMatch(/To.*Recipient Ledger.*0x000000\.\.\.001337/)
     expect(details.textContent).toMatch(/Token contract.*USD Coin/i)
     expect(details.textContent).not.toMatch(/origin|chain|signer|from|decode source/i)
 
-    const recipientCopy = screen.getByRole('button', { name: 'Copy address for recipient.eth' })
+    const recipientCopy = screen.getByRole('button', { name: 'Copy address for Recipient Ledger' })
     const addressImages = within(details).getAllByRole('presentation', { hidden: true })
     expect(addressImages).toHaveLength(2)
     for (const image of addressImages) {
@@ -506,11 +509,10 @@ describe('confirm', () => {
     }
     expect(details.innerHTML).toContain('viewBox="0 0 400 400"')
     expect(details.innerHTML.match(/<svg /g)).toHaveLength(3) // Ledger badge and two copy controls.
-    expect(screen.getAllByText('recipient.eth').length).toBeGreaterThan(0)
-    expect(screen.getByText(recipientAddress)).toBeTruthy()
+    expect(details.textContent).not.toContain('recipient.eth')
     fireEvent.click(recipientCopy)
     expect(capabilities.external.writeText).toHaveBeenCalledWith(recipientAddress)
-    expect(screen.getByRole('button', { name: 'Address copied for recipient.eth' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Address copied for Recipient Ledger' })).toBeTruthy()
 
     expect(summary.textContent).not.toContain('testname')
     expect(screen.queryByText(/hot signer/i)).toBeNull()

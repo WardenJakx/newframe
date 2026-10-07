@@ -24,6 +24,7 @@ import { updaterCapability } from '../../../platform/app-update/renderer/product
 import type { MainTrayProjection } from '../../../platform/state-sync/contract/projections.ts'
 import { selectOperationById } from '../../../platform/state-sync/renderer/selectors/operation.ts'
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector.tsx'
+import { AddressNamesContext } from '../../../shared/renderer/addressNames.tsx'
 import { AppIcon } from '../../../shared/renderer/ui/appIcon.tsx'
 import { accountsCapability, qrCameraCapability } from '../capabilities/accounts.ts'
 import { homeCapability } from '../capabilities/home.ts'
@@ -427,9 +428,12 @@ function ComposedPanel() {
 }
 
 export default function App() {
+  const addressNames = useWalletSelector((state) => state.addressNames)
   return (
-    <TrayNotificationProvider>
-      <ComposedPanel />
-    </TrayNotificationProvider>
+    <AddressNamesContext.Provider value={addressNames}>
+      <TrayNotificationProvider>
+        <ComposedPanel />
+      </TrayNotificationProvider>
+    </AddressNamesContext.Provider>
   )
 }

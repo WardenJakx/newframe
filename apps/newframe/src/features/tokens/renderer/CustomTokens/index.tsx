@@ -4,14 +4,13 @@ import { Image } from '@newframe/ui/image'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
 import type { MainTrayProjection } from '../../../../platform/state-sync/contract/projections.ts'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector.tsx'
 import { useTokenImageHydration } from '../../../../shared/renderer/hooks/useTokenImageHydration.ts'
-import { AddressIdentity, shortAddress } from '../../../../shared/renderer/ui/AddressIdentity.tsx'
-import { accountDisplayType } from '../../../../shared/renderer/ui/signerPresentation.ts'
+import { AddressIdentity } from '../../../../shared/renderer/ui/AddressIdentity.tsx'
 import { customTokens, tokenImageSource } from '../../domain/index.ts'
 import type { Token } from '../../domain/state/token.ts'
 import type { TokensCapability } from '../tokensCapability.ts'
@@ -22,7 +21,6 @@ interface CustomTokensProps {
   capability: Pick<TokensCapability, 'hydrateTokenImage' | 'remove' | 'writeText'>
   onEdit: (token: Token) => void
   tokens: Token[]
-  accountTypes: Record<string, string | undefined>
 }
 
 function CustomTokenImage({
@@ -37,7 +35,7 @@ function CustomTokenImage({
   return source ? <Image alt={token.symbol.toUpperCase()} size='medium' source={source} /> : null
 }
 
-function CustomTokensView({ capability, onEdit, tokens, accountTypes }: CustomTokensProps) {
+function CustomTokensView({ capability, onEdit, tokens }: CustomTokensProps) {
   const [expandedAddress, setExpandedAddress] = useState('')
   const sortedTokens = [...tokens].sort((a, b) => a.chainId - b.chainId)
 
@@ -75,13 +73,7 @@ function CustomTokensView({ capability, onEdit, tokens, accountTypes }: CustomTo
                   size='small'
                 />
               </Stack>
-              <AddressIdentity
-                address={token.address}
-                accountType={accountTypes[token.address.toLowerCase()]}
-                nickname={shortAddress(token.address)}
-                clipboard={capability}
-                showFullAddress
-              />
+              <AddressIdentity address={token.address} clipboard={capability} />
               {expanded ? (
                 <Stack direction='row' gap='small'>
                   <Button
@@ -124,15 +116,5 @@ export default function CustomTokens({
   onEdit: (token: Token) => void
 }) {
   const tokens = useWalletSelector(useShallow(selectCustomTokens))
-  const accounts = useWalletSelector((state) => state.accounts)
-  const accountTypes = useMemo(
-    () =>
-      Object.fromEntries(
-        Object.values(accounts).map((account) => [account.address.toLowerCase(), accountDisplayType(account)])
-      ),
-    [accounts]
-  )
-  return (
-    <CustomTokensView capability={capability} onEdit={onEdit} tokens={tokens} accountTypes={accountTypes} />
-  )
+  return <CustomTokensView capability={capability} onEdit={onEdit} tokens={tokens} />
 }

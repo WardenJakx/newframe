@@ -3,7 +3,6 @@ import { useShallow } from 'zustand/react/shallow'
 
 import type { AirGapRequestReference } from '../../../platform/signing/domain/airgap.ts'
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector.tsx'
-import { AddressIdentity, shortAddress } from '../../../shared/renderer/ui/AddressIdentity.tsx'
 import { ChainIcon } from '../../../shared/renderer/ui/ChainIcon.tsx'
 import { accountDisplayType } from '../../../shared/renderer/ui/signerPresentation.ts'
 import type { SafeOwnerAccount } from '../../accounts/domain/safe.ts'
@@ -132,20 +131,6 @@ export function useSafeQueue({
     proposal,
     capability: capabilities.safe
   })
-  const renderAddress = (address: string) => {
-    const identity = Object.values(accounts).find(
-      (account) => account?.address.toLowerCase() === address.toLowerCase()
-    )
-    return (
-      <AddressIdentity
-        address={address}
-        accountType={accountDisplayType(identity)}
-        clipboard={capabilities.external}
-        nickname={identity?.name ?? shortAddress(address)}
-        showFullAddress
-      />
-    )
-  }
   const chainIcons = Object.fromEntries(
     Object.values(safe ?? {}).map((deployment) => [
       deployment.chainId,
@@ -313,7 +298,6 @@ export function useSafeQueue({
     review:
       deployment && proposal
         ? {
-            renderAddress,
             deployment,
             proposal,
             actions,
@@ -325,7 +309,6 @@ export function useSafeQueue({
             decimals: currency?.decimals ?? 18,
             originName: origin ? origins[origin]?.name || origin : 'Safe proposal',
             favicon: origin ? persistedImageSource(origins[origin]?.image) : undefined,
-            accountName: account?.name ?? account?.ensName,
             isTestnet: Boolean(chain?.isTestnet),
             nativeCurrencyRate,
             tokens

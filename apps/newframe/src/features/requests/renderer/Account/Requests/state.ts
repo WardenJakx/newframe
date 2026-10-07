@@ -2,7 +2,6 @@ import { useMemo } from 'react'
 
 import type { MainTrayProjection } from '../../../../../platform/state-sync/contract/projections.ts'
 import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector.tsx'
-import { accountDisplayType } from '../../../../../shared/renderer/ui/signerPresentation.ts'
 import { resolveAssetRate } from '../../../../asset-data/domain/asset/index.ts'
 import type { AssetRateReference } from '../../../../asset-data/domain/state/rate.ts'
 
@@ -100,20 +99,4 @@ export function useAssetRate(asset: AssetRateReference) {
     [address, chainId, nativeTicker]
   )
   return useWalletSelector(selector)
-}
-
-export type AddressIdentities = Record<string, { nickname?: string; accountType?: string }>
-
-export function useAddressIdentities(): AddressIdentities {
-  const accounts = useWalletSelector((state) => state.accounts)
-  return useMemo(
-    () =>
-      Object.fromEntries(
-        Object.values(accounts).map((account) => [
-          account.address.toLowerCase(),
-          { nickname: account.name || account.ensName, accountType: accountDisplayType(account) }
-        ])
-      ),
-    [accounts]
-  )
 }

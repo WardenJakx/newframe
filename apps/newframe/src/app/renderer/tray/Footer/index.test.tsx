@@ -175,6 +175,7 @@ const signingState = () =>
           name: 'Other wallet'
         }
       },
+      addressNames: { [signingAddress]: { name: 'Signing wallet', source: 'account' } },
       signers: { 'signer-1': { id: 'signer-1' } },
       appLock: { locked: false },
       mute: { explorerWarning: false },

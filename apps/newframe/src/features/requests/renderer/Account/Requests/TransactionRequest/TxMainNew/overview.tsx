@@ -10,7 +10,6 @@ import { Cluster, ClusterRow, ClusterValue } from '../../../../ui/Cluster.tsx'
 import { DisplayValue } from '../../../../ui/DisplayValue.tsx'
 import RequestHeader from '../../../../ui/RequestHeader.tsx'
 import EnsOverview from '../../Ens.tsx'
-import type { AddressIdentities } from '../../state.ts'
 
 type TxOverviewRequest = {
   data: {
@@ -38,7 +37,6 @@ type SendOverviewProps = ApproveOverviewProps & {
 }
 
 type ContractCallOverviewProps = {
-  identities?: AddressIdentities
   req: TxOverviewRequest
 }
 
@@ -47,7 +45,6 @@ type DataClusterValueProps = {
 }
 
 type TxOverviewProps = {
-  identities?: AddressIdentities
   req: TxOverviewRequest
   chainName?: string
   chainColor?: string
@@ -124,15 +121,11 @@ const DataOverview = () => (
   </Text>
 )
 
-const ContractCallOverview = ({ req, identities }: ContractCallOverviewProps) => {
-  return renderRecognizedActions(req, identities)
+const ContractCallOverview = ({ req }: ContractCallOverviewProps) => {
+  return renderRecognizedActions(req)
 }
 
-const renderActionOverview = (
-  action: { id: string; data?: unknown },
-  index: number,
-  identities?: AddressIdentities
-) => {
+const renderActionOverview = (action: { id: string; data?: unknown }, index: number) => {
   const { id = '', data } = action
   const key = id + index
   const [_actionClass, actionType] = id.split(':')
@@ -145,13 +138,13 @@ const renderActionOverview = (
     return <ApproveOverview key={key} {...props} />
   }
   if (id.startsWith('ens:')) {
-    return <EnsOverview key={key} type={actionType} data={props} identities={identities} />
+    return <EnsOverview key={key} type={actionType} data={props} />
   }
 
   return <SimpleContractCallOverview key={key} />
 }
 
-function renderRecognizedActions(req: TxOverviewRequest, identities?: AddressIdentities) {
+function renderRecognizedActions(req: TxOverviewRequest) {
   const { recognizedActions: actions = [] } = req
 
   return !actions.length ? (
@@ -159,7 +152,7 @@ function renderRecognizedActions(req: TxOverviewRequest, identities?: AddressIde
       Calling Contract
     </Text>
   ) : (
-    actions.map((action, index) => renderActionOverview(action, index, identities))
+    actions.map((action, index) => renderActionOverview(action, index))
   )
 }
 
@@ -167,7 +160,6 @@ const DataClusterValue = ({ children }: DataClusterValueProps) => <ClusterValue>
 
 const TxOverview = ({
   req,
-  identities,
   chainName = '',
   chainColor = '',
   symbol,
@@ -183,7 +175,7 @@ const TxOverview = ({
       return <DeployContractOverview />
     }
     if (classification === 'CONTRACT_CALL') {
-      return <ContractCallOverview req={req} identities={identities} />
+      return <ContractCallOverview req={req} />
     }
     if (classification === 'SEND_DATA') {
       return <DataOverview />

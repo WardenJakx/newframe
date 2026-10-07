@@ -17,13 +17,7 @@ import type {
 import type { RequestTrayCapabilities } from '../../requestCapabilities.ts'
 import RequestItem from '../../ui/RequestItem.tsx'
 import { RequestList } from '../../ui/RequestList.tsx'
-import {
-  useAddressIdentities,
-  useAccountRequests,
-  useEthereumChainMetadata,
-  useEthereumChains,
-  useOrigins
-} from './state.ts'
+import { useAccountRequests, useEthereumChainMetadata, useEthereumChains, useOrigins } from './state.ts'
 import TxOverview from './TransactionRequest/TxMainNew/overview.tsx'
 
 type RenderableRequest =
@@ -43,7 +37,6 @@ type RequestsWithStateProps = {
 }
 
 type RequestsProps = RequestsWithStateProps & {
-  identities: ReturnType<typeof useAddressIdentities>
   accountRequests: Record<string, RenderableRequest>
   chains: ReturnType<typeof useEthereumChains>
   chainMetadata: ReturnType<typeof useEthereumChainMetadata>
@@ -95,7 +88,6 @@ function Requests(props: RequestsProps) {
       img = persistedImageSource(metadata?.image)
       detail = (
         <TxOverview
-          identities={props.identities}
           chainColor={metadata?.primaryColor}
           chainName={chainName}
           originName={props.origins[req.origin]?.name || req.origin}
@@ -168,7 +160,6 @@ export default function RequestsWithState(props: RequestsWithStateProps) {
   return (
     <Requests
       {...props}
-      identities={useAddressIdentities()}
       accountRequests={accountRequests}
       chainMetadata={useEthereumChainMetadata()}
       chains={useEthereumChains()}

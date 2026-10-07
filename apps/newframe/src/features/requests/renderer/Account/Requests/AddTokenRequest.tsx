@@ -5,16 +5,14 @@ import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 
 import { AddressIdentity } from '../../../../../shared/renderer/ui/AddressIdentity.tsx'
-import { accountDisplayType } from '../../../../../shared/renderer/ui/signerPresentation.ts'
 import { persistedImageSource } from '../../../../asset-data/domain/image/index.ts'
 import { RequestStatusNotice } from '../../ui/RequestStatusNotice.tsx'
 import type { AddTokenRequestView } from './requestViewTypes.ts'
-import { useAccountIdentity, useOriginName } from './state.ts'
+import { useOriginName } from './state.ts'
 
 type AddTokenRequestProps = {
   req: AddTokenRequestView
   originName: string
-  accountType?: string
   pos?: number
 }
 
@@ -60,7 +58,7 @@ function AddTokenRequest(props: AddTokenRequestProps) {
               <Text tone='secondary' variant='label'>
                 Chain {token.chainId} · {token.decimals} decimals
               </Text>
-              <AddressIdentity address={token.address} accountType={props.accountType} />
+              <AddressIdentity address={token.address} />
               {props.req.warning ? (
                 <Text align='center' tone='warning' variant='supporting'>
                   {props.req.warning}
@@ -76,6 +74,5 @@ function AddTokenRequest(props: AddTokenRequestProps) {
 
 export default function AddTokenRequestWithState(props: AddTokenRequestWithStateProps) {
   const originName = useOriginName(props.req.origin)
-  const accountType = accountDisplayType(useAccountIdentity(props.req.token.address))
-  return <AddTokenRequest {...props} originName={originName} accountType={accountType} />
+  return <AddTokenRequest {...props} originName={originName} />
 }

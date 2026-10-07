@@ -5,7 +5,7 @@ import { Text } from '@newframe/ui/text'
 import { formatUnits } from 'ethers'
 import type { ReactNode } from 'react'
 
-import { shortAddress } from '../../../shared/renderer/ui/AddressIdentity.tsx'
+import { AddressText } from '../../../shared/renderer/ui/AddressText.tsx'
 import type { SafeDeployment } from '../../accounts/domain/safe.ts'
 import { RequestCard } from './ui/RequestCard.tsx'
 import { RequestList } from './ui/RequestList.tsx'
@@ -65,13 +65,13 @@ export function SafeQueueView({
           } else if (proposal.data !== '0x') {
             title = 'Contract call'
           }
-          let description = `Transaction · ${shortAddress(proposal.to)}`
+          let description = 'Transaction'
           if (proposal.batch) {
             description = `${proposal.batch.length} ${proposal.batch.length === 1 ? 'action' : 'actions'}`
           } else if (method) {
-            description = `${proposal.localDecoded?.contractName ?? 'Contract interaction'} · ${shortAddress(proposal.to)}`
+            description = proposal.localDecoded?.contractName ?? 'Contract interaction'
           } else if (proposal.data === '0x' && currency) {
-            description = `${formatUnits(proposal.value, currency.decimals)} ${currency.symbol} · ${shortAddress(proposal.to)}`
+            description = `${formatUnits(proposal.value, currency.decimals)} ${currency.symbol}`
           }
           return (
             <RequestCard
@@ -86,6 +86,12 @@ export function SafeQueueView({
             >
               <Text tone='secondary' variant='supporting'>
                 {description}
+                {proposal.batch ? null : (
+                  <>
+                    {' · '}
+                    <AddressText address={proposal.to} />
+                  </>
+                )}
               </Text>
             </RequestCard>
           )

@@ -365,7 +365,9 @@ describe('setting token details', () => {
     const tokenDecimalsInput = screen.getByLabelText<HTMLInputElement>('Decimals')
     const button = screen.getByRole('button')
 
-    expect(contractAddressInput.textContent).toEqual('0x64aa33...e7f1D4')
+    expect(contractAddressInput.querySelector('[data-hover-swap-text="primary"]')?.textContent).toEqual(
+      '0x64aa33...e7f1D4'
+    )
     expect(tokenNameInput.value).toEqual('Token Name')
     expect(tokenSymbolInput.value).toEqual('Symbol')
     expect(tokenDecimalsInput.value).toEqual('?')
@@ -392,7 +394,9 @@ describe('setting token details', () => {
     const tokenSymbolInput = screen.getByLabelText<HTMLInputElement>('Symbol')
     const tokenDecimalsInput = screen.getByLabelText<HTMLInputElement>('Decimals')
 
-    expect(contractAddressInput.textContent).toEqual('0x64aa33...e7f1D4')
+    expect(contractAddressInput.querySelector('[data-hover-swap-text="primary"]')?.textContent).toEqual(
+      '0x64aa33...e7f1D4'
+    )
     await waitFor(() => expect(tokenNameInput.value).toEqual('Frame Test on Polygon'), { timeout: 200 })
     expect(tokenSymbolInput.value).toEqual('mFRT')
     expect(tokenDecimalsInput.value).toEqual('18')

@@ -11,8 +11,6 @@ const shortHash = (address: string | null | undefined = '') =>
 
 export function ActivityDetailsView({
   activity,
-  fromAccountType,
-  toAccountType,
   capability,
   chain,
   chainMeta,
@@ -20,8 +18,6 @@ export function ActivityDetailsView({
   originName
 }: {
   activity: ActivityRecord
-  fromAccountType?: string
-  toAccountType?: string
   capability: Pick<ActivityCapability, 'copyText' | 'hydrateTokenImage'>
   chain: ActivityChainMap[number]
   chainMeta: ActivityDetailChainMetadata
@@ -44,21 +40,14 @@ export function ActivityDetailsView({
     {
       label: 'From',
       actionLabel: `From: ${shortAddress(from ?? undefined)}`,
-      value: from ? (
-        <AddressIdentity address={from} accountType={fromAccountType} showCopy={false} />
-      ) : undefined,
+      value: from ? <AddressIdentity address={from} showCopy={false} /> : undefined,
       onClick: () => copy(from)
     },
     {
       label: 'To',
       actionLabel: `To: ${activity.recipient ?? shortAddress(to)}`,
       value: to ? (
-        <AddressIdentity
-          address={to}
-          accountType={toAccountType}
-          nickname={activity.recipient}
-          showCopy={false}
-        />
+        <AddressIdentity address={to} name={activity.recipient} showCopy={false} />
       ) : (
         activity.recipient
       ),

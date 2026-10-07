@@ -13,7 +13,6 @@ import { RequestActions } from '../../../../features/requests/renderer/ui/Reques
 import { RequestSigningFooter } from '../../../../features/requests/renderer/ui/RequestSigningFooter.tsx'
 import type { MainTrayProjection } from '../../../../platform/state-sync/contract/projections.ts'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector.tsx'
-import { accountDisplayType } from '../../../../shared/renderer/ui/signerPresentation.ts'
 
 interface FooterSharedState {
   crumb: { view?: string; data?: unknown }
@@ -204,10 +203,7 @@ export function Footer({ capabilities, notify, shared, step, onContinue }: Foote
     <footer className={footerRecipe({ active: Boolean(content) })} ref={footerRef}>
       {signing ? (
         <RequestSigningFooter
-          account={{
-            ...(signingAccount ?? { address: req.account ?? '' }),
-            accountType: accountDisplayType(signingAccount)
-          }}
+          address={signingAccount?.address ?? req.account ?? ''}
           clipboard={capabilities.external}
           label={req.signingCapability?.type === 'safe' ? 'Safe account' : undefined}
         >

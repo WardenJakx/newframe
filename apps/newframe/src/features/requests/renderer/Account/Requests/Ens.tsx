@@ -1,9 +1,7 @@
 import { AddressIdentity } from '../../../../../shared/renderer/ui/AddressIdentity.tsx'
-import type { AddressIdentities } from './state.ts'
 const timeFormat = new Intl.DateTimeFormat('en', { dateStyle: 'medium' })
 
 type EnsOverviewProps = {
-  identities?: AddressIdentities
   type: string
   data: {
     name?: string
@@ -36,7 +34,7 @@ function formatDuration(duration: number) {
   return `until ${timeFormat.format(endDate)}`
 }
 
-const EnsOverview = ({ type, data, identities = {} }: EnsOverviewProps) => {
+const EnsOverview = ({ type, data }: EnsOverviewProps) => {
   const line = (value: string | undefined, emphasis = false) => (
     <Text
       align='center'
@@ -48,9 +46,7 @@ const EnsOverview = ({ type, data, identities = {} }: EnsOverviewProps) => {
   )
 
   const identity = (address?: string) =>
-    address ? (
-      <AddressIdentity address={address} {...identities[address.toLowerCase()]} showCopy={false} />
-    ) : null
+    address ? <AddressIdentity address={address} showCopy={false} /> : null
 
   if (type === 'commit') {
     return line('Submitting ENS Commitment')

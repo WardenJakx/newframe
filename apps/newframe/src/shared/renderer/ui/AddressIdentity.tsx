@@ -2,6 +2,7 @@ import { HoverSwapText } from '@newframe/ui/hover-swap-text'
 import { Text } from '@newframe/ui/text'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
+import { useAddressName } from '../addressNames.tsx'
 import type { ClipboardCapability } from '../capabilities.ts'
 import { AddressAvatar } from './AddressAvatar.tsx'
 import { CopyButton } from './CopyButton.tsx'
@@ -37,71 +38,59 @@ export const shortAddress = (address?: string) => {
 }
 
 export type AddressIdentityProps = {
-  address?: string
+  address: string
   accountType?: string
   clipboard?: ClipboardCapability
-  nickname?: string
+  name?: string
   showCopy?: boolean
   showFullAddress?: boolean
 }
 
+// `name` is a fallback the caller knows, such as a request's ENS name; the profile's name wins.
 export function AddressIdentity({
   address,
   accountType,
   clipboard,
-  nickname,
+  name,
   showCopy = true,
   showFullAddress = false
 }: AddressIdentityProps) {
-  if (!address && !nickname) {
-    return null
-  }
-  const addressDisplay = showFullAddress ? (address ?? '') : shortAddress(address)
-  const display = nickname ?? addressDisplay
-  const hasNickname = nickname && nickname !== shortAddress(address) && nickname !== address
-  const displayText = (
-    <Text align='end' truncate variant='code'>
-      {display}
-    </Text>
-  )
-  const addressText = showFullAddress ? (
+  const known = useAddressName(address)
+  const label = known?.name ?? name
+  const fullAddress = (
     <span className={fullAddressRecipe()}>
       <Text align='end' variant='nanoCode'>
-        {addressDisplay}
+        {address}
       </Text>
     </span>
-  ) : (
-    <Text align='end' truncate variant='code'>
-      {addressDisplay}
-    </Text>
   )
-  let identityText = hasNickname ? null : displayText
-  if (address) {
-    identityText = addressText
-    if (nickname && showFullAddress) {
-      identityText = (
-        <HoverSwapText alternate={addressText}>
-          <Text align='end' truncate variant='code'>
-            {shortAddress(address)}
-          </Text>
-        </HoverSwapText>
-      )
-    }
-  }
+  const copyName = label ?? shortAddress(address)
 
   return (
     <span className={addressIdentityRecipe()} data-address-identity=''>
-      {address ? <AddressAvatar address={address} accountType={accountType} /> : null}
+      <AddressAvatar address={address} accountType={accountType ?? known?.accountType} />
       <span className={addressTextRecipe()}>
-        {hasNickname ? displayText : null}
-        {identityText}
+        {label ? (
+          <Text align='end' truncate variant='code'>
+            {label}
+          </Text>
+        ) : null}
+        {showFullAddress ? (
+          fullAddress
+        ) : (
+          <HoverSwapText alternate={fullAddress}>
+            <Text align='end' truncate variant='code'>
+              {shortAddress(address)}
+            </Text>
+          </HoverSwapText>
+        )}
       </span>
-      {address && showCopy && clipboard ? (
+      {showCopy && clipboard ? (
         <CopyButton
           clipboard={clipboard}
-          copiedLabel={`Address copied for ${display}`}
+          copiedLabel={`Address copied for ${copyName}`}
           copiedTitle='Address copied'
-          label={`Copy address for ${display}`}
+          label={`Copy address for ${copyName}`}
           title='Copy address'
           value={address}
         />

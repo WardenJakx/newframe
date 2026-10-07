@@ -16,7 +16,6 @@ import { selectOperationById } from '../../../../platform/state-sync/renderer/se
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector.tsx'
 import { AddressIdentity } from '../../../../shared/renderer/ui/AddressIdentity.tsx'
 import { ChainIcon } from '../../../../shared/renderer/ui/ChainIcon.tsx'
-import { accountDisplayType } from '../../../../shared/renderer/ui/signerPresentation.ts'
 import { toTokenId } from '../../domain/index.ts'
 import type { Token } from '../../domain/state/token.ts'
 import type { TokensCapability } from '../tokensCapability.ts'
@@ -246,11 +245,6 @@ const TokenDetailsForm = ({ capability, chain, tokenData, isEdit, onDone }: Toke
   const completionNotifiedRef = useRef('')
 
   const { address } = tokenData
-  const accountType = useWalletSelector((state) =>
-    accountDisplayType(
-      Object.values(state.accounts).find((account) => account.address.toLowerCase() === address.toLowerCase())
-    )
-  )
   const { name: chainName } = chain
   const submittedToken = submission?.token
   const projectedToken = useWalletSelector((state) => {
@@ -343,7 +337,7 @@ const TokenDetailsForm = ({ capability, chain, tokenData, isEdit, onDone }: Toke
             <span data-testid='addTokenFormTitle'>{isEdit ? 'Edit Token' : 'Add New Token'}</span>
           </Text>
           <Text align='center' as='h2' variant='code'>
-            <AddressIdentity address={address} accountType={accountType} />
+            <AddressIdentity address={address} />
           </Text>
           {chainName ? <Text tone='accent' variant='overline'>{`on ${chainName}`}</Text> : null}
         </Stack>

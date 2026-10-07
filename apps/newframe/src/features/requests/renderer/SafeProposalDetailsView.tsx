@@ -7,13 +7,13 @@ import { Text } from '@newframe/ui/text'
 import { useState, type ReactNode } from 'react'
 
 import { getCalldataDigest } from '../../../shared/domain/calldata.ts'
-import { AddressIdentity, shortAddress } from '../../../shared/renderer/ui/AddressIdentity.tsx'
+import { AddressIdentity } from '../../../shared/renderer/ui/AddressIdentity.tsx'
 import type { SafeDeployment, SafeProposal, SafeProposalSimulation } from '../../accounts/domain/safe.ts'
 import { safeAppTransactionUrl } from '../../accounts/domain/safeChains.ts'
 import type { TransactionApprovalAdjustments } from '../../transactions/domain/approval.ts'
 import type { TransactionFeeField } from '../../transactions/domain/fees.ts'
 import { TxClassification, type SafeExecutionMetadata, type SigningCandidate } from '../contract/requests.ts'
-import type { useAssetRate, useAddressIdentities, useTokens } from './Account/Requests/state.ts'
+import type { useAssetRate, useTokens } from './Account/Requests/state.ts'
 import AdjustFee from './Account/Requests/TransactionRequest/AdjustFee.tsx'
 import {
   callSection,
@@ -66,7 +66,6 @@ export type SafeProposalActionModel = {
 }
 
 export function SafeProposalDetailsView({
-  renderAddress,
   deployment,
   proposal,
   simulation,
@@ -76,15 +75,12 @@ export function SafeProposalDetailsView({
   decimals = 18,
   originName,
   favicon,
-  accountName,
   isTestnet = false,
   nativeCurrencyRate,
-  identities,
   tokens,
   capabilities,
   actions
 }: {
-  renderAddress?: (address: string) => ReactNode
   deployment: SafeDeployment
   proposal: SafeProposal
   simulation: SafePreview
@@ -94,10 +90,8 @@ export function SafeProposalDetailsView({
   decimals?: number
   originName?: string
   favicon?: string
-  accountName?: string
   isTestnet?: boolean
   nativeCurrencyRate?: ReturnType<typeof useAssetRate>
-  identities?: ReturnType<typeof useAddressIdentities>
   tokens?: ReturnType<typeof useTokens>
   capabilities: Pick<RequestTrayCapabilities, 'external'>
   actions?: SafeProposalActionModel
@@ -136,16 +130,9 @@ export function SafeProposalDetailsView({
   }
   const effectsNotice =
     simulation.status === 'error' || simulation.status === 'unavailable' ? simulation.error : undefined
-  const addressValue = (address: string) =>
-    renderAddress?.(address) ?? (
-      <AddressIdentity
-        address={address}
-        accountType={address.toLowerCase() === proposal.safe.toLowerCase() ? 'safe' : undefined}
-        clipboard={capabilities.external}
-        nickname={shortAddress(address)}
-        showFullAddress
-      />
-    )
+  const addressValue = (address: string, name?: string) => (
+    <AddressIdentity address={address} clipboard={capabilities.external} name={name} />
+  )
   const nativeTransfer = proposal.data === '0x' && proposal.operation === 0
   const review: TxReviewData = {
     origin: proposal.local?.origin ?? 'Safe proposal',
@@ -167,9 +154,6 @@ export function SafeProposalDetailsView({
         }
       : undefined
   }
-  const contractTarget = (address: string, nickname?: string) => (
-    <AddressIdentity address={address} clipboard={capabilities.external} nickname={nickname} />
-  )
   const sections = proposal.batch?.map((action) =>
     callSection(
       {
@@ -183,7 +167,7 @@ export function SafeProposalDetailsView({
         },
         delegatecall: action.operation === 1
       },
-      { addressValue, contractTarget, symbol, decimals }
+      { addressValue, symbol, decimals }
     )
   )
   const published = !proposal.local || proposal.local.publication.status === 'published'
@@ -288,9 +272,7 @@ export function SafeProposalDetailsView({
       chainMetadata={{ nativeCurrency: { symbol, decimals } }}
       chainIcon={chainIcon}
       nativeCurrencyRate={nativeCurrencyRate}
-      identities={identities}
       tokens={tokens}
-      renderAddress={renderAddress}
       fee={
         reviewed
           ? {
@@ -400,11 +382,7 @@ export function SafeProposalDetailsView({
         )
       }}
       footer={
-        <RequestSigningFooter
-          account={{ address: proposal.safe, name: accountName, accountType: 'safe' }}
-          clipboard={capabilities.external}
-          label='Account'
-        >
+        <RequestSigningFooter address={proposal.safe} clipboard={capabilities.external} label='Account'>
           {reviewed && canAdjustFee && feesOpen && actions.onUpdateFee ? (
             <Disclosure label='Adjust gas fee' open={feesOpen} onToggle={() => setFeesOpen(false)}>
               <AdjustFee

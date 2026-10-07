@@ -1,7 +1,10 @@
 import { expect, it, mock } from 'bun:test'
 
+import type { ReactNode } from 'react'
+
 import { render, screen } from '../../../../../test/support/componentSetup.tsx'
 import { registerTestRuntimeFixture } from '../../../../../test/support/trayClient.ts'
+import { AddressNamesContext } from '../../../../shared/renderer/addressNames.tsx'
 import { createSendCapabilityFake } from './sendService.test-support.ts'
 import { SendView } from './SendView.tsx'
 import type { SendViewEvents, SendViewModel } from './sendViewModel.ts'
@@ -9,13 +12,14 @@ import type { SendViewEvents, SendViewModel } from './sendViewModel.ts'
 registerTestRuntimeFixture()
 
 it('preserves Safe identity through recipient selection and keeps copy separate', async () => {
-  const recipient = {
-    id: 'recipient',
-    address: `0x${'2'.repeat(40)}`,
-    name: 'Recipient',
-    lastSignerType: 'address',
-    accountType: 'safe'
-  }
+  const recipient = { id: 'recipient', address: `0x${'2'.repeat(40)}` }
+  const named = (view: ReactNode) => (
+    <AddressNamesContext.Provider
+      value={{ [recipient.address]: { name: 'Recipient', source: 'account', accountType: 'safe' } }}
+    >
+      {view}
+    </AddressNamesContext.Provider>
+  )
   const selectRecipient = mock<SendViewEvents['onSelectRecipient']>(() => undefined)
   const noop = () => undefined
   const model: SendViewModel = {
@@ -59,7 +63,7 @@ it('preserves Safe identity through recipient selection and keeps copy separate'
   }
 
   const { user, rerender } = render(
-    <SendView capability={createSendCapabilityFake()} events={events} model={model} />
+    named(<SendView capability={createSendCapabilityFake()} events={events} model={model} />)
   )
   const select = screen.getByRole('button', { name: 'Select Recipient' })
   const copy = screen.getByRole('button', { name: 'Copy address for 0x222222...222222' })
@@ -73,7 +77,9 @@ it('preserves Safe identity through recipient selection and keeps copy separate'
   expect(selectRecipient).toHaveBeenCalledWith(recipient)
 
   rerender(
-    <SendView capability={createSendCapabilityFake()} events={events} model={{ ...model, recipient }} />
+    named(
+      <SendView capability={createSendCapabilityFake()} events={events} model={{ ...model, recipient }} />
+    )
   )
   const selected = document.querySelector('[data-address-identity]')
   expect(selected?.querySelector('img')?.getAttribute('src')).toBe(source)
