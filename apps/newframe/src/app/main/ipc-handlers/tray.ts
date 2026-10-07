@@ -40,6 +40,7 @@ export interface OperationServices {
     get(accountId: string): unknown
   }
   accountMutations: import('../../../features/accounts/main/service.ts').AccountService
+  addressBook: import('../../../features/accounts/main/addressBook/service.ts').AddressBookService
   safes: import('../../../core/services/safe-wallets/safe.ts').SafeService
   accountOnboarding: import('../../../features/accounts/main/accountOnboarding/service.ts').AccountOnboardingService
   aiSession: import('../../../core/entry/ai-session/index.ts').AiSessionService
@@ -219,6 +220,7 @@ function defineQuery<TKey extends keyof QueryMap>(
 export function createOperationRegistry(services: OperationServices) {
   const {
     accountMutations,
+    addressBook,
     airgap,
     accountOnboarding,
     safes,
@@ -634,9 +636,21 @@ export function createOperationRegistry(services: OperationServices) {
 
     'account.remove': defineAcknowledgedCommand(
       'account.remove',
-      ({ address, removeSeedSigner }) => accountMutations.remove(address, removeSeedSigner),
+      ({ address, removeSeedSigner, keepName }) =>
+        accountMutations.remove(address, removeSeedSigner, keepName),
       'not_found',
       ['tray']
+    ),
+    'address-book.save': defineAcknowledgedCommand(
+      'address-book.save',
+      (command) => addressBook.save(command),
+      () => 'invalid_command'
+    ),
+    'address-book.remove': defineAcknowledgedCommand('address-book.remove', (command) =>
+      addressBook.remove(command)
+    ),
+    'address-book.import': defineAcknowledgedCommand('address-book.import', (command) =>
+      addressBook.import(command)
     )
   } satisfies Record<keyof CommandMap, OperationDefinition>
 

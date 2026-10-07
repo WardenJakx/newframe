@@ -530,7 +530,7 @@ describe('canonical persisted state contract', () => {
 
     const migrated = migratePersistedState(stored, version)
 
-    expect(PERSISTENCE_VERSION).toBe(9)
+    expect(PERSISTENCE_VERSION).toBe(10)
     expect(Object.keys(migrated.main)).not.toContainAnyValues(['networks', 'networksMeta', 'permissions'])
     expect<unknown>(migrated.main.chains).toEqual(chains)
     expect<unknown>(migrated.main.chainsMeta).toEqual(chainsMeta)
@@ -545,6 +545,19 @@ describe('canonical persisted state contract', () => {
       requestId: 'request-1'
     })
     expect(migratePersistedState(migrated)).toEqual(migrated)
+  })
+
+  it('gives v9 state an empty address book and keeps a saved one through hydration', () => {
+    const alice = `0x${'a'.repeat(40)}`
+    const v9 = mutablePersisted(selectPersistedState(canonicalState()))
+    delete v9.main.addressBook
+    const durable = canonicalState()
+    durable.main.addressBook = { [DEFAULT_PROFILE_ID]: { [alice]: 'Alice' } }
+
+    expect(migratePersistedState(v9, 9).main.addressBook).toEqual({})
+    expect(mergePersistedState(selectPersistedState(durable), canonicalState()).main.addressBook).toEqual({
+      [DEFAULT_PROFILE_ID]: { [alice]: 'Alice' }
+    })
   })
 
   it('migrates every supported profile-less state into the stable default profile', () => {

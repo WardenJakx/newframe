@@ -35,6 +35,7 @@ describe('createSideTrayWalletSelector', () => {
         [recipient.id]: recipient
       },
       accountOrder: [recipient.id, sender.id],
+      addressNames: {},
       activity: {},
       operations: {},
       balances: {
@@ -92,6 +93,7 @@ describe('createSideTrayWalletSelector', () => {
     const state = {
       accounts: { [account.id]: account },
       accountOrder: [account.id],
+      addressNames: {},
       activity: {},
       operations: {},
       balances: {},
@@ -127,6 +129,7 @@ describe('createSideTrayWalletSelector', () => {
     const state = {
       accounts: { [account.id]: account },
       accountOrder: [account.id],
+      addressNames: {},
       activity: {},
       operations: {},
       balances: { [account.address]: [] },
@@ -178,6 +181,7 @@ describe('createSideTrayWalletSelector', () => {
     const state = {
       accounts: { [account.id]: account },
       accountOrder: [account.id],
+      addressNames: {},
       activity: {},
       operations: {},
       balances: { [account.address]: [] },

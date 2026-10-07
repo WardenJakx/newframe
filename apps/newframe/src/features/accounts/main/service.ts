@@ -47,7 +47,7 @@ export function createAccountService(ports: AccountServicePorts) {
       return true
     },
 
-    remove(address: string, removeSeedSigner = false) {
+    remove(address: string, removeSeedSigner = false, keepName = false) {
       const accountId = address.toLowerCase()
       const state = ports.store.getState()
       const account = state.main.accounts[accountId]
@@ -66,7 +66,7 @@ export function createAccountService(ports: AccountServicePorts) {
         }
       }
 
-      ports.accounts.remove(accountId)
+      ports.accounts.remove(accountId, keepName)
       if (seedSignerId) {
         ports.signers.remove(seedSignerId)
       }

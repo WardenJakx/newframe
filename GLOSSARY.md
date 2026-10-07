@@ -34,6 +34,10 @@ _Avoid_: Workspace, wallet cluster
 An address Newframe tracks in a profile: a watch-only address, a Safe wallet, or an EOA backed by a signer.
 _Avoid_: Wallet (as a catch-all), address
 
+**Address book**:
+The names the human gives to addresses in a profile, shown in place of those addresses. An address in the address book is not an account.
+_Avoid_: Contacts, labels
+
 **Signer**:
 A source of signatures that can sign for one or more accounts, such as a hot wallet or hardware wallet.
 _Avoid_: Key, signing account

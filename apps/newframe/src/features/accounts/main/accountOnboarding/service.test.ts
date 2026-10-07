@@ -24,7 +24,7 @@ function harness() {
   ])
   const ports: AccountOnboardingPorts = {
     accounts: {
-      add: mock((address: string, name: string, signer: { type: string }) => {
+      add: mock((address: string, name: string, signer: { type: string; explicitName: boolean }) => {
         accounts.set(address.toLowerCase(), { address, name, signer })
       }),
       get: (accountId) => accounts.get(accountId),
@@ -82,7 +82,7 @@ it('owns account creation and authorized hardware sessions while keeping all onb
   expect((ports.accounts.add as Mock<typeof ports.accounts.add>).mock.calls.at(-1)).toEqual([
     addressA,
     'Imported',
-    { type: 'seed' }
+    { type: 'seed', explicitName: true }
   ])
   expect((ports.accounts.select as Mock<typeof ports.accounts.select>).mock.calls.at(-1)).toEqual([addressA])
 
@@ -117,7 +117,7 @@ it('owns account creation and authorized hardware sessions while keeping all onb
   expect((ports.accounts.add as Mock<typeof ports.accounts.add>).mock.calls.at(-1)).toEqual([
     addressA,
     'Hot Account',
-    { type: 'seed' }
+    { type: 'seed', explicitName: false }
   ])
 
   expect(await service.locateKeystore()).toEqual({ version: 3 })

@@ -183,6 +183,7 @@ it('acknowledges a real command and projects its completion only to the owning w
     airgap: {} as OperationServices['airgap'],
     safes: {} as OperationServices['safes'],
     accountMutations: {} as OperationServices['accountMutations'],
+    addressBook: {} as OperationServices['addressBook'],
     accountOnboarding: {} as OperationServices['accountOnboarding'],
     aiSession: {} as OperationServices['aiSession'],
     chains: {} as OperationServices['chains'],

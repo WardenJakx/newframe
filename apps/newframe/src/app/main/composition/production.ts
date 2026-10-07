@@ -52,6 +52,10 @@ import {
   type AccountOnboardingPorts,
   type AccountOnboardingService
 } from '../../../features/accounts/main/accountOnboarding/service.ts'
+import {
+  createAddressBookService,
+  type AddressBookService
+} from '../../../features/accounts/main/addressBook/service.ts'
 import { createProductionAirGapService } from '../../../features/accounts/main/airgap/production.ts'
 import type { AirGapService } from '../../../features/accounts/main/airgap/service.ts'
 import { Accounts } from '../../../features/accounts/main/index.ts'
@@ -135,6 +139,7 @@ export interface ProductionMainAppDependencies {
   trayAuthorization: TrayAuthorizationRegistry
   sideTrayTransactions: SideTrayTransactionService
   profileService: ProfileService
+  addressBookService: AddressBookService
   platformService: PlatformService
   settingsService: ReturnType<typeof createSettingsService>
   accountService: AccountService
@@ -296,6 +301,7 @@ export function createProductionCapabilities(
     provider,
     store
   })
+  const addressBookService = createAddressBookService({ store })
   const securityService = createSecurityService({
     ...adapters.security,
     operations: operationService,
@@ -476,6 +482,7 @@ export function createProductionCapabilities(
     operationService,
     platformService,
     profileService,
+    addressBookService,
     trayAuthorization,
     sideTrayTransactions,
     sendService,
@@ -503,6 +510,7 @@ function createProductionOperationServices(
   trayAuthorization: TrayAuthorizationRegistry,
   sideTrayTransactions: SideTrayTransactionService,
   profileService: ProfileService,
+  addressBookService: AddressBookService,
   platformService: PlatformService,
   settingsService: ReturnType<typeof createSettingsService>,
   accountService: AccountService,
@@ -522,6 +530,7 @@ function createProductionOperationServices(
     accounts,
     airgap: airgapService,
     accountMutations: accountService,
+    addressBook: addressBookService,
     aiSession: aiSessionService,
     chains: chainService,
     portfolio: portfolioService,
@@ -560,6 +569,7 @@ export function createProductionMainApp({
   trayAuthorization,
   sideTrayTransactions,
   profileService,
+  addressBookService,
   platformService,
   settingsService,
   accountService,
@@ -585,6 +595,7 @@ export function createProductionMainApp({
       trayAuthorization,
       sideTrayTransactions,
       profileService,
+      addressBookService,
       platformService,
       settingsService,
       accountService,

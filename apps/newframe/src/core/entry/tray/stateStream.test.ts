@@ -448,6 +448,7 @@ describe('tray state stream', () => {
       'accountOrder',
       'accounts',
       'activity',
+      'addressNames',
       'assetRates',
       'balances',
       'chains',

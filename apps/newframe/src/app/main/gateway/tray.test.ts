@@ -20,6 +20,7 @@ const accountMutations = fakes(
   'update',
   'select'
 )
+const addressBook = fakes('import', 'remove', 'save')
 const accountOnboarding = fakes(
   'createAccount',
   'disconnect',
@@ -86,6 +87,7 @@ const tokens = fakes('add', 'lookup', 'remove')
 const trade = fakes('cancel', 'dispose', 'prepare', 'quote', 'cancelOperation', 'submit')
 const servicesWithMocks = [
   accountMutations,
+  addressBook,
   accountOnboarding,
   safes,
   aiSession,
@@ -122,6 +124,7 @@ function createTestServices() {
     airgap: fakes('pairStart', 'pairScan', 'pairCancel', 'request', 'scan', 'cancel', 'dispose'),
     accounts: { current: mock(), get: mock() },
     accountMutations,
+    addressBook,
     accountOnboarding,
     protectedOperations: { exportPrivateKey: accountOnboarding.exportPrivateKey },
     safes,
@@ -236,13 +239,22 @@ describe('typed operation dispatcher', () => {
       { type: 'origin.remove', originId: 'origin-1' },
       { type: 'warning.toggle', warning: 'gas-fee' },
       { type: 'chain.remove', chainId: 1 },
-      { type: 'account.remove', address }
+      { type: 'account.remove', address, keepName: true },
+      { type: 'address-book.save', address, name: 'Alice' },
+      { type: 'address-book.remove', address },
+      { type: 'address-book.import', entries: [{ address, name: 'Alice' }] }
     ]
     for (const command of commands) {
       expect(dispatcher.dispatchCommand(event, command)).resolves.toEqual({ ok: true })
     }
     expect(platform.openTransactionExplorer).toHaveBeenCalledWith(1, undefined)
     expect(accountMutations.clearAccountAccessGrant).toHaveBeenCalledWith(address, undefined)
+    expect(accountMutations.remove).toHaveBeenCalledWith(address, undefined, true)
+
+    addressBook.save.mockReturnValueOnce(false)
+    expect(
+      dispatcher.dispatchCommand(event, { type: 'address-book.save', address, name: 'Alice' })
+    ).resolves.toEqual({ ok: false, error: 'invalid_command' })
 
     accountMutations.select.mockReturnValueOnce(false)
     expect(

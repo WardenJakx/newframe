@@ -26,6 +26,10 @@ export interface AccountsCapability extends ClipboardCapability {
   deleteProfile(input: CommandInput<'profile.delete'>): Promise<CommandResult>
   listMovableProfileAccounts(): Promise<QueryResultMap['profile.movable-accounts']>
 
+  saveAddressBookEntry(input: CommandInput<'address-book.save'>): Promise<CommandResult>
+  removeAddressBookEntry(input: CommandInput<'address-book.remove'>): Promise<CommandResult>
+  importAddressBookEntries(input: CommandInput<'address-book.import'>): Promise<CommandResult>
+
   inspectAddressChainUsage(
     input: Omit<QueryMap['address.chain-usage'], 'type'>
   ): Promise<QueryResultMap['address.chain-usage']>
@@ -63,6 +67,10 @@ export function createAccountsCapability(host: AccountsHost): AccountsCapability
     updateProfile: (input) => host.executeCommand({ type: 'profile.update', ...input }),
     deleteProfile: (input) => host.executeCommand({ type: 'profile.delete', ...input }),
     listMovableProfileAccounts: () => host.executeQuery({ type: 'profile.movable-accounts' }),
+
+    saveAddressBookEntry: (input) => host.executeCommand({ type: 'address-book.save', ...input }),
+    removeAddressBookEntry: (input) => host.executeCommand({ type: 'address-book.remove', ...input }),
+    importAddressBookEntries: (input) => host.executeCommand({ type: 'address-book.import', ...input }),
 
     inspectAddressChainUsage: (input) => host.executeQuery({ type: 'address.chain-usage', ...input }),
     getSecurityStatus: () => host.executeQuery({ type: 'security.status' }),

@@ -30,7 +30,7 @@ type HardwareFinishCommand = Extract<SignerSessionFinishCommand, { outcome: stri
 
 export interface AccountOnboardingPorts {
   accounts: {
-    add(address: string, name: string, signer: { type: string }): void
+    add(address: string, name: string, signer: { type: string; explicitName: boolean }): void
     get(accountId: string): unknown
     select(accountId: string): Promise<void>
   }
@@ -233,10 +233,10 @@ export function createAccountOnboardingService(ports: AccountOnboardingPorts): A
     )
   }
 
-  const addAndSelect = async (address: string, name: string, signerType: string) => {
+  const addAndSelect = async (address: string, name: string, signerType: string, explicitName: boolean) => {
     const accountId = address.toLowerCase()
     if (!ports.accounts.get(accountId)) {
-      ports.accounts.add(address, name, { type: signerType })
+      ports.accounts.add(address, name, { type: signerType, explicitName })
     }
     await ports.accounts.select(accountId)
     return accountId
@@ -265,7 +265,12 @@ export function createAccountOnboardingService(ports: AccountOnboardingPorts): A
             throw new Error('Account not found')
           }
           const name = signer ? `${capitalize(getSignerDisplayType(signer.type))} Account` : 'Watch Account'
-          const accountId = await addAndSelect(address, command.name ?? name, signer?.type ?? 'Address')
+          const accountId = await addAndSelect(
+            address,
+            command.name ?? name,
+            signer?.type ?? 'Address',
+            command.name !== undefined
+          )
           return {
             phase: 'selected',
             entityRefs: [
@@ -315,7 +320,12 @@ export function createAccountOnboardingService(ports: AccountOnboardingPorts): A
         if (!address) {
           throw new Error('No account address was created')
         }
-        const accountId = await addAndSelect(address, command.accountName ?? 'Hot Account', signer.type)
+        const accountId = await addAndSelect(
+          address,
+          command.accountName ?? 'Hot Account',
+          signer.type,
+          command.accountName !== undefined
+        )
         return {
           phase: 'selected',
           entityRefs: [
