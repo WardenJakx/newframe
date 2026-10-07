@@ -325,7 +325,7 @@ Issued At: 2026-09-13T12:00:00Z`
       }
     })
     renderAccount()
-    expect(screen.getByText(accountId)).toBeTruthy()
+    expect(screen.getByText('wants you to sign in')).toBeTruthy()
     expect(screen.queryByText(/differs from the signing account/)).toBeNull()
     expect(fixture.state.getState().currentAccount).toBe('other-wallet')
   }

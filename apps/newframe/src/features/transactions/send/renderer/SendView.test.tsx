@@ -30,6 +30,7 @@ it('preserves Safe identity through recipient selection and keeps copy separate'
     chainsMeta: {},
     recipient: null,
     recipientAccounts: [recipient],
+    recipientAddressBook: [],
     recipientInput: '',
     recipientOpen: true,
     rowsHidden: 0,

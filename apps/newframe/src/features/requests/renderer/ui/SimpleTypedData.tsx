@@ -6,11 +6,13 @@ import { DetailRow } from '../../../../shared/renderer/ui/DetailRow.tsx'
 import type { Erc7730Display } from '../../contract/requests.ts'
 import type { Eip712Digests } from '../../contract/requests.ts'
 import { RequestOrigin } from './RequestOrigin.tsx'
+import { SignedAddress } from './SignedAddress.tsx'
 
 type SimpleJsonRow = {
   path: string
   label: string
   value: string
+  address?: string
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -87,7 +89,11 @@ const flattenJsonRows = (json: unknown, prefix = ''): SimpleJsonRow[] => {
   }
 
   const value = formatValue(json)
-  return value === undefined || !prefix ? [] : [{ path: prefix, label: formatLabel(prefix), value }]
+  if (value === undefined || !prefix) {
+    return []
+  }
+  const address = typeof json === 'string' && /^0x[0-9a-fA-F]{40}$/.test(json) ? json : undefined
+  return [{ path: prefix, label: formatLabel(prefix), value, ...(address ? { address } : {}) }]
 }
 
 const SimpleJSON = ({ rows }: { rows: SimpleJsonRow[] }) => {
@@ -99,7 +105,17 @@ const SimpleJSON = ({ rows }: { rows: SimpleJsonRow[] }) => {
           key={row.path}
           label={row.label}
           labelVariant='overline'
-          value={row.value}
+          value={
+            row.address ? (
+              <SignedAddress address={row.address}>
+                <Text align='end' variant='code'>
+                  {row.value}
+                </Text>
+              </SignedAddress>
+            ) : (
+              row.value
+            )
+          }
           valueVariant='supporting'
         />
       ))}

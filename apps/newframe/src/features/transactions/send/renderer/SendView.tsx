@@ -161,6 +161,19 @@ export function SendView({
                               recipient={account}
                             />
                           ))}
+                          {model.recipientAddressBook.length ? (
+                            <>
+                              <RecipientSectionTitle icon='accounts' title='Address book' />
+                              {model.recipientAddressBook.map((entry) => (
+                                <RecipientOption
+                                  capability={capability}
+                                  key={entry.id}
+                                  onSelect={events.onSelectRecipient}
+                                  recipient={entry}
+                                />
+                              ))}
+                            </>
+                          ) : null}
                         </Stack>
                       </ScrollArea>
                     </Surface>

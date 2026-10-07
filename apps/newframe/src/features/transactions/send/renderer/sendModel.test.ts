@@ -4,7 +4,12 @@ import type { OperationRecord } from '../../../../platform/operations/operation.
 import type { SideTrayProjection } from '../../../../platform/state-sync/contract/projections.ts'
 import type { BalanceSummary } from '../../../asset-data/domain/balance/index.ts'
 import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.ts'
-import { filterSendRecipients, projectSendSubmission, selectSendAsset } from './sendModel.ts'
+import {
+  addressBookRecipients,
+  filterSendRecipients,
+  projectSendSubmission,
+  selectSendAsset
+} from './sendModel.ts'
 
 const sender = { id: 'sender', address: `0x${'1'.repeat(40)}`, name: 'Sender' }
 const recipient = { id: 'recipient', address: `0x${'2'.repeat(40)}`, name: 'Recipient' }
@@ -41,6 +46,21 @@ describe('sendModel', () => {
         sender
       )
     ).toEqual([recipient])
+  })
+
+  it('offers address book entries by name, leaving accounts to their own section', () => {
+    const zed = `0x${'3'.repeat(40)}`
+    const amy = `0x${'4'.repeat(40)}`
+    expect(
+      addressBookRecipients({
+        [zed]: { name: 'Zed', source: 'address-book' },
+        [sender.address]: { name: 'Sender', source: 'account' },
+        [amy]: { name: 'Amy', source: 'address-book' }
+      })
+    ).toEqual([
+      { id: amy, address: amy },
+      { id: zed, address: zed }
+    ])
   })
 
   it('correlates submission operations with projected transaction activity', () => {

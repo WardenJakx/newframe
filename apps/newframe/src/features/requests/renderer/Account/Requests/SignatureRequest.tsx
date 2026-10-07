@@ -5,6 +5,8 @@ import { ParsedMessage } from '@spruceid/siwe-parser'
 import { useMemo } from 'react'
 
 import { cva } from '../../../../../../generated/styled-system/css/cva.js'
+import { useAddressName } from '../../../../../shared/renderer/addressNames.tsx'
+import { AddressText } from '../../../../../shared/renderer/ui/AddressText.tsx'
 import { RequestOrigin } from '../../ui/RequestOrigin.tsx'
 import type { SignRequestView } from './requestViewTypes.ts'
 
@@ -15,6 +17,10 @@ const valueRecipe = cva({ base: { minWidth: 0, overflowWrap: 'anywhere' } })
 const summaryRecipe = cva({ base: { cursor: 'pointer', paddingBlock: '3', color: 'text.secondary' } })
 const detailsRecipe = cva({ base: { margin: 0, display: 'grid', gap: '4' } })
 const detailValueRecipe = cva({ base: { margin: 0, overflowWrap: 'anywhere' } })
+
+function SignInAddress({ address }: { address: string }) {
+  return useAddressName(address) ? <AddressText address={address} /> : address
+}
 
 function Message({ text }: { text: string }) {
   return (
@@ -101,19 +107,11 @@ export default function MessageToSign({
     <Surface padding='large' tone='transparent'>
       <Stack gap='large'>
         <RequestOrigin originName={requester} favicon={favicon} description='wants you to sign in' />
-        <Stack gap='small'>
-          <Text tone='secondary' variant='overline'>
-            Address in message
+        {addressMismatch ? (
+          <Text tone='danger' variant='supporting'>
+            The address in this message differs from the signing account: {signingAddress}
           </Text>
-          <div className={valueRecipe()}>
-            <Text variant='code'>{signIn.address}</Text>
-          </div>
-          {addressMismatch ? (
-            <Text tone='danger' variant='supporting'>
-              The address in this message differs from the signing account: {signingAddress}
-            </Text>
-          ) : null}
-        </Stack>
+        ) : null}
         <Surface border='subtle' padding='medium' radius='control' tone='raised'>
           <Stack gap='medium'>
             <Stack gap='xsmall'>
@@ -158,6 +156,18 @@ export default function MessageToSign({
         <details>
           <summary className={summaryRecipe()}>Sign-in details</summary>
           <dl className={detailsRecipe()}>
+            <div>
+              <dt>
+                <Text tone='secondary' variant='supporting'>
+                  Address
+                </Text>
+              </dt>
+              <dd className={detailValueRecipe()}>
+                <Text variant='code'>
+                  <SignInAddress address={signIn.address} />
+                </Text>
+              </dd>
+            </div>
             {metadata.map(([label, value]) =>
               value !== undefined ? (
                 <div key={label}>

@@ -120,6 +120,31 @@ describe('SimpleTypedData', () => {
     expect(screen.getByText('Hello, Bob! (0x48656c6c6f2c20426f6221)')).toBeTruthy()
   })
 
+  test('names a typed-data address the profile knows and keeps an unknown one fully raw', () => {
+    const known = '0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826'
+    const unknown = '0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB'
+    render(
+      <SimpleTypedData
+        originName='example.test'
+        req={{
+          type: 'signTypedData',
+          typedMessage: { data: { domain: { name: 'Ether Mail' }, message: { from: known, to: unknown } } }
+        }}
+      />,
+      {
+        trayState: createTrayStateFixture({
+          initialState: {
+            addressNames: { [known.toLowerCase()]: { name: 'Cow', source: 'address-book' } }
+          }
+        })
+      }
+    )
+
+    const row = (label: string) => screen.getByText(label).parentElement?.textContent
+    expect(row('from')).toBe(`fromCow0xCD2a3d...8DD826${known}`)
+    expect(row('to')).toBe(`to${unknown}`)
+  })
+
   test('does not render an empty Message section when there are no message fields', () => {
     render(
       <SimpleTypedData

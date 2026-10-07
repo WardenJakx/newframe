@@ -53,9 +53,23 @@ export interface TransactionEffect {
   decimals?: number
   symbol: string
   detail?: string
+  // Trays name the counterparty themselves, so it stays an address rather than text in `detail`.
+  counterparty?: { address: string; ens?: string }
   assetAddress?: string
   spenderAddress?: string
   logoURI?: string
+}
+
+function counterpartyFields(
+  prefix: string,
+  party?: { address?: string | undefined; ens?: string | undefined }
+) {
+  return party?.address
+    ? {
+        detail: prefix,
+        counterparty: { address: party.address, ...(party.ens ? { ens: party.ens } : {}) }
+      }
+    : {}
 }
 
 export interface TransactionPositionToken {
@@ -138,13 +152,6 @@ function safeBigInt(value?: string | number | bigint | null) {
   } catch {
     return 0n
   }
-}
-
-function shortAddress(address?: string) {
-  if (!address) {
-    return ''
-  }
-  return `${address.slice(0, 8)}...${address.slice(-6)}`
 }
 
 function firstRecognizedAction(req: TransactionSummaryInput) {
@@ -270,6 +277,13 @@ export function getTransactionIntent(req: TransactionSummaryInput, nativeSymbol 
   }
 }
 
+function approvalPrefix(revoke: boolean, amount?: string) {
+  if (revoke) {
+    return 'For'
+  }
+  return isUnlimitedApproval(amount) ? 'Unlimited for spender' : 'For spender'
+}
+
 function getDeterministicTransactionEffects(
   req: TransactionSummaryInput,
   nativeSymbol = 'ETH'
@@ -305,7 +319,7 @@ function getDeterministicTransactionEffects(
         direction: 'out',
         label: 'Asset out',
         symbol,
-        detail: recipient?.ens ?? shortAddress(recipient?.address),
+        ...counterpartyFields('To', recipient),
         ...(amount !== undefined ? { amount } : {}),
         ...(decimals !== undefined ? { decimals } : {}),
         ...(assetAddress ? { assetAddress } : {}),
@@ -327,9 +341,7 @@ function getDeterministicTransactionEffects(
         direction: 'neutral',
         label: revoke ? 'Allowance revoked' : 'Allowance change',
         symbol,
-        detail: `${revoke ? 'For' : 'For spender'} ${spender?.ens ?? shortAddress(spender?.address)}${
-          isUnlimitedApproval(amount) ? ' (unlimited)' : ''
-        }`,
+        ...counterpartyFields(approvalPrefix(revoke, amount), spender),
         ...(amount !== undefined ? { amount } : {}),
         ...(decimals !== undefined ? { decimals } : {}),
         ...(assetAddress ? { assetAddress } : {}),
@@ -352,7 +364,7 @@ function getDeterministicTransactionEffects(
       label: revoke ? 'Allowance revoked' : 'Allowance change',
       amount: addHexPrefix(safeBigInt(amount).toString(16)),
       symbol: token?.symbol ?? 'Token',
-      detail: `${revoke ? 'For' : 'For spender'} ${shortAddress(spender)}`,
+      ...counterpartyFields(approvalPrefix(revoke), { address: spender }),
       ...(req.data?.to ? { assetAddress: req.data.to } : {}),
       ...(spender ? { spenderAddress: spender } : {}),
       ...(typeof token?.decimals === 'number' && Number.isInteger(token.decimals)
@@ -373,7 +385,7 @@ function getDeterministicTransactionEffects(
       label: 'Asset out',
       amount: addHexPrefix(safeBigInt(amount).toString(16)),
       symbol: token?.symbol ?? 'Token',
-      detail: shortAddress(recipient),
+      ...counterpartyFields('To', { address: recipient }),
       ...(req.data?.to ? { assetAddress: req.data.to } : {}),
       ...(typeof token?.decimals === 'number' && Number.isInteger(token.decimals)
         ? { decimals: token.decimals }

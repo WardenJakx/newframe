@@ -16,6 +16,7 @@ import type {
   TokenImageCapability
 } from '../../../../../../shared/renderer/capabilities.ts'
 import { useTokenImageHydration } from '../../../../../../shared/renderer/hooks/useTokenImageHydration.ts'
+import { AddressText } from '../../../../../../shared/renderer/ui/AddressText.tsx'
 import { CopyButton } from '../../../../../../shared/renderer/ui/CopyButton.tsx'
 import { imageSource, persistedImageSource } from '../../../../../asset-data/domain/image/index.ts'
 import type { NativeCurrency } from '../../../../../chains/domain/state/nativeCurrency.ts'
@@ -275,6 +276,12 @@ function TransactionEffects({
                   {effect.detail ? (
                     <Text tone='secondary' variant='caption'>
                       {effect.detail}
+                      {effect.counterparty ? (
+                        <>
+                          {' '}
+                          <AddressText address={effect.counterparty.address} name={effect.counterparty.ens} />
+                        </>
+                      ) : null}
                     </Text>
                   ) : null}
                 </Stack>

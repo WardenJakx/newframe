@@ -212,6 +212,28 @@ type CallSectionContext = {
   decimals: number
 }
 
+function argValue(
+  arg: { type?: string; value: string },
+  addressValue: CallSectionContext['addressValue']
+): ReactNode {
+  if (arg.type === 'address') {
+    return addressValue(arg.value)
+  }
+  if (arg.type && /^address\[\d*\]$/.test(arg.type) && arg.value) {
+    return (
+      <Stack gap='xsmall'>
+        {arg.value
+          .split(',')
+          .map((address, position) => ({ address, path: `${position}:${address}` }))
+          .map(({ address, path }) => (
+            <div key={path}>{addressValue(address)}</div>
+          ))}
+      </Stack>
+    )
+  }
+  return arg.value
+}
+
 /** A native send names its recipient; a contract call names its contract in the header, not as a row. */
 export function callSection(call: CallSectionInput, context: CallSectionContext): TransactionDetailsSection {
   const value = toBigInt(call.value) ?? 0n
@@ -247,7 +269,7 @@ export function callSection(call: CallSectionInput, context: CallSectionContext)
     details: [
       ...(decoded?.args.map((arg, index) => ({
         label: `${arg.name ?? `Argument ${index + 1}`}${arg.type ? ` (${arg.type})` : ''}`,
-        value: arg.type === 'address' ? context.addressValue(arg.value) : arg.value
+        value: argValue(arg, context.addressValue)
       })) ?? []),
       ...(!decoded ? [{ label: 'Selector', value: call.data.slice(0, 10) }] : []),
       ...(value > 0n ? [{ label: 'Attached value', value: amount }] : [])
