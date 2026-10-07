@@ -44,7 +44,6 @@ export const buttonRecipe = cva({
         _focusVisible: { background: 'bg.hover', color: 'text.primary' }
       },
       subtle: { background: 'action.primary.subtle', color: 'action.primary' },
-      tor: { background: 'brand.tor', color: 'text.primary' },
       menu: { background: 'bg.primary', color: 'text.primary' },
       control: {
         background: 'bg.control',

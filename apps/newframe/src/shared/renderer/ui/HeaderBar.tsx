@@ -8,6 +8,7 @@ const headerBarRecipe = cva({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: '2',
     flex: 'none',
     paddingBlockStart: '7',
     paddingInline: '7'
