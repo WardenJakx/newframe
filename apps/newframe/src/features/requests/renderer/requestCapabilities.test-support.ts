@@ -61,6 +61,7 @@ export function createRequestTrayCapabilitiesFake() {
     external: {
       copy: acknowledged<Parameters<RequestTrayCapabilities['external']['copy']>[0]>(),
       openExplorer: acknowledged<Parameters<RequestTrayCapabilities['external']['openExplorer']>[0]>(),
+      openUrl: acknowledged<Parameters<RequestTrayCapabilities['external']['openUrl']>[0]>(),
       writeText: mock(async (_text: string) => ({ ok: true })),
       hydrateTokenImage: mock(async (_tokenId: string) => ({ ok: true }))
     }

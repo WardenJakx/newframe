@@ -56,24 +56,28 @@ export function SafeQueueView({
           const currency = currencies[deployment.chainId]
           const method = proposal.localDecoded?.method
           let title = 'Transfer'
-          if (method !== undefined) {
+          if (proposal.batch) {
+            title = 'Batch'
+          } else if (method !== undefined) {
             title = method
           } else if (proposal.operation === 1) {
             title = 'Delegatecall'
           } else if (proposal.data !== '0x') {
             title = 'Contract call'
           }
-          let description = 'Transaction'
-          if (method) {
-            description = 'Contract interaction'
+          let description = `Transaction · ${shortAddress(proposal.to)}`
+          if (proposal.batch) {
+            description = `${proposal.batch.length} ${proposal.batch.length === 1 ? 'action' : 'actions'}`
+          } else if (method) {
+            description = `${proposal.localDecoded?.contractName ?? 'Contract interaction'} · ${shortAddress(proposal.to)}`
           } else if (proposal.data === '0x' && currency) {
-            description = `${formatUnits(proposal.value, currency.decimals)} ${currency.symbol}`
+            description = `${formatUnits(proposal.value, currency.decimals)} ${currency.symbol} · ${shortAddress(proposal.to)}`
           }
           return (
             <RequestCard
               key={proposal.safeTxHash}
               title={title}
-              icon={<Icon name={proposal.data === '0x' ? 'arrowRight' : 'ethereum'} size='medium' />}
+              icon={<Icon name='safe' size='medium' />}
               status={mismatch ? 'Needs review' : 'Pending'}
               tone={mismatch ? 'danger' : 'accent'}
               state={mismatch ? 'failed' : 'pending'}
@@ -81,7 +85,7 @@ export function SafeQueueView({
               onOpen={() => onSelect(deployment.chainId, proposal.safeTxHash)}
             >
               <Text tone='secondary' variant='supporting'>
-                {description} · {shortAddress(proposal.to)}
+                {description}
               </Text>
             </RequestCard>
           )

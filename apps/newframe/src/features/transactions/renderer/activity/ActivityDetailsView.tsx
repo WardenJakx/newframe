@@ -81,7 +81,7 @@ export function ActivityDetailsView({
       <TransactionInformation
         imageCapability={capability}
         originName={originName}
-        details={details}
+        sections={[{ details }]}
         effects={effects}
         effectsEmptyText='No direct asset changes detected'
         nativeCurrency={nativeCurrency}

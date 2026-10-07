@@ -1,4 +1,4 @@
-import { Icon } from '@newframe/ui/icon'
+import { Icon, type IconName } from '@newframe/ui/icon'
 import { MediaIcon } from '@newframe/ui/media-icon'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
@@ -11,10 +11,12 @@ const nameRecipe = cva({ base: { minWidth: 0, maxWidth: '100%', overflowWrap: 'a
 export function RequestOrigin({
   originName,
   favicon = '',
+  icon = 'window',
   description
 }: {
   originName: ReactNode
   favicon?: string
+  icon?: IconName
   description?: string
 }) {
   const [failedFavicon, setFailedFavicon] = useState('')
@@ -28,7 +30,7 @@ export function RequestOrigin({
         source={failedFavicon !== favicon ? favicon : undefined}
         tone='secondary'
       >
-        <Icon name='window' size='large' />
+        <Icon name={icon} size='large' />
       </MediaIcon>
       <div className={nameRecipe()}>
         <Text align='center' variant='heading'>
