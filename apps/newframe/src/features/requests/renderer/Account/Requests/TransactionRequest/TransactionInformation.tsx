@@ -1,6 +1,6 @@
 import { Button } from '@newframe/ui/button'
 import { Disclosure } from '@newframe/ui/disclosure'
-import { Icon } from '@newframe/ui/icon'
+import { Icon, type IconName } from '@newframe/ui/icon'
 import { Image } from '@newframe/ui/image'
 import { Inline } from '@newframe/ui/inline'
 import { MediaIcon } from '@newframe/ui/media-icon'
@@ -38,6 +38,13 @@ export type TransactionInformationDetailRow = {
   actionLabel?: string
 }
 
+export type TransactionDetailsSection = {
+  title?: ReactNode
+  target?: ReactNode
+  notice?: ReactNode
+  details: TransactionInformationDetailRow[]
+}
+
 type TransactionInformationNativeCurrency = Pick<NativeCurrency, 'image' | 'symbol'>
 
 type TransactionInformationCalldata = {
@@ -49,18 +56,17 @@ export type TransactionInformationProps = {
   imageCapability: TokenImageCapability
   originName: ReactNode
   favicon?: string
+  originIcon?: IconName
   chainName: ReactNode
   chainIcon?: string
   statusLabel: ReactNode
   notice?: ReactNode
   statusDetails?: ReactNode
-  actionTitle?: ReactNode
-  actionNotice?: ReactNode
   beforeDetails?: ReactNode
   effects?: TransactionInformationEffect[]
   effectsEmptyText?: ReactNode
   effectsNotice?: ReactNode
-  details: TransactionInformationDetailRow[]
+  sections: TransactionDetailsSection[]
   wrapDetailValues?: boolean
   calldata?: TransactionInformationCalldata
   clipboard?: ClipboardCapability
@@ -138,6 +144,7 @@ const sectionHeaderRecipe = cva({
     display: 'flex',
     alignItems: 'center',
     paddingInline: '6',
+    paddingBlock: '2',
     background: 'bg.control'
   }
 })
@@ -447,18 +454,17 @@ export default function TransactionInformation({
   imageCapability,
   originName,
   favicon,
+  originIcon,
   chainName,
   chainIcon,
   statusLabel,
   notice,
   statusDetails,
-  actionTitle,
-  actionNotice,
   beforeDetails,
   effects,
   effectsEmptyText,
   effectsNotice,
-  details,
+  sections,
   wrapDetailValues,
   calldata,
   clipboard,
@@ -468,9 +474,10 @@ export default function TransactionInformation({
   children
 }: TransactionInformationProps) {
   const [rawOpen, setRawOpen] = useState(false)
-  const keyedDetails = details.map((detail, position) => ({
-    detail,
-    path: `${detail.label}-${position}`
+  const keyedSections = sections.map((section, position) => ({
+    section,
+    path: `section-${position}`,
+    details: section.details.map((detail, index) => ({ detail, path: `${detail.label}-${index}` }))
   }))
   const keyedVerification = verification?.map((detail, position) => ({
     detail,
@@ -482,7 +489,7 @@ export default function TransactionInformation({
         <Stack gap='small' grow>
           <section aria-label='Request summary' className={requestSummaryRecipe()}>
             <Stack align='center' gap='xsmall'>
-              <RequestOrigin originName={originName} favicon={favicon} />
+              <RequestOrigin originName={originName} favicon={favicon} icon={originIcon} />
               <Stack align='center' gap='xsmall'>
                 <output className={badgeRecipe()}>
                   <Text tone='accent' variant='overline'>
@@ -515,23 +522,39 @@ export default function TransactionInformation({
 
           {beforeDetails}
 
-          <Surface padding='none' radius='card' tone='card'>
-            <section aria-label='Transaction details' className={sectionRecipe()}>
-              <div className={sectionHeaderRecipe()}>
-                <Text variant={actionTitle ? 'sectionTitle' : 'overline'}>
-                  {actionTitle ?? 'Request details'}
-                </Text>
-              </div>
-              <Surface padding='small' radius='none' tone='card'>
-                <Stack gap='xsmall'>
-                  {actionNotice}
-                  {keyedDetails.map(({ detail, path }) => (
-                    <DetailRow key={path} {...detail} wrap={wrapDetailValues} />
-                  ))}
-                </Stack>
-              </Surface>
-            </section>
-          </Surface>
+          {sections.length > 1 ? (
+            <Text tone='secondary' variant='overline'>
+              {sections.length} actions
+            </Text>
+          ) : null}
+          {keyedSections.map(({ section, path, details }, index) => (
+            <Surface key={path} padding='none' radius='card' tone='card'>
+              <section
+                aria-label={sections.length > 1 ? `Action ${index + 1}` : 'Transaction details'}
+                className={sectionRecipe()}
+              >
+                <div className={sectionHeaderRecipe()}>
+                  <Inline align='center' gap='small' grow justify='between' wrap>
+                    <Text variant={section.title ? 'sectionTitle' : 'overline'}>
+                      {sections.length > 1 ? `${index + 1}. ` : null}
+                      {section.title ?? 'Request details'}
+                    </Text>
+                    {section.target}
+                  </Inline>
+                </div>
+                {section.notice || details.length ? (
+                  <Surface padding='small' radius='none' tone='card'>
+                    <Stack gap='xsmall'>
+                      {section.notice}
+                      {details.map(({ detail, path: detailPath }) => (
+                        <DetailRow key={detailPath} {...detail} wrap={wrapDetailValues} />
+                      ))}
+                    </Stack>
+                  </Surface>
+                ) : null}
+              </section>
+            </Surface>
+          ))}
 
           {calldata || verification?.length || rawTransaction ? (
             <Surface padding='small' radius='card' tone='card'>

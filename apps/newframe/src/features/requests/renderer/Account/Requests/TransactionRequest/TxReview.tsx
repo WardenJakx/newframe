@@ -1,5 +1,5 @@
 import { Button } from '@newframe/ui/button'
-import { Icon } from '@newframe/ui/icon'
+import { Icon, type IconName } from '@newframe/ui/icon'
 import { Inline } from '@newframe/ui/inline'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
@@ -37,6 +37,7 @@ import {
 } from '../state.ts'
 import TransactionInformation from './TransactionInformation.tsx'
 import type {
+  TransactionDetailsSection,
   TransactionInformationDetailRow,
   TransactionInformationProps
 } from './TransactionInformation.tsx'
@@ -92,6 +93,7 @@ export type TxReviewProps = {
   chainIcon?: string
   originName: string
   favicon?: string
+  originIcon?: IconName
   tokens?: ReturnType<typeof useTokens>
   renderAddress?: (address: string) => ReactNode
   fee?: Omit<TxFeeSummaryProps, 'chain' | 'nativeCurrency' | 'isTestnet' | 'nativeCurrencyRate'>
@@ -106,7 +108,7 @@ export type TxReviewProps = {
       | 'effectsNotice'
       | 'verification'
       | 'rawTransaction'
-    >
+    > & { sections: TransactionDetailsSection[] }
   >
   footer?: ReactNode
 }
@@ -197,6 +199,72 @@ const transferRecipient = (req: TxReviewData): ActionIdentity | undefined => {
   }
   const decoded = decodedData.args.at(0)?.value
   return typeof decoded === 'string' ? { address: decoded } : undefined
+}
+
+type CallSectionInput = {
+  to: string
+  value?: string
+  data: string
+  decoded?: {
+    method: string
+    args: Array<{ name?: string; type?: string; value: string }>
+    contractName?: string
+  }
+  recipient?: string
+  fallbackTitle?: string
+  recognized?: boolean
+  delegatecall?: boolean
+}
+
+type CallSectionContext = {
+  addressValue: (address: string, nickname?: string) => ReactNode
+  contractTarget?: (address: string, nickname?: string) => ReactNode
+  symbol: string
+  decimals: number
+}
+
+/** A native send names its recipient; a contract call names its contract in the header, not as a row. */
+export function callSection(call: CallSectionInput, context: CallSectionContext): TransactionDetailsSection {
+  const value = toBigInt(call.value) ?? 0n
+  const amount = `${formatUnits(value, context.decimals)} ${context.symbol}`
+  if (call.data === '0x') {
+    return {
+      title: `Send ${amount}`,
+      details: [{ label: 'To', value: context.addressValue(call.to, call.recipient) }]
+    }
+  }
+  const decoded = call.decoded
+  const undecodable = !decoded && !call.recognized && call.data.length > 2
+  const target = context.contractTarget ?? context.addressValue
+  return {
+    title: decoded ? `Call ${decoded.method}` : (call.fallbackTitle ?? 'Contract call'),
+    target: target(call.to, decoded?.contractName ?? call.recipient),
+    notice:
+      call.delegatecall || undecodable ? (
+        <Stack gap='xsmall'>
+          {call.delegatecall ? (
+            <div role='alert' aria-label='Delegatecall warning'>
+              <Text tone='danger' variant='caption'>
+                Delegatecall runs code with this Safe&apos;s permissions.
+              </Text>
+            </div>
+          ) : null}
+          {undecodable ? (
+            <Text tone='secondary' variant='caption'>
+              Cannot decode calldata. Inspect the selector and raw bytes.
+            </Text>
+          ) : null}
+        </Stack>
+      ) : undefined,
+    details: [
+      ...(decoded?.args.map((arg, index) => ({
+        label: `${arg.name ?? `Argument ${index + 1}`}${arg.type ? ` (${arg.type})` : ''}`,
+        value: arg.type === 'address' ? context.addressValue(arg.value) : arg.value
+      })) ?? []),
+      ...(!decoded ? [{ label: 'Selector', value: call.data.slice(0, 10) }] : []),
+      ...(value > 0n ? [{ label: 'Attached value', value: amount }] : [])
+    ]
+  }
 }
 
 function TxFeeSummary(props: TxFeeSummaryProps) {
@@ -325,7 +393,6 @@ export function TxReviewView(props: TxReviewProps) {
   const originName = props.originName || req.origin
   const to = req.data.to ? getAddress(req.data.to) : ''
   const calldata = req.data.data
-  const method = req.decodedData?.method
   const hasRecognizedTokenAction = req.recognizedActions?.some((action) =>
     ['erc20:transfer', 'erc20:approve', 'erc20:revoke'].includes(action.id)
   )
@@ -370,7 +437,6 @@ export function TxReviewView(props: TxReviewProps) {
   const isApproval = actionId === 'erc20:approve' || actionId === 'erc20:revoke'
   const nativeTransfer = req.classification === 'NATIVE_TRANSFER'
   const intent = getTransactionIntent(effectsRequest, symbol)
-  const nativeAmount = formatUnits(toBigInt(req.data.value) ?? 0n, meta.nativeCurrency?.decimals ?? 18)
   const amount = token?.amount ?? req.decodedData?.args[1]?.value
   const tokenDecimals = req.tokenData?.decimals ?? token?.decimals
   const knownDecimals =
@@ -396,12 +462,18 @@ export function TxReviewView(props: TxReviewProps) {
         showFullAddress
       />
     )
+  const contractTarget = (address: string, nickname?: string) => (
+    <AddressIdentity
+      address={address}
+      clipboard={props.capabilities.external}
+      accountType={props.identities?.[address.toLowerCase()]?.accountType}
+      nickname={props.identities?.[address.toLowerCase()]?.nickname ?? nickname}
+    />
+  )
   const contractName = token?.name ?? tokenSymbol ?? req.decodedData?.contractName ?? req.recipient
   const spender = token?.spender ?? (isApproval ? { address: req.decodedData?.args[0]?.value } : undefined)
-  let details: TransactionInformationDetailRow[]
-  if (nativeTransfer) {
-    details = [{ label: 'To', value: addressValue(to, req.recipient) }]
-  } else if (isTransfer || isApproval) {
+  let section: TransactionDetailsSection
+  if (isTransfer || isApproval) {
     let counterparty: TransactionInformationDetailRow['value'] = 'Spender unavailable'
     if (isTransfer) {
       counterparty = recipient?.address
@@ -410,34 +482,35 @@ export function TxReviewView(props: TxReviewProps) {
     } else if (spender?.address) {
       counterparty = addressValue(spender.address, spender.ens)
     }
-    details = [
-      {
-        label: isTransfer ? 'To' : 'Spender',
-        value: counterparty
-      },
-      { label: 'Amount', value: amountText },
-      { label: 'Token contract', value: addressValue(token?.contract?.address ?? to, contractName) }
-    ]
+    section = {
+      title: intent.title,
+      details: [
+        { label: isTransfer ? 'To' : 'Spender', value: counterparty },
+        { label: 'Amount', value: amountText },
+        { label: 'Token contract', value: addressValue(token?.contract?.address ?? to, contractName) },
+        ...((toBigInt(req.data.value) ?? 0n) > 0n
+          ? [
+              {
+                label: 'Attached value',
+                value: `${formatUnits(toBigInt(req.data.value) ?? 0n, meta.nativeCurrency?.decimals ?? 18)} ${symbol}`
+              }
+            ]
+          : [])
+      ]
+    }
   } else {
-    details = [
-      { label: 'On contract', value: addressValue(to, contractName) },
-      ...(req.decodedData?.args.map((arg, index) => ({
-        label: `${arg.name ?? `Argument ${index + 1}`}${arg.type ? ` (${arg.type})` : ''}`,
-        value: arg.type === 'address' ? addressValue(arg.value) : arg.value
-      })) ?? []),
-      ...(!req.decodedData && calldata && calldata !== '0x'
-        ? [{ label: 'Selector', value: calldata.slice(0, 10) }]
-        : [])
-    ]
-  }
-  if (!nativeTransfer && (toBigInt(req.data.value) ?? 0n) > 0n) {
-    details.push({ label: 'Attached value', value: `${nativeAmount} ${symbol}` })
-  }
-  let actionTitle = intent.title
-  if (nativeTransfer) {
-    actionTitle = `Send ${nativeAmount} ${symbol}`
-  } else if (!isTransfer && !isApproval && method) {
-    actionTitle = `Call ${method}`
+    section = callSection(
+      {
+        to,
+        value: req.data.value,
+        data: nativeTransfer ? '0x' : (calldata ?? ''),
+        decoded: req.decodedData,
+        recipient: req.recipient,
+        fallbackTitle: intent.title,
+        recognized: Boolean(actionId)
+      },
+      { addressValue, contractTarget, symbol, decimals: meta.nativeCurrency?.decimals ?? 18 }
+    )
   }
   const transactionHash = req.tx?.hash
 
@@ -445,14 +518,6 @@ export function TxReviewView(props: TxReviewProps) {
     <TransactionInformation
       imageCapability={props.capabilities.external}
       clipboard={props.capabilities.external}
-      actionTitle={actionTitle}
-      actionNotice={
-        !req.decodedData && !actionId && calldata && calldata !== '0x' ? (
-          <Text tone='secondary' variant='caption'>
-            Cannot decode calldata. Inspect the selector and raw bytes.
-          </Text>
-        ) : undefined
-      }
       verification={transactionHash ? [{ label: 'Transaction hash', value: transactionHash }] : undefined}
       rawTransaction={JSON.stringify(req.data, null, 2)}
       wrapDetailValues
@@ -472,7 +537,8 @@ export function TxReviewView(props: TxReviewProps) {
           </div>
         ) : undefined
       }
-      details={details}
+      sections={props.extensions?.sections ?? [section]}
+      originIcon={props.originIcon}
       calldata={
         calldata && calldata !== '0x' ? { data: calldata, digest: req.data.calldataDigest } : undefined
       }

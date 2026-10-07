@@ -823,7 +823,7 @@ it('keeps a single named argument visible and separates calldata verification fr
   renderRequest(req)
   const details = screen.getByLabelText('Transaction details')
   expect(details.textContent).toMatch(
-    /Call setValue.*On contract.*Storage.*newValue \(uint256\).*42.*Attached value.*1.0 MATIC/
+    /Call setValue.*Storage.*newValue \(uint256\).*42.*Attached value.*1.0 MATIC/
   )
   expect(
     screen.getByLabelText('Transaction effects').compareDocumentPosition(details) &
@@ -897,7 +897,7 @@ it.each([
     classification: TxClassification.CONTRACT_CALL
   })
   expect(screen.getByLabelText('Transaction details').textContent).toMatch(
-    new RegExp(`Call ${decodedData.method}.*On contract.*uint256.*42`)
+    new RegExp(`Call ${decodedData.method}.*uint256.*42`)
   )
   expect(screen.queryByText('Spender')).toBeNull()
   expect(screen.queryByText('Token contract')).toBeNull()

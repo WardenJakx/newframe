@@ -43,6 +43,7 @@ interface TransactionReviewCapability {
 export interface RequestExternalCapability extends ClipboardCapability, TokenImageCapability {
   copy(input: CommandInput<'clipboard.write'>): Promise<CommandResult>
   openExplorer(input: CommandInput<'explorer.open'>): Promise<CommandResult>
+  openUrl(input: CommandInput<'external.open'>): Promise<CommandResult>
 }
 
 interface SafeQueueCapability {
@@ -97,6 +98,7 @@ const createTransactionReviewCapability = (host: RequestHost): TransactionReview
 const createRequestExternalCapability = (host: RequestHost): RequestExternalCapability => ({
   copy: (input) => host.executeCommand({ type: 'clipboard.write', ...input }),
   openExplorer: (input) => host.executeCommand({ type: 'explorer.open', ...input }),
+  openUrl: (input) => host.executeCommand({ type: 'external.open', ...input }),
   writeText: (text) => host.executeCommand({ type: 'clipboard.write', text }),
   hydrateTokenImage: (tokenId) => host.executeCommand({ type: 'token.image-hydrate', tokenId })
 })

@@ -947,7 +947,9 @@ it('refreshes cached proposals, distinguishes same-nonce hashes, and removes van
   expect(screen.queryByText('Owner')).toBeNull()
   expect(screen.queryByText('Last refreshed')).toBeNull()
   expect(screen.queryByText('Network')).toBeNull()
-  expect(screen.getByLabelText('Transaction details').textContent).toMatch(/Call contract.*On contract/)
+  expect(screen.getByLabelText('Transaction details').textContent).toMatch(
+    /Call contract.*0x111111\.\.\.111111.*Selector/
+  )
   expect(screen.getAllByRole('button', { name: /^Back/ })).toHaveLength(1)
   expect(screen.getByText('Safe proposal')).toBeTruthy()
   await user.click(screen.getByRole('button', { name: 'Back to requests' }))
@@ -1177,7 +1179,7 @@ it('keeps matching Safe checks silent and exposes raw integer arguments, confirm
   expect(screen.queryByText('Native value')).toBeNull()
   expect(screen.queryByText('ABI source')).toBeNull()
   expect(screen.getByLabelText('Transaction details').textContent).toMatch(
-    /Call approve.*On contract.*amount \(uint256\).*1000000/
+    /Call approve.*0x111111\.\.\.111111.*amount \(uint256\).*1000000/
   )
   expect(screen.getByLabelText('Transaction details').textContent).not.toMatch(/allowance|ETH|Nonce/i)
   expect(screen.queryByText(/forged/)).toBeNull()
@@ -1191,6 +1193,53 @@ it('keeps matching Safe checks silent and exposes raw integer arguments, confirm
     expect.stringContaining('"nonce": "3"') as unknown
   )
   expectSafeSubmissionDisabled()
+})
+
+it('shows each MultiSend call as its own action and links to the proposal in the Safe app', async () => {
+  const capabilities = createCapabilityFake()
+  const proxy = `0x${'5'.repeat(40)}`
+  const proposal = {
+    ...deployment.pending![0],
+    to: '0x40A2aCCbd92BCA938b02010E17A5b8929b49130D',
+    value: '0',
+    integrity: { status: 'matched' as const, reason: 'Hash matches' },
+    batch: [
+      {
+        operation: 0 as const,
+        to: proxy,
+        value: '0',
+        data: '0x8745e1c0',
+        decoded: {
+          method: 'addSwapHandlers',
+          source: 'Sourcify',
+          contractName: 'ERC1967Proxy',
+          parameters: [{ name: '_swapHandlers', type: 'address[]', value: address }]
+        }
+      },
+      { operation: 0 as const, to: address, value: '2000000000000000000', data: '0x' }
+    ]
+  }
+  const { user } = render(
+    <SafeProposalDetailsView
+      deployment={deployment}
+      proposal={proposal}
+      simulation={{ status: 'success', effects: [], ...previewContext, currentNonce: '3' }}
+      chainName='Ethereum'
+      symbol='ETH'
+      capabilities={capabilities}
+    />
+  )
+  expect(screen.getByText('2 actions')).toBeTruthy()
+  expect(screen.getByLabelText('Action 1').textContent).toMatch(
+    /1\. Call addSwapHandlers.*ERC1967Proxy.*_swapHandlers \(address\[\]\)/
+  )
+  expect(screen.getByLabelText('Action 2').textContent).toMatch(/2\. Send 2\.0 ETH.*To/)
+  expect(screen.queryByText(/multiSend/)).toBeNull()
+  expect(screen.queryByRole('alert', { name: 'Delegatecall warning' })).toBeNull()
+  await user.click(screen.getByRole('button', { name: 'View in Safe app' }))
+  expect(capabilities.external.openUrl).toHaveBeenCalledWith({
+    url: `https://app.safe.global/transactions/tx?safe=eth%3A${address}&id=multisig_${address}_${hash}`
+  })
 })
 
 it.each([

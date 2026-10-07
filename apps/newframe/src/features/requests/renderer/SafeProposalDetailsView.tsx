@@ -1,4 +1,6 @@
+import { Button } from '@newframe/ui/button'
 import { Disclosure } from '@newframe/ui/disclosure'
+import { Icon } from '@newframe/ui/icon'
 import { Inline } from '@newframe/ui/inline'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
@@ -7,12 +9,17 @@ import { useState, type ReactNode } from 'react'
 import { getCalldataDigest } from '../../../shared/domain/calldata.ts'
 import { AddressIdentity, shortAddress } from '../../../shared/renderer/ui/AddressIdentity.tsx'
 import type { SafeDeployment, SafeProposal, SafeProposalSimulation } from '../../accounts/domain/safe.ts'
+import { safeAppTransactionUrl } from '../../accounts/domain/safeChains.ts'
 import type { TransactionApprovalAdjustments } from '../../transactions/domain/approval.ts'
 import type { TransactionFeeField } from '../../transactions/domain/fees.ts'
 import { TxClassification, type SafeExecutionMetadata, type SigningCandidate } from '../contract/requests.ts'
 import type { useAssetRate, useAddressIdentities, useTokens } from './Account/Requests/state.ts'
 import AdjustFee from './Account/Requests/TransactionRequest/AdjustFee.tsx'
-import { TxReviewView, type TxReviewData } from './Account/Requests/TransactionRequest/TxReview.tsx'
+import {
+  callSection,
+  TxReviewView,
+  type TxReviewData
+} from './Account/Requests/TransactionRequest/TxReview.tsx'
 import type { RequestTrayCapabilities } from './requestCapabilities.ts'
 import { RequestActions } from './ui/RequestActions.tsx'
 import { RequestSigningFooter } from './ui/RequestSigningFooter.tsx'
@@ -153,9 +160,36 @@ export function SafeProposalDetailsView({
     classification: nativeTransfer ? TxClassification.NATIVE_TRANSFER : TxClassification.CONTRACT_CALL,
     // Local decoding has no verified ABI signature. Keep it as generic method/argument display.
     decodedData: proposal.localDecoded
-      ? { method: proposal.localDecoded.method, args: proposal.localDecoded.parameters }
+      ? {
+          method: proposal.localDecoded.method,
+          args: proposal.localDecoded.parameters,
+          contractName: proposal.localDecoded.contractName
+        }
       : undefined
   }
+  const contractTarget = (address: string, nickname?: string) => (
+    <AddressIdentity address={address} clipboard={capabilities.external} nickname={nickname} />
+  )
+  const sections = proposal.batch?.map((action) =>
+    callSection(
+      {
+        to: action.to,
+        value: action.value,
+        data: action.data,
+        decoded: action.decoded && {
+          method: action.decoded.method,
+          args: action.decoded.parameters,
+          contractName: action.decoded.contractName
+        },
+        delegatecall: action.operation === 1
+      },
+      { addressValue, contractTarget, symbol, decimals }
+    )
+  )
+  const published = !proposal.local || proposal.local.publication.status === 'published'
+  const safeAppUrl = published
+    ? safeAppTransactionUrl(deployment.chainId, proposal.safe, proposal.safeTxHash)
+    : undefined
   const verification = [
     { label: 'Safe transaction hash', value: proposal.safeTxHash },
     ...(actions?.outerTxHash ? [{ label: 'Outer transaction hash', value: actions.outerTxHash }] : []),
@@ -249,6 +283,7 @@ export function SafeProposalDetailsView({
       capabilities={capabilities}
       originName={originName ?? review.origin}
       favicon={favicon}
+      originIcon='safe'
       chain={{ name: chainName, isTestnet }}
       chainMetadata={{ nativeCurrency: { symbol, decimals } }}
       chainIcon={chainIcon}
@@ -267,22 +302,38 @@ export function SafeProposalDetailsView({
           : undefined
       }
       extensions={{
+        ...(sections ? { sections } : {}),
         statusDetails: (
-          <Disclosure
-            label={`${confirmations.length} / ${threshold} confirmations`}
-            open={confirmationsOpen}
-            onToggle={() => setConfirmationsOpen((open) => !open)}
-          >
-            <Stack gap='xsmall'>
-              {confirmations.length ? (
-                confirmations.map((address) => <div key={address}>{addressValue(address)}</div>)
-              ) : (
-                <Text variant='caption' tone='secondary'>
-                  No confirmations yet
-                </Text>
-              )}
-            </Stack>
-          </Disclosure>
+          <Stack align='center' gap='xsmall'>
+            <Disclosure
+              label={`${confirmations.length} / ${threshold} confirmations`}
+              open={confirmationsOpen}
+              onToggle={() => setConfirmationsOpen((open) => !open)}
+            >
+              <Stack gap='xsmall'>
+                {confirmations.length ? (
+                  confirmations.map((address) => <div key={address}>{addressValue(address)}</div>)
+                ) : (
+                  <Text variant='caption' tone='secondary'>
+                    No confirmations yet
+                  </Text>
+                )}
+              </Stack>
+            </Disclosure>
+            {safeAppUrl ? (
+              <Button
+                appearance='ghost'
+                label='View in Safe app'
+                onPress={() => void capabilities.external.openUrl({ url: safeAppUrl })}
+                size='small'
+              >
+                <Inline align='center' gap='xsmall'>
+                  <Icon name='safe' size='small' />
+                  <Text variant='caption'>View in Safe app</Text>
+                </Inline>
+              </Button>
+            ) : null}
+          </Stack>
         ),
         verification,
         rawTransaction: JSON.stringify(
@@ -338,7 +389,7 @@ export function SafeProposalDetailsView({
                 </Text>
               </div>
             ) : null}
-            {proposal.operation === 1 ? (
+            {proposal.operation === 1 && !proposal.batch ? (
               <div role='alert' aria-label='Delegatecall warning'>
                 <Text tone='danger' variant='caption'>
                   Delegatecall runs code with this Safe&apos;s permissions.
