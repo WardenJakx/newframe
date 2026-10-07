@@ -41,7 +41,9 @@ export function messageSource(
   payloadTab: unknown,
   settingsUrl: string
 ): MessageSource {
-  if (sender.tab) {
+  // The settings panel also runs in a tab when opened as a page rather than as the action popup.
+  const settingsInTab = sender.origin === originFromUrl(settingsUrl) && sender.url === settingsUrl
+  if (sender.tab && !settingsInTab) {
     // sender.origin is the browser's security origin for the sending frame; opaque
     // origins (sandboxed frames) get no identity
     const { origin } = sender

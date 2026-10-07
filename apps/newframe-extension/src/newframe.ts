@@ -184,8 +184,9 @@ shimWeb3(window.ethereum, mmAppear)
 
 const embedded: Record<string, () => Promise<unknown>> = {
   getChainId: async () => ({
-    // use Newframe's own provider; window.ethereum may belong to another wallet
-    chainId: await provider?.doSend('eth_chainId', [], undefined, false)
+    // use Newframe's own provider; window.ethereum may belong to another wallet. Without a connection there
+    // is no chain to report, and the popup already shows the connection state.
+    chainId: await provider?.doSend('eth_chainId', [], undefined, false).catch(() => undefined)
   })
 }
 
