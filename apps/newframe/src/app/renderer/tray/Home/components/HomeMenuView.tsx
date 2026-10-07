@@ -4,18 +4,22 @@ import { MenuItem } from '../../ui/Menu/MenuItem.tsx'
 import { MenuOverlay } from '../../ui/Menu/MenuOverlay.tsx'
 
 export function HomeMenuView({
+  addressBookCount,
   instanceId,
   onClose,
   onOpenAbout,
+  onOpenAddressBook,
   onOpenDapps,
   onOpenSettings,
   onOpenTokens,
   onQuit,
   tokenCount
 }: {
+  addressBookCount: number
   instanceId: string
   onClose: () => void
   onOpenAbout: () => void
+  onOpenAddressBook: () => void
   onOpenDapps: () => void
   onOpenSettings: () => void
   onOpenTokens: () => void
@@ -32,6 +36,12 @@ export function HomeMenuView({
             icon='tokens'
             label='Custom Tokens'
             onPress={onOpenTokens}
+          />
+          <MenuItem
+            detail={addressBookCount ? `${addressBookCount} named` : 'Name the addresses you know'}
+            icon='accounts'
+            label='Address book'
+            onPress={onOpenAddressBook}
           />
           <MenuItem
             detail='App, shortcuts, signer defaults'

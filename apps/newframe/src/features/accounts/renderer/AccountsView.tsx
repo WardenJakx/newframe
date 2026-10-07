@@ -74,6 +74,7 @@ interface AccountsViewEvents {
   onAccountDrop: (event: DragEvent, accountId: string) => void
   onAccountExportOpen: (accountId: string) => void
   onAccountMenuToggle: (accountId: string) => void
+  onAccountMoveToAddressBook: (accountId: string) => void
   onAccountRemove: (accountId: string, removeSeedPhrase: boolean) => void
   onAccountRemoveCancel: () => void
   onAccountRemoveOpen: (accountId: string) => void
@@ -176,6 +177,7 @@ function AccountActions({
   onExportOpen: () => void
   onMoveOpenChange: (open: boolean) => void
   onMoveSelect: (profileId: string) => void
+  onMoveToAddressBook: () => void
   onRemove: (removeSeedPhrase: boolean) => void
   onRemoveCancel: () => void
   onRemoveOpen: () => void
@@ -254,6 +256,11 @@ function AccountActions({
           <Text tone='danger' variant='caption'>
             {moveError}
           </Text>
+        ) : null}
+        {account.signerType.toLowerCase() === 'address' ? (
+          <Button appearance='row' onPress={events.onMoveToAddressBook} size='small' width='full'>
+            <Text variant='caption'>Move to address book</Text>
+          </Button>
         ) : null}
         {account.signerType !== 'safe' && (account.hot || account.aiSessionsEnabled) ? (
           <>
@@ -434,6 +441,7 @@ export function AccountsView(props: AccountsViewProps) {
                                 onExportOpen={() => props.onAccountExportOpen(account.id)}
                                 onMoveOpenChange={(open) => props.onMoveOpenChange(account.id, open)}
                                 onMoveSelect={(profileId) => props.onMoveSelect(account.id, profileId)}
+                                onMoveToAddressBook={() => props.onAccountMoveToAddressBook(account.id)}
                                 onRemove={(removeSeed) => props.onAccountRemove(account.id, removeSeed)}
                                 onRemoveCancel={props.onAccountRemoveCancel}
                                 onRemoveOpen={() => props.onAccountRemoveOpen(account.id)}

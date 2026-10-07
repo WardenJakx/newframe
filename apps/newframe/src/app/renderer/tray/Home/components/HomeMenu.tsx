@@ -9,6 +9,8 @@ export function HomeMenu({ capability }: { capability: Pick<HomeCapability, 'qui
   const shared = useWalletSelector(
     useShallow((state) => {
       return {
+        addressBookCount: Object.values(state.addressNames).filter((entry) => entry.source === 'address-book')
+          .length,
         instanceId: state.instanceId || '',
         tokenCount: Object.values(state.tokens.byId).filter((token) => token.custom).length
       }
@@ -22,6 +24,7 @@ export function HomeMenu({ capability }: { capability: Pick<HomeCapability, 'qui
       {...shared}
       onClose={closeOverlay}
       onOpenAbout={() => pushOverlay({ type: 'about' })}
+      onOpenAddressBook={() => pushOverlay({ type: 'addressBook' })}
       onOpenDapps={() => pushOverlay({ type: 'dapps' })}
       onOpenSettings={() => pushOverlay({ type: 'settings' })}
       onOpenTokens={() => pushOverlay({ type: 'tokens' })}
