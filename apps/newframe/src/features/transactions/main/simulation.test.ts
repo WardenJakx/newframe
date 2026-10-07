@@ -4,7 +4,6 @@ import { Interface } from 'ethers'
 
 import createCanonicalStore from '../../../core/state/store/createCanonicalStore.ts'
 import type { Callback } from '../../../shared/domain/async.ts'
-import { erc20Interface } from '../../../shared/domain/evm.ts'
 import type {
   EVMError,
   RPCRequestCallback,
@@ -15,10 +14,10 @@ import { TxClassification, type TransactionRequest } from '../../requests/contra
 import { GasFeesSource, type TransactionEffect } from '../domain/index.ts'
 import {
   createTransactionSimulationProjection,
-  effectsFromTrace,
+  effectsFromLogs,
   simulateTransactionEffects,
+  type SimulatedCall,
   type SimulationEffectContext,
-  type TraceCall,
   type TransactionSimulationProjection
 } from './simulation.ts'
 
@@ -43,8 +42,9 @@ const events = new Interface([
 function event(name: 'Transfer' | 'Approval', from: string, to: string, amount: bigint) {
   return { address: usdc, ...events.encodeEventLog(events.getEvent(name)!, [from, to, amount]) }
 }
-function trace(overrides: Partial<TraceCall> = {}): TraceCall {
-  return { type: 'CALL', from: account, to: testContract, value: '0x0', input: '0x', ...overrides }
+const nativeEmitter = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE'
+function simulation(...calls: Array<Partial<SimulatedCall>>) {
+  return [{ calls: calls.map((call) => ({ status: '0x1', returnData: '0x', logs: [], ...call })) }]
 }
 function effectMatching(effect: Partial<TransactionEffect>): TransactionEffect {
   return expect.objectContaining(effect) as TransactionEffect
@@ -89,110 +89,33 @@ function store() {
     .store
 }
 
-describe('#effectsFromTrace', () => {
-  it('uses emitted token amounts, without inventing transfers from transfer/transferFrom calldata or false returns', async () => {
-    const effects = await effectsFromTrace(
-      trace({
-        calls: [
-          trace({
-            to: usdc,
-            input: erc20Interface.encodeFunctionData('transfer', [testContract, 90]),
-            output: `0x${'0'.repeat(64)}`
-          }),
-          trace({
-            from: testContract,
-            to: usdc,
-            input: erc20Interface.encodeFunctionData('transferFrom', [account, testContract, 80])
-          }),
-          trace({
-            to: usdc,
-            input: erc20Interface.encodeFunctionData('transfer', [testContract, 100]),
-            logs: [event('Transfer', account, testContract, 95n)]
-          })
-        ]
-      }),
+describe('#effectsFromLogs', () => {
+  it('derives native and token deltas from emitted Transfer logs only', async () => {
+    const effects = await effectsFromLogs(
+      [
+        event('Transfer', account, testContract, 95n),
+        { ...event('Transfer', account, testContract, 7n), address: nativeEmitter },
+        { ...event('Transfer', testContract, account, 2n), address: nativeEmitter }
+      ],
       context,
       nativeCurrency,
       projection
     )
     expect(effects).toEqual([
-      effectMatching({
-        kind: 'erc20',
-        direction: 'out',
-        amount: '0x5f',
-        decimals: 6,
-        symbol: 'USDC'
-      })
+      effectMatching({ kind: 'native', direction: 'out', amount: '0x5' }),
+      effectMatching({ kind: 'erc20', direction: 'out', amount: '0x5f', decimals: 6, symbol: 'USDC' })
     ])
-    expect(
-      await effectsFromTrace(
-        trace({ to: usdc, input: erc20Interface.encodeFunctionData('transfer', [testContract, 100]) }),
-        context,
-        nativeCurrency,
-        projection
-      )
-    ).toEqual([])
   })
 
-  it('prunes every reverted subtree while retaining committed sibling transfers and refunds', async () => {
-    const rolledBack = trace({
-      from: account,
-      value: '0x64',
-      error: 'execution reverted',
-      logs: [event('Transfer', account, testContract, 100n)],
-      calls: [trace({ logs: [event('Transfer', account, testContract, 200n)], value: '0x64' })]
-    })
-    const result = trace({
-      output: `0x${'0'.repeat(64)}`,
-      calls: [
-        rolledBack,
-        trace({ value: '0x7' }),
-        trace({ logs: [event('Transfer', account, testContract, 9n)] })
-      ]
-    })
-    expect(await effectsFromTrace(result, context, nativeCurrency, projection)).toEqual([
-      effectMatching({ kind: 'native', amount: '0x7' }),
-      effectMatching({ kind: 'erc20', amount: '0x9' })
-    ])
-    expect(
-      await effectsFromTrace({ ...result, revertReason: 'Outer revert' }, context, nativeCurrency, projection)
-    ).toEqual([])
-  })
-
-  it('counts CALL/CREATE/CREATE2/SELFDESTRUCT values, excluding inherited delegatecall/callcode/staticcall values', async () => {
-    const effects = await effectsFromTrace(
-      trace({
-        value: '0x10',
-        calls: [
-          trace({ type: 'DELEGATECALL', value: '0x10', calls: [trace({ value: '0x2' })] }),
-          trace({ type: 'CALLCODE', value: '0x10' }),
-          trace({ type: 'STATICCALL', value: '0x10' }),
-          trace({ type: 'CREATE', value: '0x3' }),
-          trace({ type: 'CREATE2', value: '0x4' }),
-          trace({ type: 'SELFDESTRUCT', from: testContract, to: account, value: '0x5' }),
-          trace({ to: account, value: '0x10' })
-        ]
-      }),
-      context,
-      nativeCurrency,
-      projection
-    )
-    expect(effects).toEqual([effectMatching({ kind: 'native', direction: 'out', amount: '0x14' })])
-  })
-
-  it('requires ERC20 event shape, retaining a delegatecall event emitter rather than the implementation address', async () => {
+  it('requires ERC20 event shape', async () => {
     const valid = event('Transfer', account, testContract, 5n)
-    const effects = await effectsFromTrace(
-      trace({
-        type: 'DELEGATECALL',
-        to: other,
-        logs: [
-          { ...valid, topics: [...valid.topics, `0x${'0'.repeat(64)}`], data: '0x' },
-          { ...valid, data: '0x05' },
-          { ...valid, topics: [valid.topics[0], `0x1${valid.topics[1].slice(3)}`, valid.topics[2]] },
-          valid
-        ]
-      }),
+    const effects = await effectsFromLogs(
+      [
+        { ...valid, topics: [...valid.topics, `0x${'0'.repeat(64)}`], data: '0x' },
+        { ...valid, data: '0x05' },
+        { ...valid, topics: [valid.topics[0], `0x1${valid.topics[1].slice(3)}`, valid.topics[2]] },
+        valid
+      ],
       context,
       nativeCurrency,
       projection
@@ -202,16 +125,13 @@ describe('#effectsFromTrace', () => {
 
   it('preserves zero and repeated owner-relative Approval events, without claiming final allowance', async () => {
     const approval = event('Approval', account, testContract, 25n)
-    const effects = await effectsFromTrace(
-      trace({
-        logs: [
-          event('Approval', other, account, 90n),
-          approval,
-          event('Approval', account, testContract, 0n),
-          approval
-        ],
-        calls: [trace({ revertReason: 'Reverted approval', logs: [event('Approval', account, other, 60n)] })]
-      }),
+    const effects = await effectsFromLogs(
+      [
+        event('Approval', other, account, 90n),
+        approval,
+        event('Approval', account, testContract, 0n),
+        approval
+      ],
       context,
       nativeCurrency,
       projection
@@ -242,8 +162,8 @@ describe('#effectsFromTrace', () => {
         updatedAt: 0
       }
     })
-    const effects = await effectsFromTrace(
-      trace({ logs: [event('Transfer', account, testContract, 25_000_000n)] }),
+    const effects = await effectsFromLogs(
+      [event('Transfer', account, testContract, 25_000_000n)],
       { ...context, tokenData: { name: 'Wrong', symbol: 'WRONG', decimals: 18 } },
       nativeCurrency,
       createTransactionSimulationProjection(canonical)
@@ -259,7 +179,7 @@ describe('#effectsFromTrace', () => {
   })
 
   it('uses recognized and internal-send metadata, leaving unavailable decimals unknown', async () => {
-    const transfer = trace({ logs: [event('Transfer', account, testContract, 133_000_000n)] })
+    const transfer = [event('Transfer', account, testContract, 133_000_000n)]
     const recognized: SimulationEffectContext = {
       ...context,
       tokenData: undefined,
@@ -268,11 +188,11 @@ describe('#effectsFromTrace', () => {
       ]
     }
     for (const metadataContext of [context, recognized]) {
-      expect(await effectsFromTrace(transfer, metadataContext, nativeCurrency, projection)).toEqual([
+      expect(await effectsFromLogs(transfer, metadataContext, nativeCurrency, projection)).toEqual([
         effectMatching({ amount: '0x7ed6b40', decimals: 6, symbol: 'USDC' })
       ])
     }
-    const [unknown] = await effectsFromTrace(
+    const [unknown] = await effectsFromLogs(
       transfer,
       { ...context, tokenData: undefined },
       nativeCurrency,
@@ -284,14 +204,14 @@ describe('#effectsFromTrace', () => {
 })
 
 describe('#simulateTransactionEffects', () => {
-  it('sends the existing internal trace envelope and computes canonical profile-relative effects', async () => {
+  it('sends an internal eth_simulateV1 envelope and computes canonical profile-relative effects', async () => {
     const canonical = store()
     const profileId = canonical.getState().main.currentProfile
     canonical.getState().upsertAccount({ id: account.toLowerCase(), address: account })
     canonical.getState().upsertAccount({ id: testContract, address: testContract })
     canonical.getState().createProfile('other', 'Other')
     canonical.getState().upsertAccount({ id: other, address: other, profileId: 'other' })
-    const rpc = provider(trace({ logs: [event('Transfer', account, testContract, 25n)] }))
+    const rpc = provider(simulation({ logs: [event('Transfer', account, testContract, 25n)] }))
     const result = await simulateTransactionEffects(
       request(),
       rpc,
@@ -299,13 +219,17 @@ describe('#simulateTransactionEffects', () => {
     )
     expect(rpc.send.mock.calls[0][0]).toMatchObject({
       jsonrpc: '2.0',
-      method: 'debug_traceCall',
+      method: 'eth_simulateV1',
       chainId: '0x7a69',
       _origin: 'newframe-internal',
       params: [
-        { from: account, to: usdc, gas: '0x20000', value: '0x0', data: '0x' },
-        'latest',
-        { tracer: 'callTracer', tracerConfig: { withLog: true } }
+        {
+          blockStateCalls: [
+            { calls: [{ from: account, to: usdc, gas: '0x20000', value: '0x0', data: '0x' }] }
+          ],
+          traceTransfers: true
+        },
+        'latest'
       ]
     })
     expect(result.status).toBe('success')
@@ -319,20 +243,19 @@ describe('#simulateTransactionEffects', () => {
     expect(rpc.sendAsync).not.toHaveBeenCalled()
   })
 
-  it('marks malformed provider traces unavailable while keeping RPC and simulated failures distinct', async () => {
+  it('marks malformed simulations unavailable while keeping RPC and simulated failures distinct', async () => {
     for (const invalid of [
       undefined,
       null,
       {},
       [],
-      { structLogs: [] },
-      trace({ calls: [null as unknown as TraceCall] }),
-      trace({ value: 'invalid' }),
-      trace({ logs: [{ topics: [], data: '0x' }] })
+      [{ calls: [] }],
+      simulation({ status: '0x2' as '0x1' }),
+      simulation({ logs: [{ address: usdc, topics: [], data: '0x0' }] })
     ]) {
       expect(await simulateTransactionEffects(request(), provider(invalid), projection)).toMatchObject({
         status: 'unavailable',
-        error: 'RPC returned an invalid call trace'
+        error: 'RPC returned an invalid simulation'
       })
     }
     expect(
@@ -345,11 +268,11 @@ describe('#simulateTransactionEffects', () => {
     expect(
       await simulateTransactionEffects(
         request(),
-        provider(trace({ error: 'execution reverted', calls: [trace({ value: '0x5' })] })),
+        provider(simulation({ status: '0x0', error: { message: 'execution reverted' } })),
         projection
       )
     ).toMatchObject({ status: 'error', error: 'execution reverted' })
-    expect(await simulateTransactionEffects(request(), provider(trace()), projection)).toMatchObject({
+    expect(await simulateTransactionEffects(request(), provider(simulation({})), projection)).toMatchObject({
       status: 'success',
       effects: []
     })

@@ -15,6 +15,8 @@ const abi = new Interface([
   'function execTransaction(address,uint256,bytes,uint8,uint256,uint256,uint256,address,address,bytes) returns(bool)',
   'event ExecutionSuccess(bytes32 txHash,uint256 payment)'
 ])
+const events = new Interface(['event Transfer(address indexed from, address indexed to, uint256 value)'])
+const nativeEmitter = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE'
 const proposal: SafeProposal = {
   safe,
   safeTxHash: hash,
@@ -65,65 +67,66 @@ function setup({ indexed = false, wrongHash = false, ignoredOverrides = false, m
         if (method === 'eth_getBalance' || method === 'eth_getStorageAt') {
           return '0x0'
         }
-        if (method !== 'debug_traceCall') {
+        if (method !== 'eth_simulateV1') {
           throw Error('Unexpected method')
         }
-        const [call, , options] = params as [
-          { data: string },
-          string,
-          { stateOverrides: Record<string, { stateDiff: Record<string, string> }> }
-        ]
-        const tx = abi.parseTransaction({ data: call.data })!
-        if (tx.name !== 'execTransaction') {
-          const slot = toBeHex(tx.name === 'getThreshold' ? 4 : 5, 32)
-          return {
-            type: 'CALL',
-            from: owner,
-            to: safe,
-            output:
-              options.stateOverrides[safe].stateDiff[slot] && !ignoredOverrides
-                ? options.stateOverrides[safe].stateDiff[slot]
-                : toBeHex(99, 32)
-          }
-        }
-        expect([...tx.args].slice(0, 9)).toEqual([
-          owner,
-          10n,
-          '0x',
-          0n,
-          12345n,
-          21000n,
-          123n,
-          ZeroAddress,
-          owner
-        ])
-        const event = abi.encodeEventLog(abi.getEvent('ExecutionSuccess')!, [
-          wrongHash ? `0x${'b'.repeat(64)}` : hash,
-          0
-        ])
-        const logs = [
+        const [{ blockStateCalls }] = params as [
           {
-            address: safe,
-            topics: indexed ? [...event.topics, hash] : event.topics,
-            data: indexed ? toBeHex(0, 32) : event.data
+            blockStateCalls: [
+              {
+                calls: Array<{ data: string }>
+                stateOverrides: Record<string, { stateDiff: Record<string, string> }>
+              }
+            ]
           }
         ]
-        return {
-          type: 'CALL',
-          from: owner,
-          to: safe,
-          output: malformed ? '0x' : abi.encodeFunctionResult('execTransaction', [true]),
-          logs,
-          calls: [
-            {
-              type: 'CALL',
-              from: safe,
-              to: owner,
-              value: '0xa',
-              input: '0x'
-            }
-          ]
-        }
+        const [{ calls: simulated, stateOverrides }] = blockStateCalls
+        return [
+          {
+            calls: simulated.map((call) => {
+              const tx = abi.parseTransaction({ data: call.data })!
+              if (tx.name !== 'execTransaction') {
+                const slot = toBeHex(tx.name === 'getThreshold' ? 4 : 5, 32)
+                return {
+                  status: '0x1',
+                  returnData:
+                    stateOverrides[safe].stateDiff[slot] && !ignoredOverrides
+                      ? stateOverrides[safe].stateDiff[slot]
+                      : toBeHex(99, 32),
+                  logs: []
+                }
+              }
+              expect([...tx.args].slice(0, 9)).toEqual([
+                owner,
+                10n,
+                '0x',
+                0n,
+                12345n,
+                21000n,
+                123n,
+                ZeroAddress,
+                owner
+              ])
+              const event = abi.encodeEventLog(abi.getEvent('ExecutionSuccess')!, [
+                wrongHash ? `0x${'b'.repeat(64)}` : hash,
+                0
+              ])
+              const transfer = events.encodeEventLog(events.getEvent('Transfer')!, [safe, owner, 10])
+              return {
+                status: '0x1',
+                returnData: malformed ? '0x' : abi.encodeFunctionResult('execTransaction', [true]),
+                logs: [
+                  { address: nativeEmitter, ...transfer },
+                  {
+                    address: safe,
+                    topics: indexed ? [...event.topics, hash] : event.topics,
+                    data: indexed ? toBeHex(0, 32) : event.data
+                  }
+                ]
+              }
+            })
+          }
+        ]
       }
     }
   }
@@ -145,7 +148,7 @@ it('preserves every signed field, accepts compatible unknown versions and both S
   }
 })
 
-it('requires matching execution logs and a Safe return value, and rejects ignored trace overrides', async () => {
+it('requires matching execution logs and a Safe return value, and rejects ignored simulation overrides', async () => {
   for (const options of [{ wrongHash: true }, { malformed: true }, { ignoredOverrides: true }]) {
     const { ports } = setup(options)
     expect(await simulateSafeProposal({ chainId: 1, address: safe, proposal }, ports)).toMatchObject({
@@ -173,7 +176,7 @@ it('rejects missing signed fields before RPC and stale proposals before executio
     status: 'unavailable',
     currentNonce: '8'
   })
-  expect(calls.some(({ method }) => method === 'debug_traceCall')).toBeFalse()
+  expect(calls.some(({ method }) => method === 'eth_simulateV1')).toBeFalse()
   expect(observed).toEqual({
     configuration: { owners: [owner], threshold: 1, nonce: '8' },
     blockNumber: '100'

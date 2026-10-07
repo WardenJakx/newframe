@@ -237,7 +237,7 @@ it('applies the inner method account grant and validates parameters before dispa
   expect(handled).toHaveLength(1)
 })
 
-it('admits only registered upstream methods and keeps debugging main-process-only', async () => {
+it('admits only registered upstream methods and keeps simulation main-process-only', async () => {
   const handled: string[] = []
   const gateway = createRpcGateway({
     isLocked: () => false,
@@ -247,17 +247,17 @@ it('admits only registered upstream methods and keeps debugging main-process-onl
     }
   })
   const client = createLocalApiSource({ transport: 'http', connectionId: 'client', origin: 'test' })
-  const trace = { ...request('debug_traceCall'), params: [{}, 'latest', {}] }
+  const simulation = { ...request('eth_simulateV1'), params: [{}, 'latest'] }
   const replies: RPCResponsePayload[] = []
-  await gateway(trace, (reply) => replies.push(reply), client)
+  await gateway(simulation, (reply) => replies.push(reply), client)
   expect(replies[0].error?.code).toBe(4001)
-  await gateway(trace, (reply) => replies.push(reply), createMainProcessSource('simulation'))
+  await gateway(simulation, (reply) => replies.push(reply), createMainProcessSource('simulation'))
   await gateway(
     { ...request('eth_getBalance'), params: ['0x' + '11'.repeat(20), 'latest'] },
     (reply) => replies.push(reply),
     client
   )
-  expect(handled).toEqual(['debug_traceCall', 'eth_getBalance'])
+  expect(handled).toEqual(['eth_simulateV1', 'eth_getBalance'])
 })
 
 it('preserves supported block overrides and pending-transaction options through admission', async () => {

@@ -61,3 +61,15 @@ it('pins metadata calls and rejects write methods through the metadata compatibi
   expect(request('eth_sendTransaction')).rejects.toThrow('Unsupported token metadata read')
   rpc.dispose()
 })
+
+it('names the unsupported method when the RPC lacks it', async () => {
+  const rpc = createSafeSimulationRpc({
+    send(payload, callback) {
+      callback({ id: payload.id, jsonrpc: '2.0', error: { code: -32601, message: 'Method not found' } })
+    }
+  })
+  expect(rpc.request(999, 'eth_simulateV1', [])).rejects.toThrow(
+    "This network's RPC does not support eth_simulateV1"
+  )
+  rpc.dispose()
+})

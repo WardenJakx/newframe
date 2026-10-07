@@ -9,8 +9,7 @@ type SafeReadMethod =
   | 'eth_getBalance'
   | 'eth_getStorageAt'
   | 'eth_gasPrice'
-  | 'debug_traceCall'
-export type SafeStateOverrides = Record<string, { balance?: string; stateDiff?: Record<string, string> }>
+  | 'eth_simulateV1'
 export interface SafeSimulationRpc {
   request(chainId: number, method: SafeReadMethod, params: unknown[], signal?: AbortSignal): Promise<unknown>
   call(
@@ -18,8 +17,7 @@ export interface SafeSimulationRpc {
     address: string,
     data: string,
     blockTag?: string,
-    signal?: AbortSignal,
-    overrides?: SafeStateOverrides
+    signal?: AbortSignal
   ): Promise<string>
   metadataProvider?(chainId: number, blockTag: string, signal?: AbortSignal): Erc20ProviderPort
 }
@@ -30,7 +28,7 @@ const readMethods = new Set<SafeReadMethod>([
   'eth_getBalance',
   'eth_getStorageAt',
   'eth_gasPrice',
-  'debug_traceCall'
+  'eth_simulateV1'
 ])
 
 export function createSafeSimulationRpc(
@@ -55,7 +53,9 @@ export function createSafeSimulationRpc(
         chains.send(
           { id: crypto.randomUUID(), jsonrpc: '2.0', method, params },
           (response) => {
-            if (response.error) {
+            if (response.error?.code === -32601) {
+              done(new Error(`This network's RPC does not support ${method}`))
+            } else if (response.error) {
               done(new Error(response.error.message || 'Safe simulation RPC failed'))
             } else {
               done(null, response.result)
@@ -73,12 +73,8 @@ export function createSafeSimulationRpc(
   }
   return {
     request,
-    async call(chainId, address, data, blockTag = 'latest', signal, overrides) {
-      const params: unknown[] = [{ to: address, data }, blockTag]
-      if (overrides) {
-        params.push(overrides)
-      }
-      const result = await request(chainId, 'eth_call', params, signal)
+    async call(chainId, address, data, blockTag = 'latest', signal) {
+      const result = await request(chainId, 'eth_call', [{ to: address, data }, blockTag], signal)
       if (typeof result !== 'string' || !/^0x(?:[0-9a-f]{2})*$/i.test(result)) {
         throw new Error('Invalid Safe contract response')
       }

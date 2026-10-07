@@ -95,7 +95,11 @@ const normalizeRpcError = (error: unknown): EVMError => {
     return { message: error, code: -1 }
   }
   if (error instanceof Error) {
-    const details = error as Error & { code?: unknown; data?: unknown }
+    const details = error as Error & { code?: unknown; data?: unknown; error?: unknown }
+    // Ethers wraps an unrecognized JSON-RPC error; the node's own error is the useful part.
+    if (details.error && typeof details.error === 'object' && 'message' in details.error) {
+      return normalizeRpcError(details.error)
+    }
     const normalized = {
       message: error.message,
       code: typeof details.code === 'number' ? details.code : -1,

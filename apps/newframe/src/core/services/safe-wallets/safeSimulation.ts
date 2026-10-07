@@ -1,4 +1,4 @@
-import { Interface, concat, toBeHex } from 'ethers'
+import { Interface, concat, toBeHex, toQuantity } from 'ethers'
 import { z } from 'zod'
 
 import {
@@ -10,13 +10,15 @@ import {
   type SafeProposalSimulation
 } from '../../../features/accounts/domain/safe.ts'
 import {
-  effectsFromTrace,
-  isTraceCall,
-  type TraceCall,
+  effectsFromLogs,
+  simulatedCalls,
+  simulationParams,
+  type SimulatedLog,
+  type SimulationStateOverrides,
   type TransactionSimulationProjection
 } from '../../../features/transactions/main/simulation.ts'
 import type { Erc20ProviderPort } from '../chains/rpc/contracts/erc20.ts'
-import type { SafeSimulationRpc, SafeStateOverrides } from './simulation.ts'
+import type { SafeSimulationRpc } from './simulation.ts'
 
 const abi = new Interface([
   'function getThreshold() view returns (uint256)',
@@ -37,6 +39,8 @@ const hexQuantity = z
   .max(66)
   .regex(/^0x[0-9a-f]+$/i)
 const blockSchema = z.object({ number: hexQuantity, gasLimit: hexQuantity })
+// Both view probes share one simulated block, so neither may claim the block's whole gas limit.
+const probeGas = 200_000n
 const refundFields = ['safeTxGas', 'baseGas', 'gasPrice', 'gasToken', 'refundReceiver'] as const
 
 export interface SafeSimulationInput {
@@ -63,17 +67,14 @@ function message(error: unknown) {
   return (error instanceof Error ? error.message : 'Safe simulation unavailable').slice(0, 1000)
 }
 
-function executionEvents(trace: TraceCall, safe: string): Array<{ name: string; hash: string }> {
-  if (trace.error || trace.revertReason) {
-    return []
-  }
+function executionEvents(logs: SimulatedLog[], safe: string): Array<{ name: string; hash: string }> {
   const events: Array<{ name: string; hash: string }> = []
-  for (const log of trace.logs ?? []) {
-    if (log.address?.toLowerCase() !== safe.toLowerCase() || !log.topics || log.data === undefined) {
+  for (const log of logs) {
+    if (log.address.toLowerCase() !== safe.toLowerCase()) {
       continue
     }
     const name = ['ExecutionSuccess', 'ExecutionFailure'].find(
-      (name) => abi.getEvent(name)?.topicHash === log.topics?.[0]?.toLowerCase()
+      (name) => abi.getEvent(name)?.topicHash === log.topics[0]?.toLowerCase()
     )
     if (!name) {
       continue
@@ -89,7 +90,7 @@ function executionEvents(trace: TraceCall, safe: string): Array<{ name: string; 
       events.push({ name, hash: hash.toLowerCase() })
     }
   }
-  return events.concat((trace.calls ?? []).flatMap((call) => executionEvents(call, safe)))
+  return events
 }
 
 /** Executes the original proposal under explicit simulation-only authorization assumptions. */
@@ -178,13 +179,13 @@ export async function simulateSafeProposal(
       stateDiff[guardSlot] = toBeHex(0, 32)
       assumptions.push('The transaction guard is bypassed for this unsigned preview.')
     }
-    const overrides: SafeStateOverrides = { [address]: { stateDiff } }
+    const overrides: SimulationStateOverrides = { [address]: { stateDiff } }
     const funding = BigInt(block.gasLimit) * BigInt(gasPrice)
     if (funding >= 2n ** 256n) {
       throw new Error('Simulation gas funding exceeds uint256')
     }
     if (balance < funding) {
-      overrides[executor] = { balance: toBeHex(funding) }
+      overrides[executor] = { balance: toQuantity(funding) }
       assumptions.push(
         'The executor receives temporary gas funding; contracts can observe its changed balance.'
       )
@@ -192,34 +193,28 @@ export async function simulateSafeProposal(
     assumptions.push(
       `Executor ${executor}; gas limit ${BigInt(block.gasLimit)}, gas price ${BigInt(gasPrice)} wei. Executor and gas choices can affect guards, contracts and refunds.`
     )
-    const trace = async (data: string, stateOverrides: SafeStateOverrides) => {
-      const result = await rpc.request(
-        chainId,
-        'debug_traceCall',
-        [
-          { from: executor, to: address, data, value: '0x0', gas: block.gasLimit, gasPrice },
-          block.number,
-          { tracer: 'callTracer', tracerConfig: { withLog: true }, stateOverrides }
-        ],
-        signal
+    const simulate = async (
+      data: string[],
+      stateOverrides: SimulationStateOverrides,
+      gas = block.gasLimit
+    ) => {
+      const calls = data.map((input) => ({ from: executor, to: address, data: input, gas, gasPrice }))
+      return simulatedCalls(
+        await rpc.request(
+          chainId,
+          'eth_simulateV1',
+          simulationParams(calls, block.number, stateOverrides),
+          signal
+        ),
+        calls.length
       )
-      if (!isTraceCall(result)) {
-        throw new Error('RPC returned an incomplete call trace')
-      }
-      if (
-        result.to?.toLowerCase() !== address.toLowerCase() ||
-        result.from?.toLowerCase() !== executor.toLowerCase()
-      ) {
-        throw new Error('RPC returned a different simulation call')
-      }
-      return result
     }
-    // Probe tracing itself: an eth_call override alone cannot prove debug_traceCall applied it.
+    // Probe the simulation itself: an eth_call override alone cannot prove eth_simulateV1 applied it.
     const markers = {
       threshold: configuration.threshold === 1 ? 2n : 1n,
       nonce: currentNonce === '0' ? 1n : 0n
     }
-    const probeOverrides: SafeStateOverrides = {
+    const probeOverrides: SimulationStateOverrides = {
       ...overrides,
       [address]: {
         stateDiff: {
@@ -229,50 +224,46 @@ export async function simulateSafeProposal(
         }
       }
     }
-    await Promise.all(
-      (
-        [
-          ['getThreshold', markers.threshold],
-          ['nonce', markers.nonce]
-        ] as const
-      ).map(async ([method, expected]) => {
-        const probe = await trace(abi.encodeFunctionData(method), probeOverrides)
-        if (
-          probe.error ||
-          probe.revertReason ||
-          !probe.output ||
-          abi.decodeFunctionResult(method, probe.output)[0] !== expected
-        ) {
-          throw new Error('RPC storage overrides or Safe storage layout are unsupported')
-        }
-      })
-    )
     const signature = concat([toBeHex(BigInt(executor), 32), toBeHex(0, 32), '0x01'])
-    const result = await trace(abi.encodeFunctionData('execTransaction', [...fields, signature]), overrides)
+    const [probes, [result]] = await Promise.all([
+      simulate(
+        [abi.encodeFunctionData('getThreshold'), abi.encodeFunctionData('nonce')],
+        probeOverrides,
+        toQuantity(probeGas)
+      ),
+      simulate([abi.encodeFunctionData('execTransaction', [...fields, signature])], overrides)
+    ])
     signal?.throwIfAborted()
+    if (
+      probes.some((probe) => probe.status !== '0x1') ||
+      abi.decodeFunctionResult('getThreshold', probes[0].returnData)[0] !== markers.threshold ||
+      abi.decodeFunctionResult('nonce', probes[1].returnData)[0] !== markers.nonce
+    ) {
+      throw new Error('RPC storage overrides or Safe storage layout are unsupported')
+    }
     const context = { assumptions, currentNonce, blockNumber }
-    if (result.error || result.revertReason) {
+    if (result.status === '0x0') {
       return {
         status: 'error',
         failure: 'revert',
-        error: result.revertReason ?? result.error ?? 'Safe execution reverted',
+        error: result.error?.message ?? 'Safe execution reverted',
         effects: [],
         ...context
       }
     }
-    if (!result.output || !/^0x0{63}[01]$/.test(result.output)) {
+    if (!/^0x0{63}[01]$/.test(result.returnData)) {
       throw new Error('RPC did not return the Safe execution result')
     }
-    const success = abi.decodeFunctionResult('execTransaction', result.output)[0] === true
+    const success = abi.decodeFunctionResult('execTransaction', result.returnData)[0] === true
     const expectedEvent = success ? 'ExecutionSuccess' : 'ExecutionFailure'
-    const events = executionEvents(result, address).filter((event) => event.hash === expectedHash)
+    const events = executionEvents(result.logs, address).filter((event) => event.hash === expectedHash)
     if (events.length !== 1 || events[0].name !== expectedEvent) {
       throw new Error(
-        'RPC trace lacks matching Safe execution logs; complete simulation effects are unavailable'
+        'RPC simulation lacks matching Safe execution logs; complete simulation effects are unavailable'
       )
     }
-    const effects = await effectsFromTrace(
-      result,
+    const effects = await effectsFromLogs(
+      result.logs,
       { account: address, data: { chainId: toBeHex(chainId), to: proposal.to } },
       projection.getNativeCurrency(chainId),
       projection,

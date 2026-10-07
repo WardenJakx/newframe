@@ -1,6 +1,7 @@
 import { addHexPrefix } from '@ethereumjs/util'
 import log from 'electron-log'
 import { getAddress, isAddress } from 'ethers'
+import { z } from 'zod'
 
 import { getProfileAccountIds } from '../../../app/contracts/state/main.ts'
 import type { RpcIpcHandlers } from '../../../app/main/ipc-handlers/rpc.ts'
@@ -15,16 +16,46 @@ import type { TransactionEffect, TransactionSimulation } from '../domain/index.t
 
 const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
 const APPROVAL_TOPIC = '0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925'
-const TRACE_TYPES = new Set([
-  'CALL',
-  'CALLCODE',
-  'DELEGATECALL',
-  'STATICCALL',
-  'CREATE',
-  'CREATE2',
-  'SELFDESTRUCT'
-])
-const VALUE_TRANSFER_TYPES = new Set(['CALL', 'CREATE', 'CREATE2', 'SELFDESTRUCT'])
+// eth_simulateV1 with traceTransfers reports native value moves as ERC20-shaped Transfer logs from this address.
+const NATIVE_TRANSFER_EMITTER = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
+const hexBytes = z.string().regex(/^0x(?:[0-9a-f]{2})*$/i)
+const simulatedLogSchema = z.object({
+  address: z.string().refine(isAddress),
+  topics: z.array(z.string().regex(/^0x[0-9a-f]{64}$/i)).max(4),
+  data: hexBytes
+})
+const simulatedCallSchema = z.object({
+  status: z.enum(['0x0', '0x1']),
+  returnData: hexBytes,
+  logs: z.array(simulatedLogSchema).default([]),
+  error: z.object({ message: z.string() }).optional()
+})
+const simulationResultSchema = z.array(z.object({ calls: z.array(simulatedCallSchema) })).length(1)
+export type SimulatedLog = z.infer<typeof simulatedLogSchema>
+export type SimulatedCall = z.infer<typeof simulatedCallSchema>
+export type SimulationStateOverrides = Record<
+  string,
+  { balance?: string; stateDiff?: Record<string, string> }
+>
+
+export function simulationParams(
+  calls: Array<Record<string, string>>,
+  blockTag: string,
+  stateOverrides?: SimulationStateOverrides
+) {
+  return [
+    { blockStateCalls: [{ ...(stateOverrides ? { stateOverrides } : {}), calls }], traceTransfers: true },
+    blockTag
+  ]
+}
+
+export function simulatedCalls(result: unknown, count: number): SimulatedCall[] {
+  const parsed = simulationResultSchema.safeParse(result)
+  if (!parsed.success || parsed.data[0].calls.length !== count) {
+    throw new Error('RPC returned an invalid simulation')
+  }
+  return parsed.data[0].calls
+}
 
 export interface SimulationEffectContext {
   account: string
@@ -118,112 +149,20 @@ export function createTransactionSimulationProjection(
   }
 }
 
-export interface TraceCall {
-  type?: string
-  from?: string
-  to?: string
-  input?: string
-  data?: string
-  output?: string
-  value?: string | number | bigint
-  error?: string
-  revertReason?: string
-  calls?: TraceCall[]
-  logs?: Array<{
-    address?: string
-    topics?: string[]
-    data?: string
-  }>
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-}
-
-export function isTraceCall(value: unknown): value is TraceCall {
-  const pending: unknown[] = [value]
-  const seen = new Set<object>()
-  const bytes = (value: unknown) => typeof value === 'string' && /^0x(?:[0-9a-f]{2})*$/i.test(value)
-  while (pending.length) {
-    const item = pending.pop()
-    if (!item || typeof item !== 'object' || Array.isArray(item) || seen.has(item)) {
-      return false
-    }
-    seen.add(item)
-    const call = item as Record<string, unknown>
-    if (typeof call.type !== 'string' || !TRACE_TYPES.has(call.type.toUpperCase())) {
-      return false
-    }
-    if (typeof call.from !== 'string' || !normalizeAddress(call.from)) {
-      return false
-    }
-    if (call.to !== undefined && (typeof call.to !== 'string' || !normalizeAddress(call.to))) {
-      return false
-    }
-    if (!call.to && !call.error && !call.revertReason) {
-      return false
-    }
-    if (['input', 'data', 'output'].some((key) => call[key] !== undefined && !bytes(call[key]))) {
-      return false
-    }
-    if (['error', 'revertReason'].some((key) => call[key] !== undefined && typeof call[key] !== 'string')) {
-      return false
-    }
-    if (
-      call.value !== undefined &&
-      !(typeof call.value === 'bigint' && call.value >= 0n) &&
-      !(typeof call.value === 'number' && Number.isSafeInteger(call.value) && call.value >= 0) &&
-      !(typeof call.value === 'string' && /^(?:0x[0-9a-f]+|[0-9]+)$/i.test(call.value))
-    ) {
-      return false
-    }
-    if (call.calls !== undefined) {
-      if (!Array.isArray(call.calls)) {
-        return false
-      }
-      for (const child of call.calls) {
-        pending.push(child)
-      }
-    }
-    if (call.logs !== undefined) {
-      if (!Array.isArray(call.logs)) {
-        return false
-      }
-      for (const event of call.logs) {
-        if (!event || typeof event !== 'object' || Array.isArray(event)) {
-          return false
-        }
-        const traceEvent = event as Record<string, unknown>
-        if (typeof traceEvent.address !== 'string' || !normalizeAddress(traceEvent.address)) {
-          return false
-        }
-        if (
-          !Array.isArray(traceEvent.topics) ||
-          !traceEvent.topics.every(
-            (topic: unknown) => typeof topic === 'string' && /^0x[0-9a-f]{64}$/i.test(topic)
-          )
-        ) {
-          return false
-        }
-        if (!bytes(traceEvent.data)) {
-          return false
-        }
-      }
-    }
-  }
-  return true
-}
-
 interface NativeTransfer {
   from: string
   to: string
   amount: bigint
 }
 
-interface ParsedTrace {
+interface ParsedLogs {
   nativeTransfers: NativeTransfer[]
   tokenTransfers: TokenTransfer[]
   tokenApprovals: TokenApproval[]
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
 
 function safeBigInt(value?: string | number | bigint | null) {
@@ -271,59 +210,33 @@ function sameAddress(a?: string, b?: string) {
   return !!left && left === right
 }
 
-function walkTrace(trace: TraceCall | undefined, visit: (call: TraceCall) => void) {
-  if (!trace || typeof trace !== 'object' || trace.error || trace.revertReason) {
-    return
-  }
-
-  visit(trace)
-  ;(trace.calls ?? []).forEach((call) => walkTrace(call, visit))
-}
-
-function parseTrace(trace: TraceCall): ParsedTrace {
-  const nativeTransfers: NativeTransfer[] = []
-  const tokenTransfers: TokenTransfer[] = []
-  const tokenApprovals: TokenApproval[] = []
-
-  walkTrace(trace, (call) => {
-    const from = normalizeAddress(call.from)
-    const to = normalizeAddress(call.to)
-    const value = safeBigInt(call.value)
-    if (VALUE_TRANSFER_TYPES.has(call.type?.toUpperCase() ?? '') && from && to && value > 0n) {
-      nativeTransfers.push({ from, to, amount: value })
+function parseLogs(logs: SimulatedLog[]): ParsedLogs {
+  const parsed: ParsedLogs = { nativeTransfers: [], tokenTransfers: [], tokenApprovals: [] }
+  for (const event of logs) {
+    const topics = event.topics
+    if (topics.length !== 3 || !/^0x[0-9a-f]{64}$/i.test(event.data)) {
+      continue
     }
-    ;(call.logs ?? []).forEach((event) => {
-      const topics = event.topics ?? []
-      if (topics.length !== 3 || !/^0x[0-9a-f]{64}$/i.test(event.data ?? '')) {
-        return
+    const topic = topics[0].toLowerCase()
+    const emitter = normalizeAddress(event.address)
+    const from = topicAddress(topics[1])
+    const to = topicAddress(topics[2])
+    const amount = safeBigInt(event.data)
+    if (!emitter || !from || !to || (topic !== TRANSFER_TOPIC && topic !== APPROVAL_TOPIC)) {
+      continue
+    }
+    if (topic === TRANSFER_TOPIC && amount > 0n) {
+      if (emitter === NATIVE_TRANSFER_EMITTER) {
+        parsed.nativeTransfers.push({ from, to, amount })
+      } else {
+        parsed.tokenTransfers.push({ token: emitter, from, to, amount })
       }
-      const topic = topics[0]?.toLowerCase()
-      if (topic !== TRANSFER_TOPIC && topic !== APPROVAL_TOPIC) {
-        return
-      }
-
-      const token = normalizeAddress(event.address)
-      const from = topicAddress(topics[1])
-      const to = topicAddress(topics[2])
-      const amount = safeBigInt(event.data)
-
-      if (!token || !from || !to) {
-        return
-      }
-      if (topic === TRANSFER_TOPIC && amount > 0n) {
-        tokenTransfers.push({ token, from, to, amount })
-      }
-      if (topic === APPROVAL_TOPIC) {
-        tokenApprovals.push({ token, owner: from, spender: to, amount })
-      }
-    })
-  })
-
-  return {
-    nativeTransfers,
-    tokenTransfers,
-    tokenApprovals
+    }
+    if (topic === APPROVAL_TOPIC && emitter !== NATIVE_TRANSFER_EMITTER) {
+      parsed.tokenApprovals.push({ token: emitter, owner: from, spender: to, amount })
+    }
   }
+  return parsed
 }
 
 function nativeDeltaFromTransfers(transfers: NativeTransfer[], account: string) {
@@ -566,7 +479,7 @@ async function approvalEffects(
   )
 }
 
-function createTraceCall(req: TransactionRequest) {
+function simulationCall(req: TransactionRequest) {
   const data = req.data
   const call = {
     from: data.from ?? req.account,
@@ -574,12 +487,15 @@ function createTraceCall(req: TransactionRequest) {
     gas: data.gasLimit ?? data.gas,
     value: data.value ?? '0x0',
     data: data.data ?? '0x'
-  } as Record<string, string | undefined>
-
-  return Object.fromEntries(Object.entries(call).filter(([, value]) => value !== undefined && value !== ''))
+  }
+  return Object.fromEntries(
+    Object.entries(call).filter(
+      (entry): entry is [string, string] => entry[1] !== undefined && entry[1] !== ''
+    )
+  )
 }
 
-async function traceCall(
+async function simulate(
   req: TransactionRequest,
   chainId: number,
   provider: TransactionSimulationProviderPort
@@ -587,31 +503,23 @@ async function traceCall(
   const payload = {
     id: Date.now(),
     jsonrpc: '2.0',
-    method: 'debug_traceCall',
-    params: [
-      createTraceCall(req),
-      'latest',
-      {
-        tracer: 'callTracer',
-        tracerConfig: {
-          withLog: true
-        }
-      }
-    ],
+    method: 'eth_simulateV1',
+    params: simulationParams([simulationCall(req)], 'latest'),
     chainId: addHexPrefix(chainId.toString(16)),
     _origin: 'newframe-internal'
   } as const
 
-  return new Promise<TraceCall>((resolve, reject) => {
+  return new Promise<SimulatedCall>((resolve, reject) => {
     Promise.resolve(
       provider.send(payload, (response) => {
         if (response.error) {
           return reject(response.error)
         }
-        if (!isTraceCall(response.result)) {
-          return reject(new Error('RPC returned an invalid call trace'))
+        try {
+          resolve(simulatedCalls(response.result, 1)[0])
+        } catch (error) {
+          reject(error)
         }
-        resolve(response.result)
       })
     ).catch(reject)
   })
@@ -627,24 +535,24 @@ function simulationUnavailable(error: unknown): TransactionSimulation {
 
   return {
     status: 'unavailable',
-    source: 'debug_traceCall',
+    source: 'eth_simulateV1',
     error: message,
     updatedAt: Date.now()
   }
 }
 
-export async function effectsFromTrace(
-  trace: TraceCall,
+export async function effectsFromLogs(
+  logs: SimulatedLog[],
   req: SimulationEffectContext,
   nativeCurrency: NativeCurrencyLike,
   projection: TransactionSimulationProjection,
   provider?: Erc20ProviderPort
 ): Promise<TransactionEffect[]> {
-  return effectsFromParsedTrace(parseTrace(trace), req, nativeCurrency, projection, provider)
+  return effectsFromParsedLogs(parseLogs(logs), req, nativeCurrency, projection, provider)
 }
 
-async function effectsFromParsedTrace(
-  trace: ParsedTrace,
+async function effectsFromParsedLogs(
+  parsed: ParsedLogs,
   req: SimulationEffectContext,
   nativeCurrency: NativeCurrencyLike,
   projection: TransactionSimulationProjection,
@@ -653,13 +561,13 @@ async function effectsFromParsedTrace(
   account = req.account
 ): Promise<TransactionEffect[]> {
   const chainId = parseInt(req.data.chainId, 16)
-  const nativeDelta = nativeDeltaFromTransfers(trace.nativeTransfers, account)
-  const tokenDeltas = tokenDeltasFromTransfers(trace.tokenTransfers, account)
+  const nativeDelta = nativeDeltaFromTransfers(parsed.nativeTransfers, account)
+  const tokenDeltas = tokenDeltasFromTransfers(parsed.tokenTransfers, account)
   const effects = [
     nativeEffect(nativeDelta, nativeCurrency),
     ...(await tokenEffects(tokenDeltas, req, chainId, projection, provider, metadataByAddress)),
     ...(await approvalEffects(
-      trace.tokenApprovals,
+      parsed.tokenApprovals,
       req,
       chainId,
       projection,
@@ -683,16 +591,16 @@ export async function simulateTransactionEffects(
   if (!req.data.to) {
     return {
       status: 'unavailable',
-      source: 'debug_traceCall',
+      source: 'eth_simulateV1',
       error: 'Contract deployment simulation is not supported yet',
       updatedAt: Date.now()
     }
   }
 
-  let trace: TraceCall
+  let call: SimulatedCall
 
   try {
-    trace = await traceCall(req, chainId, provider)
+    call = await simulate(req, chainId, provider)
   } catch (error) {
     log.warn('transaction simulation unavailable', {
       requestId: req.requestId,
@@ -701,20 +609,20 @@ export async function simulateTransactionEffects(
     return simulationUnavailable(error)
   }
 
-  if (trace.error || trace.revertReason) {
+  if (call.status === '0x0') {
     return {
       status: 'error',
-      source: 'debug_traceCall',
-      error: trace.error ?? trace.revertReason,
+      source: 'eth_simulateV1',
+      error: call.error?.message ?? 'Transaction simulation reverted',
       updatedAt: Date.now()
     }
   }
 
   try {
-    const parsedTrace = parseTrace(trace)
+    const parsedLogs = parseLogs(call.logs)
     const metadataByAddress = new Map<string, Promise<TokenMetadata>>()
-    const effects = await effectsFromParsedTrace(
-      parsedTrace,
+    const effects = await effectsFromParsedLogs(
+      parsedLogs,
       req,
       nativeCurrency,
       projection,
@@ -728,8 +636,8 @@ export async function simulateTransactionEffects(
             await Promise.all(
               profile.accountAddresses.map(async (accountAddress): Promise<[string, TransactionEffect[]]> => [
                 accountAddress,
-                await effectsFromParsedTrace(
-                  parsedTrace,
+                await effectsFromParsedLogs(
+                  parsedLogs,
                   req,
                   nativeCurrency,
                   projection,
@@ -745,7 +653,7 @@ export async function simulateTransactionEffects(
 
     return {
       status: 'success',
-      source: 'debug_traceCall',
+      source: 'eth_simulateV1',
       effects,
       ...(profile ? { effectsByAccount, effectsProfileId: profile.profileId } : {}),
       updatedAt: Date.now()
@@ -757,7 +665,7 @@ export async function simulateTransactionEffects(
     })
     return {
       status: 'error',
-      source: 'debug_traceCall',
+      source: 'eth_simulateV1',
       error: error instanceof Error ? error.message : 'Transaction simulation failed',
       updatedAt: Date.now()
     }
