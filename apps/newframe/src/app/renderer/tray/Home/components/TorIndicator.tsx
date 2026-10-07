@@ -1,8 +1,6 @@
 import { Button } from '@newframe/ui/button'
 import { Icon } from '@newframe/ui/icon'
-import { Inline } from '@newframe/ui/inline'
 import { Stack } from '@newframe/ui/stack'
-import { StatusDot } from '@newframe/ui/status-dot'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 import { useId } from 'react'
@@ -13,8 +11,7 @@ import type { TorStatus } from '../../../../../platform/internet/contract/status
 const indicatorRecipe = cva({
   base: {
     position: 'relative',
-    display: 'flex',
-    justifyContent: 'flex-end',
+    flex: 'none',
     '& [role=tooltip]': { visibility: 'hidden', opacity: 0 },
     '&:hover [role=tooltip], &:focus-within [role=tooltip]': { visibility: 'visible', opacity: 1 }
   }
@@ -35,31 +32,23 @@ const tooltipRecipe = cva({
 
 const presentation = {
   connected: {
-    label: 'Tor',
     title: 'Traffic proxied via Tor',
     detail: 'Remote requests use Tor. Local connections stay direct.',
-    appearance: 'tor',
-    tone: 'primary'
+    tone: 'success'
   },
   connecting: {
-    label: 'Tor…',
     title: 'Connecting to Tor',
     detail: 'Remote traffic waits for Tor. You can turn it off in Settings.',
-    appearance: 'control',
     tone: 'warning'
   },
   error: {
-    label: 'Tor offline',
     title: 'Tor is unavailable',
     detail: 'Remote traffic is blocked. Restart or turn Tor off in Settings.',
-    appearance: 'danger',
     tone: 'danger'
   },
   direct: {
-    label: 'Tor disabled',
     title: 'Tor disabled',
     detail: 'Remote requests connect directly. Enable Tor in Settings.',
-    appearance: 'control',
     tone: 'muted'
   }
 } as const
@@ -70,27 +59,15 @@ export function TorIndicator({ status, onOpenSettings }: { status: TorStatus; on
   return (
     <div aria-live='polite' className={indicatorRecipe()}>
       <Button
-        appearance={display.appearance}
+        appearance='ghost'
+        content='icon'
         description={tooltipId}
         label={display.title}
         onPress={onOpenSettings}
         shape='pill'
         size='small'
       >
-        <Inline align='center' gap='xsmall'>
-          {status.connection === 'connecting' ? (
-            <StatusDot size='small' tone='warning' />
-          ) : (
-            <Icon
-              name={status.connection === 'connected' ? 'lock' : 'unlock'}
-              size='small'
-              tone={display.tone}
-            />
-          )}
-          <Text tone={display.tone} variant='micro'>
-            {display.label}
-          </Text>
-        </Inline>
+        <Icon name='tor' size='medium' tone={display.tone} />
       </Button>
       <div className={tooltipRecipe()} id={tooltipId} role='tooltip'>
         <Surface padding='small' radius='control' tone='raised'>
