@@ -7,6 +7,7 @@ import { harnessAccountStage } from './harness-account.ts'
 import { harnessSignerStage } from './harness-signer.ts'
 import { lockScreenStage } from './lock-screen.ts'
 import { resetStateStage } from './reset-state.ts'
+import { safeLiveStage } from './safe-live.ts'
 import { safeWatchStage } from './safe-watch.ts'
 import { sendStage } from './send.ts'
 import { tradeCrossChainStage } from './trade-cross-chain.ts'
@@ -35,6 +36,7 @@ export const visualStages: VisualStage[] = [
   harnessAccountStage,
   chainOnboardingStage,
   safeWatchStage,
+  safeLiveStage,
   anvilPositionsStage,
   tradeTicketStage,
   tradeMarketStage,
