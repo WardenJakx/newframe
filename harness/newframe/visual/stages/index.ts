@@ -1,5 +1,6 @@
 import type { VisualStage } from '../types.ts'
 import { activityStage } from './activity.ts'
+import { addressBookStage } from './address-book.ts'
 import { aiSessionStage } from './ai-session.ts'
 import { anvilPositionsStage } from './anvil-positions.ts'
 import { chainOnboardingStage } from './chain-onboarding.ts'
@@ -35,6 +36,7 @@ export const visualStages: VisualStage[] = [
   vitalikPositionsStage,
   harnessAccountStage,
   chainOnboardingStage,
+  addressBookStage,
   safeWatchStage,
   safeLiveStage,
   anvilPositionsStage,

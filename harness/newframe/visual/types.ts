@@ -142,6 +142,8 @@ export type AppState = {
   main?: {
     accounts?: Record<string, AppAccount>
     accountOrder?: string[]
+    addressBook?: Record<string, Record<string, string>>
+    currentProfile?: string
     activity?: Record<string, AppActivity>
     balances?: Record<string, AppBalance[]>
     currentAccount?: string
