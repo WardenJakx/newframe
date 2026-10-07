@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 
-import { getBytes, Interface, Wallet, ZeroAddress } from 'ethers'
+import { concat, dataLength, getBytes, Interface, toBeHex, Wallet, ZeroAddress } from 'ethers'
 
 import { createSafeHandler } from '../../../../scripts/local-safe/handler.ts'
 import type { SafeProposal } from '../../../features/accounts/domain/safe.ts'
@@ -528,6 +528,80 @@ test('computes hashes and decodes calldata locally over the real service endpoin
   expect(pending[2].localDecoded?.method).toBe('transfer')
   expect(pending[2].localDecoded?.parameters[1].value).toBe('1')
   expect(pending[3].localDecoded).toBeUndefined()
+})
+
+test('decodes each call of an official MultiSend batch with its contract name', async () => {
+  const signer = new Wallet(`0x${'78'.repeat(32)}`)
+  const token = '0x4444444444444444444444444444444444444444'
+  const proxy = '0x5555555555555555555555555555555555555555'
+  const transfer = new Interface(['function transfer(address,uint256)']).encodeFunctionData('transfer', [
+    signer.address,
+    5
+  ])
+  const pause = new Interface(['function pause()']).encodeFunctionData('pause')
+  const packed = concat(
+    [
+      [token, transfer],
+      [proxy, pause]
+    ].map(([to, data]) => concat(['0x00', to, toBeHex(0, 32), toBeHex(dataLength(data), 32), data]))
+  )
+  const unsigned = {
+    ...localProposal(signer),
+    to: '0x40A2aCCbd92BCA938b02010E17A5b8929b49130D',
+    value: '0',
+    operation: 1 as const,
+    data: new Interface(['function multiSend(bytes)']).encodeFunctionData('multiSend', [packed]),
+    local: undefined
+  }
+  const proposal = {
+    ...unsigned,
+    safeTxHash: getEip712Digests(getSafeTypedMessage(unsigned, 31337, safe, '1.4.1'))!.eip712Digest
+  }
+  const client = createSafeClient({
+    chains: { 31337: 'http://safe.example/api' },
+    request: async () => Response.json({ next: null, results: [{ ...proposal, isExecuted: false }] }),
+    decode: async (address, _chainId, data) =>
+      address === proxy
+        ? {
+            contractAddress: proxy,
+            contractName: 'ERC1967Proxy',
+            source: 'Sourcify',
+            selector: data.slice(0, 10),
+            signature: 'pause()',
+            method: 'pause',
+            args: []
+          }
+        : undefined
+  })
+  const [pending] = await client.pending(31337, safe, {
+    owners: [signer.address],
+    threshold: 1,
+    nonce: '0',
+    version: '1.4.1'
+  })
+  expect(pending.batch).toEqual([
+    {
+      operation: 0,
+      to: token,
+      value: '0',
+      data: transfer,
+      decoded: {
+        method: 'transfer',
+        parameters: [
+          { name: 'to', type: 'address', value: signer.address },
+          { name: 'value', type: 'uint256', value: '5' }
+        ],
+        source: 'Local function selector'
+      }
+    },
+    {
+      operation: 0,
+      to: proxy,
+      value: '0',
+      data: pause,
+      decoded: { method: 'pause', parameters: [], source: 'Sourcify', contractName: 'ERC1967Proxy' }
+    }
+  ])
 })
 
 test('retains offending proposals when any signed field is changed by the service', async () => {
