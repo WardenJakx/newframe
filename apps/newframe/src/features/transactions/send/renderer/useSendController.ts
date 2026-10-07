@@ -12,6 +12,7 @@ import {
 } from '../../../asset-data/domain/balance/index.ts'
 import { hasSentToAddress } from './sendHistory.ts'
 import {
+  addressBookRecipients,
   filterSendRecipients,
   projectSendSubmission,
   resolveSendRouteAsset,
@@ -88,6 +89,8 @@ export function useSendController({
     () => filterSendRecipients(accounts, currentAccount),
     [accounts, currentAccount]
   )
+  const addressNames = useSideTraySelector((state) => state.addressNames)
+  const recipientAddressBook = React.useMemo(() => addressBookRecipients(addressNames), [addressNames])
 
   const handleSubmit = React.useCallback(async () => {
     const submittingAccountId = currentAccount?.id ?? ''
@@ -182,6 +185,7 @@ export function useSendController({
     chainsMeta,
     recipient: state.recipient,
     recipientAccounts,
+    recipientAddressBook,
     recipientInput: state.recipientInput,
     recipientOpen: state.recipientOpen,
     rowsHidden,

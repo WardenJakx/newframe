@@ -16,7 +16,6 @@ import RequestHeader from '../../ui/RequestHeader.tsx'
 import RequestItem from '../../ui/RequestItem.tsx'
 import { SimpleTypedData as TypedSignatureOverview } from '../../ui/SimpleTypedData.tsx'
 import type { PermitRequestView } from './requestViewTypes.ts'
-import { useAddressIdentities, type AddressIdentities } from './state.ts'
 
 type PermitChainData = {
   chainColor?: string
@@ -26,7 +25,6 @@ type PermitChainData = {
 
 type PermitOverviewProps = {
   capabilities: Pick<RequestTrayCapabilities, 'external' | 'panel'>
-  identities?: AddressIdentities
   req: PermitRequestView
   chainData: PermitChainData
   originName: string
@@ -35,7 +33,6 @@ type PermitOverviewProps = {
 
 type EditPermitProps = {
   capabilities: Pick<RequestTrayCapabilities, 'external' | 'review'>
-  identities?: AddressIdentities
   req: PermitRequestView
 }
 
@@ -48,14 +45,7 @@ type PermitRequestProps = {
   chainData: PermitChainData
 }
 
-const PermitOverview = ({
-  capabilities,
-  req,
-  chainData,
-  originName,
-  open,
-  identities = {}
-}: PermitOverviewProps) => {
+const PermitOverview = ({ capabilities, req, chainData, originName, open }: PermitOverviewProps) => {
   const { chainColor = '', chainName = '', icon } = chainData
   const {
     permit: { spender, value, deadline },
@@ -120,12 +110,7 @@ const PermitOverview = ({
                   {showCopiedMessage ? (
                     <Text tone='accent'>Address Copied</Text>
                   ) : (
-                    <AddressIdentity
-                      address={spender.address}
-                      accountType={identities[spender.address.toLowerCase()]?.accountType}
-                      nickname={spender.ens || identities[spender.address.toLowerCase()]?.nickname}
-                      showCopy={false}
-                    />
+                    <AddressIdentity address={spender.address} name={spender.ens} showCopy={false} />
                   )}
                 </Stack>
               </ClusterValue>
@@ -167,7 +152,7 @@ const PermitOverview = ({
   )
 }
 
-const EditPermit = ({ capabilities, req, identities }: EditPermitProps) => {
+const EditPermit = ({ capabilities, req }: EditPermitProps) => {
   const { permit, tokenData } = req
 
   const { verifyingContract: contract, spender, value: amount, deadline: deadlineInSeconds } = permit
@@ -193,7 +178,6 @@ const EditPermit = ({ capabilities, req, identities }: EditPermitProps) => {
   return (
     <EditTokenSpend
       clipboard={capabilities.external}
-      identities={identities}
       {...{
         data,
         requestedAmount,
@@ -206,12 +190,11 @@ const EditPermit = ({ capabilities, req, identities }: EditPermitProps) => {
 
 const PermitRequest = ({ capabilities, req, originName, favicon, step, chainData }: PermitRequestProps) => {
   const requestView = useRequestView()
-  const identities = useAddressIdentities()
 
   const renderStep = () => {
     switch (step) {
       case 'adjustPermit':
-        return <EditPermit capabilities={capabilities} req={req} identities={identities} />
+        return <EditPermit capabilities={capabilities} req={req} />
       case 'viewRaw':
         return <TypedSignatureOverview originName={originName} favicon={favicon} req={req} />
       case 'adjustApproval':
@@ -220,7 +203,6 @@ const PermitRequest = ({ capabilities, req, originName, favicon, step, chainData
         return (
           <PermitOverview
             capabilities={capabilities}
-            identities={identities}
             originName={originName}
             req={req}
             chainData={chainData}

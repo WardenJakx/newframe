@@ -4,6 +4,7 @@ import { Icon } from '@newframe/ui/icon'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { renderToStaticMarkup } from 'react-dom/server'
 
+import { AddressNamesContext } from '../addressNames.tsx'
 import { AddressAvatar } from './AddressAvatar.tsx'
 import { AddressIdentity, shortAddress } from './AddressIdentity.tsx'
 
@@ -16,7 +17,7 @@ it('shows a checkmark for one second after copying, then restores the copy butto
   const onCopy = mock((_copiedAddress: string) => undefined)
   const clipboard = { writeText: async (value: string) => onCopy(value) }
 
-  render(<AddressIdentity address={address} clipboard={clipboard} nickname='testname' />)
+  render(<AddressIdentity address={address} clipboard={clipboard} name='testname' />)
   fireEvent.click(screen.getByRole('button', { name: 'Copy address for testname' }))
 
   const copyCalls: Array<[copiedAddress: string]> = onCopy.mock.calls
@@ -28,22 +29,32 @@ it('shows a checkmark for one second after copying, then restores the copy butto
   expect(screen.getByRole('button', { name: 'Copy address for testname' })).toBeTruthy()
 })
 
-it('shows a nickname by default and the shortened address on hover', () => {
-  render(<AddressIdentity address={address} nickname='testname' />)
+it('shows the profile name over a fallback name and keeps the full address on hover', () => {
+  const fullAddress = `0x${'AB'.repeat(20)}`
+  render(
+    <AddressNamesContext.Provider
+      value={{ [fullAddress.toLowerCase()]: { name: 'Treasury', source: 'address-book' } }}
+    >
+      <AddressIdentity address={fullAddress} name='vitalik.eth' />
+    </AddressNamesContext.Provider>
+  )
+
+  expect(screen.getByText('Treasury')).toBeTruthy()
+  expect(screen.queryByText('vitalik.eth')).toBeNull()
+  expect(screen.getByText('0xABABAB...ABABAB')).toBeTruthy()
+  expect(screen.getByText(fullAddress)).toBeTruthy()
+})
+
+it('falls back to the given name, and shows the full address statically when requested', () => {
+  const { rerender } = render(<AddressIdentity address={address} name='testname' />)
 
   expect(screen.getByText('testname')).toBeTruthy()
   expect(screen.getByText(shortAddress(address))).toBeTruthy()
-})
 
-it('uses the full address for both the fallback display and nickname hover when requested', () => {
-  const { rerender } = render(<AddressIdentity address={address} showFullAddress />)
+  rerender(<AddressIdentity address={address} showFullAddress />)
 
   expect(screen.getByText(address)).toBeTruthy()
-
-  rerender(<AddressIdentity address={address} nickname='testname' showFullAddress />)
-
-  expect(screen.getByText('testname')).toBeTruthy()
-  expect(screen.getByText(address)).toBeTruthy()
+  expect(screen.queryByText(shortAddress(address))).toBeNull()
 })
 
 it('generates the same full-address avatar across case and retains the account badge', () => {

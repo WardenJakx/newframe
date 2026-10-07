@@ -3,7 +3,7 @@ import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 import { useState } from 'react'
 
-import { AddressIdentity, shortAddress } from '../../../../shared/renderer/ui/AddressIdentity.tsx'
+import { AddressIdentity } from '../../../../shared/renderer/ui/AddressIdentity.tsx'
 import {
   signerIsReady,
   signerStatusText,
@@ -58,9 +58,8 @@ export function SafeOwnerSelector({
           <AddressIdentity
             address={selectedOwner.address}
             accountType={selectedOwner.accountType ?? selectedOwner.signerType}
-            nickname={selectedOwner.name || shortAddress(selectedOwner.address)}
+            name={selectedOwner.name}
             showCopy={false}
-            showFullAddress
           />
         ) : (
           <Text variant='caption' truncate={hasSelectableOwner}>
@@ -76,9 +75,8 @@ export function SafeOwnerSelector({
             <AddressIdentity
               address={owner.address}
               accountType={owner.accountType ?? owner.signerType}
-              nickname={owner.name || shortAddress(owner.address)}
+              name={owner.name}
               showCopy={false}
-              showFullAddress
             />
             <Text variant='caption' tone='secondary'>
               {ownerDescription(owner)}

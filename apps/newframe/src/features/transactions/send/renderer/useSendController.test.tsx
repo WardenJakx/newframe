@@ -42,6 +42,10 @@ function initializeSendState(balances: BalanceFixture[] = [nativeBalance()]) {
       [recipient.id]: recipient
     },
     accountOrder: [recipient.id, sender.id],
+    addressNames: {
+      [sender.address]: { name: sender.name, source: 'account' },
+      [recipient.address]: { name: recipient.name, source: 'account' }
+    },
     activity: {},
     operations: {},
     balances: {

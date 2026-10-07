@@ -200,7 +200,8 @@ describe('#getTransactionEffects', () => {
         amount: '0x17d7840',
         decimals: 6,
         symbol: 'USDC',
-        detail: '0x000000...001337'
+        detail: 'To',
+        counterparty: { address: '0x0000000000000000000000000000000000001337' }
       }
     ])
   })
@@ -232,7 +233,8 @@ describe('#getTransactionEffects', () => {
         amount: '0x0',
         decimals: 18,
         symbol: 'DAI',
-        detail: 'For spender.eth',
+        detail: 'For',
+        counterparty: { address: '0x0000000000000000000000000000000000001337', ens: 'spender.eth' },
         spenderAddress: '0x0000000000000000000000000000000000001337'
       }
     ])
@@ -264,7 +266,8 @@ describe('#getTransactionEffects', () => {
         amount: '0x17d7840',
         decimals: 6,
         symbol: 'USDC',
-        detail: 'For spender 0x000000...001337',
+        detail: 'For spender',
+        counterparty: { address: '0x0000000000000000000000000000000000001337' },
         spenderAddress: '0x0000000000000000000000000000000000001337',
         assetAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
       }
@@ -297,7 +300,8 @@ describe('#getTransactionEffects', () => {
         amount: '0x17d7840',
         decimals: 6,
         symbol: 'USDC',
-        detail: '0x000000...001337',
+        detail: 'To',
+        counterparty: { address: '0x0000000000000000000000000000000000001337' },
         assetAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
       }
     ])
@@ -356,7 +360,8 @@ describe('#getTransactionEffects', () => {
         amount: '0x17d7840',
         decimals: 6,
         symbol: 'USDC',
-        detail: 'For spender 0x000000...001337',
+        detail: 'For spender',
+        counterparty: { address: '0x0000000000000000000000000000000000001337' },
         spenderAddress: '0x0000000000000000000000000000000000001337'
       }
     ])

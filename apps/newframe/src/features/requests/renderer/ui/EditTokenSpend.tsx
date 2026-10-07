@@ -10,7 +10,6 @@ import { useState } from 'react'
 import { formatUnits, max, parseUnits, toBigInt } from '../../../../shared/domain/units.ts'
 import { AddressIdentity } from '../../../../shared/renderer/ui/AddressIdentity.tsx'
 import type { Identity } from '../../contract/requests.ts'
-import type { AddressIdentities } from '../Account/Requests/state.ts'
 import type { SourceValue } from '../format/displayValue.ts'
 import useCopiedMessage from '../hooks/useCopiedMessage.ts'
 import type { RequestExternalCapability } from '../requestCapabilities.ts'
@@ -39,11 +38,9 @@ const isValidInput = (value: string, decimals: number) => {
 function ApprovalParty({
   address,
   capability,
-  accountType,
   name
 }: {
   address: string
-  accountType?: string
   capability: Pick<RequestExternalCapability, 'copy'>
   name?: string
 }) {
@@ -54,7 +51,7 @@ function ApprovalParty({
       {showCopiedMessage ? (
         <Text tone='accent'>Address Copied</Text>
       ) : (
-        <AddressIdentity address={address} accountType={accountType} nickname={name} showCopy={false} />
+        <AddressIdentity address={address} name={name} showCopy={false} />
       )}
       <Icon name='copy' size='small' tone='muted' />
     </Button>
@@ -73,7 +70,6 @@ export interface TokenSpendData {
 }
 
 interface EditTokenSpendProps {
-  identities?: AddressIdentities
   clipboard: Pick<RequestExternalCapability, 'copy'>
   data: TokenSpendData
   updateRequest: (amount: string) => void
@@ -84,7 +80,6 @@ interface EditTokenSpendProps {
 
 export default function EditTokenSpend({
   clipboard,
-  identities = {},
   data,
   updateRequest,
   requestedAmount,
@@ -137,21 +132,11 @@ export default function EditTokenSpend({
       </Text>
       <Surface padding='small' radius='card'>
         <Stack gap='small'>
-          <ApprovalParty
-            address={spender.address}
-            accountType={identities[spender.address.toLowerCase()]?.accountType}
-            capability={clipboard}
-            name={spender.ens ?? identities[spender.address.toLowerCase()]?.nickname}
-          />
+          <ApprovalParty address={spender.address} capability={clipboard} name={spender.ens} />
           <Text align='center' tone='danger' variant='overline'>
             {isRevoke ? 'Revoke approval to spend' : 'Grant approval to spend'}
           </Text>
-          <ApprovalParty
-            address={contract.address}
-            accountType={identities[contract.address.toLowerCase()]?.accountType}
-            capability={clipboard}
-            name={name}
-          />
+          <ApprovalParty address={contract.address} capability={clipboard} name={name} />
           {deadline ? <Countdown end={deadline} title='Permission Expires in' /> : null}
         </Stack>
       </Surface>

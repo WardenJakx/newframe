@@ -2,16 +2,16 @@ import { Stack } from '@newframe/ui/stack'
 import type { ReactNode } from 'react'
 
 import type { ClipboardCapability } from '../../../../shared/renderer/capabilities.ts'
-import { AddressIdentity, shortAddress } from '../../../../shared/renderer/ui/AddressIdentity.tsx'
+import { AddressIdentity } from '../../../../shared/renderer/ui/AddressIdentity.tsx'
 import { SigningAccount } from './SigningAccount.tsx'
 
 export function RequestSigningFooter({
-  account,
+  address,
   clipboard,
   children,
   label
 }: {
-  account: { address: string; name?: string; ensName?: string; accountType?: string }
+  address: string
   clipboard: ClipboardCapability
   children: ReactNode
   label?: string
@@ -19,13 +19,7 @@ export function RequestSigningFooter({
   return (
     <Stack gap='small'>
       <SigningAccount label={label}>
-        <AddressIdentity
-          address={account.address}
-          accountType={account.accountType}
-          clipboard={clipboard}
-          nickname={account.name ?? account.ensName ?? shortAddress(account.address)}
-          showFullAddress
-        />
+        <AddressIdentity address={address} clipboard={clipboard} />
       </SigningAccount>
       {children}
     </Stack>

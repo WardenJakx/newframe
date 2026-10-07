@@ -15,21 +15,13 @@ import EditTokenSpend from '../../../ui/EditTokenSpend.tsx'
 import type { TokenSpendData } from '../../../ui/EditTokenSpend.tsx'
 import { useSafeProposalSimulation, useSafeTransactionActions } from '../../../useSafeConfirmation.ts'
 import type { TransactionRequestView } from '../requestViewTypes.ts'
-import {
-  useAddressIdentities,
-  useAssetRate,
-  useOriginName,
-  useOrigins,
-  useTokens,
-  type AddressIdentities
-} from '../state.ts'
+import { useAssetRate, useOriginName, useOrigins, useTokens } from '../state.ts'
 import AdjustFee from './AdjustFee.tsx'
 import TxReview from './TxReview.tsx'
 
 type TransactionRequestProps = {
   capabilities: Pick<RequestTrayCapabilities, 'external' | 'review' | 'safe' | 'transaction'>
   req: TransactionRequestView
-  identities?: AddressIdentities
   actionId?: string
   step: RequestViewStep
   onUpdateFee: (field: TransactionFeeField, value: bigint) => void
@@ -47,7 +39,6 @@ function SafeTransactionRequestReview({
   const metadata = useWalletSelector((state) => state.chainsMeta.ethereum[chainId])
   const originName = useOriginName(req.origin)
   const origins = useOrigins()
-  const identities = useAddressIdentities()
   const tokens = useTokens()
   const nativeCurrencyRate = useAssetRate({
     chainId,
@@ -129,10 +120,8 @@ function SafeTransactionRequestReview({
       decimals={currency.decimals}
       originName={originName}
       favicon={persistedImageSource(origins[req.origin]?.image)}
-      accountName={account.name || account.ensName}
       isTestnet={chain.isTestnet}
       nativeCurrencyRate={nativeCurrencyRate}
-      identities={identities}
       tokens={tokens}
       capabilities={capabilities}
     />
@@ -199,7 +188,6 @@ export function TransactionRequest(props: TransactionRequestProps) {
       <EditTokenSpend
         clipboard={props.capabilities.external}
         data={approval.data}
-        identities={props.identities}
         requestedAmount={requestedAmount}
         updateRequest={(amount: string) => {
           void props.capabilities.review.updateTokenApproval({
@@ -225,7 +213,6 @@ export default function TransactionRequestWithState(props: TransactionRequestWit
     <TransactionRequest
       {...props}
       req={displayRequest(props.req)}
-      identities={useAddressIdentities()}
       actionId={actionId}
       step={step}
       onUpdateFee={(field, value) => updateFee(props.req, field, value)}

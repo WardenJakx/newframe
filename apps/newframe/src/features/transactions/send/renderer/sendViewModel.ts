@@ -35,6 +35,7 @@ export interface SendViewModel {
   chainsMeta: Record<string | number, ChainMetaLike>
   recipient: SendAccountViewModel | null
   recipientAccounts: SendAccountViewModel[]
+  recipientAddressBook: SendAccountViewModel[]
   recipientInput: string
   recipientOpen: boolean
   rowsHidden: number

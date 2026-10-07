@@ -9,7 +9,7 @@ import { useState, type ReactNode } from 'react'
 
 import { getAddress } from '../../../../../../shared/domain/address.ts'
 import { toBigInt } from '../../../../../../shared/domain/units.ts'
-import { AddressIdentity, shortAddress } from '../../../../../../shared/renderer/ui/AddressIdentity.tsx'
+import { AddressIdentity } from '../../../../../../shared/renderer/ui/AddressIdentity.tsx'
 import { persistedImageSource } from '../../../../../asset-data/domain/image/index.ts'
 import { chainUsesOptimismFees } from '../../../../../chains/domain/chain/fees.ts'
 import { NATIVE_CURRENCY } from '../../../../../tokens/domain/constants.ts'
@@ -26,15 +26,7 @@ import type { RequestTrayCapabilities } from '../../../requestCapabilities.ts'
 import { useRequestView } from '../../../requestView.tsx'
 import { DisplayCoinBalance } from '../../../ui/DisplayValue.tsx'
 import type { TransactionDataView, TransactionRequestView } from '../requestViewTypes.ts'
-import {
-  useAddressIdentities,
-  useAssetRate,
-  useChain,
-  useChainMetadata,
-  useOriginName,
-  useOrigins,
-  useTokens
-} from '../state.ts'
+import { useAssetRate, useChain, useChainMetadata, useOriginName, useOrigins, useTokens } from '../state.ts'
 import TransactionInformation from './TransactionInformation.tsx'
 import type {
   TransactionDetailsSection,
@@ -80,7 +72,6 @@ export type TxReviewData = Pick<
 
 export type TxReviewProps = {
   capabilities: Pick<RequestTrayCapabilities, 'external'>
-  identities?: ReturnType<typeof useAddressIdentities>
   nativeCurrencyRate: ReturnType<typeof useAssetRate>
   req: TxReviewData
   chain: Pick<ReturnType<typeof useChain>, 'name' | 'isTestnet'>
@@ -95,7 +86,6 @@ export type TxReviewProps = {
   favicon?: string
   originIcon?: IconName
   tokens?: ReturnType<typeof useTokens>
-  renderAddress?: (address: string) => ReactNode
   fee?: Omit<TxFeeSummaryProps, 'chain' | 'nativeCurrency' | 'isTestnet' | 'nativeCurrencyRate'>
   extensions?: Partial<
     Pick<
@@ -217,10 +207,31 @@ type CallSectionInput = {
 }
 
 type CallSectionContext = {
-  addressValue: (address: string, nickname?: string) => ReactNode
-  contractTarget?: (address: string, nickname?: string) => ReactNode
+  addressValue: (address: string, name?: string) => ReactNode
   symbol: string
   decimals: number
+}
+
+function argValue(
+  arg: { type?: string; value: string },
+  addressValue: CallSectionContext['addressValue']
+): ReactNode {
+  if (arg.type === 'address') {
+    return addressValue(arg.value)
+  }
+  if (arg.type && /^address\[\d*\]$/.test(arg.type) && arg.value) {
+    return (
+      <Stack gap='xsmall'>
+        {arg.value
+          .split(',')
+          .map((address, position) => ({ address, path: `${position}:${address}` }))
+          .map(({ address, path }) => (
+            <div key={path}>{addressValue(address)}</div>
+          ))}
+      </Stack>
+    )
+  }
+  return arg.value
 }
 
 /** A native send names its recipient; a contract call names its contract in the header, not as a row. */
@@ -235,10 +246,9 @@ export function callSection(call: CallSectionInput, context: CallSectionContext)
   }
   const decoded = call.decoded
   const undecodable = !decoded && !call.recognized && call.data.length > 2
-  const target = context.contractTarget ?? context.addressValue
   return {
     title: decoded ? `Call ${decoded.method}` : (call.fallbackTitle ?? 'Contract call'),
-    target: target(call.to, decoded?.contractName ?? call.recipient),
+    target: context.addressValue(call.to, decoded?.contractName ?? call.recipient),
     notice:
       call.delegatecall || undecodable ? (
         <Stack gap='xsmall'>
@@ -259,7 +269,7 @@ export function callSection(call: CallSectionInput, context: CallSectionContext)
     details: [
       ...(decoded?.args.map((arg, index) => ({
         label: `${arg.name ?? `Argument ${index + 1}`}${arg.type ? ` (${arg.type})` : ''}`,
-        value: arg.type === 'address' ? context.addressValue(arg.value) : arg.value
+        value: argValue(arg, context.addressValue)
       })) ?? []),
       ...(!decoded ? [{ label: 'Selector', value: call.data.slice(0, 10) }] : []),
       ...(value > 0n ? [{ label: 'Attached value', value: amount }] : [])
@@ -452,23 +462,8 @@ export function TxReviewView(props: TxReviewProps) {
       ? `${formatUnits(tokenAmount, tokenDecimals)} ${tokenSymbol ?? 'tokens'}`
       : `${tokenAmount.toString()} raw units`
   }
-  const addressValue = (address: string, nickname?: string) =>
-    props.renderAddress?.(address) ?? (
-      <AddressIdentity
-        address={address}
-        clipboard={props.capabilities.external}
-        accountType={props.identities?.[address.toLowerCase()]?.accountType}
-        nickname={nickname ?? props.identities?.[address.toLowerCase()]?.nickname ?? shortAddress(address)}
-        showFullAddress
-      />
-    )
-  const contractTarget = (address: string, nickname?: string) => (
-    <AddressIdentity
-      address={address}
-      clipboard={props.capabilities.external}
-      accountType={props.identities?.[address.toLowerCase()]?.accountType}
-      nickname={props.identities?.[address.toLowerCase()]?.nickname ?? nickname}
-    />
+  const addressValue = (address: string, name?: string) => (
+    <AddressIdentity address={address} clipboard={props.capabilities.external} name={name} />
   )
   const contractName = token?.name ?? tokenSymbol ?? req.decodedData?.contractName ?? req.recipient
   const spender = token?.spender ?? (isApproval ? { address: req.decodedData?.args[0]?.value } : undefined)
@@ -509,7 +504,7 @@ export function TxReviewView(props: TxReviewProps) {
         fallbackTitle: intent.title,
         recognized: Boolean(actionId)
       },
-      { addressValue, contractTarget, symbol, decimals: meta.nativeCurrency?.decimals ?? 18 }
+      { addressValue, symbol, decimals: meta.nativeCurrency?.decimals ?? 18 }
     )
   }
   const transactionHash = req.tx?.hash
@@ -569,7 +564,6 @@ export default function TxReviewWithState(props: TxReviewWithStateProps) {
   const originName = useOriginName(props.req.origin)
   const origins = useOrigins()
   const tokens = useTokens()
-  const identities = useAddressIdentities()
   const nativeCurrencyRate = useAssetRate({
     chainId,
     address: NATIVE_CURRENCY,
@@ -594,7 +588,6 @@ export default function TxReviewWithState(props: TxReviewWithStateProps) {
         },
         openAdjustFee: () => open({ step: 'adjustFee' })
       }}
-      identities={identities}
       nativeCurrencyRate={nativeCurrencyRate}
       chain={chain}
       chainMetadata={chainMetadata}

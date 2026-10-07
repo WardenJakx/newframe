@@ -40,6 +40,15 @@ export function filterSendRecipients(accounts: SendAccountViewModel[], sender?: 
   })
 }
 
+export function addressBookRecipients(
+  addressNames: SideTrayProjection['addressNames']
+): SendAccountViewModel[] {
+  return Object.entries(addressNames)
+    .filter(([, entry]) => entry.source === 'address-book')
+    .sort(([, a], [, b]) => a.name.localeCompare(b.name))
+    .map(([address]) => ({ id: address, address }))
+}
+
 export function projectSendSubmission({
   activity,
   operationId,

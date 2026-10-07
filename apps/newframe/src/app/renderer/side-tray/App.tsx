@@ -4,6 +4,8 @@ import Send from '../../../features/transactions/send/renderer/index.tsx'
 import type { SendCapability } from '../../../features/transactions/send/renderer/sendService.ts'
 import Trade from '../../../features/transactions/trade/renderer/index.tsx'
 import type { TradeCapability } from '../../../features/transactions/trade/renderer/tradeService.ts'
+import { useSideTraySelector } from '../../../platform/state-sync/renderer/useAppSelector.tsx'
+import { AddressNamesContext } from '../../../shared/renderer/addressNames.tsx'
 import { parseSideTrayHashRoute } from '../../contracts/side-tray/index.ts'
 
 function useHashRoute() {
@@ -21,6 +23,15 @@ function useHashRoute() {
 }
 
 function App({ send, trade }: { send: SendCapability; trade: TradeCapability }) {
+  const addressNames = useSideTraySelector((state) => state.addressNames)
+  return (
+    <AddressNamesContext.Provider value={addressNames}>
+      <SideTrayRoute send={send} trade={trade} />
+    </AddressNamesContext.Provider>
+  )
+}
+
+function SideTrayRoute({ send, trade }: { send: SendCapability; trade: TradeCapability }) {
   const route = useHashRoute()
   const assetId = route.searchParams.get('assetId')
   const chainIdValue = Number(route.searchParams.get('chainId'))

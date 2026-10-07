@@ -1,4 +1,5 @@
 import type { ComponentType, PropsWithChildren } from 'react'
+import { useStore } from 'zustand'
 import { createStore, type StoreApi } from 'zustand/vanilla'
 
 import type {
@@ -7,6 +8,7 @@ import type {
 } from '../../src/platform/state-sync/contract/projections.ts'
 import type { TrayState } from '../../src/platform/state-sync/contract/protocol.ts'
 import { TrayStateProvider } from '../../src/platform/state-sync/renderer/useAppSelector.tsx'
+import { AddressNamesContext } from '../../src/shared/renderer/addressNames.tsx'
 
 export interface TrayStateFixtureOptions {
   initialState?: TrayState
@@ -27,9 +29,23 @@ export function createTrayStateFixture({ initialState = {} }: TrayStateFixtureOp
 
 export type TrayStateStore = ReturnType<typeof createTrayStateFixture>
 
+const NO_ADDRESS_NAMES: MainTrayProjection['addressNames'] = {}
+
+function FixtureAddressNames({ state, children }: PropsWithChildren<{ state: TrayStateStore }>) {
+  const addressNames = useStore(
+    state.wallet,
+    (projection: Partial<MainTrayProjection>) => projection.addressNames ?? NO_ADDRESS_NAMES
+  )
+  return <AddressNamesContext.Provider value={addressNames}>{children}</AddressNamesContext.Provider>
+}
+
 export function createTrayStateWrapper(state: TrayStateStore): ComponentType<PropsWithChildren> {
   return function TrayStateTestWrapper({ children }: PropsWithChildren) {
-    return <TrayStateProvider state={state}>{children}</TrayStateProvider>
+    return (
+      <TrayStateProvider state={state}>
+        <FixtureAddressNames state={state}>{children}</FixtureAddressNames>
+      </TrayStateProvider>
+    )
   }
 }
 

@@ -1,6 +1,7 @@
 import { expect, it } from 'bun:test'
 
 import { screen, render } from '../../../../../../test/support/componentSetup.tsx'
+import { AddressNamesContext } from '../../../../../shared/renderer/addressNames.tsx'
 import type { SignRequestView } from './requestViewTypes.ts'
 import SignatureRequestComponent from './SignatureRequest.tsx'
 
@@ -59,7 +60,7 @@ Resources:
   expect(screen.getByText('wants you to sign in')).toBeTruthy()
   expect(screen.getByText('example.test')).toBeTruthy()
   expect(screen.getByText('https://example.test')).toBeTruthy()
-  expect(screen.getByText(address)).toBeTruthy()
+  expect(screen.queryByText('Address in message')).toBeNull()
   expect(screen.getByText(statement)).toBeTruthy()
   expect(screen.getByText('https://example.test/terms')).toBeTruthy()
   expect(screen.getByText('ipfs://bafyexample')).toBeTruthy()
@@ -96,7 +97,17 @@ it('distinguishes requester and signing account from mismatching signed identity
   )
   expect(screen.getByText('other.test')).toBeTruthy()
   expect(screen.getByText('example.test')).toBeTruthy()
-  expect(screen.getByText(address)).toBeTruthy()
   expect(screen.getByText(/does not match the requesting site/)).toBeTruthy()
   expect(screen.getByText(/differs from the signing account/)).toBeTruthy()
+})
+
+it('names a known address in the sign-in details and leaves the raw message unchanged', async () => {
+  const { user } = render(
+    <AddressNamesContext.Provider value={{ [address]: { name: 'Treasury', source: 'address-book' } }}>
+      <SignatureRequestComponent req={request(signIn)} originName='example.test' />
+    </AddressNamesContext.Provider>
+  )
+  await user.click(screen.getByText('Sign-in details'))
+  expect(screen.getByText('Address').closest('div')?.textContent).toBe(`AddressTreasury${address}`)
+  expect(screen.getByLabelText('Message to sign').textContent).toBe(signIn)
 })

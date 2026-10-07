@@ -420,7 +420,7 @@ describe('confirm', () => {
     expect(capabilities.external.writeText).toHaveBeenCalledWith(req.tx.hash)
   })
 
-  it('promotes request identity and resolves ERC-20 transfers to their recipient', () => {
+  it('names the ERC-20 recipient from the profile over the request ENS, in details and effects', () => {
     const tokenAddress = '0x00000000000000000000000000000000000000aa'
     const recipientAddress = '0x0000000000000000000000000000000000001337'
     const senderAddress = '0x0000000000000000000000000000000000000042'
@@ -441,6 +441,9 @@ describe('confirm', () => {
           lastSignerType: 'ledger',
           requests: {}
         }
+      },
+      addressNames: {
+        [recipientAddress]: { name: 'Recipient Ledger', source: 'account', accountType: 'ledger' }
       },
       chains: { ethereum: { 137: { name: 'Polygon', isTestnet: false } } },
       chainsMeta: { ethereum: { 137: { nativeCurrency: { symbol: 'MATIC' } } } },
@@ -494,11 +497,11 @@ describe('confirm', () => {
     expect(within(screen.getByLabelText('Transaction effects')).getByText('25')).toBeTruthy()
 
     const details = screen.getByLabelText('Transaction details')
-    expect(details.textContent).toMatch(/recipient\.eth/i)
+    expect(details.textContent).toMatch(/To.*Recipient Ledger.*0x000000\.\.\.001337/)
     expect(details.textContent).toMatch(/Token contract.*USD Coin/i)
     expect(details.textContent).not.toMatch(/origin|chain|signer|from|decode source/i)
 
-    const recipientCopy = screen.getByRole('button', { name: 'Copy address for recipient.eth' })
+    const recipientCopy = screen.getByRole('button', { name: 'Copy address for Recipient Ledger' })
     const addressImages = within(details).getAllByRole('presentation', { hidden: true })
     expect(addressImages).toHaveLength(2)
     for (const image of addressImages) {
@@ -506,11 +509,13 @@ describe('confirm', () => {
     }
     expect(details.innerHTML).toContain('viewBox="0 0 400 400"')
     expect(details.innerHTML.match(/<svg /g)).toHaveLength(3) // Ledger badge and two copy controls.
-    expect(screen.getAllByText('recipient.eth').length).toBeGreaterThan(0)
-    expect(screen.getByText(recipientAddress)).toBeTruthy()
+    expect(screen.queryByText('recipient.eth')).toBeNull()
+    expect(screen.getByLabelText('Outgoing asset effect').textContent).toContain(
+      `To Recipient Ledger${recipientAddress}`
+    )
     fireEvent.click(recipientCopy)
     expect(capabilities.external.writeText).toHaveBeenCalledWith(recipientAddress)
-    expect(screen.getByRole('button', { name: 'Address copied for recipient.eth' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Address copied for Recipient Ledger' })).toBeTruthy()
 
     expect(summary.textContent).not.toContain('testname')
     expect(screen.queryByText(/hot signer/i)).toBeNull()
@@ -841,6 +846,35 @@ it('keeps a single named argument visible and separates calldata verification fr
   expect(capabilities.external.writeText).toHaveBeenCalledWith(
     JSON.stringify(completeRequest(req).data, null, 2)
   )
+})
+
+it('names each address of a decoded address[] argument through the profile', () => {
+  const friend = '0x0000000000000000000000000000000000000031'
+  const stranger = '0x0000000000000000000000000000000000000032'
+  fixture.state.reset({
+    ...fixture.state.getState(),
+    addressNames: { [friend]: { name: 'Friend', source: 'address-book' } }
+  })
+  renderRequest({
+    requestId: 'address-array',
+    type: 'transaction',
+    origin: 'test-origin',
+    data: { chainId: '0x89', to: '0x0000000000000000000000000000000000000010', data: '0x12345678' },
+    decodedData: {
+      method: 'airdrop',
+      signature: 'airdrop(address[])',
+      args: [{ name: 'recipients', type: 'address[]', value: `${friend},${stranger}` }]
+    },
+    classification: TxClassification.CONTRACT_CALL
+  })
+
+  const identities = within(screen.getByLabelText('Transaction details')).getAllByText(
+    (_content, element) => element?.hasAttribute('data-address-identity') ?? false
+  )
+  expect(identities.slice(1).map((identity) => identity.textContent)).toEqual([
+    `Friend0x000000...000031${friend}`,
+    `0x000000...000032${stranger}`
+  ])
 })
 
 it('shows the approval spender separately from the token contract without inventing decimals', () => {
