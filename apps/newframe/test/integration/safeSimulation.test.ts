@@ -29,7 +29,8 @@ import type { SafeProposal } from '../../src/features/accounts/domain/safe.ts'
 import type { TransactionEffect } from '../../src/features/transactions/domain/index.ts'
 import {
   createTransactionSimulationProjection,
-  type TraceCall
+  type SimulatedCall,
+  type SimulatedLog
 } from '../../src/features/transactions/main/simulation.ts'
 import { createOperationService } from '../../src/platform/operations/service.ts'
 import { createTestStore } from '../support/createTestStore.ts'
@@ -68,9 +69,9 @@ let service: ReturnType<typeof createSafeService>
 let rpc: ReturnType<typeof createSafeSimulationRpc>
 let unsubscribe: () => void
 let proposals: Record<string, SafeProposal>
-let traceMode: 'normal' | 'unavailable' | 'no-logs' = 'normal'
+let simulationMode: 'normal' | 'unavailable' | 'no-logs' = 'normal'
 const requests: string[] = []
-const traces: TraceCall[] = []
+const simulatedLogs: SimulatedLog[] = []
 const base = createTestStore()
 const selectors = createStore(subscribeWithSelector(() => base.getState()))
 const store = { ...base.store, subscribe: selectors.subscribe }
@@ -127,7 +128,7 @@ async function preview(name: string) {
   const before = JSON.stringify(store.getState().main.accounts[accountId])
   const chainBefore = await liveState()
   requests.length = 0
-  traces.length = 0
+  simulatedLogs.length = 0
   const result = await service.simulate({
     type: 'safe.simulate',
     accountId,
@@ -143,7 +144,7 @@ async function preview(name: string) {
         method === 'eth_call' ||
         method === 'eth_chainId' ||
         method === 'eth_gasPrice' ||
-        method === 'debug_traceCall'
+        method === 'eth_simulateV1'
     )
   ).toBe(true)
   return result
@@ -155,13 +156,6 @@ async function executed(name: string) {
     throw new Error(result.error)
   }
   return result
-}
-
-function logs(trace: TraceCall): NonNullable<TraceCall['logs']> {
-  if (trace.error || trace.revertReason) {
-    return []
-  }
-  return [...(trace.logs ?? []), ...(trace.calls ?? []).flatMap(logs)]
 }
 
 beforeAll(async () => {
@@ -356,20 +350,18 @@ beforeAll(async () => {
   rpc = createSafeSimulationRpc({
     send(payload, callback) {
       requests.push(payload.method)
-      if (payload.method === 'debug_traceCall' && traceMode === 'unavailable') {
-        callback({ id: payload.id, jsonrpc: '2.0', error: { code: -32601, message: 'Tracing disabled' } })
+      if (payload.method === 'eth_simulateV1' && simulationMode === 'unavailable') {
+        callback({ id: payload.id, jsonrpc: '2.0', error: { code: -32601, message: 'Method not found' } })
         return
       }
-      let params = payload.params
-      if (payload.method === 'debug_traceCall' && traceMode === 'no-logs') {
-        const copied = structuredClone(params) as [unknown, unknown, { tracerConfig?: { withLog?: boolean } }]
-        copied[2].tracerConfig = { withLog: false }
-        params = copied
-      }
-      void provider.send(payload.method, params).then(
+      void provider.send(payload.method, payload.params).then(
         (result: unknown) => {
-          if (payload.method === 'debug_traceCall') {
-            traces.push(result as TraceCall)
+          if (payload.method === 'eth_simulateV1') {
+            const [{ calls }] = result as [{ calls: SimulatedCall[] }]
+            if (simulationMode === 'no-logs') {
+              calls.forEach((call) => (call.logs = []))
+            }
+            simulatedLogs.push(...calls.flatMap((call) => call.logs))
           }
           callback({ id: payload.id, jsonrpc: '2.0', result })
         },
@@ -469,15 +461,13 @@ it('executes MultiSend and undecoded configuration changes in Safe context witho
   expect(result.effects).toContainEqual(effectMatching({ kind: 'allowance', amount: '0x12c' }))
   expect((await preview('configuration')).status).toBe('success')
   expect(
-    traces
-      .flatMap(logs)
-      .some(
-        (event) =>
-          event.address?.toLowerCase() === seed.safe.toLowerCase() &&
-          event.topics?.[0] === id('AddedOwner(address)') &&
-          (event.data?.toLowerCase().includes(newOwner.slice(2)) ??
-            event.topics.some((topic) => topic.toLowerCase().endsWith(newOwner.slice(2))))
-      )
+    simulatedLogs.some(
+      (event) =>
+        event.address.toLowerCase() === seed.safe.toLowerCase() &&
+        event.topics[0] === id('AddedOwner(address)') &&
+        (event.data.toLowerCase().includes(newOwner.slice(2).toLowerCase()) ||
+          event.topics.some((topic) => topic.toLowerCase().endsWith(newOwner.slice(2).toLowerCase())))
+    )
   ).toBe(true)
   const configBatch = await executed('configurationBatch')
   expect(configBatch.status).toBe('success')
@@ -491,15 +481,13 @@ it('uses the future proposal nonce against current state without replaying a que
   expect(future.currentNonce).toBe('0')
   expect(future.effects).toContainEqual(effectMatching({ kind: 'native', amount: '0xc' }))
   expect(
-    traces
-      .flatMap(logs)
-      .some(
-        (event) =>
-          event.address?.toLowerCase() === seed.safe.toLowerCase() &&
-          event.topics?.[0] === id('ExecutionSuccess(bytes32,uint256)') &&
-          (event.topics.includes(proposals.future.safeTxHash) ||
-            event.data?.startsWith(proposals.future.safeTxHash))
-      )
+    simulatedLogs.some(
+      (event) =>
+        event.address.toLowerCase() === seed.safe.toLowerCase() &&
+        event.topics[0] === id('ExecutionSuccess(bytes32,uint256)') &&
+        (event.topics.includes(proposals.future.safeTxHash) ||
+          event.data.startsWith(proposals.future.safeTxHash))
+    )
   ).toBe(true)
   expect((await preview('futureAllowance')).status).toBe('error')
 })
@@ -529,13 +517,13 @@ it('preserves refunds, distinguishes inner failure from full revert, and discard
   expect(reverted).toMatchObject({ status: 'error', failure: 'revert', effects: [] })
 })
 
-it('reports missing or disabled trace evidence as unavailable while preserving stored proposals', async () => {
+it('reports missing simulation support or log evidence as unavailable while preserving stored proposals', async () => {
   try {
-    traceMode = 'unavailable'
+    simulationMode = 'unavailable'
     expect((await preview('native')).status).toBe('unavailable')
-    traceMode = 'no-logs'
+    simulationMode = 'no-logs'
     expect((await preview('token')).status).toBe('unavailable')
   } finally {
-    traceMode = 'normal'
+    simulationMode = 'normal'
   }
 })

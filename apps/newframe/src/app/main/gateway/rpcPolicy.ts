@@ -135,9 +135,9 @@ const rpcMethods: Record<string, RpcMethodPolicy> = {
   eth_uninstallFilter: chain(z.tuple([quantity])),
   eth_getFilterChanges: chain(z.tuple([quantity])),
   eth_getFilterLogs: chain(z.tuple([quantity])),
-  // Newframe's own simulations use a main-process source. External debug/admin RPC is not exposed.
-  debug_traceCall: {
-    params: z.tuple([object, block, object.optional()]),
+  // Newframe's own simulations use a main-process source and are not exposed to dapps.
+  eth_simulateV1: {
+    params: z.tuple([object, block]),
     authority: 'internal',
     route: 'chain'
   }
