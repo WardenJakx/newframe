@@ -32,5 +32,5 @@
     "node-gyp",
     "node-hid"
   ],
-  "ignoreBinaries": ["ditto", "forge", "oxlint", "oxfmt", "spctl"]
+  "ignoreBinaries": ["check", "ditto", "forge", "oxlint", "oxfmt", "spctl"]
 }

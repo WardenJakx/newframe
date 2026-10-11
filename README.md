@@ -88,7 +88,7 @@ To enable wallet portfolio discovery, enable token auto-discovery with Flash in 
 
 ### Development checks
 
-Run `bun run check` after installing dependencies in a clean checkout. It checks
+Run `bun run verify` after installing dependencies in a clean checkout. It checks
 formatting, generates shared UI declarations and styles during typechecking, then
 runs typed lint, Knip, and tests.
 

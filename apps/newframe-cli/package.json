@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "bun src/index.ts",
-    "typecheck": "bun --cwd ../../packages/flash build && tsc --noEmit --project tsconfig.json"
+    "typecheck": "bun --cwd ../../packages/flash build && bun check"
   },
   "dependencies": {
     "@newframe/flash": "workspace:*",

@@ -14,7 +14,7 @@
   },
   "scripts": {
     "build": "tsc --project tsconfig.build.json",
-    "typecheck": "tsc --project tsconfig.build.json --noEmit && tsc --project tsconfig.json",
+    "typecheck": "bun check -p tsconfig.build.json && bun check",
     "test": "bun test"
   },
   "dependencies": {
