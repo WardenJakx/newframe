@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsc --project tsconfig.json"
+    "typecheck": "bun check"
   },
   "dependencies": {
     "@newframe/desktop-api": "workspace:*",

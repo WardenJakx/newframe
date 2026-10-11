@@ -26,7 +26,7 @@
     "test:newframe": "bun run newframe test:unit",
     "test:newframe-extension": "bun run extension test",
     "test:all": "bun run test:unit",
-    "typecheck": "tsc --project tsconfig.json && bun run --workspaces --sequential typecheck",
+    "typecheck": "bun run flash:build && bun run ui build && bun run newframe styles:generate && bun run extension styles:generate && bun check -b",
     "lint": "oxlint . --report-unused-disable-directives-severity=error",
     "lint:warn": "bun run lint",
     "lint:fix": "oxlint --fix . --report-unused-disable-directives-severity=error",
@@ -34,7 +34,7 @@
     "format": "oxfmt --write '**/*.{yml,json,md,html,ts,tsx,js,mjs}'",
     "format:staged": "lint-staged",
     "format:check": "oxfmt --check '**/*.{yml,json,md,html,ts,tsx,js,mjs}'",
-    "check": "bun run format:check && bun run typecheck && bun run lint && bun run knip && bun run test",
+    "verify": "bun run format:check && bun run typecheck && bun run lint && bun run knip && bun run test",
     "dep:report": "bun scripts/dep-report.ts",
     "visual:harness:newframe": "scripts/with-lock.sh node_modules/.visual-harness.lock bun run visual:harness:newframe:unlocked",
     "visual:harness:newframe:unlocked": "bun run flash:build && bun exec 'node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON harness/newframe/run-visual-harness.ts'",
@@ -43,7 +43,7 @@
   "lint-staged": {
     "*.{yml,json,md,html,ts,tsx,js,mjs}": "oxfmt --write"
   },
-  "packageManager": "bun@1.4.0",
+  "packageManager": "bun@1.4.3",
   "devDependencies": {
     "@types/bun": "1.4.0",
     "eslint-plugin-testing-library": "7.16.2",
