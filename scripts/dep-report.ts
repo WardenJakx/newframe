@@ -14,6 +14,7 @@ type LockWorkspace = {
 
 type BunLock = {
   workspaces?: Record<string, LockWorkspace>
+  catalog?: Record<string, string>
   packages?: Record<string, [string, string, LockPackageMeta?]>
 }
 
@@ -215,7 +216,11 @@ function collectDirectDependencies(
 
   for (const [workspacePath, workspace] of Object.entries(lock.workspaces ?? {})) {
     for (const kind of kinds) {
-      for (const [name, range] of Object.entries(workspace[kind] ?? {})) {
+      for (const [name, declaredRange] of Object.entries(workspace[kind] ?? {})) {
+        const range = declaredRange === 'catalog:' ? lock.catalog?.[name] : declaredRange
+        if (!range) {
+          throw new Error(`Missing catalog entry for ${name}`)
+        }
         const node = resolveDependency(packagesByName, name, range)
         if (!node) {
           continue

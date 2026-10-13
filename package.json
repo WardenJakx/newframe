@@ -2,11 +2,35 @@
   "name": "newframe-monorepo",
   "private": true,
   "version": "0.0.0",
-  "workspaces": [
-    "apps/*",
-    "harness",
-    "packages/*"
-  ],
+  "workspaces": {
+    "packages": [
+      "apps/*",
+      "harness",
+      "packages/*"
+    ],
+    "catalog": {
+      "@happy-dom/global-registrator": "^20.10.5",
+      "@pandacss/dev": "^1.11.4",
+      "@testing-library/react": "^16.3.2",
+      "@testing-library/user-event": "^14.6.1",
+      "@trpc/client": "11.19.0",
+      "@trpc/server": "11.19.0",
+      "@types/bun": "1.4.0",
+      "@types/node": "24",
+      "@types/react": "^19",
+      "@types/react-dom": "^19",
+      "@types/ws": "^8.18.1",
+      "ethers": "6.16.0",
+      "events": "3.3.0",
+      "playwright-core": "^1.61.1",
+      "react": "19.2.7",
+      "react-dom": "19.2.7",
+      "typescript": "7.0.2",
+      "ws": "8.21.0",
+      "zod": "^4.4.3",
+      "zustand": "^5.0.14"
+    }
+  },
   "scripts": {
     "prepare": "husky",
     "flash:build": "bun --cwd packages/flash build",
@@ -45,13 +69,13 @@
   },
   "packageManager": "bun@1.4.3",
   "devDependencies": {
-    "@types/bun": "1.4.0",
+    "@types/bun": "catalog:",
     "eslint-plugin-testing-library": "7.16.2",
     "husky": "9.1.7",
     "lint-staged": "^17.3.0",
-    "playwright-core": "^1.61.1",
+    "playwright-core": "catalog:",
     "oxfmt": "0.65.0",
-    "typescript": "7.0.2",
+    "typescript": "catalog:",
     "oxlint": "1.80.0",
     "oxlint-tsgolint": "7.0.2001"
   },

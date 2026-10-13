@@ -18,13 +18,13 @@
     "test": "bun test"
   },
   "dependencies": {
-    "zod": "^4.4.3",
-    "ws": "8.21.0"
+    "zod": "catalog:",
+    "ws": "catalog:"
   },
   "devDependencies": {
-    "@types/bun": "1.4.0",
-    "@types/node": "24",
-    "@types/ws": "^8.18.1",
-    "typescript": "7.0.2"
+    "@types/bun": "catalog:",
+    "@types/node": "catalog:",
+    "@types/ws": "catalog:",
+    "typescript": "catalog:"
   }
 }
