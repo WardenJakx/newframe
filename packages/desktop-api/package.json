@@ -16,12 +16,12 @@
     "typecheck": "bun check"
   },
   "dependencies": {
-    "@trpc/client": "11.19.0",
-    "@trpc/server": "11.19.0",
-    "zod": "^4.4.3"
+    "@trpc/client": "catalog:",
+    "@trpc/server": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "24",
-    "typescript": "7.0.2"
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
   }
 }

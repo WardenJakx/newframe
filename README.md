@@ -86,6 +86,14 @@ Load `apps/newframe-extension/dist` as an unpacked extension in Chrome, Brave, o
 
 To enable wallet portfolio discovery, enable token auto-discovery with Flash in Newframe settings, or add a Zerion API key and enable it with Zerion. Only one provider is active at a time.
 
+### Shared dependencies
+
+Shared third-party versions live in `workspaces.catalog` in the root `package.json`.
+Use `"catalog:"` for these dependencies in workspace manifests, including development
+and peer dependencies. Keep internal packages on `"workspace:*"`.
+Update a shared version in the catalog, then run `bun install` to refresh `bun.lock`.
+Use `bun add <package> --catalog` from a workspace to add a catalog dependency.
+
 ### Development checks
 
 Run `bun run verify` after installing dependencies in a clean checkout. It checks

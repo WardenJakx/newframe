@@ -26,19 +26,19 @@
   "author": "NewFrame Labs, Inc.",
   "license": "",
   "devDependencies": {
-    "@pandacss/dev": "^1.11.4",
-    "@types/bun": "1.4.0",
+    "@pandacss/dev": "catalog:",
+    "@types/bun": "catalog:",
     "@types/chrome": "^0.1.43",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "typescript": "7.0.2"
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "typescript": "catalog:"
   },
   "dependencies": {
     "@newframe/ui": "workspace:*",
-    "events": "3.3.0",
-    "react": "19.2.7",
-    "react-dom": "19.2.7",
-    "zustand": "^5.0.14",
+    "events": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "zustand": "catalog:",
     "@newframe/desktop-api": "workspace:*"
   },
   "peerDependencies": {}
