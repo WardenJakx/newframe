@@ -6146,77 +6146,6 @@ var FlashCancelOrderRequestSchema = object({
   userSignature: string2().optional()
 });
 
-// apps/newframe-cli/src/client.ts
-import { createHash } from "crypto";
-
-// packages/desktop-api/src/schemas.ts
-var AddressSchema = string2().regex(/^0x[0-9a-f]{40}$/i);
-var HexSchema = string2().regex(/^0x[0-9a-f]*$/i);
-var HashSchema = string2().regex(/^0x[0-9a-f]{64}$/i);
-var AiSessionDescriptorSchema = strictObject({
-  name: string2().trim().min(1).max(128),
-  description: string2().trim().max(512).optional(),
-  url: url({ protocol: /^https?:$/ }).max(2048).optional()
-});
-var AiSessionConnectSchema = strictObject({
-  descriptor: AiSessionDescriptorSchema,
-  durationSeconds: number2().int().min(60).max(180 * 24 * 60 * 60)
-});
-var SessionSchema = object({
-  sessionId: string2().min(1),
-  sessionToken: string2().min(1),
-  account: AddressSchema,
-  expiresAt: number2()
-});
-var AiSessionCredentialsSchema = SessionSchema.extend({ descriptor: AiSessionDescriptorSchema });
-var RoutingSchema = object({
-  chainId: string2().optional(),
-  origin: string2().optional(),
-  connecting: boolean2().optional()
-});
-var RpcCallSchema = RoutingSchema.extend({
-  method: string2().min(1).max(128),
-  params: union([array(unknown()), record(string2(), unknown())]).default([])
-});
-var OriginStatusSchema = object({
-  originId: string2(),
-  origin: string2(),
-  connected: boolean2(),
-  address: string2(),
-  selectedAddress: string2().optional(),
-  chainId: string2().optional()
-});
-var ExtensionAccountsSchema = object({
-  accounts: array(object({ address: AddressSchema, name: string2() })),
-  selected: union([AddressSchema, literal("")]),
-  all: literal(true).optional()
-});
-var ChainSchema = looseObject({
-  chainId: union([number2(), string2()]),
-  name: string2().optional(),
-  connected: boolean2().optional(),
-  icon: array(looseObject({ url: string2() })).optional()
-});
-var ProviderEventSchema = _enum([
-  "networkChanged",
-  "chainChanged",
-  "chainsChanged",
-  "accountsChanged",
-  "assetsChanged"
-]);
-var WalletEventSchema = discriminatedUnion("event", [
-  object({ event: literal("chainsChanged"), value: array(ChainSchema) }),
-  object({ event: literal("accountsChanged"), value: array(string2()) }),
-  object({ event: literal("chainChanged"), value: string2() }),
-  object({ event: literal("networkChanged"), value: union([string2(), number2()]) }),
-  object({ event: literal("assetsChanged"), value: unknown() })
-]);
-var RpcErrorSchema = object({
-  code: number2().optional(),
-  message: string2(),
-  data: unknown().optional()
-});
-
 // packages/flash/dist/chains.js
 var FLASH_CHAIN_REGISTRY = [
   {
@@ -6387,6 +6316,77 @@ function getFlashAssetPairChains(pair) {
     isCrossChain: targetChainId !== contraChainId
   };
 }
+
+// apps/newframe-cli/src/client.ts
+import { createHash } from "crypto";
+
+// packages/desktop-api/src/schemas.ts
+var AddressSchema = string2().regex(/^0x[0-9a-f]{40}$/i);
+var HexSchema = string2().regex(/^0x[0-9a-f]*$/i);
+var HashSchema = string2().regex(/^0x[0-9a-f]{64}$/i);
+var AiSessionDescriptorSchema = strictObject({
+  name: string2().trim().min(1).max(128),
+  description: string2().trim().max(512).optional(),
+  url: url({ protocol: /^https?:$/ }).max(2048).optional()
+});
+var AiSessionConnectSchema = strictObject({
+  descriptor: AiSessionDescriptorSchema,
+  durationSeconds: number2().int().min(60).max(180 * 24 * 60 * 60)
+});
+var SessionSchema = object({
+  sessionId: string2().min(1),
+  sessionToken: string2().min(1),
+  account: AddressSchema,
+  expiresAt: number2()
+});
+var AiSessionCredentialsSchema = SessionSchema.extend({ descriptor: AiSessionDescriptorSchema });
+var RoutingSchema = object({
+  chainId: string2().optional(),
+  origin: string2().optional(),
+  connecting: boolean2().optional()
+});
+var RpcCallSchema = RoutingSchema.extend({
+  method: string2().min(1).max(128),
+  params: union([array(unknown()), record(string2(), unknown())]).default([])
+});
+var OriginStatusSchema = object({
+  originId: string2(),
+  origin: string2(),
+  connected: boolean2(),
+  address: string2(),
+  selectedAddress: string2().optional(),
+  chainId: string2().optional()
+});
+var ExtensionAccountsSchema = object({
+  accounts: array(object({ address: AddressSchema, name: string2() })),
+  selected: union([AddressSchema, literal("")]),
+  all: literal(true).optional()
+});
+var ChainSchema = looseObject({
+  chainId: union([number2(), string2()]),
+  name: string2().optional(),
+  connected: boolean2().optional(),
+  icon: array(looseObject({ url: string2() })).optional()
+});
+var ProviderEventSchema = _enum([
+  "networkChanged",
+  "chainChanged",
+  "chainsChanged",
+  "accountsChanged",
+  "assetsChanged"
+]);
+var WalletEventSchema = discriminatedUnion("event", [
+  object({ event: literal("chainsChanged"), value: array(ChainSchema) }),
+  object({ event: literal("accountsChanged"), value: array(string2()) }),
+  object({ event: literal("chainChanged"), value: string2() }),
+  object({ event: literal("networkChanged"), value: union([string2(), number2()]) }),
+  object({ event: literal("assetsChanged"), value: unknown() })
+]);
+var RpcErrorSchema = object({
+  code: number2().optional(),
+  message: string2(),
+  data: unknown().optional()
+});
 
 // packages/flash/dist/runtime.js
 function flashRuntimeFromEnv() {
@@ -7718,7 +7718,7 @@ class NewframeClient {
 var usage = `newframe session start --name NAME [--description TEXT] [--duration SECONDS]
 newframe session show|revoke
 newframe rpc METHOD [--params JSON_OR_FILE] [--chain-id ID]
-newframe flash quote --request FILE|- [--out FILE]
+newframe flash quote --request FILE|- [--out FILE]  (side applies to targetAsset; contraAsset is the pricing asset, e.g. USDC; qty is the amount spent: target when selling, contra when buying)
 newframe flash submit --quote FILE|-
 newframe flash orders [--status STATUS] [--page-size NUMBER]
 newframe flash order|watch|cancel ORDER_ID [--timeout SECONDS]`;
@@ -7758,6 +7758,11 @@ function positiveNumber(value, label) {
     throw new Error(`${label} must be a positive integer`);
   }
   return number;
+}
+function describeQuoteRequest(request) {
+  const spent = getSpentAsset(request).symbol;
+  const received = getReceiveAsset(request).symbol;
+  return `${request.side} ${request.targetAsset.symbol}: spend ${request.qty ?? request.inputAmount} ${spent} for ${received}`;
 }
 async function jsonInput(source) {
   const text = source === "-" ? await Bun.stdin.text() : await readFile3(source, "utf8");
@@ -7805,12 +7810,21 @@ async function run2(argv = process.argv.slice(2), client = new NewframeClient) {
   }
   if (group === "flash") {
     if (command === "quote") {
-      const envelope = await client.quote(FlashQuoteRequestSchema.parse(await jsonInput(option(options, "request"))));
+      const request = FlashQuoteRequestSchema.parse(await jsonInput(option(options, "request")));
+      const intent = describeQuoteRequest(request);
+      const envelope = await client.quote(request).catch((error) => {
+        if (error instanceof Error) {
+          error.message = `${intent}: ${error.message}`;
+        }
+        throw error;
+      });
+      const { quote } = envelope;
+      const summary = `${intent}; receive ~${quote.outputAmount} ${quote.receiveAsset.symbol}`;
       if (options.out) {
         await writeFile(options.out, `${JSON.stringify(envelope, null, 2)}
 `, { flag: "wx" });
       }
-      return envelope;
+      return { summary, ...envelope };
     }
     if (command === "submit") {
       return client.submit(await jsonInput(option(options, "quote")));
