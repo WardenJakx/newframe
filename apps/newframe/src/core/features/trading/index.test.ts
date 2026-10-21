@@ -11,7 +11,10 @@ import {
 import {
   FLASH_BASE_USDC_ADDRESS,
   FLASH_BASE_WETH_ADDRESS,
-  FLASH_MARKET_ORDER_TYPE
+  FLASH_LIMIT_ORDER_TYPE,
+  FLASH_MARKET_ORDER_TYPE,
+  FLASH_TAKE_PROFIT_ORDER_TYPE,
+  FLASH_TWAP_ORDER_TYPE
 } from '@newframe/flash/constants'
 import type { FlashBoundQuoteRequest } from '@newframe/flash/contracts'
 import {
@@ -573,6 +576,24 @@ describe('main Flash facade helpers', () => {
     expect(observe).toHaveBeenNthCalledWith(3, 'flash', [usdcRate])
     expect(observe).toHaveBeenCalledTimes(3)
     expect(invalidQuote.quote.inputAmount).toBe('NaN')
+  })
+  it('only forwards quote-leg rates from orders priced at the market', async () => {
+    const observe = mock()
+    const { flash } = flashWithFetch(async () => jsonResponse(rateResponse('2', '4800', '1200')), {
+      assetRateService: { observe }
+    })
+    const priced = [
+      { orderType: FLASH_LIMIT_ORDER_TYPE, limitNotionalPrice: '2400' },
+      { orderType: FLASH_TWAP_ORDER_TYPE, durationSeconds: 3600, limitNotionalPrice: '2400' },
+      { orderType: FLASH_TAKE_PROFIT_ORDER_TYPE, triggers: [{ notionalPrice: '2400', triggerType: 'upper' }] }
+    ] satisfies Partial<FlashBoundQuoteRequest>[]
+    for (const overrides of priced) {
+      await flash.quote({ ...quoteRequest(), ...overrides })
+    }
+    expect(observe).not.toHaveBeenCalled()
+
+    await flash.quote({ ...quoteRequest(), orderType: FLASH_TWAP_ORDER_TYPE, durationSeconds: 3600 })
+    expect(observe).toHaveBeenCalledTimes(1)
   })
   it('does not fail a successful quote when rate observation is discarded', async () => {
     const observe = mock(() => {
