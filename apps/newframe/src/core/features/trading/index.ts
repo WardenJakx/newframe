@@ -487,14 +487,19 @@ function orderAssetFromReference(value: unknown, fallback?: FlashAsset | null): 
     (candidate) => normalizeAddress(toFlashApiAssetAddress(candidate)) === normalizedAddress
   )
   const metadata = fallbackMatches ?? knownAsset
+  if (metadata) {
+    return metadata
+  }
+
   const decimals = Number(asset.decimals)
   const isNative = normalizedAddress === normalizeAddress(FLASH_NATIVE_ETH_TOKEN_ADDRESS)
 
+  // Flash can send blank names (e.g. Base USDC), so blanks fall through too.
   return FlashAssetSchema.parse({
-    id: metadata?.id ?? flashAssetId(chainId, address),
-    symbol: stringValue(asset.ticker ?? asset.symbol ?? metadata?.symbol, 'ASSET'),
-    name: stringValue(asset.name ?? metadata?.name ?? asset.ticker ?? asset.symbol, 'Unknown asset'),
-    decimals: Number.isInteger(decimals) && decimals >= 0 ? decimals : (metadata?.decimals ?? 18),
+    id: flashAssetId(chainId, address),
+    symbol: stringValue(asset.ticker ?? asset.symbol) || 'ASSET',
+    name: stringValue(asset.name) || stringValue(asset.ticker ?? asset.symbol) || 'Unknown asset',
+    decimals: Number.isInteger(decimals) && decimals >= 0 ? decimals : 18,
     chainId,
     isNative,
     address
