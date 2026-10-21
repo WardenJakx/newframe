@@ -1,6 +1,10 @@
 import { createFlashApi, flashApiKey, flashWebSocketUrl } from '@newframe/flash/api'
 import { flashAssetId, getFlashAssetsForChain, toFlashApiAssetAddress } from '@newframe/flash/assets'
-import { FLASH_NATIVE_ETH_TOKEN_ADDRESS, FLASH_MARKET_ORDER_TYPE } from '@newframe/flash/constants'
+import {
+  FLASH_NATIVE_ETH_TOKEN_ADDRESS,
+  FLASH_MARKET_ORDER_TYPE,
+  FLASH_TWAP_ORDER_TYPE
+} from '@newframe/flash/constants'
 import {
   FlashCancelOrderRequestSchema,
   FlashGetOrderRequestSchema,
@@ -267,6 +271,16 @@ function syncOrderPositions(
   } catch (error) {
     console.warn('could not sync positions for Flash order', { orderId: record.orderId }, error)
   }
+}
+
+// Flash prices limit and trigger quotes at the requested price, so only unpriced orders reflect market rates.
+function quoteReflectsMarketRates(request: FlashBoundQuoteRequest) {
+  const orderType = request.orderType ?? FLASH_MARKET_ORDER_TYPE
+
+  return (
+    orderType === FLASH_MARKET_ORDER_TYPE ||
+    (orderType === FLASH_TWAP_ORDER_TYPE && !String(request.limitNotionalPrice ?? '').trim())
+  )
 }
 
 function quoteAssetRateInputs(quote: FlashQuote): AssetRateInput[] {
@@ -1393,7 +1407,7 @@ export function createFlashService({
   return {
     quote: async (request: FlashBoundQuoteRequest) => {
       const result = await quote(state, request)
-      const observations = quoteAssetRateInputs(result.quote)
+      const observations = quoteReflectsMarketRates(request) ? quoteAssetRateInputs(result.quote) : []
 
       if (observations.length) {
         try {
