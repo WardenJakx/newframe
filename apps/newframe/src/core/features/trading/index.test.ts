@@ -618,6 +618,21 @@ describe('main Flash facade helpers', () => {
     })
     expect(order).not.toHaveProperty('chainId')
   })
+  it('resolves order assets by chain and address, not Flash names', async () => {
+    const { flash } = flashWithFetch(async () =>
+      jsonResponse({
+        orders: [
+          officialOrder({
+            status: 'ORDER_STATUS_FILLED',
+            contraAsset: officialAssetRef(FLASH_BASE_USDC_ADDRESS, 'flash-base-usdc', '', 'USDC')
+          })
+        ]
+      })
+    )
+    const { orders } = await flash.listOrders({ accountAddress })
+    expect(orders[0]).toMatchObject({ status: 'filled', contraAsset: { symbol: 'USDC', name: 'USD Coin' } })
+  })
+
   it('keeps persisted orders and notifications isolated across real Flash service graphs', async () => {
     const memoryStorage = { getItem: () => null, setItem: () => undefined, removeItem: () => undefined }
     const firstStore = createCanonicalStore(memoryStorage).store
