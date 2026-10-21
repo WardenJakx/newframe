@@ -9,4 +9,4 @@ Use Bun to run the bundled CLI at `scripts/newframe.js` beside this file. Resolv
 
 Newframe must be open and unlocked with a selected Seed or Ring wallet that has AI access enabled. Run `session start --name "Your agent" --duration 3600` through the bundled CLI, wait for the user's approval, and check the returned account. The CLI stores the credential privately; do not read or print it.
 
-For Flash, quote to a file and submit that same file. Retry submission with the same file if interrupted. Check the account and trade details before submitting.
+For Flash, follow the direction rules in CLI.md. `targetAsset` is the traded asset. `contraAsset` is the asset it's priced in, usually USDC. `side` applies to the target asset, and `qty` is always the amount spent. Quote to a file and submit that same file. Retry submission with the same file if interrupted. Check the account and trade details before submitting.

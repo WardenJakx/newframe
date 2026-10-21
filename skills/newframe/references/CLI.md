@@ -16,6 +16,23 @@ The CLI stores its token privately in `$NEWFRAME_CLI_STATE_DIR/session.json`, `$
 
 ## Flash
 
+### Direction and quantity
+
+Set up every order in three steps:
+
+1. **`targetAsset`** is the asset being traded, such as WETH. **`contraAsset`** is the asset it is priced in, usually USDC or another stablecoin. Keep USDC as the contra asset. Don't make it the target.
+2. **`side`** says what happens to the target asset. `buy` receives it and spends the contra asset. `sell` spends it and receives the contra asset.
+3. **`qty`** is the amount spent, in human units of the asset spent, never the amount received.
+
+| Intent                 | `targetAsset` | `contraAsset` | `side` | `qty`          |
+| ---------------------- | ------------- | ------------- | ------ | -------------- |
+| Spend 9 USDC on WETH   | WETH          | USDC          | `buy`  | `"9"` (USDC)   |
+| Sell 0.5 WETH for USDC | WETH          | USDC          | `sell` | `"0.5"` (WETH) |
+
+"Sell USDC for WETH" is a WETH `buy`. To get a fixed amount of the target asset on a buy, convert it to the contra amount first at the current price. Prices such as `limitNotionalPrice` are per unit of the target asset.
+
+`flash quote` prints a `summary`, such as `buy WETH: spend 9 USDC for WETH; receive ~0.00363 WETH`, and quote errors start with the same description. Check it before submitting.
+
 Create a request JSON with verified chain IDs and token metadata. This example uses **local Anvil test assets only**:
 
 ```json

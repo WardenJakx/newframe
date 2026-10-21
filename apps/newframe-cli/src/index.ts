@@ -2,14 +2,15 @@
 import { readFile, writeFile } from 'node:fs/promises'
 
 import { isDesktopClientError } from '@newframe/desktop-api/client'
-import { FlashQuoteRequestSchema } from '@newframe/flash/contracts'
+import { type FlashQuoteRequest, FlashQuoteRequestSchema } from '@newframe/flash/contracts'
+import { getReceiveAsset, getSpentAsset } from '@newframe/flash/pair'
 
 import { NewframeClient } from './client.ts'
 
 const usage = `newframe session start --name NAME [--description TEXT] [--duration SECONDS]
 newframe session show|revoke
 newframe rpc METHOD [--params JSON_OR_FILE] [--chain-id ID]
-newframe flash quote --request FILE|- [--out FILE]
+newframe flash quote --request FILE|- [--out FILE]  (side applies to targetAsset; contraAsset is the pricing asset, e.g. USDC; qty is the amount spent: target when selling, contra when buying)
 newframe flash submit --quote FILE|-
 newframe flash orders [--status STATUS] [--page-size NUMBER]
 newframe flash order|watch|cancel ORDER_ID [--timeout SECONDS]`
@@ -52,6 +53,12 @@ function positiveNumber(value: string, label: string) {
     throw new Error(`${label} must be a positive integer`)
   }
   return number
+}
+
+function describeQuoteRequest(request: FlashQuoteRequest) {
+  const spent = getSpentAsset(request).symbol
+  const received = getReceiveAsset(request).symbol
+  return `${request.side} ${request.targetAsset.symbol}: spend ${request.qty ?? request.inputAmount} ${spent} for ${received}`
 }
 
 async function jsonInput(source: string) {
@@ -102,13 +109,20 @@ export async function run(argv = process.argv.slice(2), client = new NewframeCli
   }
   if (group === 'flash') {
     if (command === 'quote') {
-      const envelope = await client.quote(
-        FlashQuoteRequestSchema.parse(await jsonInput(option(options, 'request')))
-      )
+      const request = FlashQuoteRequestSchema.parse(await jsonInput(option(options, 'request')))
+      const intent = describeQuoteRequest(request)
+      const envelope = await client.quote(request).catch((error: unknown) => {
+        if (error instanceof Error) {
+          error.message = `${intent}: ${error.message}`
+        }
+        throw error
+      })
+      const { quote } = envelope
+      const summary = `${intent}; receive ~${quote.outputAmount} ${quote.receiveAsset.symbol}`
       if (options.out) {
         await writeFile(options.out, `${JSON.stringify(envelope, null, 2)}\n`, { flag: 'wx' })
       }
-      return envelope
+      return { summary, ...envelope }
     }
     if (command === 'submit') {
       return client.submit(await jsonInput(option(options, 'quote')))
