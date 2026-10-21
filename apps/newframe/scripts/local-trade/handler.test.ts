@@ -12,6 +12,7 @@ import {
 } from '@newframe/flash/constants'
 import { Interface, JsonRpcProvider, Wallet } from 'ethers'
 
+import { LOCAL_MARKET_FILL_DELAY_MS } from './constants.ts'
 import { handleLocalTradeRequest, resetLocalTradeState, subscribeLocalTradeOrders } from './handler.ts'
 
 const funderWallet = new Wallet('0x59c6995e998f97a5a0044976f094538a2f7d1c9f4e35b7b4a39e621ce6b38a13')
@@ -588,7 +589,7 @@ describe('local trade service handler', () => {
       expect(submitted.order.targetAsset.chain.id).toBe(direction.targetChain)
       expect(submitted.order.contraAsset.chain.id).toBe(direction.contraChain)
 
-      timers.advanceTimersByTime(3_001)
+      timers.advanceTimersByTime(LOCAL_MARKET_FILL_DELAY_MS + 1)
       await Promise.resolve()
       expect(sendTransaction.mock.calls).toEqual([])
 
@@ -667,7 +668,7 @@ describe('local trade service handler', () => {
     const orderId = String(submitted.orderId)
 
     expect(submitted.order).toMatchObject({ normalizedStatus: 'accepted', open: true, cancellable: false })
-    timers.advanceTimersByTime(3_000)
+    timers.advanceTimersByTime(LOCAL_MARKET_FILL_DELAY_MS)
     await Promise.resolve()
     await Promise.resolve()
     await Promise.resolve()
@@ -691,7 +692,7 @@ describe('local trade service handler', () => {
     })
     expect(submittedResponse.status).toBe(200)
 
-    timers.advanceTimersByTime(3_000)
+    timers.advanceTimersByTime(LOCAL_MARKET_FILL_DELAY_MS)
     await Promise.resolve()
     const transaction = sendTransaction.mock.calls[0]?.[0]
     const settlement = new Interface([

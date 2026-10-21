@@ -93,7 +93,7 @@ export class DevelopmentAppService implements HarnessService<{ exited: Promise<n
 
         console.log('[dev] Building shared UI and app…')
         try {
-          for (const script of ['compile', 'bundle:app']) {
+          for (const script of ['build:inputs', 'compile:main', 'bundle:renderer']) {
             if (this.isStopping()) {
               return
             }

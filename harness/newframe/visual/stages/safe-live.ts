@@ -84,6 +84,16 @@ export const safeLiveStage: VisualStage = {
         await tray
           .getByRole('button', { name: `Open Safe proposal ${proposal.safeTxHash} on chain ${chainId}` })
           .click()
+        // safe.simulate answers with the bare simulation, which the driver's ok-result helper rejects.
+        // It is a read, so it runs alongside the review's own simulation instead of after the captures.
+        const simulation = tray.evaluate(
+          (query) =>
+            (
+              window as unknown as { __NEWFRAME_HOST__: { executeQuery(query: unknown): Promise<unknown> } }
+            ).__NEWFRAME_HOST__.executeQuery(query),
+          { type: 'safe.simulate', accountId: id, chainId, safeTxHash: proposal.safeTxHash }
+        )
+        void simulation.catch(() => undefined)
         const effects = requests.getByLabel('Transaction effects', { exact: true })
         await effects
           .getByText('Simulating…', { exact: true })
@@ -99,15 +109,7 @@ export const safeLiveStage: VisualStage = {
         await requests.getByLabel('Verification details').scrollIntoViewIfNeeded()
         await settle(requests)
         await runtime.screenshot(tray, `08o-safe-live-${name}-details.png`)
-        // safe.simulate answers with the bare simulation, which the driver's ok-result helper rejects.
-        const simulation = await tray.evaluate(
-          (query) =>
-            (
-              window as unknown as { __NEWFRAME_HOST__: { executeQuery(query: unknown): Promise<unknown> } }
-            ).__NEWFRAME_HOST__.executeQuery(query),
-          { type: 'safe.simulate', accountId: id, chainId, safeTxHash: proposal.safeTxHash }
-        )
-        simulations[proposal.safeTxHash] = simulation
+        simulations[proposal.safeTxHash] = await simulation
         runtime.evidence(`safeLiveSimulation${name}`, (await effects.textContent())?.slice(0, 200) ?? '')
         await requests.getByRole('button', { name: 'Back to requests' }).click()
         await queue.waitFor()

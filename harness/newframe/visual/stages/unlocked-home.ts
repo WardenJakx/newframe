@@ -1,5 +1,5 @@
-import { sleep } from '../../core/utils.ts'
 import type { VisualStage } from '../types.ts'
+import { waitForAnimations } from './helpers.ts'
 
 export const unlockedHomeStage: VisualStage = {
   name: 'unlocked home',
@@ -19,7 +19,7 @@ export const unlockedHomeStage: VisualStage = {
     }
 
     await portfolioValue.hover()
-    await sleep(200)
+    await waitForAnimations(tray)
     const hoverOpacity = Number(await refreshWrapper.evaluate((element) => getComputedStyle(element).opacity))
     if (hoverOpacity !== 1) {
       runtime.fail('Portfolio refresh must become visible when the value is hovered')
@@ -34,7 +34,7 @@ export const unlockedHomeStage: VisualStage = {
     }
     const valueEdge = valueHoverBounds.x + valueHoverBounds.width
     await tray.mouse.move((valueEdge + refreshBounds.x) / 2, refreshBounds.y + refreshBounds.height / 2)
-    await sleep(200)
+    await waitForAnimations(tray)
     const bridgeOpacity = Number(
       await refreshWrapper.evaluate((element) => getComputedStyle(element).opacity)
     )
@@ -42,7 +42,7 @@ export const unlockedHomeStage: VisualStage = {
       runtime.fail('Portfolio refresh hover target must bridge the gap from the value')
     }
     await refresh.hover()
-    await sleep(200)
+    await waitForAnimations(tray)
     const controlOpacity = Number(
       await refreshWrapper.evaluate((element) => getComputedStyle(element).opacity)
     )
@@ -64,7 +64,7 @@ export const unlockedHomeStage: VisualStage = {
     }
 
     await navigation.hover()
-    await sleep(200)
+    await waitForAnimations(tray)
     const departedOpacity = Number(
       await refreshWrapper.evaluate((element) => getComputedStyle(element).opacity)
     )

@@ -170,7 +170,7 @@ The visual harness runs on the host, next to the developer's own Newframe and `b
   only a vault for `NEWFRAME_HARNESS_PASSWORD`, or for a generated password when none is set. Stages then add
   the harness signer and a `vitalik.eth` watch account themselves.
 - **Ports.** Anvil, the local Flash and Safe services, and the app's local RPC each get a free port per run.
-- **Screen.** Windows render offscreen at 2x scale; Playwright screenshots read that buffer. The native window
+- **Screen.** Windows render offscreen at 1x scale; Playwright screenshots read that buffer. The native window
   that macOS still creates is fully transparent and ignores the mouse. Harness windows cannot take keyboard
   focus, and the app has no Dock icon, menu bar icon, global shortcuts, or Keychain access. Tray placement
   uses a fixed 1440x900 work area instead of the host's displays. Linux cannot make native windows

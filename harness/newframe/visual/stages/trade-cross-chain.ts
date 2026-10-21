@@ -4,6 +4,7 @@ import { anvilChainId } from '../../core/config.ts'
 import { sleep } from '../../core/utils.ts'
 import { wethAddress } from '../driver.ts'
 import type { FlashOrder, VisualStage } from '../types.ts'
+import { localMarketFillSettleMs } from './helpers.ts'
 
 function assetChainId(
   order: FlashOrder,
@@ -120,7 +121,7 @@ export const tradeCrossChainStage: VisualStage = {
       driver.fail('Cross-chain order did not preserve independent asset chains')
     }
 
-    await sleep(4_000)
+    await sleep(localMarketFillSettleMs)
     const stillAccepted = (await driver.getAppState()).main?.orders?.[orderId]
     if (stillAccepted?.status !== 'accepted' || !stillAccepted.open || !stillAccepted.cancellable) {
       driver.fail('Cross-chain market order did not remain accepted beyond the local fill delay')

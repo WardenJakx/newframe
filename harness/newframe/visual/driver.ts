@@ -18,6 +18,9 @@ export const wethAddress = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
 export const oneEthWei = 1_000_000_000_000_000_000n
 
 const finalRequestStatuses = new Set(['confirmed', 'declined', 'error', 'success'])
+const stateChangeWaitCapMs = 1_000
+
+type VersionedAppState = { version: number; state: AppState }
 
 type OperationResult = { ok: true; [key: string]: unknown } | { ok: false; error: string; message?: string }
 
@@ -32,25 +35,28 @@ export async function waitForElectronPage(
   runtime: VisualHarnessRuntime,
   timeoutMs = runtime.uiTimeoutMs
 ) {
-  const started = Date.now()
-  let lastLog = started
-
-  while (Date.now() - started < timeoutMs) {
-    const page = app.windows().find((candidate) => candidate.url().includes(urlPart))
-    if (page) {
-      return page
-    }
-
-    if (Date.now() - lastLog > 2_500) {
-      lastLog = Date.now()
-      const urls = app.windows().map((candidate) => candidate.url() || '<blank>')
-      runtime.log(`waiting for ${urlPart}; pages: ${urls.join(', ') || '<none>'}`)
-    }
-
-    await sleep(250)
+  const existing = app.windows().find((page) => page.url().includes(urlPart))
+  if (existing) {
+    return existing
   }
 
-  return runtime.fail(`Timed out waiting for Electron page containing ${urlPart}`)
+  // Windows can open blank and load their bundle afterwards, so wait on navigation as well as creation.
+  const loaded = (page: Page) =>
+    page.waitForURL((url) => url.href.includes(urlPart), { timeout: timeoutMs }).then(() => page)
+  try {
+    return await Promise.any([
+      ...app.windows().map(loaded),
+      app.waitForEvent('window', {
+        predicate: (page) => loaded(page).then(Boolean, () => false),
+        timeout: timeoutMs
+      })
+    ])
+  } catch {
+    const urls = app.windows().map((candidate) => candidate.url() || '<blank>')
+    return runtime.fail(
+      `Timed out waiting for Electron page containing ${urlPart}; pages: ${urls.join(', ') || '<none>'}`
+    )
+  }
 }
 
 export class NewframeDriver {
@@ -262,22 +268,33 @@ export class NewframeDriver {
   }
 
   async getAppState(): Promise<AppState> {
+    return (await this.readAppState()).state
+  }
+
+  /** Reads canonical state, first waiting up to `timeoutMs` for a state newer than `afterVersion`. */
+  private async readAppState(afterVersion = -1, timeoutMs = 0): Promise<VersionedAppState> {
     let lastError: unknown
 
     for (let attempt = 0; attempt < 5; attempt += 1) {
       try {
-        return await this.app.evaluate(() => {
-          const getState = (
-            globalThis as typeof globalThis & {
-              __NEWFRAME_VISUAL_HARNESS_GET_STATE__?: () => AppState
-            }
-          ).__NEWFRAME_VISUAL_HARNESS_GET_STATE__
+        return await this.app.evaluate(
+          (_electron, [afterVersion, timeoutMs]) => {
+            const getState = (
+              globalThis as typeof globalThis & {
+                __NEWFRAME_VISUAL_HARNESS_GET_STATE__?: (
+                  afterVersion: number,
+                  timeoutMs: number
+                ) => Promise<VersionedAppState>
+              }
+            ).__NEWFRAME_VISUAL_HARNESS_GET_STATE__
 
-          if (!getState) {
-            throw new Error('Visual harness canonical-state getter is unavailable')
-          }
-          return getState()
-        })
+            if (!getState) {
+              throw new Error('Visual harness canonical-state getter is unavailable')
+            }
+            return getState(afterVersion, timeoutMs)
+          },
+          [afterVersion, timeoutMs] as const
+        )
       } catch (error) {
         lastError = error
         const message = error instanceof Error ? error.message : String(error)
@@ -296,15 +313,15 @@ export class NewframeDriver {
     timeoutMs: number,
     message: string
   ): Promise<AppState> {
-    const started = Date.now()
-    let latest: AppState | undefined
+    const deadline = Date.now() + timeoutMs
+    let latest: VersionedAppState | undefined
 
-    while (Date.now() - started < timeoutMs) {
-      latest = await this.getAppState()
-      if (predicate(latest)) {
-        return latest
+    while (Date.now() < deadline) {
+      // Each read resolves on the next state change; the cap re-checks predicates that also read the clock.
+      latest = await this.readAppState(latest?.version, Math.min(stateChangeWaitCapMs, deadline - Date.now()))
+      if (predicate(latest.state)) {
+        return latest.state
       }
-      await sleep(250)
     }
 
     throw new Error(`${message}${latest ? '' : '; state was unavailable'}`)
@@ -540,22 +557,11 @@ export class NewframeDriver {
   }
 
   async clearPanelAndOverlays() {
-    for (let attempt = 0; attempt < 10; attempt += 1) {
-      const accountBack = this.tray.locator('.accountViewBack').first()
-      if (!(await accountBack.isVisible().catch(() => false))) {
-        break
-      }
-      await accountBack.click()
-      await sleep(150)
-    }
-
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      const backToPositions = this.tray.getByRole('button', { name: 'Back to positions' })
-      if (!(await backToPositions.isVisible().catch(() => false))) {
-        break
-      }
+    // Asset details is a single overlay, so one Back closes it.
+    const backToPositions = this.tray.getByRole('button', { name: 'Back to positions' })
+    if (await backToPositions.isVisible().catch(() => false)) {
       await backToPositions.click()
-      await sleep(300)
+      await backToPositions.waitFor({ state: 'hidden' })
     }
 
     const positionsTab = this.tray.getByRole('tab', { name: 'Positions', exact: true })
@@ -591,29 +597,17 @@ export class NewframeDriver {
       this.fail('Trade ticket still exposes the old explicit BUY/SELL segmented control')
     }
 
-    await page.getByRole('button', { name: /Switch to (BUY|SELL)/ }).waitFor({
-      state: 'visible',
-      timeout: 5_000
-    })
-    await page.getByRole('button', { name: /Select target asset/i }).waitFor({
-      state: 'visible',
-      timeout: 5_000
-    })
-    await page.getByRole('button', { name: /Select contra asset/i }).waitFor({
-      state: 'visible',
-      timeout: 5_000
-    })
-    await page.getByLabel(/amount percentage$/).waitFor({
-      state: 'visible',
-      timeout: 5_000
-    })
-
-    for (const tab of ['Market', 'Limit', 'TWAP', 'TP/SL', 'Stop']) {
-      await page.getByRole('tab', { name: tab, exact: true }).waitFor({
-        state: 'visible',
-        timeout: 5_000
-      })
-    }
+    await Promise.all(
+      [
+        page.getByRole('button', { name: /Switch to (BUY|SELL)/ }),
+        page.getByRole('button', { name: /Select target asset/i }),
+        page.getByRole('button', { name: /Select contra asset/i }),
+        page.getByLabel(/amount percentage$/),
+        ...['Market', 'Limit', 'TWAP', 'TP/SL', 'Stop'].map((tab) =>
+          page.getByRole('tab', { name: tab, exact: true })
+        )
+      ].map((control) => control.waitFor({ state: 'visible', timeout: 5_000 }))
+    )
   }
 
   async assertTradeBalanceDirectionColor(page: Page) {

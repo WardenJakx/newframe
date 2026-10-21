@@ -1,7 +1,15 @@
 import type { Locator, Page } from 'playwright-core'
 
+import { LOCAL_MARKET_FILL_DELAY_MS } from '../../../../apps/newframe/scripts/local-trade/constants.ts'
+import { anvilBlockTimeSeconds } from '../../core/config.ts'
 import type { VisualHarnessRuntime } from '../runtime.ts'
 import type { VisualHarnessContext } from '../types.ts'
+
+/**
+ * How long an order must stay open to prove the local Flash service will not fill it: its market fill delay,
+ * one Anvil block to mine the fill, and slack for the fill to reach canonical state.
+ */
+export const localMarketFillSettleMs = LOCAL_MARKET_FILL_DELAY_MS + anvilBlockTimeSeconds * 1_000 + 500
 
 export async function assertInsideViewport(locator: Locator, runtime: VisualHarnessRuntime, label: string) {
   const bounds = await locator.evaluate((element) => {
@@ -24,6 +32,21 @@ export async function assertInsideViewport(locator: Locator, runtime: VisualHarn
   ) {
     runtime.fail(`${label} must remain inside the viewport; found ${JSON.stringify(bounds)}`)
   }
+}
+
+/**
+ * Resolves once the page's running enter/exit animations and transitions finish, so a capture or style
+ * read sees the settled UI. Infinite animations (spinners) never settle and are ignored.
+ */
+export async function waitForAnimations(page: Page) {
+  await page.evaluate(async () => {
+    // A just-triggered transition starts on the next frame.
+    await new Promise(requestAnimationFrame)
+    const finite = document
+      .getAnimations()
+      .filter((animation) => animation.effect?.getComputedTiming().endTime !== Infinity)
+    await Promise.all(finite.map((animation) => animation.finished.catch(() => undefined)))
+  })
 }
 
 export async function requireAccounts(context: VisualHarnessContext) {
