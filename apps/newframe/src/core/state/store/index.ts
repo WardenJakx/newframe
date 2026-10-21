@@ -24,13 +24,39 @@ const canonical = createCanonicalStore(persistenceAdapter)
 const store = canonical.store
 
 if (isVisualHarness) {
+  let version = 0
+  store.subscribe(() => {
+    version += 1
+  })
+
+  // Passing the version of a previous read waits up to `timeoutMs` for a newer state, so the harness
+  // can wait on state changes instead of polling on a fixed interval.
+  const nextVersion = (afterVersion: number, timeoutMs: number) =>
+    new Promise<void>((resolve) => {
+      if (version > afterVersion) {
+        resolve()
+        return
+      }
+      const done = () => {
+        clearTimeout(timer)
+        unsubscribe()
+        resolve()
+      }
+      const timer = setTimeout(done, timeoutMs)
+      const unsubscribe = store.subscribe(done)
+    })
+
   Object.defineProperty(globalThis, '__NEWFRAME_VISUAL_HARNESS_GET_STATE__', {
     configurable: false,
-    value: () => {
+    value: async (afterVersion = -1, timeoutMs = 0) => {
+      await nextVersion(afterVersion, timeoutMs)
       const { main, operations, windows, view } = store.getState()
-      return JSON.parse(
-        JSON.stringify({ main, operations, windows, view: { notifications: view.notifications } })
-      ) as unknown
+      return {
+        version,
+        state: JSON.parse(
+          JSON.stringify({ main, operations, windows, view: { notifications: view.notifications } })
+        ) as unknown
+      }
     },
     writable: false
   })

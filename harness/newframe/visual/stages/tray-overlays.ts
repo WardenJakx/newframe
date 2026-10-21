@@ -1,6 +1,5 @@
-import { sleep } from '../../core/utils.ts'
 import type { VisualStage } from '../types.ts'
-import { assertInsideViewport } from './helpers.ts'
+import { assertInsideViewport, waitForAnimations } from './helpers.ts'
 
 export const trayOverlaysStage: VisualStage = {
   name: 'tray overlay visuals',
@@ -9,7 +8,7 @@ export const trayOverlaysStage: VisualStage = {
     await mainMenuButton.click()
     const menu = tray.getByRole('dialog', { name: 'Main menu' })
     await menu.waitFor({ state: 'visible' })
-    await sleep(500)
+    await waitForAnimations(tray)
     await runtime.screenshot(tray, '02a-main-menu.png')
 
     for (const [label, filename] of [
@@ -20,7 +19,7 @@ export const trayOverlaysStage: VisualStage = {
       await menu.getByRole('button', { name: label }).click()
       const overlay = tray.getByRole('dialog', { name: label })
       await overlay.waitFor({ state: 'visible' })
-      await sleep(500)
+      await waitForAnimations(tray)
       await runtime.screenshot(tray, filename)
 
       if (label === 'Settings') {
@@ -44,19 +43,19 @@ export const trayOverlaysStage: VisualStage = {
         }
 
         await resetAllSettings.scrollIntoViewIfNeeded()
-        await sleep(500)
+        await waitForAnimations(tray)
         await runtime.screenshot(tray, '02f-app-reset-settings.png')
 
         await resetAllSettings.click()
         await appSettings.getByText('Reset All Settings & Data?', { exact: true }).waitFor()
-        await sleep(500)
+        await waitForAnimations(tray)
         await runtime.screenshot(tray, '02g-app-reset-confirmation.png')
         await appSettings.getByRole('button', { name: 'No', exact: true }).click()
       }
 
       await overlay.getByRole('button', { name: 'Back' }).click()
       await menu.waitFor({ state: 'visible' })
-      await sleep(500)
+      await waitForAnimations(tray)
     }
 
     await menu.getByRole('button', { name: 'Close menu' }).click()
@@ -84,7 +83,7 @@ export const trayOverlaysStage: VisualStage = {
     if (!qrIsContained) {
       runtime.fail('Receive QR code must remain inside its frame')
     }
-    await sleep(500)
+    await waitForAnimations(tray)
     await runtime.screenshot(tray, '02h-receive-overlay.png')
     await receive.getByRole('button', { name: 'Back' }).click()
     await receive.waitFor({ state: 'hidden' })
@@ -92,7 +91,7 @@ export const trayOverlaysStage: VisualStage = {
     await tray.getByRole('button', { name: 'Network filter' }).click()
     const chains = tray.getByRole('dialog', { name: 'Networks' })
     await chains.waitFor({ state: 'visible' })
-    await sleep(500)
+    await waitForAnimations(tray)
     await runtime.screenshot(tray, '02i-chains-overlay.png')
     await chains.getByRole('button', { name: 'Back' }).click()
     await chains.waitFor({ state: 'hidden' })

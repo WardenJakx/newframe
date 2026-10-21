@@ -65,7 +65,9 @@ export function killProcessGroup(group: number, signal: NodeJS.Signals) {
   try {
     process.kill(-group, signal)
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ESRCH') {
+    // EPERM: the group ID now belongs to another user's processes, so none of ours are left in it.
+    const code = (error as NodeJS.ErrnoException).code
+    if (code !== 'ESRCH' && code !== 'EPERM') {
       throw error
     }
   }

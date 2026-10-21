@@ -8,38 +8,28 @@ export class AnvilClient {
     this.rpcUrl = rpcUrl
   }
 
-  async balance(address: string) {
+  private async rpc<T>(method: string, params: unknown[]): Promise<T> {
     const response = await fetch(this.rpcUrl, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        id: 1,
-        jsonrpc: '2.0',
-        method: 'eth_getBalance',
-        params: [address, 'latest']
-      })
+      body: JSON.stringify({ id: 1, jsonrpc: '2.0', method, params })
     })
-    const payload = (await response.json()) as { result?: string; error?: { message?: string } }
+    const payload = (await response.json()) as { result?: T; error?: { message?: string } }
 
-    if (!response.ok || payload.error || !payload.result) {
-      throw new Error(payload.error?.message ?? `Anvil balance request failed with ${response.status}`)
+    if (!response.ok || payload.error) {
+      throw new Error(payload.error?.message ?? `Anvil ${method} request failed with ${response.status}`)
     }
 
-    return BigInt(payload.result)
+    return payload.result as T
+  }
+
+  async balance(address: string) {
+    return BigInt(await this.rpc<string>('eth_getBalance', [address, 'latest']))
   }
 
   async mineBlocks(count: number) {
     for (let i = 0; i < count; i += 1) {
-      const response = await fetch(this.rpcUrl, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ id: i + 1, jsonrpc: '2.0', method: 'evm_mine', params: [] })
-      })
-      const payload = (await response.json()) as { error?: { message?: string } }
-
-      if (!response.ok || payload.error) {
-        throw new Error(payload.error?.message ?? `Anvil mine request failed with ${response.status}`)
-      }
+      await this.rpc('evm_mine', [])
     }
   }
 

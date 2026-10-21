@@ -46,6 +46,7 @@ import {
   cleanFlashDecimal,
   positiveFlashNumber
 } from '../../src/features/transactions/trade/domain/policy.ts'
+import { LOCAL_MARKET_FILL_DELAY_MS } from './constants.ts'
 
 type LocalOrderStatus = 'accepted' | 'filled' | 'cancelled' | 'rejected'
 
@@ -79,7 +80,6 @@ const GAS_PAYER_PRIVATE_KEY =
   process.env.FLASH_ANVIL_GAS_PAYER_PRIVATE_KEY ??
   process.env.ANVIL_DEPLOYER_PRIVATE_KEY ??
   '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
-const MARKET_FILL_DELAY_MS = 3_000
 const LOCAL_CHAIN_SLUG = 'anvil'
 const LOCAL_MOCK_FLASH_SETTLEMENT_ADDRESS = '0x0000000000000000000000000000000000005e77'
 type LocalTrigger = {
@@ -141,7 +141,11 @@ const mockUsdRates: Record<string, number> = {
 }
 
 function provider() {
-  return new JsonRpcProvider(ANVIL_RPC_URL, FLASH_ANVIL_CHAIN_ID)
+  // Anvil mines every second; ethers' default 4s polling would make each fill wait for several blocks.
+  return new JsonRpcProvider(ANVIL_RPC_URL, FLASH_ANVIL_CHAIN_ID, {
+    pollingInterval: 250,
+    staticNetwork: true
+  })
 }
 
 function wallet() {
@@ -1047,7 +1051,7 @@ function storeOrder(quoteRecord: LocalQuoteRecord, body: Record<string, unknown>
   if (orderType === FLASH_MARKET_ORDER_TYPE && !chains.isCrossChain) {
     setTimeout(() => {
       void fillMarketOrder(orderId)
-    }, MARKET_FILL_DELAY_MS)
+    }, LOCAL_MARKET_FILL_DELAY_MS)
   }
 
   return order

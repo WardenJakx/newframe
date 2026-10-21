@@ -5,10 +5,9 @@ import type { Locator } from 'playwright-core'
 
 import { anvilChainId, newframeRpcUrl } from '../../core/config.ts'
 import { HarnessExtension } from '../../core/extension.ts'
-import { sleep } from '../../core/utils.ts'
 import { harnessOrigin } from '../driver.ts'
 import type { AppState, CurrentRequest, VisualHarnessContext, VisualStage } from '../types.ts'
-import { requireAccounts } from './helpers.ts'
+import { requireAccounts, waitForAnimations } from './helpers.ts'
 
 const fixturePath = path.join(import.meta.dirname, '..', '..', 'resources', 'safe-address-book.csv')
 const usdcAddress = process.env.USDC_ADDRESS ?? '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
@@ -57,7 +56,7 @@ async function openAddressBook({ tray }: VisualHarnessContext) {
   await menu.getByRole('button', { name: 'Address book' }).click()
   const book = tray.getByRole('dialog', { name: 'Address book' })
   await book.waitFor({ state: 'visible' })
-  await sleep(500)
+  await waitForAnimations(tray)
   return book
 }
 

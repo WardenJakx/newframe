@@ -31,7 +31,7 @@ export function createWindow(
     webPreferences: {
       ...webPreferences,
       // Harness pages render offscreen; CDP screenshots read that buffer instead of the screen.
-      ...(isVisualHarness ? { offscreen: { deviceScaleFactor: 2 } } : {}),
+      ...(isVisualHarness ? { offscreen: { deviceScaleFactor: 1 } } : {}),
       preload: path.resolve(process.env.BUNDLE_LOCATION, 'bridge.cjs'),
       backgroundThrottling: false, // Allows repaint when window is hidden
       contextIsolation: true,

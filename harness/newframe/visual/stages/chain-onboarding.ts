@@ -7,7 +7,7 @@ import { sleep } from '../../core/utils.ts'
 import { waitForAnvil } from '../../services/anvil.ts'
 import { harnessOrigin } from '../driver.ts'
 import type { VisualStage } from '../types.ts'
-import { requireAccounts } from './helpers.ts'
+import { requireAccounts, waitForAnimations } from './helpers.ts'
 
 const harnessOriginUrl = process.env.NEWFRAME_ORIGIN ?? 'http://newframe-contracts.local'
 
@@ -99,13 +99,13 @@ export const chainOnboardingStage: VisualStage = {
 
       const pendingRequests = tray.getByRole('button', { name: '1 pending request' })
       await pendingRequests.waitFor({ state: 'visible' })
-      await sleep(500)
+      await waitForAnimations(tray)
       await runtime.screenshot(tray, '06-pending-request-notification.png')
 
       await pendingRequests.click()
       const requests = tray.getByRole('dialog', { name: 'Requests' })
       await requests.waitFor({ state: 'visible' })
-      await sleep(500)
+      await waitForAnimations(tray)
       await runtime.screenshot(tray, '06a-requests-overlay.png')
       await requests.getByRole('button', { name: 'Back' }).click()
       await requests.waitFor({ state: 'hidden' })

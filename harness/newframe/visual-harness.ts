@@ -60,17 +60,21 @@ async function bootstrap(services: HarnessRuntime, visual: VisualHarnessRuntime)
   visual.log('bootstrap build and anvil')
   await services.start(createAnvilService())
 
-  const [seed, compile] = await Promise.all([
-    services.start(createSeedAnvilService(harnessAccountAddress)),
-    services.start(buildCommand('newframe compile', ['bun', 'run', 'compile'], appDir))
-  ])
-  await services.watch(Promise.all([seed.completed, expectSuccessfulExit(compile, 'newframe compile')]))
+  const runBuild = async (script: string) => {
+    const build = await services.start(buildCommand(`newframe ${script}`, ['bun', 'run', script], appDir))
+    await expectSuccessfulExit(build, `newframe ${script}`)
+  }
+  // Main and renderer builds share their inputs but not their outputs, so they build side by side.
+  const build = async () => {
+    await runBuild('build:inputs')
+    await Promise.all([runBuild('compile:main'), runBuild('bundle:renderer')])
+  }
+
+  const seed = await services.start(createSeedAnvilService(harnessAccountAddress))
+  await services.watch(Promise.all([seed.completed, build()]))
 
   const safeSeed = await seed.completed
   await services.watch(services.start(createLocalSafeService(safeSeed)))
-
-  const bundle = await services.start(buildCommand('newframe bundle', ['bun', 'run', 'bundle'], appDir))
-  await services.watch(expectSuccessfulExit(bundle, 'newframe bundle'))
 
   visual.currentStage = 'local Flash service'
   visual.log('local Flash service')

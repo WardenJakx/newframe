@@ -233,6 +233,8 @@ export const safeWatchStage: VisualStage = {
       const dappProvider = extension.dapp(`http://${harnessOrigin}`, anvilChainId)
       const chainProvider = new JsonRpcProvider(anvilRpcUrl, anvilChainId, {
         batchMaxCount: 1,
+        // Receipt waits poll every 4s by default; Anvil mines every second.
+        pollingInterval: 250,
         staticNetwork: true
       })
       try {

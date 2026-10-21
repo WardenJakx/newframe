@@ -176,7 +176,8 @@ export class VisualHarnessRuntime {
   }
 
   startTrace(app: ElectronApplication) {
-    return app.context().tracing.start({ screenshots: true, snapshots: true })
+    // DOM snapshots per action are enough to debug a failure; a screencast would stream frames all run.
+    return app.context().tracing.start({ screenshots: false, snapshots: true })
   }
 
   async captureElectronFailureArtifacts(app: ElectronApplication) {

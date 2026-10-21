@@ -1,5 +1,6 @@
 import { sleep } from '../../core/utils.ts'
 import type { VisualStage } from '../types.ts'
+import { localMarketFillSettleMs } from './helpers.ts'
 
 export const tradeLimitStage: VisualStage = {
   name: 'trade non-market e2e',
@@ -54,7 +55,7 @@ export const tradeLimitStage: VisualStage = {
       'A newly submitted limit Flash order was not accepted as open'
     )
 
-    await sleep(4_000)
+    await sleep(localMarketFillSettleMs)
 
     const latest = await driver.getAppState()
     const stored = order.orderId ? latest.main?.orders?.[order.orderId] : undefined
