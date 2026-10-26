@@ -24,7 +24,9 @@ class LedgerMock extends EventEmitter {
   type = 'ledger'
   status = Status.INITIAL
   derivation: string | undefined
-  accountLimit = 5
+  accountLimit = 1
+  liveSearch = new Set<string>()
+  addresses: string[] = []
 
   constructor(
     public devicePath: string,
@@ -325,6 +327,39 @@ it('connects a Ledger after startup without changing navigation', async () => {
   const ledger = await connected
   expect(ledger.devicePath).toBe('nano-s-path')
   expect(store.getState().tray.homeCommand).toEqual(homeCommand)
+})
+
+it('derives through saved Live accounts and records the index of each one it finds', async () => {
+  const [indexed, unindexed] = [`0x${'1'.repeat(40)}`, `0x${'2'.repeat(40)}`]
+  const saveAccount = (address: string, ledgerLiveIndex?: number) =>
+    store.getState().upsertAccount({
+      id: address,
+      address,
+      name: 'Ledger Account',
+      lastSignerType: 'ledger',
+      ...(ledgerLiveIndex === undefined ? {} : { ledgerLiveIndex })
+    })
+  saveAccount(indexed, 2)
+  saveAccount(unindexed)
+  try {
+    const connected = nextEvent<LedgerMock>('update', (ledger) => ledger.status === Status.OK)
+    simulateLedgerConnection('nano-s-path')
+    adapter.handleDeviceChanges()
+    const ledger = await connected
+
+    expect({ accountLimit: ledger.accountLimit, liveSearch: [...ledger.liveSearch] }).toEqual({
+      accountLimit: 3,
+      liveSearch: [unindexed]
+    })
+
+    ledger.addresses = [`0x${'3'.repeat(40)}`, unindexed]
+    ledger.emit('update')
+
+    expect(store.getState().main.accounts[unindexed].ledgerLiveIndex).toBe(1)
+  } finally {
+    store.getState().removeAccount(indexed)
+    store.getState().removeAccount(unindexed)
+  }
 })
 
 it('creates a new Ledger when one is already attached', () => {

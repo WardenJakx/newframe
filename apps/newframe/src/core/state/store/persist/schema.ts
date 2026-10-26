@@ -4,7 +4,7 @@ import { MainSchema } from '../../../../app/contracts/state/main.ts'
 import { TokenCatalogSchema } from '../../../../features/tokens/domain/state/token.ts'
 import { AirGapPublicAccountSchema } from '../../../../platform/signing/domain/airgap.ts'
 
-export const PERSISTENCE_VERSION = 10
+export const PERSISTENCE_VERSION = 11
 export const CANONICAL_STATE_STORAGE_NAME = 'canonical-wallet-state'
 
 const DerivationSchema = z.enum(['live', 'legacy', 'standard', 'testnet'])
@@ -33,12 +33,7 @@ const PersistedMainSchema = z.strictObject({
       endpointCustom: z.string().max(4_096)
     })
     .optional(),
-  ledger: z
-    .strictObject({
-      derivation: DerivationSchema,
-      liveAccountLimit: z.number().int().min(1).max(100)
-    })
-    .optional(),
+  ledger: z.strictObject({ derivation: DerivationSchema }).optional(),
   tokens: TokenCatalogSchema.optional(),
   trezor: z.strictObject({ derivation: DerivationSchema }).optional()
 })

@@ -229,6 +229,23 @@ describe('#deriveAddress', () => {
     expect(ledger.addresses).toEqual(addresses)
     expect(ethInstance.getAddress).toHaveBeenCalledTimes(2)
   })
+
+  it('keeps deriving live addresses only until saved accounts are found', async () => {
+    const live = [...addresses, `0x${'3'.repeat(40)}`]
+    ethInstance.getAddress.mockClear()
+    ethInstance.getAddress.mockImplementation(async (path: string) => ({
+      address: live[parseInt(path.split('/')[2])]
+    }))
+    ledger.accountLimit = 1
+    ledger.liveSearch = new Set([live[2]])
+    ledger.derivation = Derivation.live
+
+    ledger.deriveAddresses()
+    await runQueuedRequests(4)
+
+    expect(ledger.addresses).toEqual(live)
+    expect(ethInstance.getAddress).toHaveBeenCalledTimes(3)
+  })
 })
 
 describe('#verifyAddress', () => {

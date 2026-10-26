@@ -15,6 +15,9 @@ import { RequestQueue } from './requestQueue.ts'
 
 const ns = '3bbcee75-cecc-5b56-8031-b6641c1ed1f1'
 
+// matches the number of Live accounts account setup can page through
+const maxLiveAccounts = 100
+
 export const Status = {
   INITIAL: 'Connecting',
   OK: 'ok',
@@ -82,7 +85,10 @@ export default class Ledger extends Signer {
   devicePath: string
 
   derivation: Derivation | undefined
-  accountLimit = 5
+  // Live addresses are derived one device call per index, so only derive through the highest
+  // saved account and keep searching for saved accounts whose index isn't known yet
+  accountLimit = 1
+  liveSearch = new Set<string>()
   private derivationGeneration = 0
   private queuedLiveAccounts = 0
 
@@ -350,6 +356,7 @@ export default class Ledger extends Signer {
               this.addresses = [...this.addresses, address]
 
               this.emit('update')
+              this.continueLiveSearch()
             }
           } catch (e) {
             if (generation !== this.derivationGeneration) {
@@ -366,6 +373,17 @@ export default class Ledger extends Signer {
 
     this.queuedLiveAccounts = this.accountLimit
     this.enqueueRequests(...requests)
+  }
+
+  private continueLiveSearch() {
+    if (this.addresses.length < this.queuedLiveAccounts || this.addresses.length >= maxLiveAccounts) {
+      return
+    }
+    const derived = new Set(this.addresses.map((address) => address.toLowerCase()))
+    if ([...this.liveSearch].some((address) => !derived.has(address))) {
+      this.accountLimit = this.addresses.length + 1
+      this.deriveLiveAddresses()
+    }
   }
 
   private deriveHardwareAddresses() {

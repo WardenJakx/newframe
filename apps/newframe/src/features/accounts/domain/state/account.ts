@@ -19,6 +19,8 @@ export const AccountSchema = z
     status: z.string(),
     signer: z.string(),
     signerStatus: z.string().optional(),
+    // Ledger Live path index, recorded so attaching a Ledger only derives the accounts already saved
+    ledgerLiveIndex: z.number().int().nonnegative().optional(),
     safe: z.record(z.string().regex(/^[1-9][0-9]*$/), SafeDeploymentSchema).optional(),
     aiSessionsEnabled: z.boolean().optional(),
     requests: z.record(z.string(), z.unknown()),

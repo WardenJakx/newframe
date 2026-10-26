@@ -312,6 +312,31 @@ export function AddAccountController({
     [hardwarePage, selectedHardwareSigner, shared.ledger.derivation]
   )
   const visibleHardwareAddresses = selectedHardwarePage.addresses
+  // attaching a Live Ledger only derives saved accounts, so load the viewed page on demand
+  const requestedLedgerPage = useRef('')
+  useEffect(() => {
+    const signer = selectedHardwareSigner
+    if (signer?.status !== 'ok') {
+      requestedLedgerPage.current = ''
+      return
+    }
+    const request = `${signer.id}:${selectedHardwarePage.requiredAddressCount}`
+    if (!selectedHardwarePage.loading || requestedLedgerPage.current === request) {
+      return
+    }
+    requestedLedgerPage.current = request
+    void runSubmission(
+      'signer.accounts-load',
+      (operationId) =>
+        capability.refreshSigner({
+          operationId,
+          signerId: signer.id,
+          accountCount: selectedHardwarePage.requiredAddressCount
+        }),
+      'Could not load that Ledger account page.',
+      false
+    )
+  }, [selectedHardwareSigner, selectedHardwarePage, capability, runSubmission])
   const visibleHardwareAddressKey = visibleHardwareAddresses
     .map((address: string) => address.toLowerCase())
     .join(',')
@@ -1196,24 +1221,10 @@ export function AddAccountController({
 
   const selectedSigner = () =>
     state.addAccountSelectedSigner ? shared.signers[state.addAccountSelectedSigner] : undefined
-  const selectHardwarePage = async (signer: SignerProjection, requestedPage: number) => {
+  const selectHardwarePage = (signer: SignerProjection, requestedPage: number) => {
     const pageModel = hardwarePageModel(signer, requestedPage, shared.ledger.derivation === 'live')
     setHardwarePage(pageModel.page)
     setHardwarePageInput(String(pageModel.page))
-    if (!pageModel.loading) {
-      return
-    }
-    await runSubmission(
-      'signer.accounts-load',
-      (operationId) =>
-        capability.refreshSigner({
-          operationId,
-          signerId: signer.id,
-          accountCount: pageModel.requiredAddressCount
-        }),
-      'Could not load that Ledger account page.',
-      false
-    )
   }
   const events = {
     onSafeChainToggle: (chainId: number) =>
@@ -1286,7 +1297,7 @@ export function AddAccountController({
     onPageChange: (page: number) => {
       const signer = selectedSigner()
       if (signer) {
-        void selectHardwarePage(signer, page)
+        selectHardwarePage(signer, page)
       }
     },
     onPageInputChange: setHardwarePageInput,

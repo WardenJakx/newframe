@@ -13,7 +13,6 @@ type SettingsState = Pick<
   | 'setLatticeEndpointCustom'
   | 'setLatticeEndpointMode'
   | 'setLedgerDerivation'
-  | 'setLiveAccountLimit'
   | 'setMenubarGasPrice'
   | 'setPortfolioApiKey'
   | 'setShortcut'
@@ -81,8 +80,6 @@ export function createSettingsService(
         return state.setLedgerDerivation(command.value)
       case 'lattice-derivation':
         return state.setLatticeDerivation(command.value)
-      case 'ledger-live-account-limit':
-        return state.setLiveAccountLimit(command.value)
       case 'lattice-account-limit':
         return state.setLatticeAccountLimit(command.value)
       case 'lattice-endpoint-mode':

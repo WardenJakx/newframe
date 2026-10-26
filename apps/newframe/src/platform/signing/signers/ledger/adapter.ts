@@ -1,7 +1,6 @@
 import log from 'electron-log'
 // type-only: at runtime node-hid is used solely inside the Ledger transports
 import type { Device } from 'node-hid'
-import { shallow } from 'zustand/vanilla/shallow'
 
 import type canonicalStore from '../../../../core/state/store/index.ts'
 import { SignerAdapter } from '../adapters.ts'
@@ -12,17 +11,22 @@ import Ledger, { Status } from './Ledger/index.ts'
 function updateDerivation(
   store: typeof canonicalStore,
   ledger: Ledger,
-  derivation = (store.getState().main.ledger as { derivation: Derivation }).derivation,
-  accountLimit = 0
+  derivation = store.getState().main.ledger.derivation
 ) {
-  const liveAccountLimit =
-    accountLimit ||
-    (derivation === Derivation.live
-      ? (store.getState().main.ledger as { liveAccountLimit: number }).liveAccountLimit
-      : 0)
+  // derive through the highest saved Live index, and search for saved Ledger accounts
+  // added before their index was recorded
+  const accounts = Object.values(store.getState().main.accounts)
 
   ledger.derivation = derivation
-  ledger.accountLimit = liveAccountLimit
+  ledger.accountLimit = Math.max(1, ...accounts.map((account) => (account.ledgerLiveIndex ?? -1) + 1))
+  ledger.liveSearch = new Set(
+    accounts
+      .filter(
+        (account) =>
+          account.ledgerLiveIndex === undefined && account.lastSignerType.toLowerCase() === 'ledger'
+      )
+      .map((account) => account.address.toLowerCase())
+  )
 }
 
 interface Disconnection {
@@ -37,6 +41,7 @@ export default class LedgerSignerAdapter extends SignerAdapter {
   private disconnections: Disconnection[]
 
   private unsubscribeDerivation?: () => void
+  private unsubscribeAccounts?: () => void
   private usbListener: ReturnType<typeof TransportNodeHid.listen> | null = null
   private opened = false
   private reconnectTimers = new Map<Ledger, NodeJS.Timeout>()
@@ -58,22 +63,22 @@ export default class LedgerSignerAdapter extends SignerAdapter {
 
     this.unsubscribeDerivation?.()
     this.unsubscribeDerivation = this.store.subscribe(
-      (state) => {
-        const settings = state.main.ledger
-        return [settings.derivation, settings.liveAccountLimit] as const
-      },
-      ([ledgerDerivation, liveAccountLimit]) => {
+      (state) => state.main.ledger.derivation,
+      (ledgerDerivation) => {
         Object.values(this.knownSigners).forEach((ledger) => {
-          if (
-            ledger.derivation !== ledgerDerivation ||
-            (ledger.derivation === 'live' && ledger.accountLimit !== liveAccountLimit)
-          ) {
-            updateDerivation(this.store, ledger, ledgerDerivation, liveAccountLimit)
+          if (ledger.derivation !== ledgerDerivation) {
+            updateDerivation(this.store, ledger, ledgerDerivation)
             ledger.deriveAddresses()
           }
         })
       },
-      { equalityFn: shallow, fireImmediately: true }
+      { fireImmediately: true }
+    )
+
+    this.unsubscribeAccounts?.()
+    this.unsubscribeAccounts = this.store.subscribe(
+      (state) => state.main.accounts,
+      () => Object.values(this.knownSigners).forEach((ledger) => this.recordLiveIndices(ledger))
     )
 
     this.usbListener = TransportNodeHid.listen({
@@ -109,6 +114,8 @@ export default class LedgerSignerAdapter extends SignerAdapter {
 
     this.unsubscribeDerivation?.()
     this.unsubscribeDerivation = undefined
+    this.unsubscribeAccounts?.()
+    this.unsubscribeAccounts = undefined
 
     if (this.usbListener) {
       this.usbListener.unsubscribe()
@@ -168,7 +175,10 @@ export default class LedgerSignerAdapter extends SignerAdapter {
       this.scheduleReconnect(ledger)
     }
 
-    ledger.on('update', emitUpdate)
+    ledger.on('update', () => {
+      this.recordLiveIndices(ledger)
+      emitUpdate()
+    })
     ledger.on('error', emitUpdate)
     ledger.on('lock', emitUpdate)
 
@@ -186,6 +196,19 @@ export default class LedgerSignerAdapter extends SignerAdapter {
 
     updateDerivation(this.store, ledger)
     await this.handleConnectedDevice(ledger)
+  }
+
+  private recordLiveIndices(ledger: Ledger) {
+    if (ledger.derivation !== Derivation.live) {
+      return
+    }
+    const { main, patchAccount } = this.store.getState()
+    ledger.addresses.forEach((address, ledgerLiveIndex) => {
+      const account = main.accounts[address.toLowerCase()] as (typeof main.accounts)[string] | undefined
+      if (account && account.ledgerLiveIndex !== ledgerLiveIndex) {
+        patchAccount(account.id, { ledgerLiveIndex })
+      }
+    })
   }
 
   private handleConnectedDevice(ledger: Ledger) {

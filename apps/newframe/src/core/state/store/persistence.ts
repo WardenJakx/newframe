@@ -283,6 +283,7 @@ export function migratePersistedState(
     fromVersion !== 7 &&
     fromVersion !== 8 &&
     fromVersion !== 9 &&
+    fromVersion !== 10 &&
     fromVersion !== PERSISTENCE_VERSION
   ) {
     log.error('Cannot migrate unsupported canonical state version', fromVersion)
@@ -309,6 +310,8 @@ export function migratePersistedState(
           assetRates: {}
         }
   const { rates: _legacyRates, ...mainWithoutLegacyRates } = legacyMain
+  // Before v11, Ledger Live derivation was capped by a `liveAccountLimit` setting.
+  const { liveAccountLimit: _liveAccountLimit, ...ledger } = unknownRecord(mainWithoutLegacyRates.ledger)
   const candidate = {
     ...raw,
     main: normalizeProfileState({
@@ -316,6 +319,7 @@ export function migratePersistedState(
       ...(fromVersion === 2 ? { tokens: { byId: {}, accountTokenIds: {} } } : {}),
       ...(fromVersion < 7 ? { orders: {} } : {}),
       ...(fromVersion < 10 ? { addressBook: {} } : {}),
+      ...(mainWithoutLegacyRates.ledger === undefined ? {} : { ledger }),
       chainsMeta: persistedChainMetadata(unknownRecord(mainWithoutLegacyRates.chainsMeta))
     })
   }
