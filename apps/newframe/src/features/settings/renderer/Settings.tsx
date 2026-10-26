@@ -88,7 +88,6 @@ export function Settings({
       latticeEndpointMode: state.latticeSettings.endpointMode || 'default',
       launch: !!state.launch,
       ledgerDerivation: ledgerDerivation(state.ledger.derivation),
-      liveAccountLimit: accountLimit(state.ledger.liveAccountLimit),
       menubarGasPrice: !!state.menubarGasPrice,
       chains: state.chains.ethereum,
       platform: state.platform || '',

@@ -95,7 +95,7 @@ type M = Main & {
     endpointMode: 'default' | 'custom'
     endpointCustom: string
   }
-  ledger: { derivation: Derivation; liveAccountLimit: number }
+  ledger: { derivation: Derivation }
   trezor: { derivation: Derivation }
   signers: Record<string, SignerSummary & Record<string, unknown>>
   frames: Record<string, Frame>
@@ -138,7 +138,7 @@ const mainState: M = {
     endpointMode: 'default',
     endpointCustom: ''
   },
-  ledger: { derivation: Derivation.live, liveAccountLimit: 5 },
+  ledger: { derivation: Derivation.live },
   trezor: { derivation: Derivation.standard },
   origins: {},
   knownExtensions: {},

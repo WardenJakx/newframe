@@ -530,7 +530,7 @@ describe('canonical persisted state contract', () => {
 
     const migrated = migratePersistedState(stored, version)
 
-    expect(PERSISTENCE_VERSION).toBe(10)
+    expect(PERSISTENCE_VERSION).toBe(11)
     expect(Object.keys(migrated.main)).not.toContainAnyValues(['networks', 'networksMeta', 'permissions'])
     expect<unknown>(migrated.main.chains).toEqual(chains)
     expect<unknown>(migrated.main.chainsMeta).toEqual(chainsMeta)
@@ -545,6 +545,13 @@ describe('canonical persisted state contract', () => {
       requestId: 'request-1'
     })
     expect(migratePersistedState(migrated)).toEqual(migrated)
+  })
+
+  it('drops the v10 Ledger Live account limit', () => {
+    const v10 = mutablePersisted(selectPersistedState(canonicalState()))
+    v10.main.ledger = { derivation: 'standard', liveAccountLimit: 20 }
+
+    expect(migratePersistedState(v10, 10).main.ledger).toEqual({ derivation: 'standard' })
   })
 
   it('gives v9 state an empty address book and keeps a saved one through hydration', () => {

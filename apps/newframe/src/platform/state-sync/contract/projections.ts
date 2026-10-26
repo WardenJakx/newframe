@@ -200,10 +200,7 @@ const LatticeSettingsSchema = z.strictObject({
   endpointCustom: z.string()
 })
 
-const LedgerSettingsSchema = z.strictObject({
-  derivation: z.string(),
-  liveAccountLimit: z.number().int().positive()
-})
+const LedgerSettingsSchema = z.strictObject({ derivation: z.string() })
 
 const TrezorSettingsSchema = z.strictObject({ derivation: z.string() })
 

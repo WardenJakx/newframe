@@ -1118,12 +1118,6 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
-    setLiveAccountLimit: (value: number) => {
-      set((draft) => {
-        ;(mutableMain(draft).ledger as { liveAccountLimit: unknown }).liveAccountLimit = value
-      })
-    },
-
     setMenubarGasPrice: (value: boolean) => {
       set((draft) => {
         mutableMain(draft).menubarGasPrice = value

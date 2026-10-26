@@ -892,7 +892,7 @@ const SettingsUpdateCommandSchema = z.discriminatedUnion('setting', [
   }),
   z.strictObject({
     type: z.literal('settings.update'),
-    setting: z.enum(['ledger-live-account-limit', 'lattice-account-limit']),
+    setting: z.literal('lattice-account-limit'),
     value: z.union([z.literal(5), z.literal(10), z.literal(20), z.literal(40)])
   }),
   z.strictObject({

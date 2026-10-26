@@ -64,7 +64,6 @@ interface SettingsViewModel {
   latticeDerivation: 'standard' | 'legacy' | 'live'
   launch: boolean
   ledgerDerivation: 'live' | 'legacy' | 'standard' | 'testnet'
-  liveAccountLimit: 5 | 10 | 20 | 40
   menubarGasPrice: boolean
   platform: string
   reveal: boolean
@@ -357,14 +356,6 @@ export function SettingsView({
             onChange={(value) => onUpdate({ setting: 'ledger-derivation', value })}
             options={ledgerOptions}
           />
-          {settings.ledgerDerivation === 'live' ? (
-            <SettingsSelectRow
-              currentValue={settings.liveAccountLimit}
-              label='Ledger Live Accounts'
-              onChange={(value) => onUpdate({ setting: 'ledger-live-account-limit', value })}
-              options={accountLimitOptions}
-            />
-          ) : null}
           <SettingsSelectRow
             currentValue={settings.latticeDerivation}
             label='Lattice Derivation'

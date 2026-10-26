@@ -26,8 +26,7 @@ const defaultState = () => ({
       endpointCustom: ''
     },
     ledger: {
-      derivation: 'live',
-      liveAccountLimit: 5
+      derivation: 'live'
     },
     trezor: {
       derivation: 'standard'

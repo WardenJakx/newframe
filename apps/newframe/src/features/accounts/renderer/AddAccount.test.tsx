@@ -151,14 +151,9 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   })
 
   reset({
-    ledger: { derivation: 'live', liveAccountLimit: 5 },
+    ledger: { derivation: 'live' },
     signers: {
-      'ledger-1': signer(
-        'ledger-1',
-        'ledger',
-        'ok',
-        Array.from({ length: 5 }, (_, index) => address(String(index + 3)))
-      )
+      'ledger-1': signer('ledger-1', 'ledger', 'ok', [address('3')])
     }
   })
   view = render(<AddAccount camera={createQrCameraFake().camera} capability={capability} onClose={mock()} />)
@@ -166,6 +161,13 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   await view.user.click(screen.getByRole('button', { name: 'Ledger' }))
   await view.user.click(screen.getByRole('button', { name: 'View Ledger accounts' }))
   await waitFor(() => expect(capability.startSignerSession.mock.calls.length).toBe(1))
+  await waitFor(() =>
+    expect(capability.refreshSigner.mock.calls.at(-1)?.[0]).toEqual({
+      operationId: anyString,
+      signerId: 'ledger-1',
+      accountCount: 5
+    })
+  )
   await view.user.click(screen.getByRole('button', { name: 'Next account page' }))
   expect(capability.refreshSigner.mock.calls.at(-1)![0]).toEqual({
     operationId: anyString,

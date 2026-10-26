@@ -35,7 +35,7 @@ const baseWalletState: MainTrayProjection = {
     endpointCustom: ''
   },
   launch: false,
-  ledger: { derivation: 'live', liveAccountLimit: 5 },
+  ledger: { derivation: 'live' },
   menubarGasPrice: false,
   mute: {
     explorerWarning: false,
