@@ -98,9 +98,9 @@ Newframe is the RPC and signing proxy, not the chain name. Keep your normal chai
 Configure the real target network as an HTTP JSON-RPC network whose URL is Newframe. Hardhat will still treat the network as `sepolia` for chain-specific config and verification, but it will send reads and `eth_sendTransaction` through Newframe.
 
 ```ts
+import hardhatEthers from '@nomicfoundation/hardhat-ethers'
 // hardhat.config.ts
 import { defineConfig } from 'hardhat/config'
-import hardhatEthers from '@nomicfoundation/hardhat-ethers'
 
 export default defineConfig({
   plugins: [hardhatEthers],

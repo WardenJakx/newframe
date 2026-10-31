@@ -15,7 +15,7 @@
       "@testing-library/user-event": "^14.6.1",
       "@trpc/client": "11.19.0",
       "@trpc/server": "11.19.0",
-      "@types/bun": "1.4.0",
+      "@types/bun": "1.4.4",
       "@types/node": "24",
       "@types/react": "^19",
       "@types/react-dom": "^19",
@@ -55,9 +55,9 @@
     "lint:warn": "bun run lint",
     "lint:fix": "oxlint --fix . --report-unused-disable-directives-severity=error",
     "knip": "bun run --cwd apps/newframe knip",
-    "format": "oxfmt --write '**/*.{yml,json,md,html,ts,tsx,js,mjs}'",
+    "format": "bun fmt",
     "format:staged": "lint-staged",
-    "format:check": "oxfmt --check '**/*.{yml,json,md,html,ts,tsx,js,mjs}'",
+    "format:check": "bun fmt --check",
     "verify": "bun run format:check && bun run typecheck && bun run lint && bun run knip && bun run test",
     "dep:report": "bun scripts/dep-report.ts",
     "visual:harness:newframe": "scripts/with-lock.sh node_modules/.visual-harness.lock bun run visual:harness:newframe:unlocked",
@@ -65,16 +65,15 @@
     "scenario:newframe:provider": "bun harness/newframe/scenarios/provider-smoke.ts"
   },
   "lint-staged": {
-    "*.{yml,json,md,html,ts,tsx,js,mjs}": "oxfmt --write"
+    "*.{yml,json,md,html,ts,tsx,js,mjs}": "bun fmt"
   },
-  "packageManager": "bun@1.4.3",
+  "packageManager": "bun@1.4.4",
   "devDependencies": {
     "@types/bun": "catalog:",
     "eslint-plugin-testing-library": "7.16.2",
     "husky": "9.1.7",
     "lint-staged": "^17.3.0",
     "playwright-core": "catalog:",
-    "oxfmt": "0.65.0",
     "typescript": "catalog:",
     "oxlint": "1.80.0",
     "oxlint-tsgolint": "7.0.2001"

@@ -95,7 +95,13 @@ function AddressBookActions({ onImport, onNewEntry }: { onImport: () => void; on
         <Icon name='plus' size='small' />
         <Text variant='compactAction'>New entry</Text>
       </Button>
-      <Button appearance='control' label='Import from Gnosis Safe' onPress={onImport} shape='pill' size='small'>
+      <Button
+        appearance='control'
+        label='Import from Gnosis Safe'
+        onPress={onImport}
+        shape='pill'
+        size='small'
+      >
         <Text variant='compactAction'>Import from Gnosis Safe</Text>
       </Button>
     </>
