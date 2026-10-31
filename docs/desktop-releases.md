@@ -78,7 +78,7 @@ After the signing PR is merged and the six secrets are configured:
 
 1. Open [Actions > Release Newframe Desktop](https://github.com/WardenJakx/newframe/actions/workflows/release-desktop.yml).
 2. Choose **Run workflow**, select **main**, and optionally enter a one-line release introduction of at most 500 characters. Dispatch from the exact current `main` commit.
-3. Watch the run. It prepares the version, tests and builds on Apple Silicon, signs and notarizes the app, signs and notarizes the DMG, and validates the final mounted app's signature, team, runtime, version, architecture, notarization tickets, and Gatekeeper acceptance. It then computes the checksum and publishes a `desktop-v<version>` GitHub release with a GitHub-signed release commit.
+3. Watch the run. It prepares the version, tests and builds on Apple Silicon, signs and notarizes the app, signs and notarizes the DMG, and validates the final mounted app's signature, team, runtime, version, architecture, notarization tickets, and Gatekeeper acceptance. Every Mach-O file under `Contents/Resources/tor`, including the Tor executable and nested dylibs, must also have a timestamped Developer ID signature from `APPLE_TEAM_ID` with hardened runtime enabled; ad hoc signatures fail verification. It then computes the checksum and publishes a `desktop-v<version>` GitHub release with a GitHub-signed release commit.
 
 The same dispatch can be started from the CLI:
 

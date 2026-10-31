@@ -16,12 +16,34 @@ function verifyRelease(failure = '') {
   mkdirSync(mounts)
   const dmg = path.join(root, 'Newframe-arm64.dmg')
   writeFileSync(dmg, '')
+  const tor = path.join(root, 'tor')
+  mkdirSync(path.join(tor, 'tor/lib/nested'), { recursive: true })
+  mkdirSync(path.join(tor, 'data'))
+  // Real Mach-O headers exercise file detection, including extensionless and
+  // non-executable files. GeoIP data must not be treated as signed code.
+  const header = Buffer.alloc(32)
+  header.writeUInt32LE(0xfeedfacf, 0)
+  header.writeUInt32LE(0x0100000c, 4)
+  header.writeUInt32LE(2, 12)
+  writeFileSync(path.join(tor, 'tor/tor'), header)
+  header.writeUInt32LE(6, 12)
+  writeFileSync(path.join(tor, 'tor/lib/nested/libevent.dylib'), header)
+  writeFileSync(path.join(tor, 'data/geoip'), 'Tor GeoIP data\n')
 
   const commands: Record<string, string> = {
+    find: `
+if [[ "$STUB_FAILURE" == tor-find ]]; then
+  printf '%s\\0' "$1/tor/tor"
+  exit 1
+fi
+exec /usr/bin/find "$@"
+`,
     codesign: `
 artifact="\${@: -1}"
 scope=dmg
 [[ "$artifact" == *.app ]] && scope=app
+[[ "$artifact" == */Resources/tor/tor/tor ]] && scope=tor
+[[ "$artifact" == *.dylib ]] && scope=dylib
 if [[ "$1" == --verify ]]; then
   [[ "$STUB_FAILURE" != "$scope-verify" ]]
   exit
@@ -37,10 +59,10 @@ if [[ "$STUB_FAILURE" != "$scope-timestamp" ]]; then
 fi
 if [[ "$STUB_FAILURE" == "$scope-team" ]]; then
   echo 'TeamIdentifier=OTHERTEAM1' >&2
-else
+elif [[ "$STUB_FAILURE" != "$scope-no-team" ]]; then
   echo 'TeamIdentifier=TESTTEAM01' >&2
 fi
-if [[ "$STUB_FAILURE" == app-runtime && "$scope" == app ]]; then
+if [[ "$STUB_FAILURE" == "$scope-runtime" ]]; then
   echo 'flags=0x0(none)' >&2
 else
   echo 'flags=0x10000(runtime)' >&2
@@ -61,8 +83,9 @@ if [[ "$1" == attach ]]; then
   while [[ "$1" != -mountpoint ]]; do shift; done
   mount_dir="$2"
   printf '%s' "$mount_dir" > "$STUB_ROOT/mount-path"
-  mkdir -p "$mount_dir/Newframe.app/Contents/MacOS"
+  mkdir -p "$mount_dir/Newframe.app/Contents/MacOS" "$mount_dir/Newframe.app/Contents/Resources"
   touch "$mount_dir/Newframe.app/Contents/Info.plist" "$mount_dir/Newframe.app/Contents/MacOS/Newframe"
+  cp -R "$STUB_ROOT/tor" "$mount_dir/Newframe.app/Contents/Resources/tor"
 else
   rm -r "$2/Newframe.app"
 fi
@@ -122,6 +145,8 @@ describe('macOS release verification', () => {
     for (const check of [
       `codesign --verify --deep --strict --verbose=2 ${dmg}`,
       `codesign --verify --deep --strict --verbose=2 ${app}`,
+      `codesign --verify --deep --strict --verbose=2 ${app}/Contents/Resources/tor/tor/tor`,
+      `codesign --verify --deep --strict --verbose=2 ${app}/Contents/Resources/tor/tor/lib/nested/libevent.dylib`,
       `xcrun stapler validate ${dmg}`,
       `xcrun stapler validate ${app}`,
       `spctl --assess --type open --context context:primary-signature --verbose=2 ${dmg}`,
@@ -129,6 +154,7 @@ describe('macOS release verification', () => {
     ]) {
       expect(calls).toContain(check)
     }
+    expect(calls.some((call) => call.startsWith('codesign ') && call.includes('/data/geoip'))).toBe(false)
     expect(calls.at(-1)).toBe(`hdiutil detach ${mount}`)
     expect(readdirSync(mounts)).toEqual([])
   })
@@ -154,4 +180,19 @@ describe('macOS release verification', () => {
       expect(readdirSync(mounts)).toEqual([])
     }
   )
+
+  test.each([
+    'tor-find',
+    ...['tor', 'dylib'].flatMap((scope) =>
+      ['adhoc', 'team', 'no-team', 'runtime', 'timestamp', 'verify'].map((failure) => `${scope}-${failure}`)
+    )
+  ])('rejects nested %s even when the app signature passes', (failure) => {
+    const { result, calls, mounts, mount } = verifyRelease(failure)
+    expect(result.exitCode).not.toBe(0)
+    expect(mount).toBeDefined()
+    expect(calls).toContain(`codesign --verify --deep --strict --verbose=2 ${mount}/Newframe.app`)
+    expect(calls).not.toContain(`spctl --assess --type execute --verbose=2 ${mount}/Newframe.app`)
+    expect(calls.at(-1)).toBe(`hdiutil detach ${mount}`)
+    expect(readdirSync(mounts)).toEqual([])
+  })
 })
