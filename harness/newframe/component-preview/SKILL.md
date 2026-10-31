@@ -16,8 +16,8 @@ Serve mode prints a loopback URL and runs until Ctrl-C. Capture defaults to 420Ã
 Create one temporary TSX file that default-exports a component. Bare fixture imports resolve from `apps/newframe`. This minimal fixture renders the current shared Button:
 
 ```tsx
-import type { ComponentProps } from 'react'
 import { Button } from '@newframe/ui/button'
+import type { ComponentProps } from 'react'
 
 const props = {
   appearance: 'primary',

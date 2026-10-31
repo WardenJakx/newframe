@@ -105,7 +105,7 @@ Standalone `bun run lint` needs current build/typecheck artifacts, so run
 `bun run typecheck` first when those are missing or stale. Lint shows warnings and
 reports unused suppression comments as errors. `bun run lint:warn` is an alias for
 `bun run lint`; `bun run lint:fix` applies fixes.
-Oxfmt handles formatting with `bun run format`;
+`bun fmt` handles formatting with `bun run format`;
 `bun run format:check` checks formatting without writing files.
 
 ## Project surfaces
