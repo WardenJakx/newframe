@@ -1,9 +1,22 @@
 import { describe, expect, it } from 'bun:test'
 
-import { messageSource } from './messageSource.ts'
+import { isAllowedFromTab, messageSource } from './messageSource.ts'
 
 const settingsUrl = 'chrome-extension://abc/settings.html'
 const forgedTab = { id: 99, url: 'https://victim.example/' }
+
+describe('isAllowedFromTab', () => {
+  it('allows requests only from the focused tab', () => {
+    expect(isAllowedFromTab('eth_sendTransaction', 7, 7)).toBe(true)
+    expect(isAllowedFromTab('eth_sendTransaction', 7, 8)).toBe(false)
+    expect(isAllowedFromTab('eth_chainId', 7, undefined)).toBe(false)
+  })
+
+  it('lets a background tab manage its subscriptions', () => {
+    expect(isAllowedFromTab('eth_subscribe', 7, 8)).toBe(true)
+    expect(isAllowedFromTab('eth_unsubscribe', 7, 8)).toBe(true)
+  })
+})
 
 describe('messageSource', () => {
   it('ignores a forged payload tab from a page', () => {
