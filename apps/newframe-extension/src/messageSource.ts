@@ -36,6 +36,13 @@ export const originFromUrl = (url?: string) => {
   return `${path[0]}//${path[2]}`
 }
 
+// The provider never retries a failed subscribe, so rejecting one would lose the page's
+// event listeners for good. Subscriptions only push events; they ask the wallet for nothing.
+const focusExemptMethods = ['eth_subscribe', 'eth_unsubscribe']
+
+export const isAllowedFromTab = (method: string, tabId: number, focusedTabId?: number) =>
+  tabId === focusedTabId || focusExemptMethods.includes(method)
+
 export function messageSource(
   sender: MessageSender,
   payloadTab: unknown,

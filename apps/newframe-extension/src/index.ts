@@ -8,7 +8,14 @@ import FrameBackgroundProvider, {
   type JsonRpcResponse
 } from './frameConnection.ts'
 import { frameStateStore, type ConnectionStatus } from './frameState.ts'
-import { isRecord, messageSource, originFromUrl, tabFromMessage, type TabLike } from './messageSource.ts'
+import {
+  isAllowedFromTab,
+  isRecord,
+  messageSource,
+  originFromUrl,
+  tabFromMessage,
+  type TabLike
+} from './messageSource.ts'
 
 type Provider = FrameBackgroundProvider
 
@@ -445,16 +452,30 @@ function addStateListeners() {
       return
     }
 
-    if (!provider?.isConnected() || !dappConnection) {
-      const rejected = frameStateStore.getState().connectionStatus === 'extension-approval-rejected'
-      await chrome.tabs.sendMessage(source.tabId, {
+    const rejectPayload = (error: { code: number; message: string }) =>
+      chrome.tabs.sendMessage(source.tabId, {
         type: 'eth:payload',
         id: payload.id,
         jsonrpc: '2.0',
-        error: rejected
+        error
+      })
+
+    // lastFocusedWindow rather than strict window focus: approving in the desktop app takes
+    // focus from the browser, and the dapp must still be able to follow up on that approval.
+    // Not 4001, which would stop the provider retrying its connection once the tab is focused.
+    const [focusedTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true })
+    if (!isAllowedFromTab(method, source.tabId, focusedTab?.id)) {
+      await rejectPayload({ code: 4100, message: 'Tab is not focused' })
+      return
+    }
+
+    if (!provider?.isConnected() || !dappConnection) {
+      const rejected = frameStateStore.getState().connectionStatus === 'extension-approval-rejected'
+      await rejectPayload(
+        rejected
           ? { code: 4001, message: 'Connection declined. Click Retry connection in Newframe Companion.' }
           : { code: 4900, message: 'Not connected' }
-      })
+      )
       return
     }
 

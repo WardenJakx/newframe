@@ -1,4 +1,4 @@
-import { expect, it } from 'bun:test'
+import { expect, it, jest as timers } from 'bun:test'
 import { EventEmitter } from 'events'
 
 import InjectedFrameProvider, { type JsonRpcPayload, type ProviderConnection } from './provider.ts'
@@ -21,6 +21,30 @@ class FakeConnection extends EventEmitter implements ProviderConnection {
     this.emit('payload', { id: payload.id, jsonrpc: payload.jsonrpc, ...this.respond(payload) })
   }
 }
+
+it('connects once a tab that was rejected for not being focused gains focus', async () => {
+  timers.useFakeTimers()
+  try {
+    let focused = false
+    const connection = new FakeConnection(() =>
+      focused ? { result: '0x1' } : { error: { code: 4100, message: 'Tab is not focused' } }
+    )
+    const provider = new InjectedFrameProvider(connection)
+
+    await provider.checkConnection()
+    expect(provider.isConnected()).toBe(false)
+
+    focused = true
+    timers.advanceTimersByTime(4000)
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve()
+    }
+
+    expect(provider.isConnected()).toBe(true)
+  } finally {
+    timers.useRealTimers()
+  }
+})
 
 it('requests account access when legacy enable is called', async () => {
   const connection = new FakeConnection()
