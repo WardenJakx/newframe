@@ -130,6 +130,22 @@ const keyOf = (identity: Identity) =>
   `${identity.accountId.toLowerCase()}:${identity.chainId}:${identity.safeTxHash.toLowerCase()}`
 const interruptedExecutionMessage =
   'Execution was interrupted and its broadcast outcome is unknown. Check the chain before retrying.'
+type SafeExecution = NonNullable<SafeProposal['local']>['execution']
+// An in-flight execution cannot survive a restart: recover it to a re-preparable state.
+const recoverInterruptedExecution = (execution: SafeExecution): SafeExecution => {
+  switch (execution.status) {
+    case 'preparing':
+      return { status: 'idle' }
+    case 'executing':
+      return { ...execution, status: 'failed', error: interruptedExecutionMessage }
+    case 'idle':
+    case 'ready':
+    case 'submitted':
+    case 'failed':
+    case 'cancelled':
+      return execution
+  }
+}
 const errorMessage = (error: unknown, fallback: string) =>
   error instanceof Error && error.message.length <= 500 ? error.message : fallback
 
@@ -436,22 +452,14 @@ export function createSafeTransactionService({
             submitted?.({ safeTxHash: proposal.safeTxHash, outerTxHash })
           }
         }
-        // An in-flight execution cannot survive a restart: recover it to a re-preparable state.
         const recovered = deployment.pending?.map((proposal) => {
-          const execution = proposal.local?.execution
-          if (!proposal.local || !execution || !['preparing', 'executing'].includes(execution.status)) {
+          if (!proposal.local) {
             return proposal
           }
-          return {
-            ...proposal,
-            local: {
-              ...proposal.local,
-              execution:
-                execution.status === 'preparing'
-                  ? { status: 'idle' as const }
-                  : { ...execution, status: 'failed' as const, error: interruptedExecutionMessage }
-            }
-          }
+          const execution = recoverInterruptedExecution(proposal.local.execution)
+          return execution === proposal.local.execution
+            ? proposal
+            : { ...proposal, local: { ...proposal.local, execution } }
         })
         const pending = recovered?.filter(
           (proposal) =>
@@ -765,8 +773,9 @@ export function createSafeTransactionService({
       packed
     ])
     const previous = proposal.local?.execution.status
-    if (executionWork.has(keyOf(identity)) || previous === 'executing' || previous === 'submitted') {
-      throw new Error('Safe execution is already in progress or submitted.')
+    // `submitted` stays re-preparable: an outer transaction that reverts or drops never advances the nonce.
+    if (executionWork.has(keyOf(identity)) || previous === 'executing') {
+      throw new Error('Safe execution is already in progress.')
     }
     replaceProposal(identity, (candidate) => ({
       ...localize(candidate),

@@ -223,14 +223,15 @@ function startDomainServices() {
 }
 
 function stateLoadFailureDetail(error: unknown) {
-  const code = error instanceof CanonicalStatePersistenceError ? error.code : undefined
-  if (code === 'unsupported_version') {
-    return 'Your wallet data was saved in a format this version of Newframe cannot open.'
+  if (!(error instanceof CanonicalStatePersistenceError)) {
+    return `Newframe will quit. Details were written to the log.\n\n${String(error)}`
   }
-  if (code === 'invalid_state') {
-    return `Your wallet data is damaged and was set aside, so Newframe will start without it next time. A recovery copy was kept in config.json in ${app.getPath('userData')}.`
+  switch (error.code) {
+    case 'unsupported_version':
+      return 'Your wallet data was saved in a format this version of Newframe cannot open.'
+    case 'invalid_state':
+      return `Your wallet data is damaged and was set aside, so Newframe will start without it next time. A recovery copy was kept in config.json in ${app.getPath('userData')}.`
   }
-  return `Newframe will quit. Details were written to the log.\n\n${String(error)}`
 }
 
 function configureWebAuthn() {

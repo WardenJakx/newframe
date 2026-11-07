@@ -509,7 +509,7 @@ it('recovers a preparation interrupted by a restart to idle', async () => {
   })
 })
 
-it('does not let a late or repeated preparation replace a submitted execution', async () => {
+it('does not let a late preparation replace a submitted execution', async () => {
   const test = fixture(1, 1)
   const executorId = owners[0].address.toLowerCase()
   test.service.approve(test.command(0), test.context)
@@ -528,11 +528,14 @@ it('does not let a late or repeated preparation replace a submitted execution', 
   late.resolve()
   expect(latePreparation).rejects.toThrow('changed during preparation')
   await latePreparation.catch(() => undefined)
-  expect(test.service.prepareExecution(test.query, executorId)).rejects.toThrow('already in progress')
   expect(test.store.getState().main.accounts[safe].safe!['1'].pending![0].local?.execution).toMatchObject({
     status: 'submitted',
     transactionHash: hash
   })
+  await test.service.prepareExecution(test.query, executorId)
+  expect(test.store.getState().main.accounts[safe].safe!['1'].pending![0].local?.execution.status).toBe(
+    'ready'
+  )
 })
 
 it('completes an execution whose proposal was pruned while broadcasting', async () => {
