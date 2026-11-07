@@ -19,6 +19,8 @@ export type FlashOrderStreamOptions = {
 
 const RETRY_BASE_MS = 1_000
 const RETRY_MAX_MS = 30_000
+// Flash sends a heartbeat every second; a socket silent for this long is treated as dead.
+const LIVENESS_TIMEOUT_MS = 15_000
 const retryableErrorCodes = new Set([
   'CONNECTION_LIMIT',
   'STREAMING_UNAVAILABLE',
@@ -31,6 +33,7 @@ const retryableErrorCodes = new Set([
 export class FlashOrderStream {
   private attempts = 0
   private available = false
+  private livenessTimer?: ReturnType<typeof setTimeout>
   private orderQueue = Promise.resolve()
   private reconnectTimer?: ReturnType<typeof setTimeout>
   private socket?: WebSocket
@@ -45,7 +48,7 @@ export class FlashOrderStream {
     }
 
     this.stopped = false
-    this.terminal = false
+    this.attempts = 0
     this.connect()
   }
 
@@ -55,7 +58,7 @@ export class FlashOrderStream {
     }
 
     this.stopped = true
-    this.terminal = true
+    clearTimeout(this.livenessTimer)
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer)
     }
@@ -90,7 +93,7 @@ export class FlashOrderStream {
         return
       }
 
-      this.attempts = 0
+      this.armLiveness(socket)
       socket.send(
         JSON.stringify({
           channel: 'orders',
@@ -113,6 +116,7 @@ export class FlashOrderStream {
         return
       }
 
+      this.armLiveness(socket)
       try {
         let buffer: Buffer
         if (Array.isArray(message)) {
@@ -138,6 +142,7 @@ export class FlashOrderStream {
       }
 
       this.socket = undefined
+      clearTimeout(this.livenessTimer)
       this.setAvailable(false)
       this.scheduleReconnect()
     })
@@ -170,7 +175,11 @@ export class FlashOrderStream {
     }
 
     if (frame.type === 'ack') {
-      this.setAvailable(frame.subscriptions.includes('orders'))
+      const subscribed = frame.subscriptions.includes('orders')
+      if (subscribed) {
+        this.attempts = 0
+      }
+      this.setAvailable(subscribed)
       return
     }
 
@@ -185,6 +194,16 @@ export class FlashOrderStream {
       })
       .then(() => undefined)
       .catch((error: unknown) => this.options.onError?.(error))
+  }
+
+  private armLiveness(socket: WebSocket) {
+    clearTimeout(this.livenessTimer)
+    this.livenessTimer = setTimeout(() => {
+      if (socket === this.socket) {
+        // terminate() drops a dead connection immediately and still runs the close -> reconnect path.
+        socket.terminate()
+      }
+    }, LIVENESS_TIMEOUT_MS)
   }
 
   private setAvailable(available: boolean) {

@@ -24,7 +24,7 @@ export class CanonicalStatePersistenceError extends Error {
 }
 
 export interface PersistenceAdapter extends PersistStorage<PersistedCanonicalState, void> {
-  finishHydration(success: boolean): void
+  finishHydration(success: boolean, error?: unknown): void
   flush(): void
   clear(): void
 }
@@ -47,8 +47,10 @@ export function createPersistenceAdapter({
   maxSupportedVersion = PERSISTENCE_VERSION
 }: PersistenceAdapterDependencies): PersistenceAdapter {
   let pending: PendingWrite | undefined
-  let hydrating = true
-  let writesBlocked = false
+  // Writes reach storage only once ready; blocked is final.
+  let phase: 'hydrating' | 'ready' | 'blocked' = 'hydrating'
+  // Older-version state is only validated by migration, after getItem returns it.
+  let migrating: { key: string; value: unknown } | undefined
 
   const storageKey = (name: string) => `zustand.${name}`
 
@@ -80,7 +82,7 @@ export function createPersistenceAdapter({
       }
 
       if (parsed.data.version > maxSupportedVersion) {
-        writesBlocked = true
+        phase = 'blocked'
         logger.error('Refused to load a newer canonical state persistence version', {
           storedVersion: parsed.data.version,
           maxSupportedVersion
@@ -101,11 +103,12 @@ export function createPersistenceAdapter({
         return current.data
       }
 
+      migrating = { key, value: stored }
       return parsed.data as StorageValue<PersistedCanonicalState>
     },
 
     setItem(name, value) {
-      if (writesBlocked) {
+      if (phase === 'blocked') {
         return
       }
 
@@ -130,19 +133,26 @@ export function createPersistenceAdapter({
       storage.delete(storageKey(name))
     },
 
-    finishHydration(success) {
-      hydrating = false
+    finishHydration(success, error) {
+      const migrated = migrating
+      migrating = undefined
       if (!success) {
         pending = undefined
-        writesBlocked = true
+        phase = 'blocked'
+        if (migrated && error instanceof CanonicalStatePersistenceError && error.code === 'invalid_state') {
+          quarantine(migrated.key, migrated.value, error.message)
+        }
         return
       }
 
+      if (phase === 'hydrating') {
+        phase = 'ready'
+      }
       adapter.flush()
     },
 
     flush() {
-      if (hydrating || writesBlocked || !pending) {
+      if (phase !== 'ready' || !pending) {
         return
       }
 
@@ -155,7 +165,7 @@ export function createPersistenceAdapter({
 
     clear() {
       pending = undefined
-      writesBlocked = true
+      phase = 'blocked'
       storage.clear()
     }
   }

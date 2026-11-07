@@ -231,7 +231,11 @@ it('still requires the selected attached owner to be ready before signing', asyn
     }
   }))
   expect(test.service.approve(test.command(1), test.context)).toBeTrue()
-  await until(() => test.service.status(test.query).status === 'validation_failed')
+  await until(
+    () =>
+      test.service.status({ ...test.command(1), type: 'safe.confirmation-status' }).status ===
+      'validation_failed'
+  )
   expect(test.signing[1]).not.toHaveBeenCalled()
   expect(test.propose).not.toHaveBeenCalled()
 })
@@ -444,4 +448,117 @@ it('rehydrates persisted verified confirmations as ready after restart', async (
     restarted.prepareExecution(test.query, owners[0].address.toLowerCase())
   )
   expect(prepared).toMatchObject({ transaction: { to: safe } })
+})
+
+it('keeps a published owner confirmation from blocking other owners', async () => {
+  const test = fixture(2, 1)
+  test.service.approve(test.command(0), test.context)
+  await until(() => test.service.status(test.query).status === 'published')
+  expect(test.service.status({ ...test.command(1), type: 'safe.confirmation-status' }).status).toBe('idle')
+})
+
+it('recovers an execution interrupted by a restart so it can be prepared again', async () => {
+  const test = fixture(1, 1)
+  const executorId = owners[0].address.toLowerCase()
+  test.service.approve(test.command(0), test.context)
+  await until(() => test.service.status(test.query).status === 'ready')
+  await test.service.prepareExecution(test.query, executorId)
+  test.provider.execute.mockImplementationOnce(() => new Promise<string>(() => undefined))
+  void test.service.execute(test.query, executorId, undefined, test.context, 'execute-interrupted')
+  await until(() => test.provider.execute.mock.calls.length === 1)
+  test.service.dispose()
+
+  const restarted = createSafeTransactionService({
+    store: test.store,
+    operations: test.operations,
+    accounts: test.accounts,
+    client: test.client,
+    provider: test.provider
+  })
+  disposals.push(() => restarted.dispose())
+  restarted.cleanupUnsigned(new Set())
+  const execution = () => test.store.getState().main.accounts[safe].safe!['1'].pending![0].local?.execution
+  expect(execution()?.status).toBe('failed')
+  expect(execution()?.error).toContain('outcome is unknown')
+
+  await restarted.prepareExecution(test.query, executorId)
+  expect(execution()?.status).toBe('ready')
+})
+
+it('recovers a preparation interrupted by a restart to idle', async () => {
+  const test = fixture(1, 1)
+  const executorId = owners[0].address.toLowerCase()
+  test.service.approve(test.command(0), test.context)
+  await until(() => test.service.status(test.query).status === 'ready')
+  test.provider.prepare.mockImplementationOnce(() => new Promise(() => undefined))
+  void test.service.prepareExecution(test.query, executorId)
+  await until(() => test.provider.prepare.mock.calls.length === 1)
+  test.service.dispose()
+
+  const restarted = createSafeTransactionService({
+    store: test.store,
+    operations: test.operations,
+    accounts: test.accounts,
+    client: test.client,
+    provider: test.provider
+  })
+  disposals.push(() => restarted.dispose())
+  restarted.cleanupUnsigned(new Set())
+  expect(test.store.getState().main.accounts[safe].safe!['1'].pending![0].local?.execution).toEqual({
+    status: 'idle'
+  })
+})
+
+it('does not let a late preparation replace a submitted execution', async () => {
+  const test = fixture(1, 1)
+  const executorId = owners[0].address.toLowerCase()
+  test.service.approve(test.command(0), test.context)
+  await until(() => test.service.status(test.query).status === 'ready')
+  const late = Promise.withResolvers<void>()
+  const prepare = test.provider.prepare.getMockImplementation()!
+  test.provider.prepare.mockImplementationOnce(async (...args) => {
+    await late.promise
+    return prepare(...args)
+  })
+  const latePreparation = test.service.prepareExecution(test.query, executorId)
+  await until(() => test.provider.prepare.mock.calls.length === 1)
+  await test.service.prepareExecution(test.query, executorId)
+  const hash = await test.service.execute(test.query, executorId, undefined, test.context, 'execute-1')
+
+  late.resolve()
+  expect(latePreparation).rejects.toThrow('changed during preparation')
+  await latePreparation.catch(() => undefined)
+  expect(test.store.getState().main.accounts[safe].safe!['1'].pending![0].local?.execution).toMatchObject({
+    status: 'submitted',
+    transactionHash: hash
+  })
+  await test.service.prepareExecution(test.query, executorId)
+  expect(test.store.getState().main.accounts[safe].safe!['1'].pending![0].local?.execution.status).toBe(
+    'ready'
+  )
+})
+
+it('completes an execution whose proposal was pruned while broadcasting', async () => {
+  const test = fixture(1, 1)
+  const executorId = owners[0].address.toLowerCase()
+  test.service.approve(test.command(0), test.context)
+  await until(() => test.service.status(test.query).status === 'ready')
+  await test.service.prepareExecution(test.query, executorId)
+  const broadcast = Promise.withResolvers<string>()
+  test.provider.execute.mockImplementationOnce(() => broadcast.promise)
+  const execution = test.service.execute(test.query, executorId, undefined, test.context, 'execute-pruned')
+  await until(() => test.provider.execute.mock.calls.length === 1)
+  const deployment = test.store.getState().main.accounts[safe].safe!['1']
+  test.store.getState().patchAccount(safe, { safe: { '1': { ...deployment, pending: [] } } })
+
+  const hash = `0x${'ab'.repeat(32)}`
+  broadcast.resolve(hash)
+  expect(await execution).toBe(hash)
+  expect(test.submitted).toHaveBeenCalledWith({
+    safeTxHash: test.draft.proposal.safeTxHash,
+    outerTxHash: hash
+  })
+  expect(
+    test.operations.lookup({ id: 'execute-pruned', type: 'account.safe-execute', owner: test.context.owner })
+  ).toMatchObject({ status: 'succeeded', phase: 'submitted' })
 })

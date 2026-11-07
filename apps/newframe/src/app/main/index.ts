@@ -2,7 +2,7 @@ import path from 'path'
 import url from 'url'
 
 // oxlint-disable-next-line no-restricted-imports -- net only serves the app's own files to its windows.
-import { app, clipboard, ipcMain, net, protocol } from 'electron'
+import { app, clipboard, dialog, ipcMain, net, protocol } from 'electron'
 import log from 'electron-log'
 
 import { Updater } from '../../core/desktop-ui/app-update/index.ts'
@@ -20,7 +20,10 @@ import { createProductionImageServiceAdapters } from '../../core/services/assets
 import { createProductionPortfolioAdapters } from '../../core/services/assets/portfolio/production.ts'
 import { createBundledTokenService } from '../../core/services/assets/tokens/tokens.ts'
 import { lookupChainlistIcon, rpcMatchesChain } from '../../core/services/chains/production.ts'
-import { createProductionPersistencePorts } from '../../core/state/storage/index.ts'
+import {
+  CanonicalStatePersistenceError,
+  createProductionPersistencePorts
+} from '../../core/state/storage/index.ts'
 import store, { createCanonicalPersistenceService } from '../../core/state/store/index.ts'
 import persist from '../../core/state/store/persist/index.ts'
 import { createProductionAccountOnboardingAdapters } from '../../features/accounts/main/accountOnboarding/production.ts'
@@ -219,6 +222,18 @@ function startDomainServices() {
   domainServicesStarted = true
 }
 
+function stateLoadFailureDetail(error: unknown) {
+  if (!(error instanceof CanonicalStatePersistenceError)) {
+    return `Newframe will quit. Details were written to the log.\n\n${String(error)}`
+  }
+  switch (error.code) {
+    case 'unsupported_version':
+      return 'Your wallet data was saved in a format this version of Newframe cannot open.'
+    case 'invalid_state':
+      return `Your wallet data is damaged and was set aside, so Newframe will start without it next time. A recovery copy was kept in config.json in ${app.getPath('userData')}.`
+  }
+}
+
 function configureWebAuthn() {
   const keychainAccessGroup = process.env.FRAME_WEBAUTHN_KEYCHAIN_ACCESS_GROUP
 
@@ -246,6 +261,7 @@ void app.whenReady().then(async () => {
     await persistence.start()
   } catch (error) {
     log.error('Newframe startup aborted because canonical wallet state could not be loaded', error)
+    dialog.showErrorBox('Newframe could not load your wallet data', stateLoadFailureDetail(error))
     app.quit()
     return
   }

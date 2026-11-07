@@ -654,16 +654,17 @@ export function createRequestService(ports: RequestServicePorts) {
         setGate(located.account, requestId, { ...pendingGate })
         return true
       }
-      if (ports.vault.exists() && !ports.vault.isUnlocked()) {
-        ports.accounts.setRequestError(requestId, new Error('Newframe locked'))
-        return true
-      }
       const safePending =
         ((isSignatureRequest(located.request) && Boolean(ownerId)) ||
           (safeTransaction && Boolean(ownerId ?? executorId))) &&
         located.request.status === 'pending'
       if (!editable(located.request) && !safePending) {
         return false
+      }
+      if (ports.vault.exists() && !ports.vault.isUnlocked()) {
+        settle(requestId, rpcError(located.request, { code: 4100, message: 'Newframe is locked' }))
+        ports.accounts.setRequestError(requestId, new Error('Newframe locked'))
+        return true
       }
       return advanceApproval(
         located.account,

@@ -328,6 +328,24 @@ for (const signingMethod of ['signMessage', 'signTransaction'] as const) {
       expect({ status: ledger.status, updates, closes }).toEqual({ status: Status.OK, updates: 0, closes: 0 })
     })
 
+    it('stays disconnected when an in-flight request fails after disconnect', async () => {
+      const signing = Promise.withResolvers<string>()
+      ethInstance[signingMethod].mockReturnValue(signing.promise)
+
+      const result = queuedResult<string>((done) =>
+        signingMethod === 'signMessage'
+          ? ledger.signMessage(3, 'hello, Frame!', done)
+          : ledger.signTransaction(3, signingTransaction, done)
+      )
+      await ledger.disconnect()
+      expect(ledger.status).toBe(Status.DISCONNECTED)
+
+      signing.reject({ statusCode: 27013 })
+      expect(result).rejects.toThrow('Sign request rejected by user')
+      await result.catch(() => undefined)
+      expect(ledger.status).toBe(Status.DISCONNECTED)
+    })
+
     for (const [testCase, setup] of [
       [
         'there is a communication error',

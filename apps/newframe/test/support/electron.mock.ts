@@ -6,6 +6,7 @@ export const electronMock = {
     getPath: mock(() => import.meta.dirname),
     getVersion: mock(() => '0.0.0-test'),
     on: mock(),
+    once: mock(),
     quit: mock(),
     relaunch: mock()
   },

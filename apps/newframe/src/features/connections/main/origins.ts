@@ -40,6 +40,8 @@ interface OriginStorePort {
   clearKnownExtension(id: string): void
   subscribeKnownExtension(id: string, handler: (allowed: boolean) => void): () => void
   notifyExtension(extension: FrameExtension): void
+  /** Whether the app's single notification slot is showing a prompt. */
+  notificationShown(): boolean
 }
 
 interface AccountAccessPort {
@@ -132,6 +134,10 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
   const requestExtensionApproval = (extension: FrameExtension) => {
     const activeCheck = activeExtensionChecks.get(extension.id)
     if (activeCheck) {
+      // Another prompt may have replaced this one in the shared slot; show it again once free.
+      if (!dependencies.store.notificationShown()) {
+        dependencies.store.notifyExtension(extension)
+      }
       return activeCheck
     }
 
@@ -175,8 +181,8 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
     requestSource: LocalApiSource
   ) => {
     const { _origin: originId, ...payload } = fullPayload
-    const grantCheckId = `${address}:${originId}`
-    const activeCheck = activeGrantChecks.get(grantCheckId)
+    // One prompt per origin, since its request id is the origin; each waiter checks the grant itself.
+    const activeCheck = activeGrantChecks.get(originId)
     if (activeCheck) {
       return activeCheck
     }
@@ -187,7 +193,7 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
       resolveCheck = resolve
       rejectCheck = reject
     })
-    activeGrantChecks.set(grantCheckId, result)
+    activeGrantChecks.set(originId, result)
     const request: AccessRequest = {
       payload,
       requestId: originId,
@@ -196,17 +202,21 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
       account: address
     }
 
+    let created = false
     try {
       dependencies.requests.create((response) => {
         const grantedAddress =
           'result' in response && typeof response.result === 'string' ? response.result : undefined
-        activeGrantChecks.delete(grantCheckId)
+        activeGrantChecks.delete(originId)
         resolveCheck(grantedAddress)
       }, request.requestId)
+      created = true
       dependencies.accounts.routeRequest(requestSource, request)
     } catch (error) {
-      dependencies.requests.cancel(request.requestId)
-      activeGrantChecks.delete(grantCheckId)
+      if (created) {
+        dependencies.requests.cancel(request.requestId)
+      }
+      activeGrantChecks.delete(originId)
       rejectCheck(error)
     }
     return result
@@ -307,7 +317,8 @@ export function createProductionOriginsService(
           }
         }
       ),
-    notifyExtension: (extension) => store.getState().notify('extensionConnect', extension)
+    notifyExtension: (extension) => store.getState().notify('extensionConnect', extension),
+    notificationShown: () => Boolean(store.getState().view.notify)
   }
 
   const extensionAccess = createExtensionAccessService(store)

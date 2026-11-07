@@ -751,6 +751,10 @@ export function createTradeService(ports: TradeServicePorts) {
         const operation = ports.operations.lookup(reference)
         return Boolean(operation && operation.status !== 'pending')
       }
+      // The order may already be live once Flash has it, so let the submit settle the operation.
+      if (ports.operations.lookup(reference)?.phase === 'submitting') {
+        return false
+      }
       ports.operations.fail(reference, { code: 'cancelled', message: 'Trade was cancelled.' }, 'cancelled')
       executions.delete(key)
       for (const [key, record] of quotes) {

@@ -375,6 +375,75 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
   expect(prepare(operationId, quoted.quoteId)).toBe(false)
 })
 
+it('lets an order already sent to Flash finish instead of marking it cancelled', async () => {
+  const time = Date.parse('2099-01-01T00:00:00Z')
+  const testStore = createTestStore()
+  const operations = createOperationService({ store: testStore.store, clock: { now: () => time } })
+  const preparedQuote = {
+    ...quote(),
+    steps: quote().steps.map((step) =>
+      step.kind === 'approve' ? { ...step, status: 'complete' as const } : step
+    )
+  }
+  let resolveSubmit!: (value: { orderId: string }) => void
+  const service = createTradeService({
+    canonical: {
+      snapshot: () => ({
+        currentAccount: account.id,
+        accounts: { [account.id]: account },
+        chains: { 1: { on: true } },
+        orders: {}
+      })
+    },
+    clock: { now: () => time },
+    flash: {
+      quote: async () => ({ quote: preparedQuote, flash: {} }),
+      submitOrder: () => new Promise((resolve) => (resolveSubmit = resolve)),
+      cancelOrder: async () => ({})
+    },
+    operations,
+    signatures: {
+      signMessage: async () => ({ ok: true as const, signature: '0xcancel' }),
+      signTypedData: async () => ({ ok: true as const, signature: '0xorder' })
+    },
+    transactions: { submit: async () => ({ ok: true as const, transactionHash: `0x${'a'.repeat(64)}` }) }
+  })
+  const quoted = await service.quote(
+    {
+      contraAsset: { ...FLASH_USDC_ASSET, chainId: 1 },
+      inputAmount: '1',
+      orderType: FLASH_MARKET_ORDER_TYPE,
+      qty: '1',
+      side: 'sell',
+      targetAsset: { ...FLASH_WETH_ASSET, chainId: 1 }
+    },
+    owner
+  )
+  if (!quoted.ok) {
+    throw new Error('quote failed')
+  }
+  const operationId = 'trade-submitting'
+  const operation = () => testStore.getState().operations[operationId]
+
+  expect(
+    service.submit({ type: 'trade.submit', operationId, quoteId: quoted.quoteId }, requestSource, owner)
+  ).toBe(true)
+  await flush()
+  expect(operation()).toMatchObject({ operation: { phase: 'submitting' } })
+
+  expect(service.cancelOperation({ type: 'operation.cancel', operationId }, owner)).toBe(false)
+  resolveSubmit({ orderId: 'order-live' })
+  await flush()
+
+  expect(operation()).toMatchObject({
+    operation: {
+      status: 'succeeded',
+      phase: 'submitted',
+      entityRefs: expect.arrayContaining([{ type: 'order', id: 'order-live' }]) as unknown
+    }
+  })
+})
+
 it('keeps cross-chain provider state private and validates both chains and the spent chain', async () => {
   let time = Date.parse('2099-01-01T00:00:00Z')
   const targetAsset = getFlashAssetsForChain(1).find((asset) => asset.symbol === 'WETH')!

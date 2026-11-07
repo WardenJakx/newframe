@@ -97,6 +97,8 @@ export default class Ledger extends Signer {
   // when the device is ready
   private requestQueue = new RequestQueue()
   private statusPoller = setTimeout(() => {})
+  // device results that land after disconnect() must not change status or restart polling
+  private disconnected = false
 
   constructor(devicePath: string, model: string) {
     super()
@@ -113,6 +115,7 @@ export default class Ledger extends Signer {
     const transport = await TransportNodeHid.open(this.devicePath)
 
     this.eth = new LedgerEthereumApp(transport)
+    this.disconnected = false
 
     this.requestQueue.start()
   }
@@ -161,6 +164,7 @@ export default class Ledger extends Signer {
   }
 
   async disconnect() {
+    this.disconnected = true
     this.derivationGeneration += 1
     this.queuedLiveAccounts = 0
     if (this.status === Status.OK) {
@@ -185,6 +189,10 @@ export default class Ledger extends Signer {
   }
 
   private handleError(err: DeviceError) {
+    if (this.disconnected) {
+      return
+    }
+
     const errorStatus = getStatusForError(err)
 
     if (errorStatus === Status.LOCKED && this.status !== Status.LOCKED) {
@@ -241,6 +249,10 @@ export default class Ledger extends Signer {
     })
 
     return check.then((err) => {
+      if (this.disconnected) {
+        return err?.statusCode ?? 0
+      }
+
       if (!err) {
         // success, handle different status state transitions
 

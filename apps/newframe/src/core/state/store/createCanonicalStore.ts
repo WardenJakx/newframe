@@ -15,12 +15,12 @@ import createInitialState from './state/index.ts'
 export default function createCanonicalStore(storage: PersistStorage<PersistedCanonicalState, void>) {
   let hydrationError: unknown
   let hydration: Promise<void> | undefined
-  const finishHydration = (success: boolean) => {
+  const finishHydration = (success: boolean, error?: unknown) => {
     const hydratableStorage = storage as PersistStorage<PersistedCanonicalState> & {
-      finishHydration?(success: boolean): void
+      finishHydration?(success: boolean, error?: unknown): void
     }
     if (typeof hydratableStorage.finishHydration === 'function') {
-      hydratableStorage.finishHydration(success)
+      hydratableStorage.finishHydration(success, error)
     }
   }
   const store = createStore<CanonicalStore>()(
@@ -56,7 +56,7 @@ export default function createCanonicalStore(storage: PersistStorage<PersistedCa
 
     hydration = Promise.resolve(store.persist.rehydrate()).then(() => {
       if (hydrationError) {
-        finishHydration(false)
+        finishHydration(false, hydrationError)
         throw hydrationError instanceof Error
           ? hydrationError
           : new Error('Canonical state hydration failed', { cause: hydrationError })
