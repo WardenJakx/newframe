@@ -293,6 +293,65 @@ describe('FrameBackgroundProvider health check', () => {
     await flushPromises()
   })
 
+  it('reports a declined approval after closing its connection', async () => {
+    const socket = new FakeWebSocket()
+    const provider = new FrameBackgroundProvider('ws://newframe', {
+      createSocket: () => socket as unknown as WebSocket,
+      requestApproval: true
+    })
+    const events: string[] = []
+    provider.connection.on('close', () => events.push('close'))
+    provider.on('rejected', () => events.push('rejected'))
+    await flushPromises()
+    socket.open()
+    await flushPromises()
+    const handshake = JSON.parse(socket.sent[0]!) as { id: number }
+    socket.receive({
+      id: handshake.id,
+      error: {
+        code: -32603,
+        message: 'denied',
+        data: { code: 'INTERNAL_SERVER_ERROR', httpStatus: 500, rpc: { code: 4001, message: 'denied' } }
+      }
+    })
+    await flushPromises()
+    expect(events).toEqual(['close', 'rejected'])
+    provider.close()
+    await flushPromises()
+  })
+
+  it('waits past the health timeout for approval and asks again after a lost connection', async () => {
+    const sockets: FakeWebSocket[] = []
+    const provider = new FrameBackgroundProvider('ws://newframe', {
+      requestApproval: true,
+      createSocket: () => {
+        const socket = new FakeWebSocket()
+        sockets.push(socket)
+        return socket as unknown as WebSocket
+      }
+    })
+    await flushPromises()
+    sockets[0]!.open()
+    await flushPromises()
+    timers.advanceTimersByTime(5000)
+    await flushPromises()
+    expect(sockets[0]!.readyState).toBe(WebSocket.OPEN)
+
+    sockets[0]!.close()
+    await flushPromises()
+    timers.advanceTimersByTime(1000)
+    await flushPromises()
+    sockets[1]!.open()
+    await flushPromises()
+    const handshake = JSON.parse(sockets[1]!.sent[0]!) as { id: number; params: { path: string } }
+    expect(handshake.params.path).toBe('extension.connect')
+    sockets[1]!.receive({ id: handshake.id, result: { type: 'data', data: 'approved' } })
+    await flushPromises()
+    expect(provider.isConnected()).toBe(true)
+    provider.close()
+    await flushPromises()
+  })
+
   it('does not publish a successful handshake after teardown', async () => {
     const socket = new FakeWebSocket()
     const provider = new FrameBackgroundProvider('ws://newframe', {

@@ -188,7 +188,9 @@ export function routeInternet(
     return
   }
   internet.setRoute({ via: 'tor', socksPort: null })
+  let failed = false
   const fail = (error: unknown) => {
+    failed = true
     log.error('Tor is unavailable', error)
     internet.setRoute({ via: 'tor', socksPort: null })
     setStatus({ available: true, connection: 'error' })
@@ -199,6 +201,10 @@ export function routeInternet(
     .then(async (socksPort) => {
       // Chromium resolves names through a SOCKS5 proxy, so neither requests nor lookups leave directly.
       await session.defaultSession.setProxy({ proxyRules: `socks5://127.0.0.1:${socksPort}` })
+      // Tor may have exited while the proxy was being set.
+      if (failed) {
+        return
+      }
       internet.setRoute({ via: 'tor', socksPort })
       setStatus({ available: true, connection: 'connected' })
     })

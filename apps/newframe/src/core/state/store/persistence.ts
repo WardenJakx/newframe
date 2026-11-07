@@ -411,6 +411,7 @@ export function mergePersistedState(persistedValue: unknown, current: CanonicalS
   const persisted = migratePersistedState(persistedValue)
   const saved = unknownRecord(persisted.main)
   const currentMain = unknownRecord(current.main)
+  const shortcuts = mergeRecord(currentMain.shortcuts, saved.shortcuts)
   const main: UnknownRecord = {
     ...currentMain,
     ...saved,
@@ -430,7 +431,8 @@ export function mergePersistedState(persistedValue: unknown, current: CanonicalS
     frames: currentMain.frames,
     runtime: currentMain.runtime,
     signers: currentMain.signers,
-    shortcuts: mergeRecord(currentMain.shortcuts, saved.shortcuts),
+    // An unfinished shortcut edit must not keep the shortcut unregistered after a restart.
+    shortcuts: { ...shortcuts, summon: { ...unknownRecord(shortcuts.summon), configuring: false } },
     tokens: {
       byId: mergeRecord(unknownRecord(currentMain.tokens).byId, unknownRecord(saved.tokens).byId),
       accountTokenIds: mergeRecord(

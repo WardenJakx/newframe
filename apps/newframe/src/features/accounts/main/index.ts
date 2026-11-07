@@ -1610,6 +1610,13 @@ export class Accounts extends EventEmitter {
 
     const setTxSent = () => {
       account.patchRequest<TransactionRequest>(requestId, (request) => {
+        // Losing the chain must not regress a mined tx back to an unmined, cancellable state.
+        const unmined =
+          !request.tx?.receipt &&
+          (request.status === RequestStatus.Verifying || request.status === RequestStatus.Sending)
+        if (!unmined) {
+          return
+        }
         request.status = RequestStatus.Sent
         request.notice = 'Sent'
         if (request.tx) {
@@ -1647,6 +1654,14 @@ export class Accounts extends EventEmitter {
 
           if (newHeadRes.error) {
             log.warn(newHeadRes.error)
+            const abandonMonitor = () => {
+              this.stopRequestActivityMonitor(activityId)
+              setTxSent()
+              this.dependencies.runtime.schedule(
+                () => this.has(account.address) && this.removeRequest(account, requestId),
+                60 * 1000
+              )
+            }
             const monitor = async () => {
               if (!isCurrentMonitor() || !this.has(account.address)) {
                 this.stopRequestActivityMonitor(activityId)
@@ -1699,12 +1714,7 @@ export class Accounts extends EventEmitter {
                   return
                 }
                 log.error('error awaiting confirmations', e)
-                this.stopRequestActivityMonitor(activityId)
-                setTxSent()
-                this.dependencies.runtime.schedule(
-                  () => this.has(account.address) && this.removeRequest(account, requestId),
-                  60 * 1000
-                )
+                abandonMonitor()
               }
             }
 
@@ -1717,8 +1727,7 @@ export class Accounts extends EventEmitter {
 
             const statusHandler = (status: string) => {
               if (!isChainAvailable(status)) {
-                setTxSent()
-                this.stopRequestActivityMonitor(activityId)
+                abandonMonitor()
               }
             }
 

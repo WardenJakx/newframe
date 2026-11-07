@@ -24,7 +24,7 @@ export class CanonicalStatePersistenceError extends Error {
 }
 
 export interface PersistenceAdapter extends PersistStorage<PersistedCanonicalState, void> {
-  finishHydration(success: boolean): void
+  finishHydration(success: boolean, error?: unknown): void
   flush(): void
   clear(): void
 }
@@ -49,6 +49,8 @@ export function createPersistenceAdapter({
   let pending: PendingWrite | undefined
   let hydrating = true
   let writesBlocked = false
+  // Older-version state is only validated by migration, after getItem returns it.
+  let migrating: { key: string; value: unknown } | undefined
 
   const storageKey = (name: string) => `zustand.${name}`
 
@@ -101,6 +103,7 @@ export function createPersistenceAdapter({
         return current.data
       }
 
+      migrating = { key, value: stored }
       return parsed.data as StorageValue<PersistedCanonicalState>
     },
 
@@ -130,11 +133,16 @@ export function createPersistenceAdapter({
       storage.delete(storageKey(name))
     },
 
-    finishHydration(success) {
+    finishHydration(success, error) {
       hydrating = false
+      const migrated = migrating
+      migrating = undefined
       if (!success) {
         pending = undefined
         writesBlocked = true
+        if (migrated && error instanceof CanonicalStatePersistenceError && error.code === 'invalid_state') {
+          quarantine(migrated.key, migrated.value, error.message)
+        }
         return
       }
 

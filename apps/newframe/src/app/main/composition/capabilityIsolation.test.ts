@@ -211,3 +211,21 @@ it('releases registered handlers, account listeners, and Flash polling on dispos
     globalThis.clearInterval = originalClearInterval
   }
 })
+
+it('still flushes persistence on disposal when an earlier service fails to dispose', () => {
+  const { store, capabilities } = graph()
+  const ipc = {
+    handle: mock<IpcMainHandlerPort['handle']>(),
+    removeHandler: mock<IpcMainHandlerPort['removeHandler']>()
+  }
+  const persistence = { started: false, start: mock(async () => undefined), flush: mock(), dispose: mock() }
+  const app = createProductionMainApp({ ...capabilities, ipc, persistence, store })
+  spyOn(capabilities.accounts, 'dispose').mockImplementationOnce(() => {
+    throw new Error('dispose failed')
+  })
+
+  app.dispose()
+
+  expect(persistence.dispose).toHaveBeenCalledTimes(1)
+  capabilities.accounts.dispose()
+})

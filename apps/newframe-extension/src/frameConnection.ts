@@ -31,6 +31,8 @@ const DEFAULT_RECONNECT_INTERVAL = 1000
 const DEFAULT_MAX_RECONNECT_INTERVAL = 60_000
 const DEFAULT_CONNECTION_TIMEOUT = 10_000
 const HEALTH_CHECK_TIMEOUT = 5000
+// Approval waits for the human to decide in the desktop app.
+const APPROVAL_TIMEOUT = 120_000
 
 const providerEvents: ProviderEvent[] = [
   'networkChanged',
@@ -420,15 +422,15 @@ export default class FrameBackgroundProvider extends EventEmitter {
 
   private async handshake(generation: number) {
     const approval = this.requestApproval
-    this.requestApproval = false
     try {
       await this.timed(
         (signal) =>
           approval
             ? this.client.extension.connect.mutate({}, { signal })
             : this.client.wallet.chainId.query({}, { signal }),
-        HEALTH_CHECK_TIMEOUT
+        approval ? APPROVAL_TIMEOUT : HEALTH_CHECK_TIMEOUT
       )
+      this.requestApproval = false
       if (this.closed || generation !== this.generation) {
         return
       }
@@ -454,10 +456,15 @@ export default class FrameBackgroundProvider extends EventEmitter {
       if (generation !== this.generation || this.closed) {
         return
       }
-      if (isDesktopClientError(error) && error.data?.rpc?.code === 4001) {
-        this.emit('rejected')
+      const rejected = isDesktopClientError(error) && error.data?.rpc?.code === 4001
+      if (rejected) {
+        this.requestApproval = false
       }
       this.retry()
+      // After retry, whose connection close would otherwise replace the rejection.
+      if (rejected) {
+        this.emit('rejected')
+      }
     }
   }
 

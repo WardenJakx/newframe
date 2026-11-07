@@ -46,6 +46,7 @@ function createOriginHarness() {
   const knownExtensions: Record<string, boolean> = {}
   const extensionListeners = new Map<string, Set<(allowed: boolean) => void>>()
   const notifications: FrameExtension[] = []
+  let notificationShown = false
   const routedRequests: Array<{
     requestSource: typeof requestSource
     request: AccessRequest
@@ -92,7 +93,9 @@ function createOriginHarness() {
       },
       notifyExtension: (extension) => {
         notifications.push(extension)
-      }
+        notificationShown = true
+      },
+      notificationShown: () => notificationShown
     },
     accounts: {
       current: () => currentAccount,
@@ -127,6 +130,9 @@ function createOriginHarness() {
     requests: {
       cancel: (requestId) => continuations.delete(requestId),
       create: (respond, requestId = 'generated-request') => {
+        if (continuations.has(requestId)) {
+          throw new Error(`Request continuation already exists: ${requestId}`)
+        }
         continuations.set(requestId, respond)
         return requestId
       }
@@ -156,6 +162,9 @@ function createOriginHarness() {
     },
     setAccount(next?: Address) {
       currentAccount = next ? { address: next } : undefined
+    },
+    dismissNotification() {
+      notificationShown = false
     },
     setDevelopment(value: boolean) {
       development = value
@@ -267,6 +276,23 @@ describe('extension trust service', () => {
       expect(Promise.all([retry, concurrent])).resolves.toEqual([allowed, allowed])
     }
     expect(harness.notifications).toEqual([extension, extension])
+  })
+
+  it('shows a pending extension prompt again once another prompt has replaced it', async () => {
+    const harness = createOriginHarness()
+    const first: FrameExtension = { browser: 'chrome', id: 'first' }
+    const second: FrameExtension = { browser: 'chrome', id: 'second' }
+
+    const pending = harness.service.isKnownExtension(first)
+    void harness.service.isKnownExtension(second)
+    void harness.service.isKnownExtension(first)
+    harness.setKnownExtension(second.id, true)
+    harness.dismissNotification()
+    const retried = harness.service.isKnownExtension(first)
+
+    expect(harness.notifications).toEqual([first, second, first])
+    harness.setKnownExtension(first.id, true)
+    expect(await Promise.all([pending, retried])).toEqual([true, true])
   })
 
   it('recognizes production and development extension identities through the injected environment', () => {
@@ -493,6 +519,31 @@ describe('origin authorization service', () => {
     completions[0]()
 
     expect(Promise.all([first, second])).resolves.toStrictEqual([true, true])
+  })
+
+  it('shares the pending prompt with a check for another account instead of stranding it', async () => {
+    const harness = createOriginHarness()
+    const other = '0x0000000000000000000000000000000000000002'
+    let complete!: (grantedAddress?: Address) => void
+    harness.setOrigin(originId, { name: 'test.frame.eth' })
+    harness.onRoute((_request, done) => {
+      complete = done
+    })
+
+    const first = harness.service.hasAccountAccessGrant(
+      requestPayload({ method: 'personal_sign', _origin: originId }),
+      requestSource
+    )
+    harness.setAccount(other)
+    const second = harness.service.hasAccountAccessGrant(
+      requestPayload({ method: 'personal_sign', _origin: originId }),
+      requestSource
+    )
+
+    expect(harness.routedRequests).toHaveLength(1)
+    harness.setAccountAccessGrant('test.frame.eth', true)
+    complete(address)
+    expect(await Promise.all([first, second])).toEqual([true, false])
   })
 })
 

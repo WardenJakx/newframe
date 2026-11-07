@@ -864,6 +864,16 @@ function hasStreamingSessionForFunder(state: FlashServiceState, accountAddress: 
 
 function applyOrderRecord(state: FlashServiceState, record: FlashOrderRecord) {
   const previous = getRecord(state, record.orderId)
+  // A stale in-flight read must not reopen an order that already reached a terminal status.
+  // `terminated` also stands in for unrecognized statuses, so a later known status may still replace it.
+  if (
+    previous &&
+    isTerminalStatus(previous.status) &&
+    previous.status !== 'terminated' &&
+    !isTerminalStatus(record.status)
+  ) {
+    return previous
+  }
   const storedRecord = upsertRecord(state, record)
 
   hydrateOrderNotification(state, previous, storedRecord)

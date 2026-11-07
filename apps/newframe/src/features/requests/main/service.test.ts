@@ -247,6 +247,24 @@ describe('prompted request lifecycle', () => {
     }
   )
 
+  it('answers the requester when approval is attempted while the vault is locked', () => {
+    const request = transactionRequest('vault-locked')
+    const respond = mock()
+    test.add(request, respond)
+    test.vault.exists.mockReturnValue(true)
+    test.vault.isUnlocked.mockReturnValue(false)
+
+    expect(test.service.approve(request.requestId)).toBeTrue()
+    expect(respond).toHaveBeenCalledTimes(1)
+    expect(respond).toHaveBeenCalledWith({
+      id: 7,
+      jsonrpc: '2.0',
+      error: { code: 4100, message: 'Newframe is locked' }
+    })
+    expect(request).toMatchObject({ status: 'error', notice: 'Newframe locked' })
+    expect(test.approveTransactionRequest).not.toHaveBeenCalled()
+  })
+
   it('keeps selected Safe owner approvals pending and allocates a fresh operation for retries', () => {
     const request = transactionRequest('safe-owner')
     request.safeTxHash = safeTxHash

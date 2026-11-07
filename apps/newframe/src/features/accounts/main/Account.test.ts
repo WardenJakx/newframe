@@ -468,6 +468,38 @@ describe('creation-block listener lifecycle', () => {
   })
 })
 
+describe('#findSigner', () => {
+  const summary = (id: string, type: string, status: string) => ({
+    id,
+    name: id,
+    model: 'test',
+    type,
+    status,
+    addresses: [account.address],
+    appVersion: { major: 1, minor: 0, patch: 0 }
+  })
+  const findSignerAmong = (...signers: ReturnType<typeof summary>[]) => {
+    store.setState((state) => {
+      state.main.signers = Object.fromEntries(signers.map((signer) => [signer.id, signer]))
+    })
+    return account.findSigner(account.address)?.id
+  }
+  afterEach(() => {
+    store.setState((state) => {
+      state.main.signers = {}
+    })
+  })
+
+  it('prefers any ok signer over a higher-priority signer that is not ok', () => {
+    expect(findSignerAmong(summary('ledger', 'ledger', 'locked'), summary('seed', 'seed', 'ok'))).toBe('seed')
+    expect(findSignerAmong(summary('ledger', 'ledger', 'locked'), summary('ring', 'ring', 'ok'))).toBe('ring')
+  })
+
+  it('breaks ties between ok signers by signer type priority', () => {
+    expect(findSignerAmong(summary('seed', 'seed', 'ok'), summary('ledger', 'ledger', 'ok'))).toBe('ledger')
+  })
+})
+
 describe('#clearRequest', () => {
   const pendingRequest = (
     requestId: string,

@@ -2,7 +2,7 @@ import { Spinner } from '@newframe/ui/spinner'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 import hotkeys from 'hotkeys-js'
-import { useEffect } from 'react'
+import { useEffect, useEffectEvent } from 'react'
 
 import type { Platform } from '../../../shared/domain/keyboard.ts'
 import type { Shortcut } from '../domain/state/shortcuts.ts'
@@ -54,6 +54,14 @@ const KeyboardShortcutConfigurator = ({
 
     return () => hotkeys.unbind()
   }, [normalizedPlatform, onChange, shortcut.configuring])
+
+  // Leaving mid-edit cancels it, or the shortcut stays unregistered while marked as configuring.
+  const cancelConfiguring = useEffectEvent(() => {
+    if (shortcut.configuring) {
+      onChange?.({ ...shortcut, configuring: false })
+    }
+  })
+  useEffect(() => () => cancelConfiguring(), [])
 
   if (shortcut.configuring) {
     return (

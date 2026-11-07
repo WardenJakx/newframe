@@ -743,6 +743,16 @@ it('restores an added chain with its embedded Chainlist icon', () => {
   expect(restored.main.chainsMeta.ethereum[46630]).toMatchObject({ icon, image })
 })
 
+it('never restores an unfinished summon shortcut edit', () => {
+  const store = createTestStore()
+  store.getState().setShortcut('summon', { shortcutKey: 'KeyK', configuring: true })
+  const saved: unknown = JSON.parse(JSON.stringify(selectPersistedState(store.getState())))
+
+  const restored = mergePersistedState(saved, createTestStore().getState())
+
+  expect(restored.main.shortcuts.summon).toMatchObject({ shortcutKey: 'KeyK', configuring: false })
+})
+
 describe('canonical persistence failure boundaries', () => {
   it('quarantines corrupt state at a clock-owned key and fails real-store hydration closed', async () => {
     const corrupt = envelope({ main: { lattice: 'not-an-object' } })
@@ -757,6 +767,15 @@ describe('canonical persistence failure boundaries', () => {
     })
     runtime.adapter.flush()
     expect(runtime.storage.values.has(storageKey)).toBe(false)
+  })
+
+  it('quarantines older-version state that cannot be migrated', async () => {
+    const corrupt = envelope({ main: { lattice: 'not-an-object' } }, PERSISTENCE_VERSION - 1)
+    const runtime = createTestRuntime([[storageKey, corrupt]])
+
+    expect(runtime.service.start()).rejects.toThrow('could not be migrated')
+
+    expect([...runtime.storage.values.entries()]).toEqual([[`${storageKey}.invalid.1234`, corrupt]])
   })
 
   it('preserves newer-version state and blocks downgrade writes', async () => {

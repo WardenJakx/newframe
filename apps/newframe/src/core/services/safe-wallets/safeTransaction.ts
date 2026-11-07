@@ -117,6 +117,8 @@ type StatusEntry = {
   operationId?: string
   message?: string
   owner?: OperationOwner
+  // Set for owner-confirmation statuses; execution statuses apply to every owner.
+  ownerId?: string
 }
 
 const normalizeIdentity = (identity: Identity): Identity => ({
@@ -126,6 +128,8 @@ const normalizeIdentity = (identity: Identity): Identity => ({
 })
 const keyOf = (identity: Identity) =>
   `${identity.accountId.toLowerCase()}:${identity.chainId}:${identity.safeTxHash.toLowerCase()}`
+const interruptedExecutionMessage =
+  'Execution was interrupted and its broadcast outcome is unknown. Check the chain before retrying.'
 const errorMessage = (error: unknown, fallback: string) =>
   error instanceof Error && error.message.length <= 500 ? error.message : fallback
 
@@ -190,6 +194,14 @@ export function createSafeTransactionService({
       throw new Error('Safe proposal is no longer available.')
     }
     return { identity: normalized, account, deployment, proposal: safeProposalSchema.parse(proposal) }
+  }
+
+  const findProposal = (identity: Identity) => {
+    try {
+      return locate(identity).proposal
+    } catch {
+      return undefined
+    }
   }
 
   const replaceProposal = (identity: Identity, update: (proposal: SafeProposal) => SafeProposal) => {
@@ -424,13 +436,33 @@ export function createSafeTransactionService({
             submitted?.({ safeTxHash: proposal.safeTxHash, outerTxHash })
           }
         }
-        const pending = deployment.pending?.filter(
+        // An in-flight execution cannot survive a restart: recover it to a re-preparable state.
+        const recovered = deployment.pending?.map((proposal) => {
+          const execution = proposal.local?.execution
+          if (!proposal.local || !execution || !['preparing', 'executing'].includes(execution.status)) {
+            return proposal
+          }
+          return {
+            ...proposal,
+            local: {
+              ...proposal.local,
+              execution:
+                execution.status === 'preparing'
+                  ? { status: 'idle' as const }
+                  : { ...execution, status: 'failed' as const, error: interruptedExecutionMessage }
+            }
+          }
+        })
+        const pending = recovered?.filter(
           (proposal) =>
             !proposal.local ||
             proposal.local.confirmations.length > 0 ||
             (proposal.local.requestId !== undefined && liveRequestIds.has(proposal.local.requestId))
         )
-        if (pending?.length !== deployment.pending?.length) {
+        if (
+          pending?.length !== deployment.pending?.length ||
+          recovered?.some((proposal, index) => proposal !== deployment.pending?.[index])
+        ) {
           store.getState().patchAccount(account.id, {
             safe: { ...account.safe, [chainId]: { ...deployment, pending } }
           })
@@ -466,7 +498,8 @@ export function createSafeTransactionService({
       return false
     }
     const identity = normalizeIdentity(command)
-    const workKey = `${keyOf(identity)}:${command.ownerId.toLowerCase()}`
+    const ownerId = command.ownerId.toLowerCase()
+    const workKey = `${keyOf(identity)}:${ownerId}`
     if (approvalWork.has(workKey)) {
       return true
     }
@@ -484,7 +517,12 @@ export function createSafeTransactionService({
     }
     const controller = new AbortController()
     const unsubscribe = context.subscribeOwnerDisposed(() => controller.abort())
-    setStatus(identity, { status: 'signing', operationId: command.operationId, owner: context.owner })
+    setStatus(identity, {
+      ownerId,
+      status: 'signing',
+      operationId: command.operationId,
+      owner: context.owner
+    })
     const work = (async () => {
       try {
         let configuration = await freshConfiguration(identity, controller.signal)
@@ -500,6 +538,7 @@ export function createSafeTransactionService({
         const publication = proposal.local ? proposal.local.publication.status : 'published'
         if (publication === 'published') {
           setStatus(identity, {
+            ownerId,
             status: 'reconciling',
             operationId: command.operationId,
             owner: context.owner
@@ -516,7 +555,12 @@ export function createSafeTransactionService({
           ({ owner }) => owner.toLowerCase() === selected.address.toLowerCase()
         )?.signature
         if (signature && publication === 'published') {
-          setStatus(identity, { status: 'published', operationId: command.operationId, owner: context.owner })
+          setStatus(identity, {
+            ownerId,
+            status: 'published',
+            operationId: command.operationId,
+            owner: context.owner
+          })
           operations.complete(reference, 'published')
           return
         }
@@ -567,6 +611,7 @@ export function createSafeTransactionService({
         const localCapacity = candidates.filter(({ signerAttached }) => signerAttached).length
         if (localCapacity >= configuration.threshold) {
           setStatus(identity, {
+            ownerId,
             status:
               (proposal.local?.confirmations.length ?? 0) >= configuration.threshold ? 'ready' : 'local',
             operationId: command.operationId,
@@ -578,7 +623,12 @@ export function createSafeTransactionService({
           )
           return
         }
-        setStatus(identity, { status: 'publishing', operationId: command.operationId, owner: context.owner })
+        setStatus(identity, {
+          ownerId,
+          status: 'publishing',
+          operationId: command.operationId,
+          owner: context.owner
+        })
         operations.advance(reference, { phase: 'publishing' })
         replaceProposal(identity, (candidate) => ({
           ...candidate,
@@ -605,7 +655,12 @@ export function createSafeTransactionService({
         try {
           const latest = await freshConfiguration(identity, controller.signal)
           await mergeVerifiedServiceState(identity, latest, controller.signal)
-          setStatus(identity, { status: 'published', operationId: command.operationId, owner: context.owner })
+          setStatus(identity, {
+            ownerId,
+            status: 'published',
+            operationId: command.operationId,
+            owner: context.owner
+          })
           operations.complete(reference, 'published')
         } catch (error) {
           replaceProposal(identity, (candidate) => ({
@@ -619,6 +674,7 @@ export function createSafeTransactionService({
             }
           }))
           setStatus(identity, {
+            ownerId,
             status: 'publication_failed',
             operationId: command.operationId,
             message: 'The local confirmation was saved. Retry will not ask this owner to sign again.',
@@ -636,6 +692,7 @@ export function createSafeTransactionService({
       } catch (error) {
         const cancelled = controller.signal.aborted
         setStatus(identity, {
+          ownerId,
           status: cancelled ? 'cancelled' : 'validation_failed',
           operationId: command.operationId,
           message: cancelled
@@ -707,10 +764,21 @@ export function createSafeTransactionService({
       proposal.refundReceiver,
       packed
     ])
+    const previous = proposal.local?.execution.status
+    if (executionWork.has(keyOf(identity)) || previous === 'executing' || previous === 'submitted') {
+      throw new Error('Safe execution is already in progress or submitted.')
+    }
     replaceProposal(identity, (candidate) => ({
       ...localize(candidate),
       local: { ...localize(candidate).local, execution: { status: 'preparing', executorId } }
     }))
+    // Execution or another preparation may replace this one while the provider prepares.
+    const stillPreparing = () => {
+      const execution = findProposal(identity)?.local?.execution
+      return (
+        execution?.status === 'preparing' && execution.executorId?.toLowerCase() === executorId.toLowerCase()
+      )
+    }
     try {
       const prepared = await provider.prepare(executorId, {
         chainId: `0x${identity.chainId.toString(16)}`,
@@ -718,6 +786,9 @@ export function createSafeTransactionService({
         value: '0x0',
         data: calldata
       })
+      if (!stillPreparing()) {
+        throw new Error('Safe execution changed during preparation.')
+      }
       replaceProposal(identity, (candidate) => ({
         ...localize(candidate),
         local: {
@@ -733,13 +804,15 @@ export function createSafeTransactionService({
       setStatus(identity, { status: 'ready' })
       return prepared
     } catch (error) {
-      replaceProposal(identity, (candidate) => ({
-        ...localize(candidate),
-        local: {
-          ...localize(candidate).local,
-          execution: { status: 'failed', executorId, error: errorMessage(error, 'Preparation failed.') }
-        }
-      }))
+      if (stillPreparing()) {
+        replaceProposal(identity, (candidate) => ({
+          ...localize(candidate),
+          local: {
+            ...localize(candidate).local,
+            execution: { status: 'failed', executorId, error: errorMessage(error, 'Preparation failed.') }
+          }
+        }))
+      }
       throw error
     }
   }
@@ -827,18 +900,21 @@ export function createSafeTransactionService({
           context,
           operationId
         )
-        replaceProposal(identity, (candidate) => ({
-          ...localize(candidate),
-          local: {
-            ...localize(candidate).local,
-            execution: {
-              ...localize(candidate).local.execution,
-              status: 'submitted',
-              transactionHash: outerTxHash,
-              error: undefined
+        // A refresh prunes the proposal once the Safe nonce advances; the hash still reaches the request.
+        if (findProposal(identity)) {
+          replaceProposal(identity, (candidate) => ({
+            ...localize(candidate),
+            local: {
+              ...localize(candidate).local,
+              execution: {
+                ...localize(candidate).local.execution,
+                status: 'submitted',
+                transactionHash: outerTxHash,
+                error: undefined
+              }
             }
-          }
-        }))
+          }))
+        }
         setStatus(identity, { status: 'submitted', operationId, owner: context.owner })
         operations.complete(reference, 'submitted')
         if (!isDisposed() && !delivered.has(key)) {
@@ -847,17 +923,19 @@ export function createSafeTransactionService({
         }
         return outerTxHash
       } catch (error) {
-        replaceProposal(identity, (candidate) => ({
-          ...localize(candidate),
-          local: {
-            ...localize(candidate).local,
-            execution: {
-              ...localize(candidate).local.execution,
-              status: 'failed',
-              error: errorMessage(error, 'Safe execution failed.')
+        if (findProposal(identity)) {
+          replaceProposal(identity, (candidate) => ({
+            ...localize(candidate),
+            local: {
+              ...localize(candidate).local,
+              execution: {
+                ...localize(candidate).local.execution,
+                status: 'failed',
+                error: errorMessage(error, 'Safe execution failed.')
+              }
             }
-          }
-        }))
+          }))
+        }
         setStatus(identity, {
           status: 'failed',
           operationId,
@@ -891,14 +969,12 @@ export function createSafeTransactionService({
         throw new Error('Safe transaction capability is unavailable.')
       }
       const entry = status.get(keyOf(query))
-      if (!entry || (owner && entry.owner && entry.owner.windowInstanceId !== owner.windowInstanceId)) {
-        const proposal = (() => {
-          try {
-            return locate(query).proposal
-          } catch {
-            return undefined
-          }
-        })()
+      if (
+        !entry ||
+        (owner && entry.owner && entry.owner.windowInstanceId !== owner.windowInstanceId) ||
+        (entry.ownerId && entry.ownerId !== query.ownerId.toLowerCase())
+      ) {
+        const proposal = findProposal(query)
         const execution = proposal?.local?.execution
         if (execution?.status === 'submitted') {
           return { status: 'submitted' }

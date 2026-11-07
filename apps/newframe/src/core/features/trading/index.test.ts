@@ -128,6 +128,9 @@ class FakeFlashWebSocket extends EventEmitter {
     this.readyState = WebSocket.CLOSED
     this.emit('close')
   }
+  terminate() {
+    this.close()
+  }
 }
 const quoteRequest = () =>
   ({
@@ -705,6 +708,33 @@ describe('main Flash facade helpers', () => {
       open: false
     })
   })
+  it('keeps a terminal order when a stale read reports it open again', async () => {
+    const orderId = 'stale-read-order'
+    const order = (status: string) =>
+      officialOrder({
+        orderId,
+        status,
+        filled: null,
+        closedAt: status === 'ORDER_STATUS_FILLED' ? '2026-07-14T08:02:00.000Z' : null
+      })
+    const { flash } = flashWithFetch(
+      queuedJsonResponses([
+        { order: order('ORDER_STATUS_FILLED') },
+        { order: order('ORDER_STATUS_ACCEPTED') }
+      ])
+    )
+    await flash.getOrder({ accountAddress, orderId })
+    const stale = await flash.getOrder({ accountAddress, orderId })
+
+    expect(stale.order).toMatchObject({ status: 'filled', open: false })
+    expect(store.getState().main.orders[orderId]).toMatchObject({
+      status: 'filled',
+      terminalAt: expect.any(Number) as unknown
+    })
+    expect(store.getState().view.notifications[`flash-order:${orderId}`]).toMatchObject({
+      state: 'completed'
+    })
+  })
   it('treats object-valued statuses as terminated and missing statuses as accepted', async () => {
     const orders = [
       officialOrder({ orderId: 'object-status', status: {} }),
@@ -1004,6 +1034,94 @@ describe('main Flash facade helpers', () => {
 
     expect(sockets.map((socket) => socket.readyState)).toEqual([WebSocket.CLOSED, WebSocket.CONNECTING])
     expect(fetchMock.mock.calls.length).toBeGreaterThan(requests)
+  })
+  it('reconnects an order stream that stops receiving heartbeats', () => {
+    timers.useFakeTimers()
+    installFetch(async () => jsonResponse({ orders: [] }))
+    const sockets: FakeFlashWebSocket[] = []
+    const flash = createFlashService({
+      assetRateService,
+      internet: openInternet(),
+      store,
+      createWebSocket: () => {
+        sockets.push(new FakeFlashWebSocket())
+        return sockets.at(-1) as unknown as WebSocket
+      }
+    })
+    services.push(flash)
+    startAiSession(flash, '0x00000000000000000000000000000000000000a3', 'silent-session', 60 * 60 * 1000)
+    sockets[0].open()
+    sockets[0].receive({ channel: 'subscriptions', type: 'ack', subscriptions: ['orders', 'heartbeats'] })
+
+    timers.advanceTimersByTime(10_000)
+    sockets[0].receive({ channel: 'heartbeats', type: 'heartbeat', counter: 1 })
+    timers.advanceTimersByTime(10_000)
+    expect(sockets[0].readyState).toBe(WebSocket.OPEN)
+
+    timers.advanceTimersByTime(5_000)
+    expect(sockets[0].readyState).toBe(WebSocket.CLOSED)
+    timers.advanceTimersByTime(1_000)
+    expect(sockets).toHaveLength(2)
+  })
+  it('backs off reconnects until the server acknowledges the orders subscription', () => {
+    timers.useFakeTimers()
+    installFetch(async () => jsonResponse({ orders: [] }))
+    const sockets: FakeFlashWebSocket[] = []
+    const flash = createFlashService({
+      assetRateService,
+      internet: openInternet(),
+      store,
+      createWebSocket: () => {
+        sockets.push(new FakeFlashWebSocket())
+        return sockets.at(-1) as unknown as WebSocket
+      }
+    })
+    services.push(flash)
+    const rejectAfterOpen = (socket = sockets.at(-1)!) => {
+      socket.open()
+      socket.receive({ type: 'error', code: 'CONNECTION_LIMIT', message: 'too many connections' })
+    }
+    startAiSession(flash, '0x00000000000000000000000000000000000000a4', 'limited-session', 60 * 60 * 1000)
+
+    rejectAfterOpen()
+    timers.advanceTimersByTime(1_000)
+    rejectAfterOpen()
+    // The second retry waits at least half of a doubled 2s backoff.
+    timers.advanceTimersByTime(999)
+    expect(sockets).toHaveLength(2)
+    timers.advanceTimersByTime(1_001)
+    expect(sockets).toHaveLength(3)
+
+    sockets[2].open()
+    sockets[2].receive({ channel: 'subscriptions', type: 'ack', subscriptions: ['orders'] })
+    sockets[2].receive({ type: 'error', code: 'CONNECTION_LIMIT', message: 'too many connections' })
+    timers.advanceTimersByTime(1_000)
+    expect(sockets).toHaveLength(4)
+  })
+  it('does not reconnect a rejected API key when the internet comes back', () => {
+    timers.useFakeTimers()
+    installFetch(async () => jsonResponse({ orders: [] }))
+    const internet = openInternet()
+    const sockets: FakeFlashWebSocket[] = []
+    const flash = createFlashService({
+      assetRateService,
+      internet,
+      store,
+      createWebSocket: () => {
+        sockets.push(new FakeFlashWebSocket())
+        return sockets.at(-1) as unknown as WebSocket
+      }
+    })
+    services.push(flash)
+    startAiSession(flash, '0x00000000000000000000000000000000000000a5', 'rejected-session', 60 * 60 * 1000)
+    sockets[0].open()
+    sockets[0].receive({ type: 'error', code: 'UNAUTHORIZED', message: 'invalid api key' })
+
+    internet.setOpen(false)
+    internet.setOpen(true)
+    timers.advanceTimersByTime(60_000)
+
+    expect(sockets).toHaveLength(1)
   })
   it('closes an AI session order stream when its session expires', () => {
     timers.useFakeTimers()

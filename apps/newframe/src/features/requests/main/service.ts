@@ -655,6 +655,7 @@ export function createRequestService(ports: RequestServicePorts) {
         return true
       }
       if (ports.vault.exists() && !ports.vault.isUnlocked()) {
+        settle(requestId, rpcError(located.request, { code: 4100, message: 'Newframe is locked' }))
         ports.accounts.setRequestError(requestId, new Error('Newframe locked'))
         return true
       }

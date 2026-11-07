@@ -693,23 +693,33 @@ export function createProductionMainApp({
       }
     },
     dispose() {
-      app.dispose()
-      trayAuthorization.dispose()
-      tradeService.dispose()
-      sendService.dispose()
-      imageService.dispose()
-      aiSessionService.dispose()
-      requestService.dispose()
-      infrastructureCallbacks.dispose()
-      flashService.dispose()
-      accounts.dispose()
-      proxy.dispose()
-      nameResolution.dispose()
-      provider.dispose()
-      disconnectCapabilities.reverse().forEach((disconnect) => disconnect())
+      const disconnects = disconnectCapabilities.reverse()
       disconnectCapabilities = []
-      chains.dispose()
-      persistence.dispose()
+      // One failing disposer must not skip the rest, especially the final persistence flush.
+      for (const dispose of [
+        () => app.dispose(),
+        () => trayAuthorization.dispose(),
+        () => tradeService.dispose(),
+        () => sendService.dispose(),
+        () => imageService.dispose(),
+        () => aiSessionService.dispose(),
+        () => requestService.dispose(),
+        () => infrastructureCallbacks.dispose(),
+        () => flashService.dispose(),
+        () => accounts.dispose(),
+        () => proxy.dispose(),
+        () => nameResolution.dispose(),
+        () => provider.dispose(),
+        ...disconnects,
+        () => chains.dispose(),
+        () => persistence.dispose()
+      ]) {
+        try {
+          dispose()
+        } catch (error) {
+          log.error('Could not dispose a main process service', error)
+        }
+      }
     }
   }
 }

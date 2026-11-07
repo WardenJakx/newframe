@@ -1091,6 +1091,39 @@ describe('#setTxSent', () => {
     expect(clearRequest).toHaveBeenCalledWith(request.requestId)
   })
 
+  it('keeps a mined transaction confirming when its chain drops and removes it later', async () => {
+    const hash = '0x5555555555555555555555555555555555555555555555555555555555555555'
+    const receiptBlock = 100
+    provider.send = mock((payload: RPCRequestPayload, cb: RPCRequestCallback) => {
+      if (payload.method === 'eth_subscribe') {
+        return cb(rpcError(-32601, 'unsupported'))
+      }
+      if (payload.method === 'eth_blockNumber') {
+        return cb(rpcResult(intToHex(receiptBlock + 1)))
+      }
+      if (payload.method === 'eth_getTransactionReceipt') {
+        return cb(rpcResult({ status: '0x1', blockNumber: intToHex(receiptBlock), gasUsed: '0x5208' }))
+      }
+      cb(rpcResult(null))
+    })
+    provider.on.mockClear()
+
+    currentAccount().addRequest(request, mock())
+    Accounts.setTxSent(request.requestId, hash)
+    timers.advanceTimersByTime(1000)
+    await flushPromises()
+    expect(canonicalRequest()).toMatchObject({ status: RequestStatus.Confirming, tx: { confirmations: 1 } })
+
+    const statusHandler = provider.on.mock.calls.find(([event]) => event === 'status:ethereum:1')?.[1] as (
+      status: string
+    ) => void
+    statusHandler('disconnected')
+
+    expect(canonicalRequest()).toMatchObject({ status: RequestStatus.Confirming, tx: { confirmations: 1 } })
+    timers.advanceTimersByTime(60_000)
+    expect(currentAccount().requests[request.requestId]).toBeUndefined()
+  })
+
   it('does not drop a same-nonce request on another chain', async () => {
     const hash = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
     const receiptBlock = 100

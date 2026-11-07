@@ -228,17 +228,17 @@ class FrameAccount {
   findSigner(address: Address) {
     const signers = this.store.getState().main.signers
 
-    const signerOrdinal = (signer: SignerSummary) => {
-      const isOk = signer.status === 'ok' ? 2 : 1
-      const signerIndex = Object.values(SignerType).findIndex((type) => type === signer.type)
-      const typeIndex = Math.max(signerIndex, 0)
+    const isOk = (signer: SignerSummary) => (signer.status === 'ok' ? 1 : 0)
+    const typeIndex = (signer: SignerSummary) =>
+      Math.max(
+        Object.values(SignerType).findIndex((type) => type === signer.type),
+        0
+      )
 
-      return isOk * typeIndex
-    }
-
+    // An ok signer always wins; signer type priority only breaks ties.
     const availableSigners = Object.values(signers)
       .filter((signer) => signer.addresses.some((addr) => addr.toLowerCase() === address))
-      .sort((a, b) => signerOrdinal(b) - signerOrdinal(a))
+      .sort((a, b) => isOk(b) - isOk(a) || typeIndex(b) - typeIndex(a))
 
     return availableSigners.at(0)
   }

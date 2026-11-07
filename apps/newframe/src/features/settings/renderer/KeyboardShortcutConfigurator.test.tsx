@@ -122,6 +122,27 @@ describe('when configuring', () => {
     expect(enterShortcutPrompt).toBeDefined()
   })
 
+  it('should cancel configuring when unmounted before a shortcut is entered', () => {
+    const shortcut = {
+      modifierKeys: ['Meta' as const],
+      shortcutKey: 'Slash' as const,
+      enabled: true,
+      configuring: true
+    }
+    const { unmount } = render(
+      <KeyboardShortcutConfigurator
+        onChange={setShortcut}
+        platform='linux'
+        shortcutName='Test'
+        shortcut={shortcut}
+      />
+    )
+
+    unmount()
+
+    expect(setShortcut).toHaveBeenCalledWith({ ...shortcut, configuring: false })
+  })
+
   describe('and a valid shortcut is entered', () => {
     it('should set the new shortcut', async () => {
       const { user } = render(
