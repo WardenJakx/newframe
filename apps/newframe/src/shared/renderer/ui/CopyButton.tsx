@@ -1,4 +1,5 @@
 import { IconButton } from '@newframe/ui/icon-button'
+import { announce } from '@newframe/ui/root'
 import { useEffect, useRef, useState } from 'react'
 
 import type { ClipboardCapability } from '../capabilities.ts'
@@ -35,6 +36,7 @@ export function CopyButton({
         clearTimeout(resetTimer.current)
         void clipboard.writeText(value)
         setCopied(true)
+        announce(copiedLabel)
         resetTimer.current = setTimeout(() => setCopied(false), 1000)
       }}
       size='small'

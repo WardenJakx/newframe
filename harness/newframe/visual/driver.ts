@@ -600,8 +600,8 @@ export class NewframeDriver {
     await Promise.all(
       [
         page.getByRole('button', { name: /Switch to (BUY|SELL)/ }),
-        page.getByRole('button', { name: /Select target asset/i }),
-        page.getByRole('button', { name: /Select contra asset/i }),
+        page.getByRole('combobox', { name: /Select target asset/i }),
+        page.getByRole('combobox', { name: /Select contra asset/i }),
         page.getByLabel(/amount percentage$/),
         ...['Market', 'Limit', 'TWAP', 'TP/SL', 'Stop'].map((tab) =>
           page.getByRole('tab', { name: tab, exact: true })
@@ -673,7 +673,7 @@ export class NewframeDriver {
   }
 
   async selectTradeAsset(page: Page, field: 'target' | 'contra', assetId: string) {
-    await page.getByRole('button', { name: `Select ${field} asset` }).click()
+    await page.getByRole('combobox', { name: `Select ${field} asset` }).click()
     await page.getByRole('textbox', { name: 'Search tokens' }).fill(assetId)
     const option = page.getByRole('option')
     await option.waitFor({ state: 'visible', timeout: 15_000 })

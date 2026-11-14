@@ -18,7 +18,7 @@ export type MenuOverlayProps = {
 
 export function MenuOverlay({ children, closeLabel, label, onClose, title }: MenuOverlayProps) {
   const previousFocus = useRef<HTMLElement | null>(null)
-  const overlay = useRef<HTMLElement | null>(null)
+  const overlay = useRef<HTMLDialogElement | null>(null)
 
   useLayoutEffect(() => {
     if (overlay.current?.closest('[data-overlay-focus-managed]')) {
@@ -30,7 +30,7 @@ export function MenuOverlay({ children, closeLabel, label, onClose, title }: Men
   }, [])
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.defaultPrevented || event.key !== 'Escape') {
+    if (event.defaultPrevented || event.nativeEvent.isComposing || event.key !== 'Escape') {
       return
     }
     event.preventDefault()

@@ -408,14 +408,12 @@ function AccountBody(props: AccountBodyProps) {
   return (
     <AccountView back={back} accountViewIcon={props.accountViewIcon} accountViewTitle={crumb.data.id}>
       <Stack grow>
-        <div onMouseDown={(event) => event.stopPropagation()}>
-          <Requests
-            account={crumb.data.account}
-            capabilities={props.capabilities}
-            expanded={true}
-            moduleId='requests'
-          />
-        </div>
+        <Requests
+          account={crumb.data.account}
+          capabilities={props.capabilities}
+          expanded={true}
+          moduleId='requests'
+        />
       </Stack>
     </AccountView>
   )

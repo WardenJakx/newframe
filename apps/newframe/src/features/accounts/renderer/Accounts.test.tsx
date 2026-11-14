@@ -123,7 +123,7 @@ describe('Accounts profile controls', () => {
       <Accounts camera={createQrCameraFake().camera} capability={capability} onClose={mock()} />
     )
     await user.click(screen.getByRole('button', { name: 'Primary account actions' }))
-    await user.click(screen.getByRole('button', { name: 'Move Primary to profile' }))
+    await user.click(screen.getByRole('combobox', { name: 'Move Primary to profile' }))
     await user.click(screen.getByRole('option', { name: /Work/ }))
 
     expect(capability.updateAccount).toHaveBeenCalledWith({
@@ -181,7 +181,7 @@ describe('Accounts profile controls', () => {
         <Accounts camera={createQrCameraFake().camera} capability={capability} onClose={mock()} />
       )
       await user.click(screen.getByRole('button', { name: 'Primary account actions' }))
-      await user.click(screen.getByRole('button', { name: 'Move Primary to profile' }))
+      await user.click(screen.getByRole('combobox', { name: 'Move Primary to profile' }))
       await user.click(screen.getByRole('option', { name: /Work/ }))
       await user.click(screen.getByRole('option', { name: /Work/ }))
       const moveInputs = capability.updateAccount.mock.calls.map(([input]) => input)

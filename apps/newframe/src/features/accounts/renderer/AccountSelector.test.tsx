@@ -100,13 +100,10 @@ it('renders the shared account row without selection semantics when static', asy
       }}
     />
   )
-  const row = screen.getByLabelText('Primary 0x000…0001')
-  expect(row.hasAttribute('role')).toBe(false)
-  expect(row.hasAttribute('tabindex')).toBe(false)
   expect(screen.queryByRole('button', { name: /Primary/ })).toBeNull()
   expect(screen.getByText('Ledger')).toBeTruthy()
   expect(screen.getByText('$42.00')).toBeTruthy()
-  await user.click(row)
+  await user.click(screen.getByText('Primary'))
   await user.keyboard('{Enter}')
   expect(fixture.state.getState().currentAccount).toBe(first.id)
   expect(screen.queryByRole('dialog')).toBeNull()

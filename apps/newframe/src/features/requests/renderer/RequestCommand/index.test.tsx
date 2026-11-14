@@ -1,6 +1,6 @@
 import { beforeEach, expect, it, mock } from 'bun:test'
 
-import { act, fireEvent, render, screen } from '../../../../../test/support/componentSetup.tsx'
+import { act, fireEvent, render, screen, waitFor } from '../../../../../test/support/componentSetup.tsx'
 import { registerTestRuntimeFixture } from '../../../../../test/support/trayClient.ts'
 import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support.ts'
 import type { SigningCandidate } from '../../contract/requests.ts'
@@ -215,7 +215,7 @@ it('selects a projected Safe owner and sends its ID without replacing the Safe r
 
   expect(screen.getByText('0 / 2 verified confirmations')).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Choose an owner' }).hasAttribute('disabled')).toBe(true)
-  await user.click(screen.getByRole('button', { name: 'Owner signer' }))
+  await user.click(screen.getByRole('combobox', { name: 'Owner signer' }))
   await user.click(screen.getByRole('option', { name: /Owner 2/ }))
   await user.click(screen.getByRole('button', { name: 'Sign as owner' }))
 
@@ -255,7 +255,7 @@ it('shows verified Safe progress and permits another projected owner while the R
 
   expect(screen.getByText('1 / 2 verified confirmations')).toBeTruthy()
   expect(screen.queryByText('Waiting for signer')).toBeNull()
-  expect(screen.getByRole('button', { name: 'Owner signer' }).textContent).toContain('Owner 2')
+  expect(screen.getByRole('combobox', { name: 'Owner signer' }).textContent).toContain('Owner 2')
   await user.click(screen.getByRole('button', { name: 'Sign as owner' }))
   expect(capabilities.review.approve).toHaveBeenCalledWith({
     requestId: req.requestId,
@@ -313,7 +313,7 @@ it('shows a retryable Safe publication failure', async () => {
   })
 })
 
-it('uses tray-generated idempotency keys for transaction replacement', () => {
+it('sends one transaction replacement at a time with tray-generated idempotency keys', async () => {
   const req = {
     type: 'transaction',
     requestId: 'request-1',
@@ -325,13 +325,21 @@ it('uses tray-generated idempotency keys for transaction replacement', () => {
   render(<RequestCommand {...createProps(false, req)} />)
 
   fireEvent.click(screen.getByLabelText('Cancel transaction'))
+  // Each press queues a replacement transaction; a second press waits for the first.
   fireEvent.click(screen.getByLabelText('Speed up transaction'))
 
+  expect(capabilities.transaction.replace).toHaveBeenCalledTimes(1)
   expect(capabilities.transaction.replace).toHaveBeenNthCalledWith(1, {
     requestId: req.requestId,
     replacement: 'cancel',
     idempotencyKey: expect.stringMatching(/^[0-9a-f-]{36}$/) as unknown
   })
+  expect(screen.getByLabelText('Speed up transaction').getAttribute('aria-busy')).toBe('true')
+
+  await waitFor(() =>
+    expect(screen.getByLabelText('Speed up transaction').hasAttribute('aria-busy')).toBe(false)
+  )
+  fireEvent.click(screen.getByLabelText('Speed up transaction'))
   expect(capabilities.transaction.replace).toHaveBeenNthCalledWith(2, {
     requestId: req.requestId,
     replacement: 'speed',

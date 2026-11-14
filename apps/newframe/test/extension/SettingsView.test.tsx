@@ -107,10 +107,10 @@ describe('SettingsView', () => {
       selected: first
     })
     rerender(<SettingsView {...scoped} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Account' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Account' }))
     fireEvent.click(screen.getByRole('option', { name: /Savings/ }))
     expect(scoped.onSelectAccount).toHaveBeenCalledWith(second)
-    fireEvent.click(screen.getByRole('button', { name: 'Account' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Account' }))
     fireEvent.click(screen.getByRole('button', { name: 'Request more accounts' }))
     expect(scoped.onRequestAccounts).toHaveBeenCalledTimes(1)
 
@@ -123,7 +123,7 @@ describe('SettingsView', () => {
         }}
       />
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Account' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Account' }))
     expect(screen.getByText('All accounts in this profile are shared')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Request more accounts' })).toBeNull()
   })

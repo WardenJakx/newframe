@@ -64,6 +64,10 @@ const PermitOverview = ({ capabilities, req, chainData, originName, open }: Perm
 
   const amountSuffix = tokenData.symbol || 'UNKNOWN TOKEN'
 
+  const permitAmount = (
+    <Text align='center' tone='accent' variant='heading'>{`${amountDisplay} ${amountSuffix}`}</Text>
+  )
+
   return (
     <Stack gap='medium'>
       <RequestItem
@@ -77,6 +81,7 @@ const PermitOverview = ({ capabilities, req, chainData, originName, open }: Perm
         <Cluster>
           <ClusterRow>
             <ClusterValue
+              label={`View raw permit to spend ${tokenData.symbol || 'Unknown Token'}`}
               onClick={() => {
                 open({ step: 'viewRaw' })
               }}
@@ -105,7 +110,11 @@ const PermitOverview = ({ capabilities, req, chainData, originName, open }: Perm
         <Cluster>
           <>
             <ClusterRow>
-              <ClusterValue interactiveChildren onClick={() => copySpender()}>
+              <ClusterValue
+                interactiveChildren
+                label={`Copy spender address ${spender.address}`}
+                onClick={() => copySpender()}
+              >
                 <Stack align='center' gap='xsmall'>
                   {showCopiedMessage ? (
                     <Text tone='accent'>Address Copied</Text>
@@ -123,21 +132,16 @@ const PermitOverview = ({ capabilities, req, chainData, originName, open }: Perm
               </ClusterValue>
             </ClusterRow>
             <ClusterRow>
-              <ClusterValue
-                onClick={
-                  tokenData.decimals
-                    ? () => {
-                        open({ step: 'adjustPermit' })
-                      }
-                    : undefined
-                }
-              >
-                <Text
-                  align='center'
-                  tone='accent'
-                  variant='heading'
-                >{`${amountDisplay} ${amountSuffix}`}</Text>
-              </ClusterValue>
+              {tokenData.decimals ? (
+                <ClusterValue
+                  label={`Adjust permit amount, ${amountDisplay} ${amountSuffix}`}
+                  onClick={() => open({ step: 'adjustPermit' })}
+                >
+                  {permitAmount}
+                </ClusterValue>
+              ) : (
+                <ClusterValue>{permitAmount}</ClusterValue>
+              )}
             </ClusterRow>
 
             <ClusterRow>

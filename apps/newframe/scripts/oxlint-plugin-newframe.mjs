@@ -215,7 +215,128 @@ const noComponentRootMargin = {
   }
 }
 
+const COMPOSITION_KEYS = new Set(['Enter', 'Escape'])
+
+function isFunction(node) {
+  return (
+    node.type === 'FunctionDeclaration' ||
+    node.type === 'FunctionExpression' ||
+    node.type === 'ArrowFunctionExpression'
+  )
+}
+
+function enclosingFunctions(node) {
+  const functions = []
+  for (let current = node.parent; current; current = current.parent) {
+    if (isFunction(current)) {
+      functions.push(current)
+    }
+  }
+  return functions
+}
+
+function compositionKey(node) {
+  if (!['===', '!==', '==', '!='].includes(node.operator)) {
+    return null
+  }
+  for (const [member, literal] of [
+    [node.left, node.right],
+    [node.right, node.left]
+  ]) {
+    if (
+      member.type === 'MemberExpression' &&
+      !member.computed &&
+      member.property.name === 'key' &&
+      literal.type === 'Literal' &&
+      COMPOSITION_KEYS.has(literal.value)
+    ) {
+      return literal.value
+    }
+  }
+  return null
+}
+
+const imeSafeKeyHandler = {
+  meta: {
+    type: 'problem',
+    docs: { description: 'Require Enter and Escape key handlers to ignore IME composition.' },
+    schema: [],
+    messages: {
+      composing:
+        '{{key}} also confirms or cancels IME composition; return early when the event isComposing (React: event.nativeEvent.isComposing).'
+    }
+  },
+  create(context) {
+    const checks = []
+    const guarded = new Set()
+
+    return {
+      BinaryExpression(node) {
+        const key = compositionKey(node)
+        if (key) {
+          checks.push({ key, node })
+        }
+      },
+      MemberExpression(node) {
+        if (!node.computed && node.property.name === 'isComposing') {
+          for (const fn of enclosingFunctions(node)) {
+            guarded.add(fn)
+          }
+        }
+      },
+      'Program:exit'() {
+        for (const { key, node } of checks) {
+          const [handler] = enclosingFunctions(node)
+          if (!handler || !guarded.has(handler)) {
+            context.report({ node, messageId: 'composing', data: { key } })
+          }
+        }
+      }
+    }
+  }
+}
+
+const NATIVE_ELEMENTS = new Map([
+  ['button', '<button> (Button)'],
+  ['checkbox', '<input type="checkbox">'],
+  ['dialog', '<dialog> (Dialog)'],
+  ['link', '<a href> (Link)'],
+  ['progressbar', '<progress>'],
+  ['radio', '<input type="radio">'],
+  ['slider', '<input type="range"> (Range)'],
+  ['textbox', '<input> or <textarea>']
+])
+
+const preferNativeElement = {
+  meta: {
+    type: 'problem',
+    docs: { description: 'Use the native element instead of re-creating it with an ARIA role.' },
+    schema: [],
+    messages: {
+      native:
+        'Use {{element}} instead of role="{{role}}"; the native element brings keyboard, focus and state for free.'
+    }
+  },
+  create(context) {
+    return {
+      JSXAttribute(node) {
+        if (node.name.name !== 'role' || node.value?.type !== 'Literal') {
+          return
+        }
+        const element = NATIVE_ELEMENTS.get(node.value.value)
+        if (element) {
+          context.report({ node, messageId: 'native', data: { element, role: node.value.value } })
+        }
+      }
+    }
+  }
+}
+
 export default {
   meta: { name: 'newframe', version: '0.0.0' },
-  rules: { 'no-component-root-margin': noComponentRootMargin }
+  rules: {
+    'ime-safe-key-handler': imeSafeKeyHandler,
+    'no-component-root-margin': noComponentRootMargin,
+    'prefer-native-element': preferNativeElement
+  }
 }

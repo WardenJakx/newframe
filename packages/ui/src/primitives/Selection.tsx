@@ -199,6 +199,9 @@ export function Selection({
   )
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.nativeEvent.isComposing) {
+      return
+    }
     const fromTextInput = ['INPUT', 'TEXTAREA'].includes((event.target as HTMLElement).tagName)
 
     if (event.key === 'Escape' && open) {
@@ -269,6 +272,7 @@ export function Selection({
         appearance='selectionTrigger'
         controls={open ? listboxId : undefined}
         disabled={disabled || !canOpen}
+        elementRole='combobox'
         expanded={open}
         hasPopup='listbox'
         label={label}

@@ -1,11 +1,15 @@
 import type { ReactNode } from 'react'
 
+import { css } from '../styled-system/css/css.js'
 import { cva } from '../styled-system/css/cva.js'
-import { Button } from './Button.tsx'
+import { cx } from '../styled-system/css/cx.js'
+import { buttonRecipe } from './Button.tsx'
 import { Icon, type IconName } from './Icon.tsx'
-import { Stack } from './Stack.tsx'
 import { Surface } from './Surface.tsx'
 import { Text } from './Text.tsx'
+
+const disclosureClass = css({ display: 'flex', flexDirection: 'column', gap: '4' })
+const summaryClass = css({ listStyle: 'none', '&::-webkit-details-marker': { display: 'none' } })
 
 const chevronRecipe = cva({
   base: { marginInlineStart: 'auto', display: 'flex' },
@@ -22,14 +26,24 @@ export type DisclosureProps = {
   children: ReactNode
   icon?: IconName
   label: string
-  onToggle: () => void
+  onOpenChange: (open: boolean) => void
   open: boolean
 }
 
-export function Disclosure({ children, icon, label, onToggle, open }: DisclosureProps) {
+// Native <details> keeps collapsed content in the DOM, so find-in-page and assistive tech
+// still reach it, and the browser expands it when a search lands inside.
+export function Disclosure({ children, icon, label, onOpenChange, open }: DisclosureProps) {
   return (
-    <Stack element='section' gap='small'>
-      <Button appearance='disclosure' expanded={open} onPress={onToggle} size='medium'>
+    <details
+      className={disclosureClass}
+      onToggle={(event) => {
+        if (event.currentTarget.open !== open) {
+          onOpenChange(event.currentTarget.open)
+        }
+      }}
+      open={open}
+    >
+      <summary className={cx(buttonRecipe({ appearance: 'disclosure', size: 'medium' }), summaryClass)}>
         {icon ? <Icon name={icon} size='small' /> : null}
         <Text variant='action' tone='secondary'>
           {label}
@@ -37,12 +51,10 @@ export function Disclosure({ children, icon, label, onToggle, open }: Disclosure
         <span aria-hidden='true' className={chevronRecipe({ open })}>
           <Icon name='chevronUp' size='small' />
         </span>
-      </Button>
-      {open ? (
-        <Surface border='subtle' padding='medium' radius='small' tone='card'>
-          {children}
-        </Surface>
-      ) : null}
-    </Stack>
+      </summary>
+      <Surface border='subtle' padding='medium' radius='small' tone='card'>
+        {children}
+      </Surface>
+    </details>
   )
 }

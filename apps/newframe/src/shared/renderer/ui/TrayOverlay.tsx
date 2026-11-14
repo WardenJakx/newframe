@@ -59,7 +59,7 @@ export function TrayOverlay({
       label={label}
       layout='tray'
       onKeyDown={(event) => {
-        if (event.defaultPrevented || event.key !== 'Escape') {
+        if (event.defaultPrevented || event.nativeEvent.isComposing || event.key !== 'Escape') {
           return
         }
         event.preventDefault()

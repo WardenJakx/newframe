@@ -109,6 +109,7 @@ export const runWhenAppUnlocked = (appLocked: boolean, next: () => void) => {
 export function RequestCommand(props: RequestCommandProps) {
   const [approvalError, setApprovalError] = useState('')
   const [noticeDismissed, setNoticeDismissed] = useState(false)
+  const [replacing, setReplacing] = useState(false)
   const request = props.req as TransactionRequest | SignatureRequest
   const [ownerSelection, setOwnerSelection] = useState<{ requestId: string; ownerId?: string }>({
     requestId: request.requestId
@@ -196,6 +197,17 @@ export function RequestCommand(props: RequestCommandProps) {
     }
     const hash = req.tx?.hash
 
+    // Each press queues a new replacement transaction, so block repeats until main answers.
+    const replace = (replacement: 'cancel' | 'speed') => {
+      if (replacing) {
+        return
+      }
+      setReplacing(true)
+      void props.capabilities.transaction
+        .replace({ requestId: req.requestId, replacement, idempotencyKey: crypto.randomUUID() })
+        .finally(() => setReplacing(false))
+    }
+
     const copyHash = () => {
       if (!hash) {
         return
@@ -252,13 +264,8 @@ export function RequestCommand(props: RequestCommandProps) {
           <Button
             appearance='danger'
             label='Cancel transaction'
-            onPress={() =>
-              void props.capabilities.transaction.replace({
-                requestId: req.requestId,
-                replacement: 'cancel',
-                idempotencyKey: crypto.randomUUID()
-              })
-            }
+            onPress={() => replace('cancel')}
+            pending={replacing}
             size='small'
           >
             <Text variant='caption'>Cancel</Text>
@@ -274,13 +281,8 @@ export function RequestCommand(props: RequestCommandProps) {
           <Button
             appearance='subtle'
             label='Speed up transaction'
-            onPress={() =>
-              void props.capabilities.transaction.replace({
-                requestId: req.requestId,
-                replacement: 'speed',
-                idempotencyKey: crypto.randomUUID()
-              })
-            }
+            onPress={() => replace('speed')}
+            pending={replacing}
             size='small'
           >
             <Text variant='caption'>Speed up</Text>
