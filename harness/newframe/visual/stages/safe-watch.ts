@@ -107,13 +107,12 @@ export const safeWatchStage: VisualStage = {
         await details.getByText(label, { exact: true }).first().waitFor()
       }
       await details
-        .getByRole('button', {
-          name: `${proposal.confirmations.length} / ${deployment.configuration.threshold} confirmations`,
+        .getByText(`${proposal.confirmations.length} / ${deployment.configuration.threshold} confirmations`, {
           exact: true
         })
         .click()
       await details.getByText(`Send ${formatUnits(proposal.value, 18)} ETH`, { exact: true }).waitFor()
-      await details.getByRole('button', { name: 'Raw transaction', exact: true }).click()
+      await details.getByText('Raw transaction', { exact: true }).click()
       const rawTransaction = details.locator('code').filter({ hasText: '"safe"' })
       await rawTransaction.waitFor()
       const raw: unknown = JSON.parse((await rawTransaction.textContent()) ?? '{}')
@@ -134,11 +133,11 @@ export const safeWatchStage: VisualStage = {
       ) {
         runtime.fail('Raw Safe transaction differs from the canonical proposal')
       }
-      await details.getByRole('button', { name: 'Raw transaction', exact: true }).click()
+      await details.getByText('Raw transaction', { exact: true }).click()
       const hashValue = details.getByText(hash, { exact: true })
       await hashValue.waitFor()
       const hashFits = await hashValue.evaluate((element) => {
-        const dialog = element.closest('[role=dialog]')!
+        const dialog = element.closest('dialog')!
         const bounds = dialog.getBoundingClientRect()
         const range = document.createRange()
         range.selectNodeContents(element)
@@ -263,7 +262,7 @@ export const safeWatchStage: VisualStage = {
           runtime.fail('Safe message request was attached to a different account')
         }
         await tray.getByText('Safe account', { exact: true }).waitFor()
-        const ownerSelector = tray.getByRole('button', { name: 'Owner signer' })
+        const ownerSelector = tray.getByRole('combobox', { name: 'Owner signer' })
         await ownerSelector.waitFor()
         if ((await ownerSelector.textContent())?.includes('Choose an owner')) {
           runtime.fail('Safe message request did not auto-select its sole eligible owner')
@@ -323,7 +322,7 @@ export const safeWatchStage: VisualStage = {
         runtime.evidence('safeOwnerApprovalCreatesActivity', false)
         await transactionReview.getByText('Gas-paying executor', { exact: true }).first().waitFor()
         // A task profile may contain several ready EOAs. Choose the funded harness account explicitly.
-        const executor = transactionReview.getByRole('button', { name: 'Gas-paying executor', exact: true })
+        const executor = transactionReview.getByRole('combobox', { name: 'Gas-paying executor', exact: true })
         if ((await executor.textContent())?.includes('Choose an executor')) {
           await executor.click()
           const state = await driver.getAppState()
@@ -359,7 +358,7 @@ export const safeWatchStage: VisualStage = {
           runtime.fail(`Safe executor preparation failed: ${JSON.stringify(execution ?? null)}`)
         }
         runtime.evidence('safePreparedExecutor', execution?.executorId ?? null)
-        await transactionReview.getByRole('button', { name: 'Execution details', exact: true }).click()
+        await transactionReview.getByText('Execution details', { exact: true }).click()
         await transactionReview.getByRole('region', { name: 'Reviewed executor transaction' }).waitFor()
         await transactionReview
           .getByRole('button', { name: 'Execute transaction', exact: true })
@@ -510,8 +509,10 @@ export const safeWatchStage: VisualStage = {
       await tray.getByRole('button', { name: 'Accounts', exact: true }).click()
       await accounts.getByRole('textbox', { name: 'Search accounts' }).fill(id)
       const shortAddress = `${id.slice(0, 8)}...${id.slice(-6)}`
+      // The row's main action is a stretched button; its parent holds the row's other controls.
       await accounts
         .getByRole('button', { name: new RegExp(shortAddress.replaceAll('.', '\\.'), 'i') })
+        .locator('xpath=..')
         .getByRole('button', { name: 'Safe Account account actions', exact: true })
         .click()
       await accounts.getByRole('button', { name: 'Remove account', exact: true }).click()

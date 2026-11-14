@@ -594,11 +594,7 @@ export default function TransactionInformation({
                   ))}
                   {calldata ? <CalldataDetails calldata={calldata} clipboard={clipboard} /> : null}
                   {rawTransaction ? (
-                    <Disclosure
-                      label='Raw transaction'
-                      open={rawOpen}
-                      onToggle={() => setRawOpen((open) => !open)}
-                    >
+                    <Disclosure label='Raw transaction' open={rawOpen} onOpenChange={setRawOpen}>
                       <Stack gap='xsmall'>
                         {clipboard ? (
                           <CopyButton

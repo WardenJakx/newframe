@@ -1,4 +1,5 @@
 import { IconButton } from '@newframe/ui/icon-button'
+import { RowAction } from '@newframe/ui/row-action'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 import React, { useEffect } from 'react'
@@ -34,8 +35,8 @@ const notificationRecipe = cva({
     borderRadius: 'small',
     background: 'bg.primary',
     boxShadow: 'elevation-raised',
+    position: 'relative',
     pointerEvents: 'auto',
-    cursor: 'pointer',
     _hover: { background: 'bg.card' }
   },
   variants: {
@@ -140,72 +141,64 @@ export default function StatusNotifications({
     )
     .slice(0, 3)
 
-  if (!visible.length) {
-    return null
-  }
+  // The live region stays mounted so the first notification is announced too.
+  return <div aria-live='polite'>{visible.length ? renderList() : null}</div>
 
-  return (
-    <section aria-label='Status notifications' className={notificationListRecipe()}>
-      {visible.map((notification) => {
-        const state = notification.state
-        const label = notificationLabel(state)
-        const metadata = notificationMetadata(notification, label)
-        const shownAt = notificationTimestamp(notification)
+  function renderList() {
+    return (
+      <section aria-label='Status notifications' className={notificationListRecipe()}>
+        {visible.map((notification) => {
+          const state = notification.state
+          const label = notificationLabel(state)
+          const metadata = notificationMetadata(notification, label)
+          const shownAt = notificationTimestamp(notification)
 
-        let glyphState: 'completed' | 'failed' | 'pending' = 'pending'
-        if (state === 'completed' || state === 'failed') {
-          glyphState = state
-        }
+          let glyphState: 'completed' | 'failed' | 'pending' = 'pending'
+          if (state === 'completed' || state === 'failed') {
+            glyphState = state
+          }
 
-        return (
-          <div
-            key={notification.id}
-            aria-label={`${label} ${notification.title ?? ''}`}
-            className={notificationRecipe({ state: state })}
-            onClick={() => onOpen(notification)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                onOpen(notification)
-              }
-            }}
-            role='button'
-            tabIndex={0}
-          >
-            <StatusGlyph state={glyphState} />
-            <span className={chainRecipe()}>{renderChainIcon(notification)}</span>
-            <Stack gap='xsmall' grow>
-              <Stack direction='row' gap='xsmall'>
-                <Text shrink={false} tone='secondary' variant='label'>
-                  {label}
-                </Text>
-                <Text tone='secondary' truncate variant='supporting'>
-                  {notification.title}
-                </Text>
+          return (
+            <div key={notification.id} className={notificationRecipe({ state: state })}>
+              <RowAction
+                label={`${label} ${notification.title ?? ''}`}
+                onPress={() => onOpen(notification)}
+              />
+              <StatusGlyph state={glyphState} />
+              <span className={chainRecipe()}>{renderChainIcon(notification)}</span>
+              <Stack gap='xsmall' grow>
+                <Stack direction='row' gap='xsmall'>
+                  <Text shrink={false} tone='secondary' variant='label'>
+                    {label}
+                  </Text>
+                  <Text tone='secondary' truncate variant='supporting'>
+                    {notification.title}
+                  </Text>
+                </Stack>
+                {metadata ? (
+                  <Text tone='muted' truncate variant='code'>
+                    {metadata}
+                  </Text>
+                ) : null}
               </Stack>
-              {metadata ? (
-                <Text tone='muted' truncate variant='code'>
-                  {metadata}
+              {shownAt ? (
+                <Text shrink={false} tone='muted' variant='microCode'>
+                  {shownAt}
                 </Text>
               ) : null}
-            </Stack>
-            {shownAt ? (
-              <Text shrink={false} tone='muted' variant='microCode'>
-                {shownAt}
-              </Text>
-            ) : null}
-            <IconButton
-              icon='close'
-              label='Dismiss notification'
-              onPress={(event) => {
-                event.stopPropagation()
-                onDismiss(notification.id)
-              }}
-              size='small'
-            />
-          </div>
-        )
-      })}
-    </section>
-  )
+              <IconButton
+                icon='close'
+                label='Dismiss notification'
+                onPress={(event) => {
+                  event.stopPropagation()
+                  onDismiss(notification.id)
+                }}
+                size='small'
+              />
+            </div>
+          )
+        })}
+      </section>
+    )
+  }
 }

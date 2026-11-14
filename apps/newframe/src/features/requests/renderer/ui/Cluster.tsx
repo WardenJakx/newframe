@@ -1,5 +1,5 @@
 import { Stack } from '@newframe/ui/stack'
-import type { MouseEventHandler, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
 
@@ -67,7 +67,17 @@ const valueRecipe = cva({
     },
     interactive: {
       true: {
+        padding: 0,
+        borderInlineWidth: 0,
+        borderBlockStartWidth: 0,
+        color: 'inherit',
         cursor: 'pointer',
+        _focusVisible: {
+          outlineWidth: 'focus',
+          outlineStyle: 'solid',
+          outlineColor: 'border.focus',
+          outlineOffset: 'focus-outline-offset-inset'
+        },
         _hover: {
           zIndex: 'content',
           background: 'bg.control',
@@ -88,29 +98,27 @@ const valueRecipe = cva({
 export type ClusterValueProps = {
   children?: ReactNode
   interactiveChildren?: boolean
-  onClick?: MouseEventHandler<HTMLDivElement> | null
-  role?: string
   transparent?: boolean
-}
+} & ({ label: string; onClick: () => void } | { label?: never; onClick?: undefined })
 
 export function ClusterValue({
   children,
   interactiveChildren = false,
+  label,
   onClick,
-  role,
   transparent = false
 }: ClusterValueProps) {
-  return (
-    <div
-      className={valueRecipe({
-        interactive: Boolean(onClick),
-        interactiveChildren,
-        tone: transparent ? 'transparent' : 'default'
-      })}
-      data-cluster-value=''
-      onClick={onClick ?? undefined}
-      role={role}
-    >
+  const className = valueRecipe({
+    interactive: Boolean(onClick),
+    interactiveChildren,
+    tone: transparent ? 'transparent' : 'default'
+  })
+  return onClick ? (
+    <button aria-label={label} className={className} data-cluster-value='' onClick={onClick} type='button'>
+      {children}
+    </button>
+  ) : (
+    <div className={className} data-cluster-value=''>
       {children}
     </div>
   )

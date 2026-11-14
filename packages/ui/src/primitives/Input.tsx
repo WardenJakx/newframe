@@ -150,7 +150,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       defaultValue={defaultValue}
       disabled={disabled}
       id={id}
-      inputMode={inputMode}
+      inputMode={inputMode ?? (appearance === 'amount' || appearance === 'numeric' ? 'decimal' : undefined)}
       max={max}
       maxLength={maxLength}
       min={min}
@@ -161,6 +161,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       onKeyDown={
         onSubmit || onCancel || onStep || blurOnEnter
           ? (event) => {
+              if (event.nativeEvent.isComposing) {
+                return
+              }
               if (event.key === 'Enter' && (onSubmit || blurOnEnter)) {
                 event.preventDefault()
                 onSubmit?.()

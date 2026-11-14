@@ -290,7 +290,7 @@ export function SafeProposalDetailsView({
             <Disclosure
               label={`${confirmations.length} / ${threshold} confirmations`}
               open={confirmationsOpen}
-              onToggle={() => setConfirmationsOpen((open) => !open)}
+              onOpenChange={setConfirmationsOpen}
             >
               <Stack gap='xsmall'>
                 {confirmations.length ? (
@@ -384,7 +384,7 @@ export function SafeProposalDetailsView({
       footer={
         <RequestSigningFooter address={proposal.safe} clipboard={capabilities.external} label='Account'>
           {reviewed && canAdjustFee && feesOpen && actions.onUpdateFee ? (
-            <Disclosure label='Adjust gas fee' open={feesOpen} onToggle={() => setFeesOpen(false)}>
+            <Disclosure label='Adjust gas fee' open={feesOpen} onOpenChange={setFeesOpen}>
               <AdjustFee
                 key={`${reviewed.from}:${reviewed.nonce}`}
                 req={{ data: reviewed }}
@@ -397,7 +397,7 @@ export function SafeProposalDetailsView({
             <Disclosure
               label='Execution details'
               open={executionDetailsOpen}
-              onToggle={() => setExecutionDetailsOpen((open) => !open)}
+              onOpenChange={setExecutionDetailsOpen}
             >
               <section aria-label='Reviewed executor transaction'>
                 <Stack gap='xsmall'>

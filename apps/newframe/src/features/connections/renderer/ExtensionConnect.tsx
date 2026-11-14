@@ -1,5 +1,6 @@
 import { Button } from '@newframe/ui/button'
 import { Dialog } from '@newframe/ui/dialog'
+import { announce } from '@newframe/ui/root'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
@@ -20,11 +21,19 @@ export default function ExtensionConnectNotification({
   browser,
   capability
 }: ExtensionConnectNotificationProps) {
+  const [responding, setResponding] = useState(false)
   const respond = (accepted: boolean) => {
-    void capability.respondToExtension({
-      extensionId: id,
-      approved: accepted
-    })
+    // Accept and Decline must not race each other or repeat.
+    if (responding) {
+      return
+    }
+    setResponding(true)
+    void capability
+      .respondToExtension({
+        extensionId: id,
+        approved: accepted
+      })
+      .finally(() => setResponding(false))
   }
   const browserName = capitalize(browser)
   const [copyId, setCopyId] = useState(false)
@@ -32,6 +41,7 @@ export default function ExtensionConnectNotification({
   const copyExtensionId = () => {
     void capability.copyText({ text: id })
     setCopyId(true)
+    announce('Extension origin copied')
     setTimeout(() => setCopyId(false), 2000)
   }
 
@@ -58,10 +68,10 @@ export default function ExtensionConnectNotification({
           Allow this extension to connect?
         </Text>
         <Stack direction='row' equal gap='small'>
-          <Button appearance='danger' onPress={() => void respond(false)} shape='pill'>
+          <Button appearance='danger' onPress={() => respond(false)} pending={responding} shape='pill'>
             <Text variant='action'>Decline</Text>
           </Button>
-          <Button appearance='primary' onPress={() => void respond(true)} shape='pill'>
+          <Button appearance='primary' onPress={() => respond(true)} pending={responding} shape='pill'>
             <Text variant='action'>Accept</Text>
           </Button>
         </Stack>

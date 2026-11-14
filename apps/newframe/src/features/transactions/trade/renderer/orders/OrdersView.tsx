@@ -1,10 +1,10 @@
 import { IconButton } from '@newframe/ui/icon-button'
+import { RowAction } from '@newframe/ui/row-action'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 
 import { cva } from '../../../../../../generated/styled-system/css/cva.js'
 import type { TokenImageCapability } from '../../../../../shared/renderer/capabilities.ts'
-import { activateOnKeyboard } from './keyboard.ts'
 import { OrderAssetIcon } from './OrderAssetPosition.tsx'
 import {
   hasOrderFill,
@@ -43,8 +43,8 @@ const orderRowRecipe = cva({
     alignItems: 'center',
     columnGap: '4',
     padding: '4',
+    position: 'relative',
     borderRadius: 'small',
-    cursor: 'pointer',
     _hover: { background: 'bg.card' }
   }
 })
@@ -126,16 +126,8 @@ export function OrdersView({
         const error = cancelErrors[order.orderId] || ''
 
         return (
-          <div
-            key={order.orderId}
-            aria-label={`${orderPairIntent(order)} order details`}
-            className={orderRowRecipe()}
-            data-order-id={order.orderId}
-            onClick={() => onOpen(order)}
-            onKeyDown={(event) => activateOnKeyboard(event, () => onOpen(order))}
-            role='button'
-            tabIndex={0}
-          >
+          <div key={order.orderId} className={orderRowRecipe()} data-order-id={order.orderId}>
+            <RowAction label={`${orderPairIntent(order)} order details`} onPress={() => onOpen(order)} />
             <div className={orderAreaRecipe({ area: 'asset' })}>
               <OrderAssetIcon
                 asset={order.targetAsset}

@@ -194,6 +194,7 @@ export const aiSessionStage: VisualStage = {
     const harnessAddress = `${harness.address.slice(0, 8)}...${harness.address.slice(-6)}`
     await accountsDialog
       .getByRole('button', { name: new RegExp(harnessAddress.replaceAll('.', '\\.'), 'i') })
+      .locator('xpath=..')
       .getByText('· AI Wallet', { exact: true })
       .waitFor({ state: 'visible' })
     await runtime.screenshot(tray, '08b-ai-wallet-tag.png')

@@ -1,9 +1,10 @@
 import { Button } from '@newframe/ui/button'
 import { Dialog } from '@newframe/ui/dialog'
+import { Form } from '@newframe/ui/form'
 import { Input } from '@newframe/ui/input'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useId, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
@@ -320,7 +321,7 @@ export function Panel(props: PanelProps) {
   const biometricUnlockButton = state.biometricAvailable ? (
     <Button
       appearance='control'
-      label='Unlock with biometrics'
+      pending={biometricUnlocking}
       onPress={() => {
         // Biometric failures and cancellation are handled inside unlockWithBiometrics.
         void unlockWithBiometrics()
@@ -333,6 +334,8 @@ export function Panel(props: PanelProps) {
     </Button>
   ) : null
 
+  const unlockErrorId = useId()
+  const unlockError = projectedUnlockError || state.unlockError
   const lockBlocker = (
     <Dialog label='Unlock Newframe' padding='medium' tone='opaque' width='compact'>
       <Stack align='center' gap='medium'>
@@ -340,24 +343,30 @@ export function Panel(props: PanelProps) {
           <AppIcon name='lock' size={22} />
         </span>
         <Text variant='heading'>Newframe Locked</Text>
-        <Input
-          align='start'
-          autoFocus
-          label='Newframe password'
-          onSubmit={submitPasswordUnlock}
-          onValueChange={(password) => setState({ password })}
-          placeholder='Newframe password'
-          type='password'
-          value={state.password}
-        />
-        {projectedUnlockError || state.unlockError ? (
-          <Text align='center' tone='danger' variant='supporting'>
-            {projectedUnlockError || state.unlockError}
-          </Text>
-        ) : null}
-        <Button appearance='primary' label='Unlock' onPress={submitPasswordUnlock} shape='pill' width='full'>
-          <Text variant='action'>{passwordUnlocking ? 'Unlocking' : 'Unlock'}</Text>
-        </Button>
+        <Form label='Unlock Newframe' onSubmit={submitPasswordUnlock}>
+          <Input
+            align='start'
+            autoComplete='current-password'
+            autoFocus
+            describedBy={unlockError ? unlockErrorId : undefined}
+            invalid={Boolean(unlockError)}
+            label='Newframe password'
+            onValueChange={(password) => setState({ password })}
+            placeholder='Newframe password'
+            type='password'
+            value={state.password}
+          />
+          {unlockError ? (
+            <div id={unlockErrorId} role='alert'>
+              <Text align='center' tone='danger' variant='supporting'>
+                {unlockError}
+              </Text>
+            </div>
+          ) : null}
+          <Button appearance='primary' pending={passwordUnlocking} shape='pill' type='submit' width='full'>
+            <Text variant='action'>{passwordUnlocking ? 'Unlocking' : 'Unlock'}</Text>
+          </Button>
+        </Form>
         {biometricUnlockButton}
       </Stack>
     </Dialog>

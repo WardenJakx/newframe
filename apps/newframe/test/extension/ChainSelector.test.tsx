@@ -18,7 +18,7 @@ describe('ChainSelector', () => {
       />
     )
 
-    const trigger = screen.getByRole('button', { name: 'Network' })
+    const trigger = screen.getByRole('combobox', { name: 'Network' })
     expect(trigger.textContent).toContain('Ethereum')
     fireEvent.click(trigger)
 
@@ -46,7 +46,7 @@ describe('ChainSelector', () => {
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Network' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Network' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'Search network' }), {
       target: { value: 'opt' }
     })

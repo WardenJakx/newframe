@@ -56,7 +56,11 @@ const menuRecipe = cva({
     position: 'absolute',
     insetInline: '7',
     insetBlockStart: '100%',
+    width: 'auto',
+    margin: 0,
     marginBlockStart: '3',
+    border: 0,
+    color: 'inherit',
     zIndex: 'header',
     maxHeight: 'calc(100vh - token(sizes.panel-header) - token(spacing.7) * 2)',
     overflowY: 'auto'
@@ -257,6 +261,10 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
   }, [capability, resetManagement, submissionReflected])
 
   const submitCreate = React.useCallback(async () => {
+    // Enter on the name field must respect the same pending state as the disabled button.
+    if (submitting) {
+      return
+    }
     const trimmedName = name.trim()
     if (!trimmedName || trimmedName.length > 50) {
       setError('Enter a profile name between 1 and 50 characters.')
@@ -281,7 +289,7 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
       submissionRef.current = null
       setSubmission(null)
     }
-  }, [capability, name, selectedAccountIds])
+  }, [capability, name, selectedAccountIds, submitting])
 
   const openRename = React.useCallback(
     (profile: ProfileSummary) => {
@@ -297,6 +305,10 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
   )
 
   const submitRename = React.useCallback(async () => {
+    // Enter on the name field must respect the same pending state as the disabled button.
+    if (submitting) {
+      return
+    }
     if (!managedProfile) {
       return
     }
@@ -329,7 +341,7 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
       submissionRef.current = null
       setSubmission(null)
     }
-  }, [managedProfile, capability, name])
+  }, [managedProfile, capability, name, submitting])
 
   const submitDelete = React.useCallback(async () => {
     if (!managedProfile || managedProfile.accountCount > 0 || profiles.length <= 1) {
@@ -483,6 +495,9 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
         }
       }}
       onKeyDown={(event) => {
+        if (event.nativeEvent.isComposing) {
+          return
+        }
         if (event.key === 'Escape' && displayedOpen) {
           event.stopPropagation()
           handleOpenChange(false)
@@ -510,7 +525,7 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
         </Stack>
       </Button>
       {displayedOpen ? (
-        <div
+        <dialog
           aria-label='Profiles'
           className={cx(
             menuRecipe(),
@@ -518,7 +533,7 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
           )}
           data-profile-menu
           id={menuId}
-          role='dialog'
+          open
         >
           <Stack gap='xsmall'>
             {profiles.map((profile) => {
@@ -600,7 +615,7 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
               </Text>
             ) : null}
           </Stack>
-        </div>
+        </dialog>
       ) : null}
     </div>
   )

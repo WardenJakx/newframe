@@ -329,7 +329,6 @@ function TxFeeSummary(props: TxFeeSummaryProps) {
           <Button
             appearance='disclosure'
             expanded={expanded}
-            label={`${expanded ? 'Hide' : 'Show'} gas fee settings`}
             onPress={() => setExpanded((current) => !current)}
             size='medium'
             width='full'

@@ -528,7 +528,7 @@ export function TradeView({
         <Disclosure
           icon='settings'
           label='Advanced'
-          onToggle={events.onToggleAdvanced}
+          onOpenChange={events.onToggleAdvanced}
           open={state.advancedOpen}
         >
           {renderTradeAdvancedFields()}

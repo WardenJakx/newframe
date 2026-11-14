@@ -1,5 +1,6 @@
 import { Icon } from '@newframe/ui/icon'
 import { Inline } from '@newframe/ui/inline'
+import { RowAction } from '@newframe/ui/row-action'
 import { ScrollArea } from '@newframe/ui/scroll-area'
 import { SearchField } from '@newframe/ui/search-field'
 import { Stack } from '@newframe/ui/stack'
@@ -59,8 +60,7 @@ export function AccountRow({
 }) {
   return (
     <div
-      aria-current={selected ? 'true' : undefined}
-      aria-label={`${account.displayName} ${account.shortAddress}`}
+      aria-current={!onSelect && selected ? 'true' : undefined}
       className={accountRowRecipe({
         interactive: Boolean(onSelect),
         selected,
@@ -69,20 +69,14 @@ export function AccountRow({
       })}
       onDragOver={management?.onDragOver}
       onDrop={management?.onDrop}
-      onClick={onSelect ? () => onSelect(account.id) : undefined}
-      onKeyDown={
-        onSelect
-          ? (event) => {
-              if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
-                event.preventDefault()
-                onSelect(account.id)
-              }
-            }
-          : undefined
-      }
-      role={onSelect ? 'button' : undefined}
-      tabIndex={onSelect ? 0 : undefined}
     >
+      {onSelect ? (
+        <RowAction
+          current={selected}
+          label={`${account.displayName} ${account.shortAddress}`}
+          onPress={() => onSelect(account.id)}
+        />
+      ) : null}
       {management?.dragHandle}
       <AddressAvatar address={account.address} accountType={account.signerType} />
       <Stack gap='none' grow>
@@ -163,7 +157,7 @@ export function AccountSelectorView({
         <TrayOverlayFrame
           label='Select account'
           onKeyDown={(event) => {
-            if (event.key === 'Escape') {
+            if (event.key === 'Escape' && !event.nativeEvent.isComposing) {
               event.stopPropagation()
               close()
             }

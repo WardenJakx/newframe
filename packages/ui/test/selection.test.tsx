@@ -47,7 +47,7 @@ describe('Selection', () => {
 
     rerender(selection('end', 'wide', 'compact', true))
 
-    const compactTrigger = screen.getByRole('button', { name: 'Assets' })
+    const compactTrigger = screen.getByRole('combobox', { name: 'Assets' })
     expect(compactTrigger.classList.contains('w_selection-trigger-compact')).toBe(true)
     expect(compactTrigger.classList.contains('h_button-compact')).toBe(true)
     expect(compactTrigger.parentElement?.classList.contains('pbe_selection-menu-space')).toBe(true)
@@ -76,7 +76,7 @@ describe('Selection', () => {
       />
     )
 
-    screen.getByRole('button', { name: 'Assets' }).focus()
+    screen.getByRole('combobox', { name: 'Assets' }).focus()
     await user.keyboard('{ArrowDown}{Enter}')
 
     expect(onSelect).toHaveBeenCalledWith('beta')
@@ -98,7 +98,7 @@ describe('Selection', () => {
       />
     )
 
-    const trigger = screen.getByRole('button', { name: 'Assets' })
+    const trigger = screen.getByRole('combobox', { name: 'Assets' })
     expect((trigger as HTMLButtonElement).disabled).toBe(true)
     await user.click(trigger)
     expect(onOpenChange).not.toHaveBeenCalled()

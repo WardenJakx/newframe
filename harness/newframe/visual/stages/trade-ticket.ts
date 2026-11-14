@@ -30,8 +30,8 @@ export const tradeTicketStage: VisualStage = {
     const tradePage = await driver.openDefaultTradeTicket()
     await driver.assertColorTokens(tradePage, 'Side tray')
     await driver.assertTradeTicketVisualControls(tradePage)
-    const targetAsset = await tradePage.getByRole('button', { name: /Select target asset/i }).textContent()
-    const contraAsset = await tradePage.getByRole('button', { name: /Select contra asset/i }).textContent()
+    const targetAsset = await tradePage.getByRole('combobox', { name: /Select target asset/i }).textContent()
+    const contraAsset = await tradePage.getByRole('combobox', { name: /Select contra asset/i }).textContent()
     if (!targetAsset?.includes('WETH')) {
       driver.fail(`Default Trade target should be WETH; found ${targetAsset ?? 'nothing'}`)
     }
@@ -41,7 +41,7 @@ export const tradeTicketStage: VisualStage = {
     await driver.assertTradeBalanceDirectionColor(tradePage)
     await driver.screenshot(tradePage, '10a-trade-market-open.png')
 
-    await tradePage.getByRole('button', { name: /Advanced/ }).click()
+    await tradePage.getByText('Advanced', { exact: true }).click()
     const slippage = tradePage.getByLabel('Slippage')
     await slippage.waitFor({ state: 'visible', timeout: 5_000 })
     if ((await slippage.inputValue()) !== '') {
@@ -54,7 +54,7 @@ export const tradeTicketStage: VisualStage = {
       driver.fail('Max slippage label overlaps its input')
     }
     await driver.screenshot(tradePage, '10a1-trade-market-advanced-automatic.png')
-    await tradePage.getByRole('button', { name: /Advanced/ }).click()
+    await tradePage.getByText('Advanced', { exact: true }).click()
 
     await tradePage.getByRole('button', { name: /Switch to (BUY|SELL)/ }).click()
     await tradePage.getByRole('button', { name: /Switch to (BUY|SELL)/ }).waitFor({
@@ -64,7 +64,7 @@ export const tradeTicketStage: VisualStage = {
     await driver.assertTradeBalanceDirectionColor(tradePage)
     await driver.screenshot(tradePage, '10b-trade-direction-switched.png')
 
-    await tradePage.getByRole('button', { name: /Select target asset/i }).click()
+    await tradePage.getByRole('combobox', { name: /Select target asset/i }).click()
     await tradePage
       .getByRole('option', { name: /\bWETH\b/i })
       .first()
@@ -79,8 +79,8 @@ export const tradeTicketStage: VisualStage = {
     )
     await driver.screenshot(tradePage, '10c-trade-target-asset-menu.png')
 
-    await tradePage.getByRole('button', { name: /Select target asset/i }).click()
-    await tradePage.getByRole('button', { name: /Select contra asset/i }).click()
+    await tradePage.getByRole('combobox', { name: /Select target asset/i }).click()
+    await tradePage.getByRole('combobox', { name: /Select contra asset/i }).click()
     await tradePage
       .getByRole('option', { name: /\bUSDC\b/i })
       .first()
@@ -95,7 +95,7 @@ export const tradeTicketStage: VisualStage = {
     )
     await driver.screenshot(tradePage, '10d-trade-contra-asset-menu.png')
 
-    await tradePage.getByRole('button', { name: /Select contra asset/i }).click()
+    await tradePage.getByRole('combobox', { name: /Select contra asset/i }).click()
     await tradePage.getByRole('tab', { name: 'Limit' }).click()
     const limitPrice = tradePage.getByLabel('Limit price')
     await limitPrice.waitFor({ state: 'visible', timeout: 5_000 })
@@ -109,7 +109,7 @@ export const tradeTicketStage: VisualStage = {
     if ((await tradePage.getByLabel('Limit order type').count()) > 0) {
       driver.fail('Trade ticket still exposes the removed limit subtype selector')
     }
-    await tradePage.getByRole('button', { name: /Advanced/ }).click()
+    await tradePage.getByText('Advanced', { exact: true }).click()
     const timeInForce = tradePage.getByLabel('Time in force')
     await timeInForce.waitFor({ state: 'visible', timeout: 5_000 })
     if ((await timeInForce.inputValue()) !== 'gtc') {
@@ -190,7 +190,7 @@ export const tradeTicketStage: VisualStage = {
     if ((await twapLimit.getAttribute('placeholder')) !== 'Market') {
       driver.fail('Optional TWAP limit should communicate market execution')
     }
-    await tradePage.getByRole('button', { name: /Advanced/ }).click()
+    await tradePage.getByText('Advanced', { exact: true }).click()
     const segments = tradePage.getByLabel('TWAP segments')
     const maxPriceImpact = tradePage.getByLabel('Maximum price impact')
     await segments.waitFor({ state: 'visible', timeout: 5_000 })

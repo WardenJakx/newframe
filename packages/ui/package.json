@@ -32,6 +32,11 @@
       "import": "./dist/primitives/IconButton.js",
       "default": "./dist/primitives/IconButton.js"
     },
+    "./form": {
+      "types": "./dist/primitives/Form.d.ts",
+      "import": "./dist/primitives/Form.js",
+      "default": "./dist/primitives/Form.js"
+    },
     "./grid": {
       "types": "./dist/primitives/Grid.d.ts",
       "import": "./dist/primitives/Grid.js",
@@ -76,6 +81,11 @@
       "types": "./dist/primitives/Range.d.ts",
       "import": "./dist/primitives/Range.js",
       "default": "./dist/primitives/Range.js"
+    },
+    "./row-action": {
+      "types": "./dist/primitives/RowAction.d.ts",
+      "import": "./dist/primitives/RowAction.js",
+      "default": "./dist/primitives/RowAction.js"
     },
     "./root": {
       "types": "./dist/root/UIRoot.d.ts",

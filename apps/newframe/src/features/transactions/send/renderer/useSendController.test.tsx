@@ -120,7 +120,7 @@ describe('Send controller integration', () => {
     const { user } = render(<Send assetId={nativeAssetId} capability={send} />)
     await user.click(screen.getByRole('button', { name: 'Select Recipient' }))
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '4' } })
-    await user.click(screen.getByRole('button', { name: 'Select send token' }))
+    await user.click(screen.getByRole('combobox', { name: 'Select send token' }))
     expect(screen.getByRole('listbox', { name: 'Select send token' })).toBeTruthy()
 
     act(() => {

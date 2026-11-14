@@ -30,7 +30,6 @@ function parseInput(value: string, decimals: boolean) {
 type FeeOverlayInputProps = {
   initialValue: string
   labelText: string
-  tabIndex: number
   decimals: boolean
   onReceiveValue: (value: bigint) => void
   limiter: (value: bigint) => bigint
@@ -46,7 +45,6 @@ type TxFeeOverlayProps = {
 const FeeOverlayInput = ({
   initialValue,
   labelText,
-  tabIndex,
   decimals,
   onReceiveValue,
   limiter
@@ -65,9 +63,8 @@ const FeeOverlayInput = ({
         align='end'
         appearance='numeric'
         blurOnEnter
-        inputMode='decimal'
+        inputMode={decimals ? 'decimal' : 'numeric'}
         label={labelText}
-        tabIndex={tabIndex}
         value={value}
         onValueChange={(nextValue) => {
           const parsedInput = (decimals ? /[0-9.]*/ : /[0-9]*/).exec(nextValue)
@@ -113,45 +110,41 @@ const FeeOverlayInput = ({
   )
 }
 
-const GasLimitInput = ({ initialValue, onReceiveValue, tabIndex, limiter }: FeeInputProps) => (
+const GasLimitInput = ({ initialValue, onReceiveValue, limiter }: FeeInputProps) => (
   <FeeOverlayInput
     initialValue={initialValue}
     onReceiveValue={onReceiveValue}
     labelText='Gas Limit (UNITS)'
-    tabIndex={tabIndex}
     decimals={false}
     limiter={limiter}
   />
 )
 
-const GasPriceInput = ({ initialValue, onReceiveValue, tabIndex, limiter }: FeeInputProps) => (
+const GasPriceInput = ({ initialValue, onReceiveValue, limiter }: FeeInputProps) => (
   <FeeOverlayInput
     initialValue={initialValue}
     onReceiveValue={onReceiveValue}
     labelText='Gas Price (GWEI)'
-    tabIndex={tabIndex}
     decimals={true}
     limiter={limiter}
   />
 )
 
-const BaseFeeInput = ({ initialValue, onReceiveValue, tabIndex, limiter }: FeeInputProps) => (
+const BaseFeeInput = ({ initialValue, onReceiveValue, limiter }: FeeInputProps) => (
   <FeeOverlayInput
     initialValue={initialValue}
     onReceiveValue={onReceiveValue}
     labelText='Base Fee (GWEI)'
-    tabIndex={tabIndex}
     decimals={true}
     limiter={limiter}
   />
 )
 
-const PriorityFeeInput = ({ initialValue, onReceiveValue, tabIndex, limiter }: FeeInputProps) => (
+const PriorityFeeInput = ({ initialValue, onReceiveValue, limiter }: FeeInputProps) => (
   <FeeOverlayInput
     initialValue={initialValue}
     onReceiveValue={onReceiveValue}
     labelText='Max Priority Fee (GWEI)'
-    tabIndex={tabIndex}
     decimals={true}
     limiter={limiter}
   />
@@ -198,13 +191,11 @@ export default function TxFeeOverlay(props: TxFeeOverlayProps) {
             initialValue={displayBaseFee}
             onReceiveValue={(value) => receiveValueHandler(value, 'baseFee')}
             limiter={limiter('baseFee')}
-            tabIndex={0}
           />
           <PriorityFeeInput
             initialValue={displayPriorityFee}
             onReceiveValue={(value) => receiveValueHandler(value, 'priorityFee')}
             limiter={limiter('priorityFee')}
-            tabIndex={1}
           />
         </>
       ) : (
@@ -212,14 +203,12 @@ export default function TxFeeOverlay(props: TxFeeOverlayProps) {
           initialValue={displayGasPrice}
           onReceiveValue={(value) => receiveValueHandler(value, 'gasPrice')}
           limiter={limiter('gasPrice')}
-          tabIndex={0}
         />
       )}
       <GasLimitInput
         initialValue={displayGasLimit}
         onReceiveValue={(value) => receiveValueHandler(value, 'gasLimit')}
         limiter={limiter('gasLimit')}
-        tabIndex={2}
       />
     </Stack>
   )

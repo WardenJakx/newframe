@@ -279,18 +279,18 @@ describe('TokenSelector', () => {
   it('selects highlighted items with the keyboard', async () => {
     const { user } = render(<ControlledSelector />)
 
-    await user.click(screen.getByRole('button', { name: 'Choose token' }))
-    fireEvent.keyDown(screen.getByRole('button', { name: 'Choose token' }), { key: 'ArrowDown' })
-    fireEvent.keyDown(screen.getByRole('button', { name: 'Choose token' }), { key: 'Enter' })
+    await user.click(screen.getByRole('combobox', { name: 'Choose token' }))
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Choose token' }), { key: 'ArrowDown' })
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Choose token' }), { key: 'Enter' })
 
-    expect(screen.getByRole('button', { name: 'Choose token' }).textContent).toContain('abcDEFG')
+    expect(screen.getByRole('combobox', { name: 'Choose token' }).textContent).toContain('abcDEFG')
     expect(screen.queryByRole('listbox')).toBeNull()
   })
 
   it('closes when clicking outside', async () => {
     const { user } = render(<ControlledSelector />)
 
-    await user.click(screen.getByRole('button', { name: 'Choose token' }))
+    await user.click(screen.getByRole('combobox', { name: 'Choose token' }))
     expect(screen.getByRole('listbox')).toBeTruthy()
 
     fireEvent.mouseDown(screen.getByRole('button', { name: 'outside' }))
@@ -301,12 +301,12 @@ describe('TokenSelector', () => {
   it('clears its query after closing and reopening', async () => {
     const { user } = render(<ControlledSelector />)
 
-    await user.click(screen.getByRole('button', { name: 'Choose token' }))
+    await user.click(screen.getByRole('combobox', { name: 'Choose token' }))
     await user.type(screen.getByLabelText('Search tokens'), 'missing')
     expect(screen.queryAllByRole('option')).toHaveLength(0)
 
     fireEvent.mouseDown(screen.getByRole('button', { name: 'outside' }))
-    await user.click(screen.getByRole('button', { name: 'Choose token' }))
+    await user.click(screen.getByRole('combobox', { name: 'Choose token' }))
 
     expect(screen.getByLabelText<HTMLInputElement>('Search tokens').value).toBe('')
     expect(screen.getAllByRole('option')).toHaveLength(2)
@@ -315,7 +315,7 @@ describe('TokenSelector', () => {
   it('filters tokens by metadata and keeps the menu open when there are no matches', async () => {
     const { user } = render(<ControlledSelector />)
 
-    await user.click(screen.getByRole('button', { name: 'Choose token' }))
+    await user.click(screen.getByRole('combobox', { name: 'Choose token' }))
     await user.type(screen.getByLabelText('Search tokens'), 'long token')
 
     expect(screen.getAllByRole('option')).toHaveLength(1)
@@ -334,7 +334,7 @@ describe('TokenSelector', () => {
 
     render(<ControlledSelector initialSelectedId='missing' />)
 
-    expect(screen.getByRole('button', { name: 'Choose token' }).textContent).toContain('Select token')
+    expect(screen.getByRole('combobox', { name: 'Choose token' }).textContent).toContain('Select token')
     expect(warn).toHaveBeenCalledWith(
       '[TokenSelector] selectedId was not found in items',
       expect.objectContaining({ selectedId: 'missing' })

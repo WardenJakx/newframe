@@ -47,7 +47,9 @@ function order(cancellable = true) {
 }
 
 function cancelButton(orderId: string) {
-  return document.querySelector<HTMLButtonElement>(`[data-order-id="${orderId}"] button`)
+  return document.querySelector<HTMLButtonElement>(
+    `[data-order-id="${orderId}"] button[aria-label="Cancel order"]`
+  )
 }
 
 function state(orders: MainTrayProjection['orders'], operations: Record<string, OperationRecord> = {}) {

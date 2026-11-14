@@ -3,9 +3,17 @@ import type { KeyboardEventHandler, ReactNode, Ref } from 'react'
 import { cva } from '../../../../generated/styled-system/css/cva.js'
 
 const overlayRecipe = cva({
+  // Open in place (not showModal): HomeOverlayRouter stacks these layers and manages focus.
   base: {
     position: 'absolute',
     inset: 0,
+    width: 'auto',
+    height: 'auto',
+    maxWidth: 'none',
+    maxHeight: 'none',
+    padding: 0,
+    border: 0,
+    color: 'inherit',
     zIndex: 'overlay',
     display: 'flex',
     flexDirection: 'column',
@@ -38,20 +46,20 @@ export type TrayOverlayFrameProps = {
   layout?: 'menu' | 'plain' | 'tray'
   modal?: boolean
   onKeyDown?: KeyboardEventHandler<HTMLElement>
-  ref?: Ref<HTMLElement>
+  ref?: Ref<HTMLDialogElement>
 }
 
 export function TrayOverlayFrame({ children, label, layout, modal, onKeyDown, ref }: TrayOverlayFrameProps) {
   return (
-    <section
+    <dialog
       aria-label={label}
       aria-modal={modal ? true : undefined}
       className={overlayRecipe({ layout })}
       onKeyDown={onKeyDown}
+      open
       ref={ref}
-      role='dialog'
     >
       {children}
-    </section>
+    </dialog>
   )
 }

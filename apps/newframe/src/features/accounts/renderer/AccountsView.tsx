@@ -223,7 +223,6 @@ function AccountActions({
         actionsMenuRecipe(),
         surfaceRecipe({ elevation: 'overlay', padding: 'xsmall', radius: 'default', tone: 'hover' })
       )}
-      onClick={(event) => event.stopPropagation()}
     >
       <Stack gap='xsmall'>
         <Button appearance='row' onPress={events.onRenameOpen} size='small' width='full'>
@@ -370,7 +369,6 @@ export function AccountsView(props: AccountsViewProps) {
                           <span
                             aria-label={`Drag ${account.displayName} to reorder`}
                             draggable
-                            onClick={(event) => event.stopPropagation()}
                             onDragEnd={props.onAccountDragEnd}
                             onDragStart={(event) => props.onAccountDragStart(event, account.id)}
                             title='Drag to reorder'

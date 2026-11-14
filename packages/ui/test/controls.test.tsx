@@ -68,7 +68,7 @@ describe('Side Panel controls', () => {
 
     const toggle = screen.getByRole('switch', { name: 'Auto-hide' })
     expect(toggle.getAttribute('aria-checked')).toBe('true')
-    expect(toggle.getAttribute('aria-pressed')).toBe('true')
+    expect(toggle.getAttribute('aria-pressed')).toBeNull()
     await user.click(toggle)
     expect(onPress).toHaveBeenCalledTimes(1)
   })

@@ -294,13 +294,15 @@ export type ButtonProps = RecipeVariantProps<typeof buttonRecipe> & {
   controls?: string
   description?: string
   disabled?: boolean
-  elementRole?: 'option' | 'switch' | 'tab'
+  elementRole?: 'combobox' | 'option' | 'switch' | 'tab'
   expanded?: boolean
   hasPopup?: 'dialog' | 'listbox' | 'menu'
   id?: string
   label?: string
   onPointerEnter?: () => void
   onPress?: (event: MouseEvent<HTMLButtonElement>) => void
+  /** An async action is in flight: blocks repeat presses and tells assistive tech it is busy. */
+  pending?: boolean
   tabIndex?: -1 | 0
   title?: string
   type?: 'button' | 'reset' | 'submit'
@@ -325,6 +327,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     label,
     onPress,
     onPointerEnter,
+    pending = false,
     placeholder,
     pressed,
     selected,
@@ -344,10 +347,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       aria-describedby={description}
       aria-checked={checked}
       aria-activedescendant={activeDescendant}
+      aria-busy={pending || undefined}
       aria-expanded={expanded}
       aria-haspopup={hasPopup}
       aria-label={label}
-      aria-pressed={pressed}
+      aria-pressed={elementRole === 'switch' ? undefined : pressed}
       aria-selected={ariaSelected ?? selected}
       className={buttonRecipe({
         appearance,
@@ -361,7 +365,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
         tone,
         width
       })}
-      disabled={disabled}
+      disabled={pending || disabled}
       id={id}
       onClick={onPress}
       onMouseEnter={onPointerEnter}

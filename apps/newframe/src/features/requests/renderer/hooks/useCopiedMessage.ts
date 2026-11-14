@@ -1,3 +1,4 @@
+import { announce } from '@newframe/ui/root'
 import { useState } from 'react'
 
 import type { RequestExternalCapability } from '../requestCapabilities.ts'
@@ -11,6 +12,7 @@ const useCopiedMessage = (
   const copyToClipboard = () => {
     void capability.copy({ text: value })
     setShowMessage(true)
+    announce('Copied')
     setTimeout(() => setShowMessage(false), 1000)
   }
 

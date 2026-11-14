@@ -37,7 +37,7 @@ export const tradeMarketStage: VisualStage = {
     const approveRequest = await driver.waitForCurrentRequest('transaction', new Set(), 30_000)
     await driver.screenshot(tray, '21b-trade-market-approve-review.png')
 
-    const gasSettings = tray.getByRole('button', { name: /Show gas fee settings/i })
+    const gasSettings = tray.getByRole('button', { name: /^Gas fee/i })
     await gasSettings.waitFor({ state: 'visible' })
     if ((await gasSettings.getAttribute('aria-expanded')) !== 'false') {
       driver.fail('Gas settings must default to the compact collapsed state')
@@ -52,8 +52,8 @@ export const tradeMarketStage: VisualStage = {
     if (!rawDataFits) {
       driver.fail('Inline calldata must not overflow the tray viewport')
     }
-    const rawTransaction = tray.getByRole('button', { name: 'Raw transaction', exact: true })
-    if ((await rawTransaction.getAttribute('aria-expanded')) !== 'false') {
+    const rawTransaction = tray.getByText('Raw transaction', { exact: true })
+    if (await rawTransaction.evaluate((element) => element.closest('details')?.open !== false)) {
       driver.fail('Calldata disclosure must leave the raw transaction collapsed')
     }
     await driver.screenshot(tray, '21b1-trade-market-inline-calldata.png')

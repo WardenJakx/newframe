@@ -127,7 +127,7 @@ describe('tray security operations', () => {
           }}
         />
       )
-      await user.click(await screen.findByRole('button', { name: 'Unlock with biometrics' }))
+      await user.click(await screen.findByRole('button', { name: 'Unlock with Biometrics' }))
       expect(unlock.mock.calls.at(-1)![0]).toEqual({
         operationId: anyString,
         method: 'native'
@@ -163,7 +163,7 @@ describe('tray security operations', () => {
           }}
         />
       )
-      await user.click(await screen.findByRole('button', { name: 'Unlock with biometrics' }))
+      await user.click(await screen.findByRole('button', { name: 'Unlock with Biometrics' }))
       expect(unlock.mock.calls.at(-1)![0]).toEqual({
         operationId: anyString,
         method: 'webauthn',
@@ -197,7 +197,7 @@ describe('tray security operations', () => {
           }}
         />
       )
-      await user.click(await screen.findByRole('button', { name: 'Unlock with biometrics' }))
+      await user.click(await screen.findByRole('button', { name: 'Unlock with Biometrics' }))
       expect(unlock.mock.calls).toEqual([])
       expect(screen.queryByText(/canceled/i)).toBeNull()
 

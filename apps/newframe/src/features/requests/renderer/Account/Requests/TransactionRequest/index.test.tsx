@@ -223,8 +223,7 @@ describe('confirm', () => {
       expect(details.textContent).not.toContain('0x1234')
       expect(screen.queryByRole('button', { name: /calldata digest/i })).toBeNull()
       if (accountType === 'Safe') {
-        expect(screen.queryByLabelText('Reviewed executor transaction')).toBeNull()
-        expect(screen.getByRole('button', { name: 'Execution details' })).toBeTruthy()
+        expect(screen.getByText('Execution details')).toBeTruthy()
       }
     }
   )
@@ -325,7 +324,7 @@ describe('confirm', () => {
     expect(await screen.findByText('Ready · awaiting execution')).toBeTruthy()
     expect(screen.getByText('Gas-paying executor')).toBeTruthy()
     expect(capabilities.review.approve).toHaveBeenCalledTimes(1)
-    await user.click(screen.getByRole('button', { name: 'Show gas fee settings' }))
+    await user.click(screen.getByRole('button', { name: /^gas fee/i }))
     await user.click(screen.getByRole('button', { name: 'Custom' }))
     fireEvent.change(screen.getByLabelText('Gas Limit (UNITS)'), { target: { value: '22000' } })
     fireEvent.change(screen.getByLabelText('Base Fee (GWEI)'), { target: { value: '3' } })
@@ -414,7 +413,7 @@ describe('confirm', () => {
 
     expect(screen.queryByLabelText('Transaction progress')).toBeNull()
     expect(screen.getByRole('status').textContent).toBe('confirming')
-    expect(screen.getByRole('button', { name: /show gas fee settings/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^gas fee/i })).toBeTruthy()
     expect(screen.getByLabelText('Network fee').textContent).toMatch(/gas fee/i)
     fireEvent.click(screen.getByRole('button', { name: 'Copy transaction hash' }))
     expect(capabilities.external.writeText).toHaveBeenCalledWith(req.tx.hash)
@@ -696,7 +695,7 @@ describe('confirm', () => {
 
     renderRequest(req)
 
-    fireEvent.click(screen.getByRole('button', { name: /show gas fee settings/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^gas fee/i }))
     const feeRate = screen.getByLabelText('Fee rate')
     expect(feeRate.textContent).toMatch(/very fast/i)
     expect(feeRate.textContent).toMatch(/fast/i)
@@ -710,7 +709,7 @@ describe('confirm', () => {
       level: 'fast'
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /show gas fee settings/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^gas fee/i }))
     fireEvent.click(screen.getByRole('button', { name: 'Custom' }))
     expect(screen.getByLabelText('Gas Price (GWEI)')).toBeTruthy()
   })
@@ -841,7 +840,7 @@ it('keeps a single named argument visible and separates calldata verification fr
   fireEvent.click(screen.getByRole('button', { name: /Show full calldata/ }))
   fireEvent.click(screen.getByRole('button', { name: 'Copy full calldata' }))
   expect(capabilities.external.writeText).toHaveBeenCalledWith(calldata)
-  fireEvent.click(screen.getByRole('button', { name: 'Raw transaction' }))
+  fireEvent.click(screen.getByText('Raw transaction'))
   fireEvent.click(screen.getByRole('button', { name: 'Copy raw transaction' }))
   expect(capabilities.external.writeText).toHaveBeenCalledWith(
     JSON.stringify(completeRequest(req).data, null, 2)
