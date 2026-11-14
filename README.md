@@ -37,7 +37,7 @@ Newframe is a web3 platform that creates a secure system-wide interface to your 
 
 Download artifacts from [GitHub Releases](https://github.com/wardenjakx/newframe/releases). Releases are currently intended for technical preview use:
 
-- The desktop download is an unsigned macOS arm64 DMG for Apple silicon.
+- New desktop releases are Developer ID signed and Apple notarized macOS arm64 DMGs for Apple silicon.
 - The browser extension is an unpacked developer extension for Chrome 121+, Brave, Chromium, and temporary Firefox sessions. It is not distributed through a browser extension store and does not update automatically.
 - The extension requires the Newframe desktop app to be installed, running, and unlocked.
 
@@ -48,15 +48,9 @@ shasum -a 256 -c Newframe-Desktop-<version>-macOS-arm64.dmg.sha256
 shasum -a 256 -c Newframe-Browser-Extension-<version>.zip.sha256
 ```
 
-After dragging Newframe from the DMG into Applications, remove the macOS quarantine attribute so the unsigned app can open:
+Open the verified DMG, drag Newframe into Applications, and open it normally. Older unsigned releases retain their own installation notes.
 
-```bash
-xattr -dr com.apple.quarantine "/Applications/Newframe.app"
-```
-
-Only run this command after verifying the checksum and confirming that the DMG came from this repository.
-
-For complete installation steps, including macOS Gatekeeper handling and browser-specific loading, see the [desktop app guide](apps/newframe/README.md#install-the-unsigned-macos-arm64-release) and [browser extension guide](apps/newframe-extension/README.md#install-a-release).
+For complete installation steps and browser-specific loading, see the [desktop app guide](apps/newframe/README.md#install-the-macos-arm64-release) and [browser extension guide](apps/newframe-extension/README.md#install-a-release). Maintainers can configure signing and publish desktop builds with the [desktop release guide](docs/desktop-releases.md).
 
 ### Run from source
 
